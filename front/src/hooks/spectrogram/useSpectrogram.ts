@@ -57,30 +57,32 @@ export type SpectrogramControls = {
   disable: () => void;
 };
 
-function hoverCallback(event: MouseEvent) {
-  const ctx = event.currentTarget.ctx
-  const viewport = event.currentTarget.viewport;
+function hoverCallback(event: MouseEvent, canvas: HTMLCanvasElement, viewport: SpectrogramWindow) {
+  if (event.currentTarget == null) {
+    return;
+  }
 
-  const canvas = ctx.canvas;
   const rect = canvas.getBoundingClientRect();
 
-   // Calculate mouse coordinates relative to the canvas
-   const mouseX = event.clientX - rect.left;
-   const mouseY = event.clientY - rect.top;
+  // Calculate mouse coordinates relative to the canvas
+  const mouseX = event.clientX - rect.left;
+  const mouseY = event.clientY - rect.top;
 
-   // Calculate the scaling factors
-   const scaleX = (viewport.time.max - viewport.time.min) / canvas.width;
-   const scaleY = (viewport.freq.max - viewport.freq.min) / canvas.height;
+  // Calculate the scaling factors
+  const scaleX = (viewport.time.max - viewport.time.min) / canvas.width;
+  const scaleY = (viewport.freq.max - viewport.freq.min) / canvas.height;
 
   // Translate canvas coordinates to custom bounding box coordinates
   const time = (mouseX * scaleX + viewport.time.min).toFixed(4);
   const freq = (((canvas.height - mouseY) * scaleY + viewport.freq.min) / 1000).toFixed(2); // The y-axis needs to be inverted...
 
   var popover = document.getElementById("popover-id");
-  popover.innerText = `Time: ${time} s, Freq: ${freq} kHz`;
-  popover.style.left = `${event.clientX + 5}px`;
-  popover.style.top = `${event.clientY + 2}px`;
-  popover.style.display = 'block';
+  if (popover != null) {
+    popover.innerText = `Time: ${time} s, Freq: ${freq} kHz`;
+    popover.style.left = `${event.clientX + 5}px`;
+    popover.style.top = `${event.clientY + 2}px`;
+    popover.style.display = 'block';
+  }
 }
 
 function drawPosition(ctx: CanvasRenderingContext2D, viewport: SpectrogramWindow) {
@@ -101,18 +103,19 @@ function drawPosition(ctx: CanvasRenderingContext2D, viewport: SpectrogramWindow
   popover.style.display = 'none';
   document.body.appendChild(popover);
 
-  // Piggyback the canvas and the spectrogram viewport to the canvas it self,
-  // so that we can use them later in the event callback hoverCallback
-  ctx.canvas.ctx = ctx;
-  ctx.canvas.viewport = viewport;
+  // Create the callback function by referencing the actual callback.
+  // We can not add the callback directly, because the addEventListener expects
+  // a function with (event: MousEvent) => any, but we have to pass the canvas
+  // and viewport as additional arguments.
+  const hoverCallbackRef = (event: MouseEvent) => hoverCallback(event, ctx.canvas, viewport);
 
   // First, we remove mousemove event listeners to not create an infinit number of them
   // on multiple call event. Then we add it again and finally add a mousleave event
   // to hide the popover.
-  ctx.canvas.removeEventListener('mousemove', hoverCallback);
-  ctx.canvas.addEventListener('mousemove', hoverCallback);
+  ctx.canvas.removeEventListener('mousemove', hoverCallbackRef);
+  ctx.canvas.addEventListener('mousemove', hoverCallbackRef);
   ctx.canvas.addEventListener('mouseleave', () => {
-    popover.style.display = 'none';
+    if (popover != null) popover.style.display = 'none';
   });
 }
 
