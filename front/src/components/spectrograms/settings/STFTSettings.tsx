@@ -61,12 +61,12 @@ export default function STFTSettings({
     (val: number[] | number) => {
       const [low, high] = val as number[];
       if (low == constraints.signalRange.min) {
-        onChangeLowSignal(null);
+        onChangeLowSignal(constraints.signalRange.min);
       } else {
         onChangeLowSignal(low ?? constraints.signalRange.min);
       }
       if (high == constraints.signalRange.max) {
-        onChangeHighSignal(null);
+        onChangeHighSignal(constraints.signalRange.max);
       } else {
         onChangeHighSignal(high ?? constraints.signalRange.max);
       }
