@@ -8,6 +8,7 @@ import {
 import RecordingLocation from "@/components/recordings/RecordingLocation";
 import RecordingTagBar from "@/components/recordings/RecordingTagBar";
 import RecordingTime from "@/components/recordings/RecordingTime";
+import useRecording from "@/hooks/api/useRecording";
 
 import type { Recording, Tag } from "@/types";
 
@@ -19,7 +20,12 @@ export default function RecordingAnnotationContext({
   onTagClick?: (tag: Tag) => void;
 }) {
   const { path } = recording;
-  const baseName = removeExtension(getBaseName(path) ?? "");
+  const baseName = getBaseName(path) ?? "";
+
+  const { downloadURL }  = useRecording({
+    uuid: recording.uuid,
+    recording,
+  });
 
   return (
     <div className="flex flex-col gap-2">
@@ -30,11 +36,10 @@ export default function RecordingAnnotationContext({
             mode="text"
             padding="p-0"
             variant="secondary"
-            href={`/recordings/detail/?recording_uuid=${recording.uuid}`}
+            href={downloadURL || ""}
             className="max-w-xl whitespace-nowrap"
           >
             {baseName}
-            <span className="text-sm text-stone-600">.WAV</span>
           </Link>
         </div>
         <RecordingLocation
