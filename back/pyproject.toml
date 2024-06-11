@@ -98,5 +98,5 @@ dev-dependencies = [
     "shapely==2.0.4",
     "soundfile==0.12.1",
     "xarray==2023.1",
-    "-e ../soundevent",
+    "soundevent==2.0.0",
 ]
