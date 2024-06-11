@@ -71,6 +71,24 @@ const tasksFilterDefs: FilterDef<AnnotationTaskFilter>[] = [
     ),
   },
   {
+    field: "sound_event_annotation_tag",
+    name: "Sound Event Tag",
+    render: ({ value, clear }) => (
+      <FilterBadge
+        field="Sound Event Tag"
+        value={`${value.key}: ${value.value}`}
+        onRemove={clear}
+      />
+    ),
+    selector: ({ setFilter }) => (
+      <TagFilter onChange={(val) => setFilter("sound_event_annotation_tag", val)} />
+    ),
+    description: "Select task that contain a sound event with a specific tag",
+    icon: (
+      <TagIcon className="h-5 w-5 inline-block text-stone-500 mr-1 align-middle" />
+    ),
+  },
+  {
     field: "dataset",
     name: "Dataset",
     render: ({ value, clear }) => (
