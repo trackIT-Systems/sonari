@@ -1,5 +1,6 @@
 """REST API routes for audio."""
 
+import os
 from io import BytesIO
 from typing import Annotated
 from uuid import UUID
@@ -123,7 +124,6 @@ async def download_recording_audio(
     )
 
     # Get the samplerate and recording ID.
-    id = audio.attrs["recording_id"]
     samplerate = recording.samplerate
 
     # Write the audio to a buffer.
@@ -131,9 +131,11 @@ async def download_recording_audio(
     sf.write(buffer, audio.data, samplerate, format="WAV")
     buffer.seek(0)
 
+    filename = os.path.basename(recording.path)
+
     # Return the audio.
     return StreamingResponse(
         content=buffer,
         media_type="audio/wav",
-        headers={"Content-Disposition": f"attachment; filename={id}.wav"},
+        headers={"Content-Disposition": f"attachment; filename={filename}"},
     )
