@@ -57,6 +57,65 @@ export type SpectrogramControls = {
   disable: () => void;
 };
 
+function hoverCallback(event: MouseEvent) {
+  const ctx = event.currentTarget.ctx
+  const viewport = event.currentTarget.viewport;
+
+  const canvas = ctx.canvas;
+  const rect = canvas.getBoundingClientRect();
+
+   // Calculate mouse coordinates relative to the canvas
+   const mouseX = event.clientX - rect.left;
+   const mouseY = event.clientY - rect.top;
+
+   // Calculate the scaling factors
+   const scaleX = (viewport.time.max - viewport.time.min) / canvas.width;
+   const scaleY = (viewport.freq.max - viewport.freq.min) / canvas.height;
+
+  // Translate canvas coordinates to custom bounding box coordinates
+  const time = (mouseX * scaleX + viewport.time.min).toFixed(4);
+  const freq = ((canvas.height - mouseY) * scaleY + viewport.freq.min).toFixed(0); // The y-axis needs to be inverted...
+
+  var popover = document.getElementById("popover-id");
+  popover.innerText = `Time: ${time} s, Freq: ${freq} Hz`;
+  popover.style.left = `${event.clientX + 5}px`;
+  popover.style.top = `${event.clientY + 2}px`;
+  popover.style.display = 'block';
+}
+
+function drawPosition(ctx: CanvasRenderingContext2D, viewport: SpectrogramWindow) {
+  // Create the popover element dynamically
+  // This will be used to show the position of the mouse on the spectrogram
+  var popover = document.getElementById("popover-id");
+  if (popover == null) {
+    popover = document.createElement('div');
+  }
+  popover.setAttribute('id', 'popover-id');
+  popover.style.position = 'absolute';
+  popover.style.background = 'rgba(28, 25, 23, 0.7)';
+  popover.style.color = 'rgb(245, 245, 244)';
+  popover.style.fontSize = '0.5em';
+  popover.style.padding = '3px';
+  popover.style.borderRadius = '5px';
+  popover.style.pointerEvents = 'none';
+  popover.style.display = 'none';
+  document.body.appendChild(popover);
+
+  // Piggyback the canvas and the spectrogram viewport to the canvas it self,
+  // so that we can use them later in the event callback hoverCallback
+  ctx.canvas.ctx = ctx;
+  ctx.canvas.viewport = viewport;
+
+  // First, we remove mousemove event listeners to not create an infinit number of them
+  // on multiple call event. Then we add it again and finally add a mousleave event
+  // to hide the popover.
+  ctx.canvas.removeEventListener('mousemove', hoverCallback);
+  ctx.canvas.addEventListener('mousemove', hoverCallback);
+  ctx.canvas.addEventListener('mouseleave', () => {
+    popover.style.display = 'none';
+  });
+}
+
 /**
  * The `useSpectrogram` hook provides state, controls, and drawing functions
  * for managing and displaying a spectrogram of an audio recording.
@@ -215,9 +274,9 @@ export default function useSpectrogram({
   const draw = useCallback<DrawFn>(
     (ctx) => {
       if (canDrag) {
-        ctx.canvas.style.cursor = "grab";
+        ctx.canvas.style.cursor = "crosshair";
       } else if (canZoom) {
-        ctx.canvas.style.cursor = "zoom-in";
+        ctx.canvas.style.cursor = "crosshair";
       } else {
         ctx.canvas.style.cursor = "default";
       }
@@ -225,6 +284,7 @@ export default function useSpectrogram({
       drawTimeAxis(ctx, viewport.time);
       drawFrequencyAxis(ctx, viewport.freq);
       drawMotions(ctx);
+      drawPosition(ctx, viewport)
     },
     [drawImage, drawMotions, viewport, canDrag, canZoom],
   );
