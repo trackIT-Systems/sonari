@@ -38,6 +38,8 @@ export default function RecordingAnnotationContext({
             variant="secondary"
             href={downloadURL || ""}
             className="max-w-xl whitespace-nowrap"
+            target="_blank"
+            download
           >
             {baseName}
           </Link>
