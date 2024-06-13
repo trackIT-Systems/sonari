@@ -38,4 +38,5 @@ if __name__ == "__main__":
         log_config=config,
         port=settings.port,
         reload=settings.dev,
+        workers=settings.workers,
     )

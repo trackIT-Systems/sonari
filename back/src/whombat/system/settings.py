@@ -7,6 +7,7 @@ import warnings
 from functools import lru_cache
 from pathlib import Path
 from typing import Tuple, Type
+import os
 
 from pydantic import ValidationError
 from pydantic_settings import (
@@ -36,6 +37,12 @@ class Settings(BaseSettings):
     When running in development mode, the application will log to stdout
     use a SQLite database in the project root and reload the application
     when changes are made to the source code.
+    """
+    
+    workers: int = os.cpu_count() - 1
+    """Number of workers to parallelize whombat.
+    
+    If the CPU count returns none, we set it simply to one as the default.
     """
 
     db_dialect: str = "sqlite"
