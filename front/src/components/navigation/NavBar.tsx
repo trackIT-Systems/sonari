@@ -103,9 +103,9 @@ function NavItem({ href, label }: { href: string; label: string }) {
 
 function Navigation() {
   const navItems = [
-    { href: "/guide/", label: "User Guide" },
-    { href: "/about/", label: "About" },
-    { href: "/contact/", label: "Contact" },
+    { href: (process.env.NEXT_PUBLIC_WHOMBAT_FOLDER ?? "") + "/guide/", label: "User Guide" },
+    { href: (process.env.NEXT_PUBLIC_WHOMBAT_FOLDER ?? "") + "about/", label: "About" },
+    { href: (process.env.NEXT_PUBLIC_WHOMBAT_FOLDER ?? "") + "/contact/", label: "Contact" },
   ];
   return (
     <div className="hidden w-full md:block md:w-auto" id="navbar-default">

@@ -3,6 +3,7 @@
 import functools
 from contextlib import asynccontextmanager
 from pathlib import Path
+import os
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -28,7 +29,7 @@ def create_app(settings: Settings) -> FastAPI:
     # NOTE: Import the routes here to avoid circular imports
     from whombat.routes import get_main_router
 
-    app = FastAPI(lifespan=functools.partial(lifespan, settings))
+    app = FastAPI(root_path=os.getenv("WHOMBAT_FOLDER", ""), lifespan=functools.partial(lifespan, settings))
 
     allowed_origins = [
         f"http://{settings.host}:{settings.port}",

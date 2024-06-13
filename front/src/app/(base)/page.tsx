@@ -4,6 +4,9 @@ import Card from "@/components/Card";
 import Link from "@/components/Link";
 
 export default function Page() {
+  // For some reason, the SVG path is hardcoded, so we have to get
+  // the folder name programmatically...
+  const whombat_svg_path = (process.env.NEXT_PUBLIC_WHOMBAT_FOLDER ?? "") + "/whombat.svg"
   return (
     <div className="container mx-auto p-16">
       <div className="flex flex-col gap-4">
@@ -13,7 +16,7 @@ export default function Page() {
           </span>
           <br />
           <Image
-            src="/whombat.svg"
+            src={whombat_svg_path}
             alt="logo"
             width={100}
             height={100}

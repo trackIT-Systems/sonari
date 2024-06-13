@@ -84,7 +84,8 @@ import Image from "next/image";
 import { type ComponentProps, type HTMLProps } from "react";
 
 function WhombatIcon(props: Omit<ComponentProps<typeof Image>, "src" | "alt">) {
-  return <Image alt="Whombat Logo" src="/whombat.svg" {...props} />;
+  const whombat_svg_path = (process.env.NEXT_PUBLIC_WHOMBAT_FOLDER ?? "") + "/whombat.svg"
+  return <Image alt="Whombat Logo" src={whombat_svg_path} {...props} />;
 }
 
 function BoundingBoxIcon(props: HTMLProps<SVGSVGElement>) {

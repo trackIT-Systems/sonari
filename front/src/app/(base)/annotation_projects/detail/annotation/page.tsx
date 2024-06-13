@@ -18,7 +18,9 @@ import type { AnnotationTask, SpectrogramParameters, Tag } from "@/types";
 
 export default function Page() {
   const search = useSearchParams();
-  const pathname = usePathname();
+  // This is a bug in nextjs. usePathname() should already return the correct
+  // path, but it does not. So we use this workaround...
+  const pathname = (process.env.NEXT_PUBLIC_WHOMBAT_FOLDER ?? "") + usePathname();
   const router = useRouter();
 
   const project = useContext(AnnotationProjectContext);

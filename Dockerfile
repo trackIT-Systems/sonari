@@ -22,6 +22,9 @@ WORKDIR /front/
 
 COPY front/ /front/
 
+ARG WHOMBAT_FOLDER
+RUN echo NEXT_PUBLIC_WHOMBAT_FOLDER=$WHOMBAT_FOLDER > /front/.env.local
+
 RUN npm install
 
 RUN npm run build
