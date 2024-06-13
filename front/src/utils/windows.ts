@@ -7,8 +7,7 @@ import type {
   SpectrogramWindow,
 } from "@/types";
 
-// Size of the target initial spectrogram in pixels.
-const TARGET_INITIAL_SIZE = 512 * 1024;
+const SPECTROGRAM_STRETCH_FACTOR = 6;
 
 export function getInitialViewingWindow({
   startTime,
@@ -81,9 +80,9 @@ export function getInitialDuration({
   hop_size?: number;
 }) {
   const duration = interval.max - interval.min;
-  const n_fft = Math.floor(window_size * samplerate);
-  const specHeight = Math.floor(n_fft / 2) + 1;
-  const specWidth = TARGET_INITIAL_SIZE / specHeight;
+  const window_samples = Math.floor(window_size * samplerate) + 1;
+  const specHeight = Math.floor(window_samples / 2) + 1;
+  const specWidth = specHeight * SPECTROGRAM_STRETCH_FACTOR;
   const hopDuration = window_size * hop_size;
   const windowWidth = specWidth * hopDuration;
   return Math.min(duration, windowWidth);
