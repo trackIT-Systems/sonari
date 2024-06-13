@@ -79,8 +79,8 @@ function hoverCallback(event: MouseEvent, canvas: HTMLCanvasElement, viewport: S
   var popover = document.getElementById("popover-id");
   if (popover != null) {
     popover.innerText = `Time: ${time} s, Freq: ${freq} kHz`;
-    popover.style.left = `${event.clientX + 5}px`;
-    popover.style.top = `${event.clientY + 2}px`;
+    popover.style.left = `${event.pageX + 5}px`;
+    popover.style.top = `${event.pageY + 2}px`;
     popover.style.display = 'block';
   }
 }
