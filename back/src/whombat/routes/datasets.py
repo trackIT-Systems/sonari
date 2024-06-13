@@ -3,7 +3,7 @@
 import datetime
 import json
 from io import StringIO
-from typing import Annotated
+from typing import Annotated, Sequence
 from uuid import UUID
 
 from fastapi import APIRouter, Body, Depends, UploadFile
@@ -11,7 +11,7 @@ from fastapi.responses import Response, StreamingResponse
 from pydantic import DirectoryPath
 from soundevent.io.aoef import DatasetObject, to_aeof
 
-from whombat import api, schemas
+from whombat import api, models, schemas
 from whombat.api.io import aoef
 from whombat.filters.datasets import DatasetFilter
 from whombat.routes.dependencies import Session, WhombatSettings
@@ -123,6 +123,18 @@ async def delete_dataset(
 ):
     """Delete a dataset."""
     dataset = await api.datasets.get(session, dataset_uuid)
+
+    recordings: list[schemas.Recording]
+    soundevents: Sequence[schemas.SoundEvent]
+    _: int
+    recordings, _ = await api.datasets.get_recordings(session, dataset, limit=-1)
+    for recording in recordings:
+        soundevents, _ = await api.sound_events.get_many(
+            session, limit=-1, filters=[models.SoundEvent.recording_id == recording.id]
+        )
+        for soundevent in soundevents:
+            await api.sound_events.delete(session, soundevent)
+
     deleted = await api.datasets.delete(session, dataset)
     await session.commit()
     return deleted
