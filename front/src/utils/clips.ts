@@ -49,6 +49,10 @@ export function computeClips({
       // Compute start and end time
       let start_time = i * (clipLength - overlap);
       let end_time = start_time + clipLength;
+      if (end_time > recording.duration) {
+        // We do not want to make clips larger than the file actually is...
+        end_time = recording.duration
+      }
       recordingClips.push([
         recording.uuid,
         {
