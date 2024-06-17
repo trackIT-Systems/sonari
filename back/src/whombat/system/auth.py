@@ -30,13 +30,13 @@ def get_database_strategy(
     """Get the database strategy."""
     return DatabaseStrategy(
         access_token_db,
-        lifetime_seconds=3600,
+        lifetime_seconds=604_800,  # one week
     )
 
 
 def get_cookie_transport(settings: Settings):
     return CookieTransport(
-        cookie_max_age=3600,
+        cookie_max_age=604_800,  # one week
         cookie_name="whombatauth",
         cookie_secure=False,
         cookie_domain=settings.domain,
