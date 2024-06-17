@@ -35,15 +35,10 @@ type APIConfig = {
   withCredentials: boolean;
 };
 
-const DEFAULT_CONFIG: APIConfig = {
-  baseURL: "",
-  withCredentials: true,
-};
-
 /**
  * Create an instance of the Whombat API.
  */
-export default function createAPI(config: APIConfig = DEFAULT_CONFIG) {
+export default function createAPI(config: APIConfig) {
   let instance = axios.create(config);
   return {
     annotationProjects: registerAnnotationProjectAPI(instance, {
@@ -51,17 +46,15 @@ export default function createAPI(config: APIConfig = DEFAULT_CONFIG) {
     }),
     soundEventAnnotations: registerSoundEventAnnotationsAPI(instance),
     clipAnnotations: registerClipAnnotationsAPI(instance),
-    audio: registerAudioAPI({ baseUrl: config.baseURL }),
+    audio: registerAudioAPI(instance),
     auth: registerAuthAPI(instance),
     clips: registerClipAPI(instance),
-    datasets: registerDatasetAPI({ instance, baseUrl: config.baseURL }),
-    evaluationSets: registerEvaluationSetAPI(instance, {
-      baseUrl: config.baseURL,
-    }),
+    datasets: registerDatasetAPI(instance),
+    evaluationSets: registerEvaluationSetAPI(instance),
     notes: registerNotesAPI(instance),
     recordings: registerRecordingAPI(instance),
     soundEvents: registerSoundEventAPI(instance),
-    spectrograms: registerSpectrogramAPI({ baseUrl: config.baseURL }),
+    spectrograms: registerSpectrogramAPI(instance),
     tags: registerTagAPI(instance),
     annotationTasks: registerAnnotationTasksAPI(instance),
     user: registerUserAPI(instance),

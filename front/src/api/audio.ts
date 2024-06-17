@@ -1,3 +1,4 @@
+import { AxiosInstance } from "axios";
 import { z } from "zod";
 
 import type { Recording } from "@/types";
@@ -44,13 +45,10 @@ const DEFAULT_AUDIO_PARAMETERS: AudioParameters = {
   resample: false,
 };
 
-export function registerAudioAPI({
-  endpoints = DEFAULT_ENDPOINTS,
-  baseUrl = "",
-}: {
-  endpoints?: typeof DEFAULT_ENDPOINTS;
-  baseUrl?: string;
-}) {
+export function registerAudioAPI(
+  instance: AxiosInstance,
+  endpoints: typeof DEFAULT_ENDPOINTS = DEFAULT_ENDPOINTS
+) {
   function getStreamUrl({
     recording,
     speed = 1,
@@ -78,7 +76,7 @@ export function registerAudioAPI({
     }
 
     const urlparams = new URLSearchParams(params);
-    return `${baseUrl}${endpoints.stream}?${urlparams}`;
+    return `${instance.defaults.baseURL}${endpoints.stream}?${urlparams}`;
   }
 
   function getDownloadUrl({
@@ -114,7 +112,8 @@ export function registerAudioAPI({
     );
 
     // Get url
-    return `${baseUrl}${endpoints.download}?${params}`;
+    console.warn(instance.defaults.baseURL)
+    return `${instance.defaults.baseURL}${endpoints.download}?${params}`;
   }
 
   return {

@@ -61,10 +61,7 @@ const DEFAULT_ENDPOINTS = {
 
 export function registerEvaluationSetAPI(
   instance: AxiosInstance,
-  {
-    baseUrl,
-    endpoints = DEFAULT_ENDPOINTS,
-  }: { baseUrl?: string; endpoints?: typeof DEFAULT_ENDPOINTS } = {},
+  endpoints: typeof DEFAULT_ENDPOINTS = DEFAULT_ENDPOINTS,
 ) {
   async function getManyEvaluationSets(
     query: GetEvaluationSetQuery,
@@ -192,7 +189,7 @@ export function registerEvaluationSetAPI(
   }
 
   function getDownloadUrl(evaluationSet: EvaluationSet): string {
-    return `${baseUrl}${endpoints.download}?evaluation_set_uuid=${evaluationSet.uuid}`;
+    return `${instance.defaults.baseURL}${endpoints.download}?evaluation_set_uuid=${evaluationSet.uuid}`;
   }
 
   async function importEvaluationSet(data: FormData): Promise<EvaluationSet> {

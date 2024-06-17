@@ -1,7 +1,8 @@
 import createAPI from "@/api";
+import { HOST } from "@/api/common";
 
 const api = createAPI({
-  baseURL: process.env.NEXT_PUBLIC_WHOMBAT_FOLDER ?? "",
+  baseURL: HOST,
   withCredentials: true,
 });
 

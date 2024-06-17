@@ -10,6 +10,7 @@ import {
 import { IntervalSchema, SpectrogramParametersSchema } from "@/schemas";
 
 import type { Interval, Recording, SpectrogramParameters } from "@/types";
+import { AxiosInstance } from "axios";
 
 // NOTE: This duplication is temporary, while we update code to use the types
 // and schemas files
@@ -46,13 +47,10 @@ export const DEFAULT_SPECTROGRAM_PARAMETERS: SpectrogramParameters = {
   high_signal: 0.9
 };
 
-export function registerSpectrogramAPI({
-  endpoints = DEFAULT_ENDPOINTS,
-  baseUrl = "",
-}: {
-  endpoints?: typeof DEFAULT_ENDPOINTS;
-  baseUrl?: string;
-}) {
+export function registerSpectrogramAPI(
+  instsance: AxiosInstance,
+  endpoints: typeof DEFAULT_ENDPOINTS = DEFAULT_ENDPOINTS,
+) {
   function getUrl({
     recording,
     segment,
@@ -83,7 +81,7 @@ export function registerSpectrogramAPI({
     );
 
     // Get url
-    return `${baseUrl}${endpoints.get}?${params}`;
+    return `${instsance.defaults.baseURL}${endpoints.get}?${params}`;
   }
 
   return {

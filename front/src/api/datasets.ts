@@ -52,15 +52,10 @@ const DEFAULT_ENDPOINTS = {
   import: "/api/v1/datasets/import/",
 };
 
-export function registerDatasetAPI({
-  instance,
-  endpoints = DEFAULT_ENDPOINTS,
-  baseUrl = "",
-}: {
-  instance: AxiosInstance;
-  endpoints?: typeof DEFAULT_ENDPOINTS;
-  baseUrl?: string;
-}) {
+export function registerDatasetAPI(
+  instance: AxiosInstance,
+  endpoints: typeof DEFAULT_ENDPOINTS = DEFAULT_ENDPOINTS,
+) {
   async function getMany(query: GetDatasetsQuery): Promise<DatasetPage> {
     const params = GetDatasetsQuerySchema.parse(query);
     const { data } = await instance.get(endpoints.getMany, { params });
@@ -107,9 +102,9 @@ export function registerDatasetAPI({
 
   function getDownloadUrl(dataset: Dataset, format: "json" | "csv"): string {
     if (format === "json") {
-      return `${baseUrl}${endpoints.downloadJson}?dataset_uuid=${dataset.uuid}`;
+      return `${instance.defaults.baseURL}${endpoints.downloadJson}?dataset_uuid=${dataset.uuid}`;
     } else {
-      return `${baseUrl}${endpoints.downloadCsv}?dataset_uuid=${dataset.uuid}`;
+      return `${instance.defaults.baseURL}${endpoints.downloadCsv}?dataset_uuid=${dataset.uuid}`;
     }
   }
 
