@@ -3,6 +3,7 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useContext, useMemo } from "react";
 import { useMutation } from "@tanstack/react-query";
 import toast from "react-hot-toast";
+import { HOST } from "@/api/common";
 
 import UserContext from "@/app/(base)/context";
 import AnnotateTasks from "@/components/annotation/AnnotateTasks";
@@ -20,7 +21,7 @@ export default function Page() {
   const search = useSearchParams();
   // This is a bug in nextjs. usePathname() should already return the correct
   // path, but it does not. So we use this workaround...
-  const pathname = (process.env.NEXT_PUBLIC_WHOMBAT_FOLDER ?? "") + usePathname();
+  const pathname = HOST + usePathname();
   const router = useRouter();
 
   const project = useContext(AnnotationProjectContext);

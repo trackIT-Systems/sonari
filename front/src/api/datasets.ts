@@ -102,9 +102,9 @@ export function registerDatasetAPI(
 
   function getDownloadUrl(dataset: Dataset, format: "json" | "csv"): string {
     if (format === "json") {
-      return `${instance.defaults.baseURL}${endpoints.downloadJson}?dataset_uuid=${dataset.uuid}`;
+      return `${endpoints.downloadJson}?dataset_uuid=${dataset.uuid}`;
     } else {
-      return `${instance.defaults.baseURL}${endpoints.downloadCsv}?dataset_uuid=${dataset.uuid}`;
+      return `${endpoints.downloadCsv}?dataset_uuid=${dataset.uuid}`;
     }
   }
 

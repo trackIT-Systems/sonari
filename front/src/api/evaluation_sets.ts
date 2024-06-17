@@ -189,7 +189,7 @@ export function registerEvaluationSetAPI(
   }
 
   function getDownloadUrl(evaluationSet: EvaluationSet): string {
-    return `${instance.defaults.baseURL}${endpoints.download}?evaluation_set_uuid=${evaluationSet.uuid}`;
+    return `${endpoints.download}?evaluation_set_uuid=${evaluationSet.uuid}`;
   }
 
   async function importEvaluationSet(data: FormData): Promise<EvaluationSet> {

@@ -82,9 +82,10 @@ import {
 } from "@heroicons/react/24/outline";
 import Image from "next/image";
 import { type ComponentProps, type HTMLProps } from "react";
+import { HOST } from "@/api/common";
 
 function WhombatIcon(props: Omit<ComponentProps<typeof Image>, "src" | "alt">) {
-  const whombat_svg_path = (process.env.NEXT_PUBLIC_WHOMBAT_FOLDER ?? "") + "/whombat.svg"
+  const whombat_svg_path = HOST + "/whombat.svg"
   return <Image alt="Whombat Logo" src={whombat_svg_path} {...props} />;
 }
 

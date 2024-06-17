@@ -61,13 +61,7 @@ export type GetAnnotationProjectsQuery = z.input<
 
 export function registerAnnotationProjectAPI(
   instance: AxiosInstance,
-  {
-    endpoints = DEFAULT_ENDPOINTS,
-    baseUrl = "",
-  }: {
-    endpoints?: typeof DEFAULT_ENDPOINTS;
-    baseUrl?: string;
-  },
+  endpoints: typeof DEFAULT_ENDPOINTS = DEFAULT_ENDPOINTS
 ) {
   async function getMany(
     query: GetAnnotationProjectsQuery,
@@ -149,7 +143,7 @@ export function registerAnnotationProjectAPI(
   }
 
   function getDownloadUrl(annotationProject: AnnotationProject): string {
-    return `${baseUrl}${endpoints.download}?annotation_project_uuid=${annotationProject.uuid}`;
+    return `${endpoints.download}?annotation_project_uuid=${annotationProject.uuid}`;
   }
 
   async function importProject(data: FormData): Promise<AnnotationProject> {

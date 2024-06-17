@@ -3,6 +3,7 @@ import { UserIcon } from "@heroicons/react/24/outline";
 import classnames from "classnames";
 import { Fragment } from "react";
 import useActiveUser from "@/hooks/api/useActiveUser";
+import { HOST } from "@/api/common";
 
 import { HorizontalDivider } from "@/components/Divider";
 
@@ -103,9 +104,9 @@ function NavItem({ href, label }: { href: string; label: string }) {
 
 function Navigation() {
   const navItems = [
-    { href: (process.env.NEXT_PUBLIC_WHOMBAT_FOLDER ?? "") + "/guide/", label: "User Guide" },
-    { href: (process.env.NEXT_PUBLIC_WHOMBAT_FOLDER ?? "") + "about/", label: "About" },
-    { href: (process.env.NEXT_PUBLIC_WHOMBAT_FOLDER ?? "") + "/contact/", label: "Contact" },
+    { href: HOST + "/guide/", label: "User Guide" },
+    { href: HOST + "about/", label: "About" },
+    { href: HOST + "/contact/", label: "Contact" },
   ];
   return (
     <div className="hidden w-full md:block md:w-auto" id="navbar-default">

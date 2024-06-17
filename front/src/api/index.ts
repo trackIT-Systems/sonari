@@ -41,9 +41,7 @@ type APIConfig = {
 export default function createAPI(config: APIConfig) {
   let instance = axios.create(config);
   return {
-    annotationProjects: registerAnnotationProjectAPI(instance, {
-      baseUrl: config.baseURL,
-    }),
+    annotationProjects: registerAnnotationProjectAPI(instance),
     soundEventAnnotations: registerSoundEventAnnotationsAPI(instance),
     clipAnnotations: registerClipAnnotationsAPI(instance),
     audio: registerAudioAPI(instance),
