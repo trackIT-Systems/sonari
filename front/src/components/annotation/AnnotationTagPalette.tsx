@@ -56,6 +56,7 @@ export default function AnnotationTagPalette({
             onCreate={onCreateTag}
             initialFilter={tagFilter}
             placeholder="Add tags..."
+            autoFocus={false}
           />
         </div>
       </div>
