@@ -80,10 +80,7 @@ def load_audio(
         wave = audio.resample(wave, audio_parameters.samplerate)
 
     # Filter audio.
-    if (
-        audio_parameters.low_freq is not None
-        or audio_parameters.high_freq is not None
-    ):
+    if audio_parameters.low_freq is not None or audio_parameters.high_freq is not None:
         wave = audio.filter(
             wave,
             low_freq=audio_parameters.low_freq,
@@ -108,6 +105,7 @@ BIT_DEPTH_MAP: dict[str, int] = {
 def load_clip_bytes(
     path: Path,
     start: int,
+    end: int | None,
     speed: float = 1,
     frames: int = 8192,
     time_expansion: float = 1,
@@ -200,6 +198,12 @@ def load_clip_bytes(
                 bit_depth=bit_depth,
             )
             audio_bytes = header + audio_bytes
+
+        # This fixes the Safari playback issue, as the first request
+        # in Safari always requests exactly one byte. This code makes
+        # sure that only the requests amount (or less) is returned.
+        if end is not None and end - start < len(audio_bytes):
+            audio_bytes = audio_bytes[:end]
 
         return (
             audio_bytes,
