@@ -68,9 +68,10 @@ async def stream_recording_audio(
         "Content-Length": f"{len(data)}",
         "Accept-Ranges": "bytes",
     }
+    status_code = 206 if end < filesize else 200
     return Response(
         content=data,
-        status_code=206,
+        status_code=status_code,
         media_type="audio/wav",
         headers=headers,
     )
