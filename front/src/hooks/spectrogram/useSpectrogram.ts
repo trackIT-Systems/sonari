@@ -21,6 +21,7 @@ import type {
   SpectrogramParameters,
   SpectrogramWindow,
 } from "@/types";
+import { ZOOM_FACTOR } from "@/constants";
 
 /**
  * A function type representing the drawing function for a spectrogram.
@@ -46,6 +47,8 @@ export type SpectrogramState = {
  */
 export type SpectrogramControls = {
   reset: () => void;
+  zoomIn: () => void;
+  zoomOut: () => void;
   drag: (window: SpectrogramWindow) => void;
   scale: ({ time , freq }: { time?: number; freq?: number }) => void;
   shift({ time , freq }: { time?: number; freq?: number }): void;
@@ -179,9 +182,25 @@ export default function useSpectrogram({
     initialViewport,
   );
 
-  let hasZoomed = useMemo<boolean>(() => {
-    return false;
-  }, [])
+  const zoom = function (oldViewport: SpectrogramWindow, in_out: string): SpectrogramWindow {
+    let zoom_factor = 1;
+    if (in_out === "in") {
+      zoom_factor = 1 - ZOOM_FACTOR
+    } else if (in_out === "out") {
+      zoom_factor = 1 + ZOOM_FACTOR
+    } else {
+      console.warn(`Zoom not supported ${in_out}`);
+      return oldViewport;
+    }
+  
+    let duration = oldViewport.time.max - oldViewport.time.min;
+    duration = duration * zoom_factor;
+    duration = oldViewport.time.min + duration;
+    lastViewport = structuredClone(oldViewport);
+    lastViewport.time.max = duration;
+  
+    return lastViewport;
+  }
 
   // NOTE: Need to update the viewport if the initial viewport
   // changes. This usually happens when the visualised clip
@@ -204,7 +223,6 @@ export default function useSpectrogram({
 
   const handleZoom = useCallback(
     (window: SpectrogramWindow) => {
-      hasZoomed = true;
       setViewport(adjustWindowToBounds(window, initialBounds));
     },
     [initialBounds],
@@ -213,13 +231,23 @@ export default function useSpectrogram({
   const handleDrag = useCallback(
     (window: SpectrogramWindow) => {
       const newViewPort = adjustWindowToBounds(window, initialBounds)
-      if (!hasZoomed) {
-        lastViewport = newViewPort;
-      }
+      lastViewport = newViewPort;
       setViewport(newViewPort);
     },
     [initialBounds],
   );
+
+  const handleZoomIn = useCallback(() => {
+      handleZoom(zoom(lastViewport, "in"));
+    },
+    [],
+  )
+
+  const handleZoomOut = useCallback(() => {
+      handleZoom(zoom(lastViewport, "out"));
+    },
+    [],
+  )
 
   const handleScale = useCallback(
     ({ time = 1, freq = 1 }: { time?: number; freq?: number }) => {
@@ -243,12 +271,11 @@ export default function useSpectrogram({
   );
 
   const handleReset = useCallback(() => {
-    if (hasZoomed) {
-      hasZoomed = false;
-      setViewport(lastViewport);
-    } else {
-      setViewport(initialViewport);
-    }
+    let time_max_new = initialViewport.time.min + (initialViewport.time.max - initialViewport.time.min);
+    lastViewport.time.max = lastViewport.time.min + time_max_new;
+    handleZoom(lastViewport);
+
+    
   }, [initialViewport]);
 
   const handleCenterOn = useCallback(
@@ -320,6 +347,8 @@ export default function useSpectrogram({
   useSpectrogramKeyShortcuts({
     onGoMove: enableDrag,
     onGoZoom: enableZoom,
+    onZoomIn: handleZoomIn,
+    onZoomOut: handleZoomOut,
     enabled: withShortcuts,
   })
 
@@ -334,6 +363,8 @@ export default function useSpectrogram({
     draw,
     props,
     reset: handleReset,
+    zoomIn: handleZoomIn,
+    zoomOut: handleZoomOut,
     drag: handleDrag,
     scale: handleScale,
     shift: handleShift,
