@@ -46,7 +46,7 @@ export type SpectrogramState = {
  */
 export type SpectrogramControls = {
   reset: () => void;
-  zoom: (window: SpectrogramWindow) => void;
+  drag: (window: SpectrogramWindow) => void;
   scale: ({ time , freq }: { time?: number; freq?: number }) => void;
   shift({ time , freq }: { time?: number; freq?: number }): void;
   centerOn: ({ time, freq }: { time?: number; freq?: number }) => void;
@@ -168,12 +168,20 @@ export default function useSpectrogram({
     });
   }, [initial, initialBounds, recording, initialParameters]);
 
+  let lastViewport = useMemo<SpectrogramWindow>(() => {
+    return initialViewport
+  }, [initialViewport])
+
   const [parameters, setParameters] = useState<SpectrogramParameters>(
     validateParameters(initialParameters, recording),
   );
   const [viewport, setViewport] = useState<SpectrogramWindow>(
     initialViewport,
   );
+
+  let hasZoomed = useMemo<boolean>(() => {
+    return false;
+  }, [])
 
   // NOTE: Need to update the viewport if the initial viewport
   // changes. This usually happens when the visualised clip
@@ -196,7 +204,19 @@ export default function useSpectrogram({
 
   const handleZoom = useCallback(
     (window: SpectrogramWindow) => {
+      hasZoomed = true;
       setViewport(adjustWindowToBounds(window, initialBounds));
+    },
+    [initialBounds],
+  );
+
+  const handleDrag = useCallback(
+    (window: SpectrogramWindow) => {
+      const newViewPort = adjustWindowToBounds(window, initialBounds)
+      if (!hasZoomed) {
+        lastViewport = newViewPort;
+      }
+      setViewport(newViewPort);
     },
     [initialBounds],
   );
@@ -223,7 +243,12 @@ export default function useSpectrogram({
   );
 
   const handleReset = useCallback(() => {
-    setViewport(initialViewport);
+    if (hasZoomed) {
+      hasZoomed = false;
+      setViewport(lastViewport);
+    } else {
+      setViewport(initialViewport);
+    }
   }, [initialViewport]);
 
   const handleCenterOn = useCallback(
@@ -261,7 +286,7 @@ export default function useSpectrogram({
     disable,
   } = useSpectrogramMotions({
     viewport,
-    onDrag: handleZoom,
+    onDrag: handleDrag,
     onZoom: handleZoom,
     onScrollMoveTime: handleShift,
     onScrollMoveFreq: handleShift,
@@ -309,7 +334,7 @@ export default function useSpectrogram({
     draw,
     props,
     reset: handleReset,
-    zoom: handleZoom,
+    drag: handleDrag,
     scale: handleScale,
     shift: handleShift,
     centerOn: handleCenterOn,

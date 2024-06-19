@@ -267,7 +267,7 @@ export default function ClipAnnotationSpectrogram({
         <SpectrogramBar
           bounds={spectrogram.bounds}
           viewport={spectrogram.viewport}
-          onMove={spectrogram.zoom}
+          onMove={spectrogram.drag}
         />
       )}
     </Card>
