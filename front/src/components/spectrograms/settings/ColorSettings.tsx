@@ -2,6 +2,8 @@ import { type Control, Controller } from "react-hook-form";
 
 import { InputGroup } from "@/components/inputs/index";
 import Select from "@/components/inputs/Select";
+import Slider from "@/components/inputs/Slider";
+import { type ParameterConstraints } from "@/utils/spectrogram_parameters";
 
 import SettingsSection from "./SettingsSection";
 
@@ -29,8 +31,10 @@ const SPECTROGRAM_COLORMAPS: Record<
 
 export default function ColorSettings({
   control,
+  constraints,
 }: {
   control: Control<SpectrogramParameters>;
+  constraints: ParameterConstraints;
 }) {
   return (
     <SettingsSection>
@@ -48,6 +52,28 @@ export default function ColorSettings({
               selected={SPECTROGRAM_COLORMAPS[field.value]}
               onChange={(colormap) => field.onChange(colormap)}
               options={Object.values(SPECTROGRAM_COLORMAPS)}
+            />
+          </InputGroup>
+        )}
+      />
+
+      <Controller
+        name="gamma"
+        control={control}
+        render={({ field, fieldState }) => (
+          <InputGroup
+            name="gammaControl"
+            label="Gamma"
+            help="Set the gamma for the spectrogram"
+            error={fieldState.error?.message}
+          >
+            <Slider
+              label="Gamma"
+              value={field.value}
+              onChange={field.onChange}
+              minValue={constraints.gamma.min}
+              maxValue={constraints.gamma.max}
+              step={0.1}
             />
           </InputGroup>
         )}

@@ -20,9 +20,13 @@ export const SPECTROGRAM_KEY_SHORTCUTS: KeyShortcut[] = [
 export default function useAnnotateClipKeyShortcuts(props: {
   onGoMove: () => void;
   onGoZoom: () => void;
+  onZoomIn: () => void;
+  onZoomOut: () => void;
   enabled?: boolean;
 }) {
-  const { onGoMove, onGoZoom, enabled = true } = props;
+  const { onGoMove, onGoZoom, onZoomIn, onZoomOut, enabled = true } = props;
   useKeyPressEvent(useKeyFilter({ enabled, key: "x" }), onGoMove);
   useKeyPressEvent(useKeyFilter({ enabled, key: "z" }), onGoZoom);
+  useKeyPressEvent(useKeyFilter({ enabled, key: "+" }), onZoomIn);
+  useKeyPressEvent(useKeyFilter({ enabled, key: "-" }), onZoomOut);
 }

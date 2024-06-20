@@ -23,3 +23,6 @@ export const MIN_HOP_FRACTION = 0.01; // 1% of window size
 
 /** Absolute maximum frequency that can be handled by the app */
 export const MAX_FREQ = 5_000_000;
+
+/** Factor to zoom in and out of a spectrogram */
+export const ZOOM_FACTOR = 0.2;

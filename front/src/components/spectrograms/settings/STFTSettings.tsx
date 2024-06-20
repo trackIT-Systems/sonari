@@ -4,7 +4,6 @@ import { useCallback } from "react";
 import { InputGroup } from "@/components/inputs/index";
 import Select from "@/components/inputs/Select";
 import Slider from "@/components/inputs/Slider";
-import RangeSlider from "@/components/inputs/RangeSlider";
 import { type ParameterConstraints } from "@/utils/spectrogram_parameters";
 
 import SettingsSection from "./SettingsSection";
@@ -45,40 +44,6 @@ export default function STFTSettings({
   control: Control<SpectrogramParameters>;
 }) {
 
-  const lowSignal = useController({
-    control,
-    name: "low_signal",
-  });
-
-  const highSignal = useController({
-    control,
-    name: "high_signal",
-  });
-
-  const { onChange: onChangeLowSignal } = lowSignal.field;
-  const { onChange: onChangeHighSignal } = highSignal.field;
-  const onChangeSignal = useCallback(
-    (val: number[] | number) => {
-      const [low, high] = val as number[];
-      if (low == constraints.signalRange.min) {
-        onChangeLowSignal(constraints.signalRange.min);
-      } else {
-        onChangeLowSignal(low ?? constraints.signalRange.min);
-      }
-      if (high == constraints.signalRange.max) {
-        onChangeHighSignal(constraints.signalRange.max);
-      } else {
-        onChangeHighSignal(high ?? constraints.signalRange.max);
-      }
-    },
-    [
-      onChangeLowSignal,
-      onChangeHighSignal,
-      constraints.signalRange.min,
-      constraints.signalRange.max,
-    ],
-  );
-  
   return (
     <SettingsSection>
       <Controller
@@ -137,51 +102,6 @@ export default function STFTSettings({
               selected={SPECTROGRAM_WINDOWS[field.value]}
               onChange={field.onChange}
               options={Object.values(SPECTROGRAM_WINDOWS)}
-            />
-          </InputGroup>
-        )}
-      />
-      <Controller
-        name="gamma"
-        control={control}
-        render={({ field, fieldState }) => (
-          <InputGroup
-            name="gammaControl"
-            label="Gamma"
-            help="Set the gamma for the spectrogram"
-            error={fieldState.error?.message}
-          >
-            <Slider
-              label="Gamma"
-              value={field.value}
-              onChange={field.onChange}
-              minValue={constraints.gamma.min}
-              maxValue={constraints.gamma.max}
-              step={0.1}
-            />
-          </InputGroup>
-        )}
-      />
-
-      <Controller
-        name="gamma"
-        control={control}
-        render={({ field, fieldState }) => (
-          <InputGroup
-            name="contrast"
-            label="Contrast levels"
-            help="Set the levels for dark and bright parts."
-          >
-            <RangeSlider
-              label="Filtering"
-              minValue={constraints.signalRange.min}
-              maxValue={constraints.signalRange.max}
-              step={0.01}
-              value={[
-                lowSignal.field.value ?? constraints.signalRange.min,
-                highSignal.field.value ?? constraints.signalRange.max,
-              ]}
-              onChange={onChangeSignal}
             />
           </InputGroup>
         )}

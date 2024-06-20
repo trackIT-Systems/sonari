@@ -4,7 +4,7 @@ from io import BytesIO
 
 import numpy as np
 from matplotlib import colormaps
-from matplotlib.colors import Normalize, PowerNorm
+from matplotlib.colors import PowerNorm
 from PIL import Image as img
 from PIL.Image import Image
 
@@ -13,8 +13,10 @@ __all__ = [
     "image_to_buffer",
 ]
 
+max_webp_size: int = (2**14) - 1
 
-def array_to_image(array: np.ndarray, cmap: str, gamma: float, low_signal: float, high_signal: float) -> Image:
+
+def array_to_image(array: np.ndarray, cmap: str, gamma: float) -> Image:
     """Convert a numpy array to a PIL image.
 
     Parameters
@@ -25,10 +27,6 @@ def array_to_image(array: np.ndarray, cmap: str, gamma: float, low_signal: float
         Name of the matplotlib colormap
     gamma : float
         Gamma of the image
-    low_signal : float
-        Value used as the minimum of the image
-    high_signal : float
-        Value used as the maximum of the image
 
     Returns
     -------
@@ -48,16 +46,21 @@ def array_to_image(array: np.ndarray, cmap: str, gamma: float, low_signal: float
     # Flip the array vertically
     array = np.flipud(array)
 
-    norm = PowerNorm(gamma=gamma, vmin=low_signal, vmax=high_signal)
+    norm = PowerNorm(gamma=gamma)
     normalized_array = norm(array)
     color_array = colormap(normalized_array)
 
     return img.fromarray(np.uint8(color_array * 255))
 
 
-def image_to_buffer(image: Image, fmt: str = "png") -> BytesIO:
+def image_to_buffer(image: Image, fmt="webp") -> tuple[BytesIO, str]:
     """Convert a PIL image to a BytesIO buffer."""
     buffer = BytesIO()
-    image.save(buffer, format=fmt)
+    if image.width > max_webp_size:
+        fmt = "jpeg"
+        image = image.convert("RGB")
+        image.save(buffer, format=fmt, quality=80)
+    else:
+        image.save(buffer, format=fmt, lossless=True, quality=0, method=0)
     buffer.seek(0)
-    return buffer
+    return buffer, fmt

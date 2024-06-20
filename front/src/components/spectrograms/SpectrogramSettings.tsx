@@ -14,7 +14,6 @@ import {
 } from "@/utils/spectrogram_parameters";
 
 import AmplitudeSettings from "./settings/AmplitudeSettings";
-import ClampSettings from "./settings/ClampSettings";
 import ColorSettings from "./settings/ColorSettings";
 import DeNoiseSettings from "./settings/DeNoiseSettings";
 import FilteringSettings from "./settings/FilteringSettings";
@@ -82,12 +81,11 @@ export function SpectrogramSettingForm({
   return (
     <div className="flex flex-col gap-2">
       <ResamplingSettings control={control} />
-      <FilteringSettings constraints={constraints} control={control} />
       <STFTSettings constraints={constraints} control={control} />
-      <DeNoiseSettings control={control} />
-      <ColorSettings control={control} />
+      <FilteringSettings constraints={constraints} control={control} />
       <AmplitudeSettings control={control} />
-      <ClampSettings control={control} />
+      <DeNoiseSettings control={control} />
+      <ColorSettings constraints={constraints} control={control} />
     </div>
   );
 }

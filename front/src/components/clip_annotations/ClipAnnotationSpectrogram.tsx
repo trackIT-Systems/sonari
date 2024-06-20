@@ -222,6 +222,8 @@ export default function ClipAnnotationSpectrogram({
             onReset={spectrogram.reset}
             onDrag={spectrogram.enableDrag}
             onZoom={spectrogram.enableZoom}
+            onZoomIn={spectrogram.zoomIn}
+            onZoomOut={spectrogram.zoomOut}
           />
         )}
         {!disabled && withControls && (
@@ -267,7 +269,7 @@ export default function ClipAnnotationSpectrogram({
         <SpectrogramBar
           bounds={spectrogram.bounds}
           viewport={spectrogram.viewport}
-          onMove={spectrogram.zoom}
+          onMove={spectrogram.drag}
         />
       )}
     </Card>

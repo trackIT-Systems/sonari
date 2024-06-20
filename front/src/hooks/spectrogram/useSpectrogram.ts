@@ -21,6 +21,7 @@ import type {
   SpectrogramParameters,
   SpectrogramWindow,
 } from "@/types";
+import { ZOOM_FACTOR } from "@/constants";
 
 /**
  * A function type representing the drawing function for a spectrogram.
@@ -46,7 +47,9 @@ export type SpectrogramState = {
  */
 export type SpectrogramControls = {
   reset: () => void;
-  zoom: (window: SpectrogramWindow) => void;
+  zoomIn: () => void;
+  zoomOut: () => void;
+  drag: (window: SpectrogramWindow) => void;
   scale: ({ time , freq }: { time?: number; freq?: number }) => void;
   shift({ time , freq }: { time?: number; freq?: number }): void;
   centerOn: ({ time, freq }: { time?: number; freq?: number }) => void;
@@ -168,12 +171,36 @@ export default function useSpectrogram({
     });
   }, [initial, initialBounds, recording, initialParameters]);
 
+  let lastViewport = useMemo<SpectrogramWindow>(() => {
+    return initialViewport
+  }, [initialViewport])
+
   const [parameters, setParameters] = useState<SpectrogramParameters>(
     validateParameters(initialParameters, recording),
   );
   const [viewport, setViewport] = useState<SpectrogramWindow>(
     initialViewport,
   );
+
+  const zoom = function (oldViewport: SpectrogramWindow, in_out: string): SpectrogramWindow {
+    let zoom_factor = 1;
+    if (in_out === "in") {
+      zoom_factor = 1 - ZOOM_FACTOR
+    } else if (in_out === "out") {
+      zoom_factor = 1 + ZOOM_FACTOR
+    } else {
+      console.warn(`Zoom not supported ${in_out}`);
+      return oldViewport;
+    }
+  
+    let duration = oldViewport.time.max - oldViewport.time.min;
+    duration = duration * zoom_factor;
+    duration = oldViewport.time.min + duration;
+    lastViewport = structuredClone(oldViewport);
+    lastViewport.time.max = duration;
+  
+    return lastViewport;
+  }
 
   // NOTE: Need to update the viewport if the initial viewport
   // changes. This usually happens when the visualised clip
@@ -194,12 +221,26 @@ export default function useSpectrogram({
     parameters,
   });
 
-  const handleZoom = useCallback(
+  const handleZoomDrag = useCallback(
     (window: SpectrogramWindow) => {
-      setViewport(adjustWindowToBounds(window, initialBounds));
+      const newViewPort = adjustWindowToBounds(window, initialBounds)
+      lastViewport = newViewPort;
+      setViewport(newViewPort);
     },
     [initialBounds],
   );
+
+  const handleZoomIn = useCallback(() => {
+      handleZoomDrag(zoom(lastViewport, "in"));
+    },
+    [],
+  )
+
+  const handleZoomOut = useCallback(() => {
+      handleZoomDrag(zoom(lastViewport, "out"));
+    },
+    [],
+  )
 
   const handleScale = useCallback(
     ({ time = 1, freq = 1 }: { time?: number; freq?: number }) => {
@@ -223,7 +264,14 @@ export default function useSpectrogram({
   );
 
   const handleReset = useCallback(() => {
-    setViewport(initialViewport);
+    let time_max_new = initialViewport.time.min + (initialViewport.time.max - initialViewport.time.min);
+    lastViewport.time.max = lastViewport.time.min + time_max_new;
+
+    lastViewport.freq.min = initialViewport.freq.min
+    lastViewport.freq.max = initialViewport.freq.max
+    handleZoomDrag(lastViewport);
+
+    
   }, [initialViewport]);
 
   const handleCenterOn = useCallback(
@@ -261,8 +309,8 @@ export default function useSpectrogram({
     disable,
   } = useSpectrogramMotions({
     viewport,
-    onDrag: handleZoom,
-    onZoom: handleZoom,
+    onDrag: handleZoomDrag,
+    onZoom: handleZoomDrag,
     onScrollMoveTime: handleShift,
     onScrollMoveFreq: handleShift,
     onScrollZoomTime: handleScale,
@@ -295,6 +343,8 @@ export default function useSpectrogram({
   useSpectrogramKeyShortcuts({
     onGoMove: enableDrag,
     onGoZoom: enableZoom,
+    onZoomIn: handleZoomIn,
+    onZoomOut: handleZoomOut,
     enabled: withShortcuts,
   })
 
@@ -309,7 +359,9 @@ export default function useSpectrogram({
     draw,
     props,
     reset: handleReset,
-    zoom: handleZoom,
+    zoomIn: handleZoomIn,
+    zoomOut: handleZoomOut,
+    drag: handleZoomDrag,
     scale: handleScale,
     shift: handleShift,
     centerOn: handleCenterOn,

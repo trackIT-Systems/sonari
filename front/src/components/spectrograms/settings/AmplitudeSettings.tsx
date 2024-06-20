@@ -1,8 +1,10 @@
-import { type Control, Controller } from "react-hook-form";
+import { type Control, Controller, useController } from "react-hook-form";
 
 import { InputGroup } from "@/components/inputs/index";
 import Select from "@/components/inputs/Select";
 import Toggle from "@/components/inputs/Toggle";
+import RangeSlider from "@/components/inputs/RangeSlider";
+import { MIN_DB } from "@/constants";
 
 import SettingsSection from "./SettingsSection";
 
@@ -22,6 +24,17 @@ export default function AmplitudeSettings({
 }: {
   control: Control<SpectrogramParameters>;
 }) {
+
+  const minDB = useController({
+    control,
+    name: "min_dB",
+  });
+
+  const maxDB = useController({
+    control,
+    name: "max_dB",
+  });
+
   return (
     <SettingsSection>
       <Controller
@@ -30,7 +43,7 @@ export default function AmplitudeSettings({
         render={({ field, fieldState }) => (
           <InputGroup
             name="scale"
-            label="Amplitude Scale"
+            label="Amplitude scale"
             help="Select the amplitude scale to use for the spectrogram."
             error={fieldState.error?.message}
           >
@@ -48,7 +61,7 @@ export default function AmplitudeSettings({
         render={({ field, fieldState }) => (
           <InputGroup
             name="normalize"
-            label="Normalize Amplitudes"
+            label="Normalize amplitudes"
             help="Toggle to normalize amplitude values."
             error={fieldState.error?.message}
           >
@@ -56,6 +69,33 @@ export default function AmplitudeSettings({
               label="Normalize"
               isSelected={field.value}
               onChange={field.onChange}
+            />
+          </InputGroup>
+        )}
+      />
+      <Controller
+        name="clamp"
+        control={control}
+        render={({ field, fieldState }) => (
+          <InputGroup
+          name="clampValues"
+          label="Min and max amplitude values"
+          help="Select the min and max amplitude values to clamp to."
+          error={
+            minDB.fieldState.error?.message || maxDB.fieldState.error?.message
+          }
+          >
+            <RangeSlider
+              label="Filtering"
+              minValue={MIN_DB}
+              maxValue={0}
+              step={2}
+              value={[minDB.field.value, maxDB.field.value]}
+              onChange={(value) => {
+                const [min, max] = value as number[];
+                minDB.field.onChange(min);
+                maxDB.field.onChange(max);
+              }}
             />
           </InputGroup>
         )}

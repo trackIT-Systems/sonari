@@ -54,7 +54,7 @@ export default function FilteringSettings({
     <SettingsSection>
       <InputGroup
         name="filtering"
-        label="Filtering"
+        label="Frequency filter"
         help="Select the range of frequencies to keep in the spectrogram."
       >
         <RangeSlider

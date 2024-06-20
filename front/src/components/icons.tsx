@@ -6,6 +6,7 @@ import {
   ArchiveBoxIcon,
   ArrowDownOnSquareIcon,
   ArrowLeftOnRectangleIcon,
+  ArrowsRightLeftIcon,
   ArrowPathRoundedSquareIcon,
   ArrowRightOnRectangleIcon,
   ArrowSmallLeftIcon,
@@ -53,6 +54,7 @@ import {
   LinkIcon,
   ListBulletIcon,
   MagnifyingGlassIcon,
+  MagnifyingGlassMinusIcon,
   MagnifyingGlassPlusIcon,
   MapPinIcon,
   NoSymbolIcon,
@@ -83,6 +85,7 @@ import {
 import Image from "next/image";
 import { type ComponentProps, type HTMLProps } from "react";
 import { HOST } from "@/api/common";
+
 
 function WhombatIcon(props: Omit<ComponentProps<typeof Image>, "src" | "alt">) {
   const whombat_svg_path = HOST + "/whombat.svg"
@@ -239,6 +242,7 @@ export {
   ArrowRightOnRectangleIcon as LogOutIcon,
   ArrowSmallLeftIcon as PreviousIcon,
   ArrowSmallRightIcon as NextIcon,
+  ArrowsRightLeftIcon as DragIcon,
   ArrowUpOnSquareIcon as UploadIcon,
   ArrowUturnLeftIcon as BackIcon,
   ArrowsPointingOutIcon as TimeExpansionIcon,
@@ -275,13 +279,14 @@ export {
   GlobeAmericasIcon as LongitudeIcon,
   GlobeAsiaAustraliaIcon as MapIcon,
   GlobeEuropeAfricaIcon as LatitudeIcon,
-  HandRaisedIcon as DragIcon,
+  HandRaisedIcon,
   HomeIcon,
   InboxIcon as MessagesIcon,
   LinkIcon,
   ListBulletIcon as ListIcon,
   MagnifyingGlassIcon as SearchIcon,
-  MagnifyingGlassPlusIcon as ZoomIcon,
+  MagnifyingGlassMinusIcon as ZoomOutIcon,
+  MagnifyingGlassPlusIcon as ZoomInIcon,
   MapPinIcon as LocationIcon,
   PauseIcon,
   PencilIcon as EditIcon,

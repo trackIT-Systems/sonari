@@ -2,7 +2,7 @@ import { ReactNode } from "react";
 
 import Button from "@/components/Button";
 import {
-  AnnotationProjectIcon,
+  AddIcon,
   BoundingBoxIcon,
   DeleteIcon,
   EditIcon,
@@ -110,7 +110,7 @@ export default function AnnotationControls({
         autoPlacement={false}
       >
         <Button variant={isDrawing ? "primary" : "secondary"} onClick={onDraw}>
-          <AnnotationProjectIcon className="w-5 h-5" />
+          <AddIcon className="w-5 h-5" />
         </Button>
       </Tooltip>
       {!isEditing ? (

@@ -51,12 +51,14 @@ async def stream_recording_audio(
         recording_uuid,
     )
 
-    start, _ = range.replace("bytes=", "").split("-")
+    start, end = range.replace("bytes=", "").split("-")
     start = int(start)
+    end = None if len(end) == 0 else int(end)
 
     data, start, end, filesize = api.load_clip_bytes(
         path=audio_dir / recording.path,
         start=start,
+        end=end,
         time_expansion=recording.time_expansion,
         speed=speed,
         start_time=start_time,
@@ -68,9 +70,10 @@ async def stream_recording_audio(
         "Content-Length": f"{len(data)}",
         "Accept-Ranges": "bytes",
     }
+    status_code = 206 if end < filesize else 200
     return Response(
         content=data,
-        status_code=206,
+        status_code=status_code,
         media_type="audio/wav",
         headers=headers,
     )

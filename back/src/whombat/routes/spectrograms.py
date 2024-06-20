@@ -74,13 +74,11 @@ async def get_spectrogram(
         data,
         cmap=spectrogram_parameters.cmap,
         gamma=spectrogram_parameters.gamma,
-        low_signal=spectrogram_parameters.low_signal,
-        high_signal=spectrogram_parameters.high_signal,
     )
 
-    buffer = images.image_to_buffer(image)
+    buffer, fmt = images.image_to_buffer(image)
 
     return Response(
         content=buffer.read(),
-        media_type="image/png",
+        media_type=f"image/{fmt}",
     )

@@ -32,10 +32,6 @@ export type ParameterConstraints = {
     min: number;
     max: number;
   },
-  signalRange: {
-    min: number;
-    max: number;
-  }
 };
 
 /** Compute the constraints for the spectrogram parameters
@@ -62,10 +58,6 @@ export function computeConstraints(samplerate: number): ParameterConstraints {
       min: 1.0,
       max: 5.0,
     },
-    signalRange: {
-      min: 0,
-      max: 1,
-    }
   };
 }
 
@@ -96,10 +88,6 @@ export function validateParameters(
   const hopSize = clamp(parameters.hop_size, constraints.hopSize);
   const gamma = clamp(parameters.gamma, constraints.gamma);
 
-  const lowSignal = clamp(parameters.low_signal, constraints.signalRange);
-
-  const highSignal = clamp(parameters.high_signal, constraints.signalRange);
-
   return {
     ...parameters,
     samplerate,
@@ -108,7 +96,5 @@ export function validateParameters(
     window_size: windowSize,
     hop_size: hopSize,
     gamma: gamma,
-    low_signal: lowSignal,
-    high_signal: highSignal,
   };
 }
