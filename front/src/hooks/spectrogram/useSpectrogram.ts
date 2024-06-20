@@ -221,14 +221,7 @@ export default function useSpectrogram({
     parameters,
   });
 
-  const handleZoom = useCallback(
-    (window: SpectrogramWindow) => {
-      setViewport(adjustWindowToBounds(window, initialBounds));
-    },
-    [initialBounds],
-  );
-
-  const handleDrag = useCallback(
+  const handleZoomDrag = useCallback(
     (window: SpectrogramWindow) => {
       const newViewPort = adjustWindowToBounds(window, initialBounds)
       lastViewport = newViewPort;
@@ -238,13 +231,13 @@ export default function useSpectrogram({
   );
 
   const handleZoomIn = useCallback(() => {
-      handleZoom(zoom(lastViewport, "in"));
+      handleZoomDrag(zoom(lastViewport, "in"));
     },
     [],
   )
 
   const handleZoomOut = useCallback(() => {
-      handleZoom(zoom(lastViewport, "out"));
+      handleZoomDrag(zoom(lastViewport, "out"));
     },
     [],
   )
@@ -273,7 +266,10 @@ export default function useSpectrogram({
   const handleReset = useCallback(() => {
     let time_max_new = initialViewport.time.min + (initialViewport.time.max - initialViewport.time.min);
     lastViewport.time.max = lastViewport.time.min + time_max_new;
-    handleZoom(lastViewport);
+
+    lastViewport.freq.min = initialViewport.freq.min
+    lastViewport.freq.max = initialViewport.freq.max
+    handleZoomDrag(lastViewport);
 
     
   }, [initialViewport]);
@@ -313,8 +309,8 @@ export default function useSpectrogram({
     disable,
   } = useSpectrogramMotions({
     viewport,
-    onDrag: handleDrag,
-    onZoom: handleZoom,
+    onDrag: handleZoomDrag,
+    onZoom: handleZoomDrag,
     onScrollMoveTime: handleShift,
     onScrollMoveFreq: handleShift,
     onScrollZoomTime: handleScale,
@@ -365,7 +361,7 @@ export default function useSpectrogram({
     reset: handleReset,
     zoomIn: handleZoomIn,
     zoomOut: handleZoomOut,
-    drag: handleDrag,
+    drag: handleZoomDrag,
     scale: handleScale,
     shift: handleShift,
     centerOn: handleCenterOn,
