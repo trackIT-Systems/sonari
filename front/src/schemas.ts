@@ -337,8 +337,6 @@ export const SpectrogramParametersSchema = z
     pcen: z.boolean().default(false),
     cmap: z.string().default(DEFAULT_CMAP),
     gamma: z.coerce.number().positive().default(2),
-    low_signal: z.coerce.number().nonnegative().default(0.3),
-    high_signal: z.coerce.number().nonnegative().default(0.5),
   })
   .refine(
     (data) => {

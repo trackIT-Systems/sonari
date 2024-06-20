@@ -14,7 +14,8 @@ __all__ = [
 ]
 
 
-def array_to_image(array: np.ndarray, cmap: str, gamma: float, low_signal: float, high_signal: float) -> Image:
+
+def array_to_image(array: np.ndarray, cmap: str, gamma: float) -> Image:
     """Convert a numpy array to a PIL image.
 
     Parameters
@@ -25,10 +26,6 @@ def array_to_image(array: np.ndarray, cmap: str, gamma: float, low_signal: float
         Name of the matplotlib colormap
     gamma : float
         Gamma of the image
-    low_signal : float
-        Value used as the minimum of the image
-    high_signal : float
-        Value used as the maximum of the image
 
     Returns
     -------
@@ -48,7 +45,7 @@ def array_to_image(array: np.ndarray, cmap: str, gamma: float, low_signal: float
     # Flip the array vertically
     array = np.flipud(array)
 
-    norm = PowerNorm(gamma=gamma, vmin=low_signal, vmax=high_signal)
+    norm = PowerNorm(gamma=gamma)
     normalized_array = norm(array)
     color_array = colormap(normalized_array)
 
