@@ -330,7 +330,7 @@ export const SpectrogramParametersSchema = z
     window: z.string().default(DEFAULT_WINDOW),
     scale: z.enum(["amplitude", "power", "dB"]).default(DEFAULT_SCALE),
     clamp: z.boolean().default(true),
-    min_dB: z.coerce.number().nonpositive().gte(MIN_DB).default(-80),
+    min_dB: z.coerce.number().nonpositive().gte(MIN_DB).default(-90),
     max_dB: z.coerce.number().nonpositive().gte(MIN_DB).default(0),
     normalize: z.boolean().default(false),
     channel: z.coerce.number().nonnegative().int().default(0),

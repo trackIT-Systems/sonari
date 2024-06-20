@@ -39,7 +39,7 @@ export const DEFAULT_SPECTROGRAM_PARAMETERS: SpectrogramParameters = {
   filter_order: DEFAULT_FILTER_ORDER,
   normalize: false,
   clamp: true,
-  min_dB: MIN_DB,
+  min_dB: -90,
   max_dB: 0,
   channel: 0,
   gamma: 1.2,
