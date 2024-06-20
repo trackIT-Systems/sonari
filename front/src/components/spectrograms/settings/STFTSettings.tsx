@@ -106,27 +106,6 @@ export default function STFTSettings({
           </InputGroup>
         )}
       />
-      <Controller
-        name="gamma"
-        control={control}
-        render={({ field, fieldState }) => (
-          <InputGroup
-            name="gammaControl"
-            label="Gamma"
-            help="Set the gamma for the spectrogram"
-            error={fieldState.error?.message}
-          >
-            <Slider
-              label="Gamma"
-              value={field.value}
-              onChange={field.onChange}
-              minValue={constraints.gamma.min}
-              maxValue={constraints.gamma.max}
-              step={0.1}
-            />
-          </InputGroup>
-        )}
-      />
     </SettingsSection>
   );
 }

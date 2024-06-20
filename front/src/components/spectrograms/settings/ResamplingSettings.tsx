@@ -22,7 +22,7 @@ export default function ResamplingSettings({
     <SettingsSection>
       <InputGroup
         name="resample"
-        label="Resampling"
+        label="Resample"
         help={
           resample.field.value
             ? "Uncheck to disable resampling."
