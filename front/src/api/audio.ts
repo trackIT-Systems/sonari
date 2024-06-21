@@ -76,7 +76,7 @@ export function registerAudioAPI(
     }
 
     const urlparams = new URLSearchParams(params);
-    return `${endpoints.stream}?${urlparams}`;
+    return `${instance.defaults.baseURL}${endpoints.stream}?${urlparams}`;
   }
 
   function getDownloadUrl({
