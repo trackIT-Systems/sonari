@@ -93,7 +93,7 @@ class AnnotationProject(Base):
     tags: orm.Mapped[list[Tag]] = orm.relationship(
         "Tag",
         secondary="annotation_project_tag",
-        lazy="joined",
+        lazy="selectin",
         viewonly=True,
         default_factory=list,
         repr=False,

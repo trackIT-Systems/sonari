@@ -152,27 +152,27 @@ class Recording(Base):
     notes: orm.Mapped[list[Note]] = orm.relationship(
         Note,
         secondary="recording_note",
-        lazy="joined",
+        lazy="selectin",
         viewonly=True,
         back_populates="recording",
         default_factory=list,
         order_by=Note.created_on.desc(),
     )
     tags: orm.Mapped[list[Tag]] = orm.relationship(
-        lazy="joined",
+        lazy="selectin",
         viewonly=True,
         secondary="recording_tag",
         back_populates="recordings",
         default_factory=list,
     )
     features: orm.Mapped[list["RecordingFeature"]] = orm.relationship(
-        lazy="joined",
+        lazy="selectin",
         back_populates="recording",
         default_factory=list,
         cascade="all, delete-orphan",
     )
     owners: orm.Mapped[list[User]] = orm.relationship(
-        lazy="joined",
+        lazy="selectin",
         viewonly=True,
         secondary="recording_owner",
         back_populates="recordings",
@@ -181,7 +181,7 @@ class Recording(Base):
 
     # Secondary relationships
     recording_notes: orm.Mapped[list["RecordingNote"]] = orm.relationship(
-        lazy="joined",
+        lazy="selectin",
         cascade="all, delete-orphan",
         back_populates="recording",
         default_factory=list,
@@ -192,7 +192,7 @@ class Recording(Base):
         default_factory=list,
     )
     recording_owners: orm.Mapped[list["RecordingOwner"]] = orm.relationship(
-        lazy="joined",
+        lazy="selectin",
         cascade="all, delete-orphan",
         back_populates="recording",
         default_factory=list,

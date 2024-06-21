@@ -82,7 +82,7 @@ class Evaluation(Base):
     metrics: orm.Mapped[list["EvaluationMetric"]] = orm.relationship(
         "EvaluationMetric",
         back_populates="evaluation",
-        lazy="joined",
+        lazy="selectin",
         init=False,
         repr=False,
     )

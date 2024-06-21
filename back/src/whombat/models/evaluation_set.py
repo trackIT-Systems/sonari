@@ -138,7 +138,7 @@ class EvaluationSet(Base):
     # Relationships
     tags: orm.Mapped[list[Tag]] = orm.relationship(
         secondary="evaluation_set_tag",
-        lazy="joined",
+        lazy="selectin",
         viewonly=True,
         default_factory=list,
         repr=False,
@@ -173,12 +173,10 @@ class EvaluationSet(Base):
             cascade="all, delete-orphan",
         )
     )
-    evaluation_set_tags: orm.Mapped[list["EvaluationSetTag"]] = (
-        orm.relationship(
-            lazy="joined",
-            default_factory=list,
-            cascade="all, delete-orphan",
-        )
+    evaluation_set_tags: orm.Mapped[list["EvaluationSetTag"]] = orm.relationship(
+        lazy="selectin",
+        default_factory=list,
+        cascade="all, delete-orphan",
     )
     """Set of tags to focus on for this evaluation set."""
     evaluation_set_model_runs: orm.Mapped[list["EvaluationSetModelRun"]] = (

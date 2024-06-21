@@ -80,7 +80,7 @@ class ClipAnnotation(Base):
     )
     tags: orm.Mapped[list[Tag]] = orm.relationship(
         secondary="clip_annotation_tag",
-        lazy="joined",
+        lazy="selectin",
         viewonly=True,
         default_factory=list,
         repr=False,
@@ -89,7 +89,7 @@ class ClipAnnotation(Base):
     notes: orm.Mapped[list[Note]] = orm.relationship(
         secondary="clip_annotation_note",
         back_populates="clip_annotation",
-        lazy="joined",
+        lazy="selectin",
         default_factory=list,
         viewonly=True,
         repr=False,

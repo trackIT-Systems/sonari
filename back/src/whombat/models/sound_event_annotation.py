@@ -95,7 +95,7 @@ class SoundEventAnnotation(Base):
     )
     tags: orm.Mapped[list[Tag]] = orm.relationship(
         secondary="sound_event_annotation_tag",
-        lazy="joined",
+        lazy="selectin",
         viewonly=True,
         default_factory=list,
         repr=False,
@@ -105,7 +105,7 @@ class SoundEventAnnotation(Base):
         back_populates="sound_event_annotation",
         secondary="sound_event_annotation_note",
         cascade="all, delete-orphan",
-        lazy="joined",
+        lazy="selectin",
         init=False,
         repr=False,
         viewonly=True,
@@ -115,20 +115,16 @@ class SoundEventAnnotation(Base):
 
     # =====================
     # Secondary relationships
-    sound_event_annotation_notes: orm.Mapped[
-        list["SoundEventAnnotationNote"]
-    ] = orm.relationship(
+    sound_event_annotation_notes: orm.Mapped[list["SoundEventAnnotationNote"]] = orm.relationship(
         back_populates="sound_event_annotation",
         cascade="all, delete-orphan",
-        lazy="joined",
+        lazy="selectin",
         init=False,
         repr=False,
         default_factory=list,
     )
-    sound_event_annotation_tags: orm.Mapped[
-        list["SoundEventAnnotationTag"]
-    ] = orm.relationship(
-        lazy="joined",
+    sound_event_annotation_tags: orm.Mapped[list["SoundEventAnnotationTag"]] = orm.relationship(
+        lazy="selectin",
         default_factory=list,
         cascade="all, delete-orphan",
         repr=False,

@@ -100,7 +100,7 @@ class Clip(Base):
     )
     features: orm.Mapped[list["ClipFeature"]] = orm.relationship(
         "ClipFeature",
-        lazy="joined",
+        lazy="selectin",
         back_populates="clip",
         default_factory=list,
         cascade="all, delete-orphan",

@@ -106,7 +106,7 @@ class SoundEvent(Base):
         "SoundEventFeature",
         back_populates="sound_event",
         cascade="all, delete-orphan",
-        lazy="joined",
+        lazy="selectin",
         init=False,
         repr=False,
         default_factory=list,

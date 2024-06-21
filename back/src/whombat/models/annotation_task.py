@@ -109,15 +109,13 @@ class AnnotationTask(Base):
         single_parent=True,
         lazy="joined",
     )
-    status_badges: orm.Mapped[list["AnnotationStatusBadge"]] = (
-        orm.relationship(
-            back_populates="annotation_task",
-            cascade="all",
-            lazy="joined",
-            init=False,
-            repr=False,
-            default_factory=list,
-        )
+    status_badges: orm.Mapped[list["AnnotationStatusBadge"]] = orm.relationship(
+        back_populates="annotation_task",
+        cascade="all",
+        lazy="selectin",
+        init=False,
+        repr=False,
+        default_factory=list,
     )
 
 

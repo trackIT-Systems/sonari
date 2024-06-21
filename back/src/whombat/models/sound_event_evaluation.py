@@ -101,7 +101,7 @@ class SoundEventEvaluation(Base):
     )
     metrics: orm.Mapped[list["SoundEventEvaluationMetric"]] = orm.relationship(
         cascade="all, delete-orphan",
-        lazy="joined",
+        lazy="selectin",
         init=False,
         repr=False,
         default_factory=list,

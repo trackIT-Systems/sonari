@@ -91,26 +91,24 @@ class ClipEvaluation(Base):
     # Relationships
     clip_annotation: orm.Mapped[ClipAnnotation] = orm.relationship(
         init=False,
-        lazy="selectin",
+        lazy="joined",
     )
     clip_prediction: orm.Mapped[ClipPrediction] = orm.relationship(
         init=False,
-        lazy="selectin",
+        lazy="joined",
     )
-    sound_event_evaluations: orm.Mapped[list[SoundEventEvaluation]] = (
-        orm.relationship(
-            back_populates="clip_evaluation",
-            cascade="all",
-            lazy="joined",
-            init=False,
-            repr=False,
-            default_factory=list,
-        )
+    sound_event_evaluations: orm.Mapped[list[SoundEventEvaluation]] = orm.relationship(
+        back_populates="clip_evaluation",
+        cascade="all",
+        lazy="selectin",
+        init=False,
+        repr=False,
+        default_factory=list,
     )
     metrics: orm.Mapped[list["ClipEvaluationMetric"]] = orm.relationship(
         back_populates="clip_evaluation",
         cascade="all",
-        lazy="joined",
+        lazy="selectin",
         init=False,
         repr=False,
         default_factory=list,
