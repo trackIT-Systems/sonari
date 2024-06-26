@@ -47,6 +47,7 @@ export type SpectrogramState = {
  */
 export type SpectrogramControls = {
   reset: () => void;
+  zoom: (window: SpectrogramWindow) => void;
   zoomIn: () => void;
   zoomOut: () => void;
   drag: (window: SpectrogramWindow) => void;
@@ -359,6 +360,7 @@ export default function useSpectrogram({
     draw,
     props,
     reset: handleReset,
+    zoom: handleZoomDrag,
     zoomIn: handleZoomIn,
     zoomOut: handleZoomOut,
     drag: handleZoomDrag,
