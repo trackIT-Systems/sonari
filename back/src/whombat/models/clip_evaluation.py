@@ -75,15 +75,15 @@ class ClipEvaluation(Base):
         kw_only=True,
     )
     evaluation_id: orm.Mapped[int] = orm.mapped_column(
-        ForeignKey("evaluation.id"),
+        ForeignKey("evaluation.id", ondelete="CASCADE"),
         nullable=False,
     )
     clip_annotation_id: orm.Mapped[int] = orm.mapped_column(
-        ForeignKey("clip_annotation.id"),
+        ForeignKey("clip_annotation.id", ondelete="CASCADE"),
         nullable=False,
     )
     clip_prediction_id: orm.Mapped[int] = orm.mapped_column(
-        ForeignKey("clip_prediction.id"),
+        ForeignKey("clip_prediction.id", ondelete="CASCADE"),
         nullable=False,
     )
     score: orm.Mapped[float] = orm.mapped_column(nullable=False)
@@ -91,26 +91,23 @@ class ClipEvaluation(Base):
     # Relationships
     clip_annotation: orm.Mapped[ClipAnnotation] = orm.relationship(
         init=False,
-        lazy="selectin",
+        lazy="joined",
     )
     clip_prediction: orm.Mapped[ClipPrediction] = orm.relationship(
         init=False,
-        lazy="selectin",
+        lazy="joined",
     )
-    sound_event_evaluations: orm.Mapped[list[SoundEventEvaluation]] = (
-        orm.relationship(
-            back_populates="clip_evaluation",
-            cascade="all",
-            lazy="joined",
-            init=False,
-            repr=False,
-            default_factory=list,
-        )
+    sound_event_evaluations: orm.Mapped[list[SoundEventEvaluation]] = orm.relationship(
+        back_populates="clip_evaluation",
+        passive_deletes=True,
+        init=False,
+        repr=False,
+        default_factory=list,
+        lazy="selectin",
     )
     metrics: orm.Mapped[list["ClipEvaluationMetric"]] = orm.relationship(
         back_populates="clip_evaluation",
-        cascade="all",
-        lazy="joined",
+        passive_deletes=True,
         init=False,
         repr=False,
         default_factory=list,
@@ -162,11 +159,11 @@ class ClipEvaluationMetric(Base):
 
     id: orm.Mapped[int] = orm.mapped_column(primary_key=True, init=False)
     clip_evaluation_id: orm.Mapped[int] = orm.mapped_column(
-        ForeignKey("clip_evaluation.id"),
+        ForeignKey("clip_evaluation.id", ondelete="CASCADE"),
         nullable=False,
     )
     feature_name_id: orm.Mapped[int] = orm.mapped_column(
-        ForeignKey("feature_name.id"),
+        ForeignKey("feature_name.id", ondelete="CASCADE"),
         nullable=False,
     )
     value: orm.Mapped[float] = orm.mapped_column(nullable=False)

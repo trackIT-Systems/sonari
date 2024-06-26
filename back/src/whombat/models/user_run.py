@@ -74,30 +74,24 @@ class UserRun(Base):
         init=False,
         repr=False,
         viewonly=True,
-        cascade="all, delete-orphan",
     )
     evaluations: orm.Mapped[list[Evaluation]] = orm.relationship(
         secondary="user_run_evaluation",
         init=False,
         repr=False,
         viewonly=True,
-        cascade="all, delete-orphan",
     )
 
     # Secondary relations
-    user_run_predictions: orm.Mapped[list["UserRunPrediction"]] = (
-        orm.relationship(
-            init=False,
-            repr=False,
-            cascade="all, delete-orphan",
-        )
+    user_run_predictions: orm.Mapped[list["UserRunPrediction"]] = orm.relationship(
+        init=False,
+        repr=False,
+        passive_deletes=True,
     )
-    user_run_evaluations: orm.Mapped[list["UserRunEvaluation"]] = (
-        orm.relationship(
-            init=False,
-            repr=False,
-            cascade="all, delete-orphan",
-        )
+    user_run_evaluations: orm.Mapped[list["UserRunEvaluation"]] = orm.relationship(
+        init=False,
+        repr=False,
+        passive_deletes=True,
     )
 
     # Backrefs
@@ -109,13 +103,11 @@ class UserRun(Base):
         default_factory=list,
         viewonly=True,
     )
-    evaluation_set_user_runs: orm.Mapped[list["EvaluationSetUserRun"]] = (
-        orm.relationship(
-            back_populates="user_run",
-            init=False,
-            repr=False,
-            default_factory=list,
-        )
+    evaluation_set_user_runs: orm.Mapped[list["EvaluationSetUserRun"]] = orm.relationship(
+        back_populates="user_run",
+        init=False,
+        repr=False,
+        default_factory=list,
     )
 
 
@@ -126,7 +118,7 @@ class UserRunPrediction(Base):
     __table_args__ = (UniqueConstraint("user_run_id", "clip_prediction_id"),)
 
     user_run_id: orm.Mapped[int] = orm.mapped_column(
-        ForeignKey("user_run.id"),
+        ForeignKey("user_run.id", ondelete="CASCADE"),
         nullable=False,
         primary_key=True,
     )
@@ -144,7 +136,7 @@ class UserRunEvaluation(Base):
     __table_args__ = (UniqueConstraint("user_run_id", "evaluation_set_id"),)
 
     user_run_id: orm.Mapped[int] = orm.mapped_column(
-        ForeignKey("user_run.id"),
+        ForeignKey("user_run.id", ondelete="CASCADE"),
         nullable=False,
         primary_key=True,
     )
@@ -154,7 +146,7 @@ class UserRunEvaluation(Base):
         primary_key=True,
     )
     evaluation_id: orm.Mapped[int] = orm.mapped_column(
-        ForeignKey("evaluation.id"),
+        ForeignKey("evaluation.id", ondelete="CASCADE"),
         nullable=False,
         primary_key=True,
     )

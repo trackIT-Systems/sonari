@@ -116,19 +116,15 @@ class Tag(Base):
         repr=False,
         default_factory=list,
     )
-    sound_event_annotations: orm.Mapped[list["SoundEventAnnotation"]] = (
-        orm.relationship(
-            back_populates="tags",
-            secondary="sound_event_annotation_tag",
-            init=False,
-            repr=False,
-            viewonly=True,
-            default_factory=list,
-        )
+    sound_event_annotations: orm.Mapped[list["SoundEventAnnotation"]] = orm.relationship(
+        back_populates="tags",
+        secondary="sound_event_annotation_tag",
+        init=False,
+        repr=False,
+        viewonly=True,
+        default_factory=list,
     )
-    sound_event_annotation_tags: orm.Mapped[
-        list["SoundEventAnnotationTag"]
-    ] = orm.relationship(
+    sound_event_annotation_tags: orm.Mapped[list["SoundEventAnnotationTag"]] = orm.relationship(
         back_populates="tag",
         init=False,
         repr=False,
@@ -142,53 +138,41 @@ class Tag(Base):
         viewonly=True,
         default_factory=list,
     )
-    clip_annotation_tags: orm.Mapped[list["ClipAnnotationTag"]] = (
-        orm.relationship(
-            back_populates="tag",
-            init=False,
-            repr=False,
-            default_factory=list,
-        )
-    )
-    evaluation_set_tags: orm.Mapped[list["EvaluationSetTag"]] = (
-        orm.relationship(
-            back_populates="tag",
-            init=False,
-            repr=False,
-            default_factory=list,
-        )
-    )
-    annotation_projects: orm.Mapped[list["AnnotationProject"]] = (
-        orm.relationship(
-            back_populates="tags",
-            secondary="annotation_project_tag",
-            init=False,
-            repr=False,
-            viewonly=True,
-            default_factory=list,
-        )
-    )
-    annotation_project_tags: orm.Mapped[list["AnnotationProjectTag"]] = (
-        orm.relationship(
-            back_populates="tag",
-            init=False,
-            repr=False,
-            default_factory=list,
-        )
-    )
-    sound_event_prediction_tags: orm.Mapped[
-        list["SoundEventPredictionTag"]
-    ] = orm.relationship(
+    clip_annotation_tags: orm.Mapped[list["ClipAnnotationTag"]] = orm.relationship(
         back_populates="tag",
         init=False,
         repr=False,
         default_factory=list,
     )
-    clip_prediction_tags: orm.Mapped[list["ClipPredictionTag"]] = (
-        orm.relationship(
-            back_populates="tag",
-            init=False,
-            repr=False,
-            default_factory=list,
-        )
+    evaluation_set_tags: orm.Mapped[list["EvaluationSetTag"]] = orm.relationship(
+        back_populates="tag",
+        init=False,
+        repr=False,
+        default_factory=list,
+    )
+    annotation_projects: orm.Mapped[list["AnnotationProject"]] = orm.relationship(
+        back_populates="tags",
+        secondary="annotation_project_tag",
+        init=False,
+        repr=False,
+        viewonly=True,
+        default_factory=list,
+    )
+    annotation_project_tags: orm.Mapped[list["AnnotationProjectTag"]] = orm.relationship(
+        back_populates="tag",
+        init=False,
+        repr=False,
+        default_factory=list,
+    )
+    sound_event_prediction_tags: orm.Mapped[list["SoundEventPredictionTag"]] = orm.relationship(
+        back_populates="tag",
+        init=False,
+        repr=False,
+        default_factory=list,
+    )
+    clip_prediction_tags: orm.Mapped[list["ClipPredictionTag"]] = orm.relationship(
+        back_populates="tag",
+        init=False,
+        repr=False,
+        default_factory=list,
     )

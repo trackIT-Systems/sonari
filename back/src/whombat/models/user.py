@@ -69,9 +69,7 @@ class User(Base):
     )
     hashed_password: orm.Mapped[str] = orm.mapped_column(String(length=1024))
     username: orm.Mapped[str] = orm.mapped_column(unique=True)
-    id: orm.Mapped[UUID] = orm.mapped_column(
-        primary_key=True, default_factory=uuid4, kw_only=False
-    )
+    id: orm.Mapped[UUID] = orm.mapped_column(primary_key=True, default_factory=uuid4, kw_only=False)
     name: orm.Mapped[Optional[str]] = orm.mapped_column(default=None)
     is_active: orm.Mapped[bool] = orm.mapped_column(default=True)
     is_superuser: orm.Mapped[bool] = orm.mapped_column(default=False)
@@ -93,9 +91,7 @@ class User(Base):
         repr=False,
         init=False,
     )
-    sound_event_annotation_tags: orm.Mapped[
-        list["SoundEventAnnotationTag"]
-    ] = orm.relationship(
+    sound_event_annotation_tags: orm.Mapped[list["SoundEventAnnotationTag"]] = orm.relationship(
         back_populates="created_by",
         default_factory=list,
         repr=False,

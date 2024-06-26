@@ -60,7 +60,7 @@ class ClipAnnotation(Base):
         kw_only=True,
     )
     clip_id: orm.Mapped[int] = orm.mapped_column(
-        ForeignKey("clip.id"),
+        ForeignKey("clip.id", ondelete="CASCADE"),
         nullable=False,
     )
 
@@ -71,54 +71,50 @@ class ClipAnnotation(Base):
     )
     sound_events: orm.Mapped[list[SoundEventAnnotation]] = orm.relationship(
         "SoundEventAnnotation",
-        lazy="selectin",
         back_populates="clip_annotation",
         default_factory=list,
-        cascade="all, delete-orphan",
+        passive_deletes=True,
         repr=False,
         init=False,
+        lazy="selectin",
     )
     tags: orm.Mapped[list[Tag]] = orm.relationship(
         secondary="clip_annotation_tag",
-        lazy="joined",
         viewonly=True,
         default_factory=list,
         repr=False,
         init=False,
+        lazy="selectin",
     )
     notes: orm.Mapped[list[Note]] = orm.relationship(
         secondary="clip_annotation_note",
         back_populates="clip_annotation",
-        lazy="joined",
         default_factory=list,
         viewonly=True,
         repr=False,
         init=False,
         order_by=Note.created_on.desc(),
+        lazy="selectin",
     )
 
     # Secondary relations
-    clip_annotation_notes: orm.Mapped[list["ClipAnnotationNote"]] = (
-        orm.relationship(
-            default_factory=list,
-            cascade="all, delete-orphan",
-            repr=False,
-            init=False,
-        )
+    clip_annotation_notes: orm.Mapped[list["ClipAnnotationNote"]] = orm.relationship(
+        default_factory=list,
+        passive_deletes=True,
+        repr=False,
+        init=False,
     )
-    clip_annotation_tags: orm.Mapped[list["ClipAnnotationTag"]] = (
-        orm.relationship(
-            default_factory=list,
-            cascade="all, delete-orphan",
-            repr=False,
-            init=False,
-        )
+    clip_annotation_tags: orm.Mapped[list["ClipAnnotationTag"]] = orm.relationship(
+        default_factory=list,
+        passive_deletes=True,
+        repr=False,
+        init=False,
     )
 
     # Backrefs
     annotation_task: orm.Mapped["AnnotationTask"] = orm.relationship(
         back_populates="clip_annotation",
-        cascade="all, delete-orphan",
+        passive_deletes=True,
         init=False,
     )
     evaluation_sets: orm.Mapped[list["EvaluationSet"]] = orm.relationship(
@@ -129,14 +125,12 @@ class ClipAnnotation(Base):
         default_factory=list,
         viewonly=True,
     )
-    evaluation_set_annotations: orm.Mapped[list["EvaluationSetAnnotation"]] = (
-        orm.relationship(
-            back_populates="clip_annotation",
-            init=False,
-            repr=False,
-            default_factory=list,
-            cascade="all, delete-orphan",
-        )
+    evaluation_set_annotations: orm.Mapped[list["EvaluationSetAnnotation"]] = orm.relationship(
+        back_populates="clip_annotation",
+        init=False,
+        repr=False,
+        default_factory=list,
+        passive_deletes=True,
     )
 
 
@@ -175,13 +169,9 @@ class ClipAnnotationTag(Base):
     )
 
     id: orm.Mapped[int] = orm.mapped_column(primary_key=True, init=False)
-    clip_annotation_id: orm.Mapped[int] = orm.mapped_column(
-        ForeignKey("clip_annotation.id")
-    )
+    clip_annotation_id: orm.Mapped[int] = orm.mapped_column(ForeignKey("clip_annotation.id", ondelete="CASCADE"))
     tag_id: orm.Mapped[int] = orm.mapped_column(ForeignKey("tag.id"))
-    created_by_id: orm.Mapped[Optional[int]] = orm.mapped_column(
-        ForeignKey("user.id")
-    )
+    created_by_id: orm.Mapped[Optional[int]] = orm.mapped_column(ForeignKey("user.id"))
 
     # Relations
     tag: orm.Mapped[Tag] = orm.relationship(
@@ -229,10 +219,8 @@ class ClipAnnotationNote(Base):
     )
 
     id: orm.Mapped[int] = orm.mapped_column(primary_key=True, init=False)
-    clip_annotation_id: orm.Mapped[int] = orm.mapped_column(
-        ForeignKey("clip_annotation.id")
-    )
-    note_id: orm.Mapped[int] = orm.mapped_column(ForeignKey("note.id"))
+    clip_annotation_id: orm.Mapped[int] = orm.mapped_column(ForeignKey("clip_annotation.id", ondelete="CASCADE"))
+    note_id: orm.Mapped[int] = orm.mapped_column(ForeignKey("note.id", ondelete="CASCADE"))
 
     # Relations
     clip_annotation: orm.Mapped[ClipAnnotation] = orm.relationship(

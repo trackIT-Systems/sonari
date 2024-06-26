@@ -51,30 +51,30 @@ class ClipPrediction(Base):
         kw_only=True,
     )
     clip_id: orm.Mapped[int] = orm.mapped_column(
-        ForeignKey("clip.id"),
+        ForeignKey("clip.id", ondelete="CASCADE"),
         nullable=False,
     )
 
     # Relations
     clip: orm.Mapped[Clip] = orm.relationship(
         init=False,
-        lazy="joined",
         repr=False,
+        lazy="joined",
     )
     tags: orm.Mapped[list["ClipPredictionTag"]] = orm.relationship(
-        cascade="all, delete-orphan",
-        lazy="joined",
+        passive_deletes=True,
         init=False,
         repr=False,
         default_factory=list,
+        lazy="selectin",
     )
     sound_events: orm.Mapped[list[SoundEventPrediction]] = orm.relationship(
         back_populates="clip_prediction",
-        cascade="all, delete-orphan",
-        lazy="selectin",
+        passive_deletes=True,
         init=False,
         repr=False,
         default_factory=list,
+        lazy="selectin",
     )
 
 
@@ -110,7 +110,7 @@ class ClipPredictionTag(Base):
 
     id: orm.Mapped[int] = orm.mapped_column(primary_key=True)
     clip_prediction_id: orm.Mapped[int] = orm.mapped_column(
-        ForeignKey("clip_prediction.id"),
+        ForeignKey("clip_prediction.id", ondelete="CASCADE"),
         primary_key=True,
         nullable=False,
     )

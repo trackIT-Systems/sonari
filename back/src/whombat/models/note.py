@@ -83,8 +83,8 @@ class Note(Base):
     created_by: orm.Mapped[User] = orm.relationship(
         User,
         back_populates="notes",
-        lazy="joined",
         init=False,
+        lazy="joined",
     )
 
     # ========================================================================
@@ -116,29 +116,25 @@ class Note(Base):
         repr=False,
         back_populates="note",
         single_parent=True,
-        cascade="all, delete-orphan",
+        passive_deletes=True,
     )
 
-    sound_event_annotation: orm.Mapped[Optional["SoundEventAnnotation"]] = (
-        orm.relationship(
-            "SoundEventAnnotation",
-            secondary="sound_event_annotation_note",
-            init=False,
-            repr=False,
-            viewonly=True,
-            back_populates="notes",
-        )
+    sound_event_annotation: orm.Mapped[Optional["SoundEventAnnotation"]] = orm.relationship(
+        "SoundEventAnnotation",
+        secondary="sound_event_annotation_note",
+        init=False,
+        repr=False,
+        viewonly=True,
+        back_populates="notes",
     )
 
-    sound_event_annotation_note: orm.Mapped[
-        Optional["SoundEventAnnotationNote"]
-    ] = orm.relationship(
+    sound_event_annotation_note: orm.Mapped[Optional["SoundEventAnnotationNote"]] = orm.relationship(
         "SoundEventAnnotationNote",
         init=False,
         repr=False,
         back_populates="note",
         single_parent=True,
-        cascade="all, delete-orphan",
+        passive_deletes=True,
     )
 
     clip_annotation: orm.Mapped[Optional["ClipAnnotation"]] = orm.relationship(
@@ -150,13 +146,11 @@ class Note(Base):
         back_populates="notes",
     )
 
-    clip_annotation_note: orm.Mapped[Optional["ClipAnnotationNote"]] = (
-        orm.relationship(
-            "ClipAnnotationNote",
-            init=False,
-            repr=False,
-            back_populates="note",
-            single_parent=True,
-            cascade="all, delete-orphan",
-        )
+    clip_annotation_note: orm.Mapped[Optional["ClipAnnotationNote"]] = orm.relationship(
+        "ClipAnnotationNote",
+        init=False,
+        repr=False,
+        back_populates="note",
+        single_parent=True,
+        passive_deletes=True,
     )

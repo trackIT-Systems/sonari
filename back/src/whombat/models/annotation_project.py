@@ -85,32 +85,29 @@ class AnnotationProject(Base):
     )
     name: orm.Mapped[str] = orm.mapped_column(unique=True)
     description: orm.Mapped[str]
-    annotation_instructions: orm.Mapped[str | None] = orm.mapped_column(
-        default=None
-    )
+    annotation_instructions: orm.Mapped[str | None] = orm.mapped_column(default=None)
 
     # Relationships
     tags: orm.Mapped[list[Tag]] = orm.relationship(
         "Tag",
         secondary="annotation_project_tag",
-        lazy="joined",
         viewonly=True,
         default_factory=list,
         repr=False,
+        lazy="selectin",
     )
     annotation_tasks: orm.Mapped[list["AnnotationTask"]] = orm.relationship(
         back_populates="annotation_project",
         default_factory=list,
-        cascade="all, delete-orphan",
+        passive_deletes=True,
+        lazy="selectin",
     )
 
     # Secondary relationships
-    annotation_project_tags: orm.Mapped[list["AnnotationProjectTag"]] = (
-        orm.relationship(
-            "AnnotationProjectTag",
-            default_factory=list,
-            cascade="all, delete-orphan",
-        )
+    annotation_project_tags: orm.Mapped[list["AnnotationProjectTag"]] = orm.relationship(
+        "AnnotationProjectTag",
+        default_factory=list,
+        passive_deletes=True,
     )
 
 
@@ -141,7 +138,7 @@ class AnnotationProjectTag(Base):
     )
 
     annotation_project_id: orm.Mapped[int] = orm.mapped_column(
-        ForeignKey("annotation_project.id"),
+        ForeignKey("annotation_project.id", ondelete="CASCADE"),
         nullable=False,
         primary_key=True,
     )
@@ -160,6 +157,6 @@ class AnnotationProjectTag(Base):
     tag: orm.Mapped[Tag] = orm.relationship(
         "Tag",
         back_populates="annotation_project_tags",
-        lazy="joined",
         init=False,
+        lazy="joined",
     )
