@@ -81,12 +81,8 @@ class Clip(Base):
     )
 
     id: orm.Mapped[int] = orm.mapped_column(primary_key=True, init=False)
-    uuid: orm.Mapped[UUID] = orm.mapped_column(
-        default_factory=uuid4, kw_only=True, unique=True
-    )
-    recording_id: orm.Mapped[int] = orm.mapped_column(
-        ForeignKey("recording.id"), nullable=False
-    )
+    uuid: orm.Mapped[UUID] = orm.mapped_column(default_factory=uuid4, kw_only=True, unique=True)
+    recording_id: orm.Mapped[int] = orm.mapped_column(ForeignKey("recording.id", ondelete="CASCADE"), nullable=False)
     start_time: orm.Mapped[float] = orm.mapped_column(nullable=False)
     end_time: orm.Mapped[float] = orm.mapped_column(nullable=False)
     score: orm.Mapped[Optional[float]] = orm.mapped_column(default=None)
@@ -94,17 +90,18 @@ class Clip(Base):
     # Relations
     recording: orm.Mapped[Recording] = orm.relationship(
         back_populates="clips",
-        lazy="joined",
         init=False,
         repr=False,
+        lazy="joined",
     )
     features: orm.Mapped[list["ClipFeature"]] = orm.relationship(
         "ClipFeature",
-        lazy="selectin",
         back_populates="clip",
         default_factory=list,
         cascade="all, delete-orphan",
+        passive_deletes=True,
         repr=False,
+        lazy="selectin",
     )
 
 
@@ -137,12 +134,12 @@ class ClipFeature(Base):
     )
 
     clip_id: orm.Mapped[int] = orm.mapped_column(
-        ForeignKey("clip.id"),
+        ForeignKey("clip.id", ondelete="CASCADE"),
         nullable=False,
         primary_key=True,
     )
     feature_name_id: orm.Mapped[int] = orm.mapped_column(
-        ForeignKey("feature_name.id"),
+        ForeignKey("feature_name.id", ondelete="CASCADE"),
         nullable=False,
         primary_key=True,
     )

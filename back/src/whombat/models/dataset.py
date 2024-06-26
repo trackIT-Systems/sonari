@@ -94,15 +94,14 @@ class Dataset(Base):
     )
 
     # Secondary relations
-    dataset_recordings: orm.Mapped[list["DatasetRecording"]] = (
-        orm.relationship(
-            "DatasetRecording",
-            init=False,
-            repr=False,
-            back_populates="dataset",
-            cascade="all, delete-orphan",
-            default_factory=list,
-        )
+    dataset_recordings: orm.Mapped[list["DatasetRecording"]] = orm.relationship(
+        "DatasetRecording",
+        init=False,
+        repr=False,
+        back_populates="dataset",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+        default_factory=list,
     )
 
 
@@ -143,12 +142,12 @@ class DatasetRecording(Base):
     __table_args__ = (UniqueConstraint("dataset_id", "recording_id", "path"),)
 
     dataset_id: orm.Mapped[int] = orm.mapped_column(
-        ForeignKey("dataset.id"),
+        ForeignKey("dataset.id", ondelete="CASCADE"),
         nullable=False,
         primary_key=True,
     )
     recording_id: orm.Mapped[int] = orm.mapped_column(
-        ForeignKey("recording.id"),
+        ForeignKey("recording.id", ondelete="CASCADE"),
         nullable=False,
         primary_key=True,
     )
@@ -164,9 +163,10 @@ class DatasetRecording(Base):
         Recording,
         init=False,
         repr=False,
-        lazy="joined",
         back_populates="recording_datasets",
         cascade="all",
+        passive_deletes=True,
+        lazy="joined",
     )
 
 

@@ -133,9 +133,7 @@ class Recording(Base):
     __tablename__ = "recording"
 
     id: orm.Mapped[int] = orm.mapped_column(primary_key=True, init=False)
-    uuid: orm.Mapped[UUID] = orm.mapped_column(
-        default_factory=uuid4, kw_only=True, unique=True
-    )
+    uuid: orm.Mapped[UUID] = orm.mapped_column(default_factory=uuid4, kw_only=True, unique=True)
     hash: orm.Mapped[str] = orm.mapped_column(unique=True, index=True)
     path: orm.Mapped[Path] = orm.mapped_column(unique=True, index=True)
     duration: orm.Mapped[float]
@@ -152,48 +150,51 @@ class Recording(Base):
     notes: orm.Mapped[list[Note]] = orm.relationship(
         Note,
         secondary="recording_note",
-        lazy="selectin",
         viewonly=True,
         back_populates="recording",
         default_factory=list,
         order_by=Note.created_on.desc(),
+        lazy="selectin",
     )
     tags: orm.Mapped[list[Tag]] = orm.relationship(
-        lazy="selectin",
         viewonly=True,
         secondary="recording_tag",
         back_populates="recordings",
         default_factory=list,
+        lazy="selectin",
     )
     features: orm.Mapped[list["RecordingFeature"]] = orm.relationship(
-        lazy="selectin",
         back_populates="recording",
         default_factory=list,
         cascade="all, delete-orphan",
+        passive_deletes=True,
+        lazy="selectin",
     )
     owners: orm.Mapped[list[User]] = orm.relationship(
-        lazy="selectin",
         viewonly=True,
         secondary="recording_owner",
         back_populates="recordings",
         default_factory=list,
+        lazy="selectin",
     )
 
     # Secondary relationships
     recording_notes: orm.Mapped[list["RecordingNote"]] = orm.relationship(
-        lazy="selectin",
         cascade="all, delete-orphan",
+        passive_deletes=True,
         back_populates="recording",
         default_factory=list,
+        lazy="selectin",
     )
     recording_tags: orm.Mapped[list["RecordingTag"]] = orm.relationship(
         cascade="all, delete-orphan",
+        passive_deletes=True,
         back_populates="recording",
         default_factory=list,
     )
     recording_owners: orm.Mapped[list["RecordingOwner"]] = orm.relationship(
-        lazy="selectin",
         cascade="all, delete-orphan",
+        passive_deletes=True,
         back_populates="recording",
         default_factory=list,
     )
@@ -204,16 +205,16 @@ class Recording(Base):
         default_factory=list,
         init=False,
         cascade="all, delete-orphan",
+        passive_deletes=True,
         repr=False,
     )
-    recording_datasets: orm.Mapped[list["DatasetRecording"]] = (
-        orm.relationship(
-            init=False,
-            repr=False,
-            cascade="all, delete-orphan",
-            back_populates="recording",
-            default_factory=list,
-        )
+    recording_datasets: orm.Mapped[list["DatasetRecording"]] = orm.relationship(
+        init=False,
+        repr=False,
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+        back_populates="recording",
+        default_factory=list,
     )
 
 
@@ -239,12 +240,12 @@ class RecordingNote(Base):
     __table_args__ = (UniqueConstraint("recording_id", "note_id"),)
 
     recording_id: orm.Mapped[int] = orm.mapped_column(
-        ForeignKey("recording.id"),
+        ForeignKey("recording.id", ondelete="CASCADE"),
         nullable=False,
         primary_key=True,
     )
     note_id: orm.Mapped[int] = orm.mapped_column(
-        ForeignKey("note.id"),
+        ForeignKey("note.id", ondelete="CASCADE"),
         nullable=False,
         primary_key=True,
     )
@@ -283,7 +284,7 @@ class RecordingTag(Base):
     __table_args__ = (UniqueConstraint("recording_id", "tag_id"),)
 
     recording_id: orm.Mapped[int] = orm.mapped_column(
-        ForeignKey("recording.id"),
+        ForeignKey("recording.id", ondelete="CASCADE"),
         nullable=False,
         primary_key=True,
     )
@@ -341,7 +342,7 @@ class RecordingFeature(Base):
     )
 
     recording_id: orm.Mapped[int] = orm.mapped_column(
-        ForeignKey("recording.id"),
+        ForeignKey("recording.id", ondelete="CASCADE"),
         nullable=False,
         primary_key=True,
     )
@@ -363,6 +364,7 @@ class RecordingFeature(Base):
         init=False,
         repr=False,
         cascade="all",
+        passive_deletes=True,
     )
     feature_name: orm.Mapped[FeatureName] = orm.relationship(
         back_populates="recordings",
@@ -394,7 +396,7 @@ class RecordingOwner(Base):
     __table_args__ = (UniqueConstraint("recording_id", "user_id"),)
 
     recording_id: orm.Mapped[int] = orm.mapped_column(
-        ForeignKey("recording.id"),
+        ForeignKey("recording.id", ondelete="CASCADE"),
         nullable=False,
         primary_key=True,
     )
@@ -408,6 +410,7 @@ class RecordingOwner(Base):
         init=False,
         repr=False,
         cascade="all",
+        passive_deletes=True,
     )
     user: orm.Mapped[User] = orm.relationship(
         back_populates="recording_owner",

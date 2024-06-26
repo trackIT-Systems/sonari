@@ -74,7 +74,7 @@ class SoundEventEvaluation(Base):
         kw_only=True,
     )
     clip_evaluation_id: orm.Mapped[int] = orm.mapped_column(
-        ForeignKey("clip_evaluation.id"),
+        ForeignKey("clip_evaluation.id", ondelete="CASCADE"),
         nullable=False,
     )
     source_id: orm.Mapped[int | None] = orm.mapped_column(
@@ -101,10 +101,11 @@ class SoundEventEvaluation(Base):
     )
     metrics: orm.Mapped[list["SoundEventEvaluationMetric"]] = orm.relationship(
         cascade="all, delete-orphan",
-        lazy="selectin",
+        passive_deletes=True,
         init=False,
         repr=False,
         default_factory=list,
+        lazy="selectin",
     )
 
     # Backrefs
@@ -145,11 +146,11 @@ class SoundEventEvaluationMetric(Base):
 
     id: orm.Mapped[int] = orm.mapped_column(primary_key=True, init=False)
     sound_event_evaluation_id: orm.Mapped[int] = orm.mapped_column(
-        ForeignKey("sound_event_evaluation.id"),
+        ForeignKey("sound_event_evaluation.id", ondelete="CASCADE"),
         nullable=False,
     )
     feature_name_id: orm.Mapped[int] = orm.mapped_column(
-        ForeignKey("feature_name.id"),
+        ForeignKey("feature_name.id", ondelete="CASCADE"),
         nullable=False,
     )
     value: orm.Mapped[float] = orm.mapped_column(
@@ -167,10 +168,8 @@ class SoundEventEvaluationMetric(Base):
         repr=False,
         lazy="joined",
     )
-    sound_event_evaluation: orm.Mapped[SoundEventEvaluation] = (
-        orm.relationship(
-            back_populates="metrics",
-            init=False,
-            repr=False,
-        )
+    sound_event_evaluation: orm.Mapped[SoundEventEvaluation] = orm.relationship(
+        back_populates="metrics",
+        init=False,
+        repr=False,
     )

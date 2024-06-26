@@ -74,15 +74,15 @@ class AnnotationTask(Base):
 
     id: orm.Mapped[int] = orm.mapped_column(primary_key=True, init=False)
     annotation_project_id: orm.Mapped[int] = orm.mapped_column(
-        ForeignKey("annotation_project.id"),
+        ForeignKey("annotation_project.id", ondelete="CASCADE"),
         nullable=False,
     )
     clip_id: orm.Mapped[int] = orm.mapped_column(
-        ForeignKey("clip.id"),
+        ForeignKey("clip.id", ondelete="CASCADE"),
         nullable=False,
     )
     clip_annotation_id: orm.Mapped[int] = orm.mapped_column(
-        ForeignKey("clip_annotation.id"),
+        ForeignKey("clip_annotation.id", ondelete="CASCADE"),
         nullable=True,
     )
     uuid: orm.Mapped[UUID] = orm.mapped_column(
@@ -104,18 +104,20 @@ class AnnotationTask(Base):
     )
     clip_annotation: orm.Mapped[ClipAnnotation] = orm.relationship(
         back_populates="annotation_task",
-        cascade="all, delete-orphan",
         init=False,
         single_parent=True,
+        cascade="all, delete-orphan",
+        passive_deletes=True,
         lazy="joined",
     )
     status_badges: orm.Mapped[list["AnnotationStatusBadge"]] = orm.relationship(
         back_populates="annotation_task",
         cascade="all",
-        lazy="selectin",
+        passive_deletes=True,
         init=False,
         repr=False,
         default_factory=list,
+        lazy="selectin",
     )
 
 
@@ -146,16 +148,14 @@ class AnnotationStatusBadge(Base):
     """
 
     __tablename__ = "annotation_status_badge"
-    __table_args__ = (
-        UniqueConstraint("annotation_task_id", "user_id", "state"),
-    )
+    __table_args__ = (UniqueConstraint("annotation_task_id", "user_id", "state"),)
 
     id: orm.Mapped[int] = orm.mapped_column(
         primary_key=True,
         init=False,
     )
     annotation_task_id: orm.Mapped[int] = orm.mapped_column(
-        ForeignKey("annotation_task.id"),
+        ForeignKey("annotation_task.id", ondelete="CASCADE"),
         nullable=False,
     )
     user_id: orm.Mapped[Optional[UUID]] = orm.mapped_column(

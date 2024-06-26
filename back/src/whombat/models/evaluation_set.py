@@ -138,10 +138,10 @@ class EvaluationSet(Base):
     # Relationships
     tags: orm.Mapped[list[Tag]] = orm.relationship(
         secondary="evaluation_set_tag",
-        lazy="selectin",
         viewonly=True,
         default_factory=list,
         repr=False,
+        lazy="selectin",
     )
     clip_annotations: orm.Mapped[list["ClipAnnotation"]] = orm.relationship(
         secondary="evaluation_set_annotation",
@@ -156,6 +156,7 @@ class EvaluationSet(Base):
         viewonly=True,
         default_factory=list,
         repr=False,
+        lazy="selectin",
     )
     user_runs: orm.Mapped[list[UserRun]] = orm.relationship(
         secondary="evaluation_set_user_run",
@@ -163,35 +164,34 @@ class EvaluationSet(Base):
         viewonly=True,
         default_factory=list,
         repr=False,
+        lazy="selectin",
     )
 
     # Secondary relationships
-    evaluation_set_annotations: orm.Mapped[list["EvaluationSetAnnotation"]] = (
-        orm.relationship(
-            back_populates="evaluation_set",
-            default_factory=list,
-            cascade="all, delete-orphan",
-        )
-    )
-    evaluation_set_tags: orm.Mapped[list["EvaluationSetTag"]] = orm.relationship(
-        lazy="selectin",
+    evaluation_set_annotations: orm.Mapped[list["EvaluationSetAnnotation"]] = orm.relationship(
+        back_populates="evaluation_set",
         default_factory=list,
         cascade="all, delete-orphan",
+        passive_deletes=True,
+    )
+    evaluation_set_tags: orm.Mapped[list["EvaluationSetTag"]] = orm.relationship(
+        default_factory=list,
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+        lazy="selectin",
     )
     """Set of tags to focus on for this evaluation set."""
-    evaluation_set_model_runs: orm.Mapped[list["EvaluationSetModelRun"]] = (
-        orm.relationship(
-            back_populates="evaluation_set",
-            default_factory=list,
-            cascade="all, delete-orphan",
-        )
+    evaluation_set_model_runs: orm.Mapped[list["EvaluationSetModelRun"]] = orm.relationship(
+        back_populates="evaluation_set",
+        default_factory=list,
+        cascade="all, delete-orphan",
+        passive_deletes=True,
     )
-    evaluation_set_user_runs: orm.Mapped[list["EvaluationSetUserRun"]] = (
-        orm.relationship(
-            back_populates="evaluation_set",
-            default_factory=list,
-            cascade="all, delete-orphan",
-        )
+    evaluation_set_user_runs: orm.Mapped[list["EvaluationSetUserRun"]] = orm.relationship(
+        back_populates="evaluation_set",
+        default_factory=list,
+        cascade="all, delete-orphan",
+        passive_deletes=True,
     )
 
 
@@ -222,12 +222,12 @@ class EvaluationSetAnnotation(Base):
     )
 
     evaluation_set_id: orm.Mapped[int] = orm.mapped_column(
-        ForeignKey("evaluation_set.id"),
+        ForeignKey("evaluation_set.id", ondelete="CASCADE"),
         nullable=False,
         primary_key=True,
     )
     clip_annotation_id: orm.Mapped[int] = orm.mapped_column(
-        ForeignKey("clip_annotation.id"),
+        ForeignKey("clip_annotation.id", ondelete="CASCADE"),
         nullable=False,
         primary_key=True,
     )
@@ -239,8 +239,8 @@ class EvaluationSetAnnotation(Base):
     )
     clip_annotation: orm.Mapped[ClipAnnotation] = orm.relationship(
         back_populates="evaluation_set_annotations",
-        lazy="joined",
         init=False,
+        lazy="joined",
     )
 
 
@@ -266,7 +266,7 @@ class EvaluationSetTag(Base):
     __table_args__ = (UniqueConstraint("evaluation_set_id", "tag_id"),)
 
     evaluation_set_id: orm.Mapped[int] = orm.mapped_column(
-        ForeignKey("evaluation_set.id"),
+        ForeignKey("evaluation_set.id", ondelete="CASCADE"),
         nullable=False,
         primary_key=True,
     )
@@ -285,8 +285,8 @@ class EvaluationSetTag(Base):
     tag: orm.Mapped[Tag] = orm.relationship(
         "Tag",
         back_populates="evaluation_set_tags",
-        lazy="joined",
         init=False,
+        lazy="joined",
     )
 
 
@@ -312,12 +312,12 @@ class EvaluationSetModelRun(Base):
     __table_args__ = (UniqueConstraint("evaluation_set_id", "model_run_id"),)
 
     evaluation_set_id: orm.Mapped[int] = orm.mapped_column(
-        ForeignKey("evaluation_set.id"),
+        ForeignKey("evaluation_set.id", ondelete="CASCADE"),
         nullable=False,
         primary_key=True,
     )
     model_run_id: orm.Mapped[int] = orm.mapped_column(
-        ForeignKey("model_run.id"),
+        ForeignKey("model_run.id", ondelete="CASCADE"),
         nullable=False,
         primary_key=True,
     )
@@ -357,7 +357,7 @@ class EvaluationSetUserRun(Base):
     __table_args__ = (UniqueConstraint("evaluation_set_id", "user_run_id"),)
 
     evaluation_set_id: orm.Mapped[int] = orm.mapped_column(
-        ForeignKey("evaluation_set.id"),
+        ForeignKey("evaluation_set.id", ondelete="CASCADE"),
         nullable=False,
         primary_key=True,
     )

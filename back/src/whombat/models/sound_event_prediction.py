@@ -84,7 +84,7 @@ class SoundEventPrediction(Base):
         nullable=False,
     )
     clip_prediction_id: orm.Mapped[int] = orm.mapped_column(
-        ForeignKey("clip_prediction.id"),
+        ForeignKey("clip_prediction.id", ondelete="CASCADE"),
         nullable=False,
     )
     score: orm.Mapped[float] = orm.mapped_column(
@@ -95,9 +95,10 @@ class SoundEventPrediction(Base):
     sound_event: orm.Mapped[SoundEvent] = orm.relationship(
         init=False,
         repr=False,
-        lazy="joined",
         cascade="all, delete-orphan",
+        passive_deletes=True,
         single_parent=True,
+        lazy="joined",
     )
     clip_prediction: orm.Mapped["ClipPrediction"] = orm.relationship(
         back_populates="sound_events",
@@ -107,10 +108,11 @@ class SoundEventPrediction(Base):
     tags: orm.Mapped[list["SoundEventPredictionTag"]] = orm.relationship(
         "SoundEventPredictionTag",
         cascade="all, delete-orphan",
-        lazy="selectin",
+        passive_deletes=True,
         init=False,
         repr=False,
         default_factory=list,
+        lazy="selectin",
     )
 
 
@@ -145,7 +147,7 @@ class SoundEventPredictionTag(Base):
     )
 
     sound_event_prediction_id: orm.Mapped[int] = orm.mapped_column(
-        ForeignKey("sound_event_prediction.id"),
+        ForeignKey("sound_event_prediction.id", ondelete="CASCADE"),
         primary_key=True,
         nullable=False,
     )
@@ -160,7 +162,7 @@ class SoundEventPredictionTag(Base):
     )
     tag: orm.Mapped[Tag] = orm.relationship(
         back_populates="sound_event_prediction_tags",
-        lazy="joined",
         init=False,
         repr=False,
+        lazy="joined",
     )

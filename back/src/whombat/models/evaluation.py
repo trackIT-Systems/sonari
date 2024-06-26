@@ -82,14 +82,16 @@ class Evaluation(Base):
     metrics: orm.Mapped[list["EvaluationMetric"]] = orm.relationship(
         "EvaluationMetric",
         back_populates="evaluation",
-        lazy="selectin",
         init=False,
         repr=False,
+        passive_deletes=True,
+        lazy="selectin",
     )
     clip_evaluations: orm.Mapped[list[ClipEvaluation]] = orm.relationship(
         back_populates="evaluation",
         default_factory=list,
         cascade="all, delete-orphan",
+        passive_deletes=True,
         init=False,
         repr=False,
     )
@@ -129,11 +131,11 @@ class EvaluationMetric(Base):
 
     id: orm.Mapped[int] = orm.mapped_column(primary_key=True, init=False)
     evaluation_id: orm.Mapped[int] = orm.mapped_column(
-        ForeignKey("evaluation.id"),
+        ForeignKey("evaluation.id", ondelete="CASCADE"),
         nullable=False,
     )
     feature_name_id: orm.Mapped[int] = orm.mapped_column(
-        ForeignKey("feature_name.id"),
+        ForeignKey("feature_name.id", ondelete="CASCADE"),
         nullable=False,
     )
     value: orm.Mapped[float] = orm.mapped_column(nullable=False)

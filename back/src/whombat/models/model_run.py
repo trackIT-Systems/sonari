@@ -76,6 +76,7 @@ class ModelRun(Base):
         repr=False,
         viewonly=True,
         cascade="all, delete-orphan",
+        lazy="selectin",
     )
     evaluations: orm.Mapped[list[Evaluation]] = orm.relationship(
         secondary="model_run_evaluation",
@@ -83,22 +84,21 @@ class ModelRun(Base):
         repr=False,
         viewonly=True,
         cascade="all, delete-orphan",
+        lazy="selectin",
     )
 
     # Secondary relations
-    model_run_predictions: orm.Mapped[list["ModelRunPrediction"]] = (
-        orm.relationship(
-            init=False,
-            repr=False,
-            cascade="all, delete-orphan",
-        )
+    model_run_predictions: orm.Mapped[list["ModelRunPrediction"]] = orm.relationship(
+        init=False,
+        repr=False,
+        cascade="all, delete-orphan",
+        passive_deletes=True,
     )
-    model_run_evaluations: orm.Mapped[list["ModelRunEvaluation"]] = (
-        orm.relationship(
-            init=False,
-            repr=False,
-            cascade="all, delete-orphan",
-        )
+    model_run_evaluations: orm.Mapped[list["ModelRunEvaluation"]] = orm.relationship(
+        init=False,
+        repr=False,
+        cascade="all, delete-orphan",
+        passive_deletes=True,
     )
 
     # Backrefs
@@ -110,14 +110,13 @@ class ModelRun(Base):
         default_factory=list,
         viewonly=True,
     )
-    evaluation_set_model_runs: orm.Mapped[list["EvaluationSetModelRun"]] = (
-        orm.relationship(
-            back_populates="model_run",
-            cascade="all, delete-orphan",
-            init=False,
-            repr=False,
-            default_factory=list,
-        )
+    evaluation_set_model_runs: orm.Mapped[list["EvaluationSetModelRun"]] = orm.relationship(
+        back_populates="model_run",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+        init=False,
+        repr=False,
+        default_factory=list,
     )
 
 
@@ -128,7 +127,7 @@ class ModelRunPrediction(Base):
     __table_args__ = (UniqueConstraint("model_run_id", "clip_prediction_id"),)
 
     model_run_id: orm.Mapped[int] = orm.mapped_column(
-        ForeignKey("model_run.id"),
+        ForeignKey("model_run.id", ondelete="CASCADE"),
         nullable=False,
         primary_key=True,
     )
@@ -151,7 +150,7 @@ class ModelRunEvaluation(Base):
     )
 
     model_run_id: orm.Mapped[int] = orm.mapped_column(
-        ForeignKey("model_run.id"),
+        ForeignKey("model_run.id", ondelete="CASCADE"),
         nullable=False,
         primary_key=True,
     )
@@ -161,7 +160,7 @@ class ModelRunEvaluation(Base):
         primary_key=True,
     )
     evaluation_id: orm.Mapped[int] = orm.mapped_column(
-        ForeignKey("evaluation.id"),
+        ForeignKey("evaluation.id", ondelete="CASCADE"),
         nullable=False,
         primary_key=True,
     )

@@ -43,7 +43,7 @@ class AccessToken(Base):
     )
     user_id: orm.Mapped[UUID] = orm.mapped_column(
         GUID,
-        ForeignKey("user.id", ondelete="cascade"),
+        ForeignKey("user.id", ondelete="CASCADE"),
         nullable=False,
     )
 

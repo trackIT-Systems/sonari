@@ -91,7 +91,7 @@ class SoundEvent(Base):
         kw_only=True,
     )
     recording_id: orm.Mapped[int] = orm.mapped_column(
-        ForeignKey("recording.id"),
+        ForeignKey("recording.id", ondelete="CASCADE"),
         nullable=False,
     )
     geometry_type: orm.Mapped[str] = orm.mapped_column(nullable=False)
@@ -106,26 +106,23 @@ class SoundEvent(Base):
         "SoundEventFeature",
         back_populates="sound_event",
         cascade="all, delete-orphan",
-        lazy="selectin",
+        passive_deletes=True,
         init=False,
         repr=False,
         default_factory=list,
+        lazy="selectin",
     )
 
     # Backrefs
-    sound_event_annotation: orm.Mapped[Optional["SoundEventAnnotation"]] = (
-        orm.relationship(
-            back_populates="sound_event",
-            init=False,
-            repr=False,
-        )
+    sound_event_annotation: orm.Mapped[Optional["SoundEventAnnotation"]] = orm.relationship(
+        back_populates="sound_event",
+        init=False,
+        repr=False,
     )
-    sound_event_prediction: orm.Mapped[Optional["SoundEventPrediction"]] = (
-        orm.relationship(
-            back_populates="sound_event",
-            init=False,
-            repr=False,
-        )
+    sound_event_prediction: orm.Mapped[Optional["SoundEventPrediction"]] = orm.relationship(
+        back_populates="sound_event",
+        init=False,
+        repr=False,
     )
 
 
@@ -158,12 +155,12 @@ class SoundEventFeature(Base):
     )
 
     sound_event_id: orm.Mapped[int] = orm.mapped_column(
-        ForeignKey("sound_event.id"),
+        ForeignKey("sound_event.id", ondelete="CASCADE"),
         nullable=False,
         primary_key=True,
     )
     feature_name_id: orm.Mapped[int] = orm.mapped_column(
-        ForeignKey("feature_name.id"),
+        ForeignKey("feature_name.id", ondelete="CASCADE"),
         nullable=False,
         primary_key=True,
     )
@@ -178,6 +175,7 @@ class SoundEventFeature(Base):
     sound_event: orm.Mapped[SoundEvent] = orm.relationship(
         back_populates="features",
         cascade="all",
+        passive_deletes=True,
         init=False,
         repr=False,
     )
