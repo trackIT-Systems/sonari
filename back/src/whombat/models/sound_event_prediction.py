@@ -95,6 +95,7 @@ class SoundEventPrediction(Base):
     sound_event: orm.Mapped[SoundEvent] = orm.relationship(
         init=False,
         repr=False,
+        cascade="all",
         passive_deletes=True,
         single_parent=True,
         lazy="joined",
@@ -106,6 +107,7 @@ class SoundEventPrediction(Base):
     )
     tags: orm.Mapped[list["SoundEventPredictionTag"]] = orm.relationship(
         "SoundEventPredictionTag",
+        cascade="all",
         passive_deletes=True,
         init=False,
         repr=False,

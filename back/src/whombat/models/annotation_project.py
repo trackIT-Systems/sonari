@@ -99,6 +99,7 @@ class AnnotationProject(Base):
     annotation_tasks: orm.Mapped[list["AnnotationTask"]] = orm.relationship(
         back_populates="annotation_project",
         default_factory=list,
+        cascade="all",
         passive_deletes=True,
         lazy="selectin",
     )
@@ -107,6 +108,7 @@ class AnnotationProject(Base):
     annotation_project_tags: orm.Mapped[list["AnnotationProjectTag"]] = orm.relationship(
         "AnnotationProjectTag",
         default_factory=list,
+        cascade="all",
         passive_deletes=True,
     )
 

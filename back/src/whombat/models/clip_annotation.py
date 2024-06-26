@@ -73,6 +73,7 @@ class ClipAnnotation(Base):
         "SoundEventAnnotation",
         back_populates="clip_annotation",
         default_factory=list,
+        cascade="all",
         passive_deletes=True,
         repr=False,
         init=False,
@@ -100,12 +101,14 @@ class ClipAnnotation(Base):
     # Secondary relations
     clip_annotation_notes: orm.Mapped[list["ClipAnnotationNote"]] = orm.relationship(
         default_factory=list,
+        cascade="all",
         passive_deletes=True,
         repr=False,
         init=False,
     )
     clip_annotation_tags: orm.Mapped[list["ClipAnnotationTag"]] = orm.relationship(
         default_factory=list,
+        cascade="all",
         passive_deletes=True,
         repr=False,
         init=False,
@@ -114,6 +117,7 @@ class ClipAnnotation(Base):
     # Backrefs
     annotation_task: orm.Mapped["AnnotationTask"] = orm.relationship(
         back_populates="clip_annotation",
+        cascade="all",
         passive_deletes=True,
         init=False,
     )
@@ -130,6 +134,7 @@ class ClipAnnotation(Base):
         init=False,
         repr=False,
         default_factory=list,
+        cascade="all",
         passive_deletes=True,
     )
 

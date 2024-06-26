@@ -99,6 +99,7 @@ class Dataset(Base):
         init=False,
         repr=False,
         back_populates="dataset",
+        cascade="all",
         passive_deletes=True,
         default_factory=list,
     )
@@ -163,6 +164,7 @@ class DatasetRecording(Base):
         init=False,
         repr=False,
         back_populates="recording_datasets",
+        cascade="all",
         passive_deletes=True,
         lazy="joined",
     )

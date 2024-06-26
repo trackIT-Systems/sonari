@@ -98,6 +98,7 @@ class Clip(Base):
         "ClipFeature",
         back_populates="clip",
         default_factory=list,
+        cascade="all",
         passive_deletes=True,
         repr=False,
         lazy="selectin",

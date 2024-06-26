@@ -169,10 +169,12 @@ class EvaluationSet(Base):
     evaluation_set_annotations: orm.Mapped[list["EvaluationSetAnnotation"]] = orm.relationship(
         back_populates="evaluation_set",
         default_factory=list,
+        cascade="all",
         passive_deletes=True,
     )
     evaluation_set_tags: orm.Mapped[list["EvaluationSetTag"]] = orm.relationship(
         default_factory=list,
+        cascade="all",
         passive_deletes=True,
         lazy="selectin",
     )
@@ -180,11 +182,13 @@ class EvaluationSet(Base):
     evaluation_set_model_runs: orm.Mapped[list["EvaluationSetModelRun"]] = orm.relationship(
         back_populates="evaluation_set",
         default_factory=list,
+        cascade="all",
         passive_deletes=True,
     )
     evaluation_set_user_runs: orm.Mapped[list["EvaluationSetUserRun"]] = orm.relationship(
         back_populates="evaluation_set",
         default_factory=list,
+        cascade="all",
         passive_deletes=True,
     )
 

@@ -117,6 +117,7 @@ class SoundEventAnnotation(Base):
     # Secondary relationships
     sound_event_annotation_notes: orm.Mapped[list["SoundEventAnnotationNote"]] = orm.relationship(
         back_populates="sound_event_annotation",
+        cascade="all",
         passive_deletes=True,
         init=False,
         repr=False,
@@ -125,6 +126,7 @@ class SoundEventAnnotation(Base):
     )
     sound_event_annotation_tags: orm.Mapped[list["SoundEventAnnotationTag"]] = orm.relationship(
         default_factory=list,
+        cascade="all",
         passive_deletes=True,
         repr=False,
         init=False,

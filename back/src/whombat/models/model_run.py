@@ -89,11 +89,13 @@ class ModelRun(Base):
     model_run_predictions: orm.Mapped[list["ModelRunPrediction"]] = orm.relationship(
         init=False,
         repr=False,
+        cascade="all",
         passive_deletes=True,
     )
     model_run_evaluations: orm.Mapped[list["ModelRunEvaluation"]] = orm.relationship(
         init=False,
         repr=False,
+        cascade="all",
         passive_deletes=True,
     )
 
@@ -108,6 +110,7 @@ class ModelRun(Base):
     )
     evaluation_set_model_runs: orm.Mapped[list["EvaluationSetModelRun"]] = orm.relationship(
         back_populates="model_run",
+        cascade="all",
         passive_deletes=True,
         init=False,
         repr=False,

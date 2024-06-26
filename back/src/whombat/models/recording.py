@@ -166,6 +166,7 @@ class Recording(Base):
     features: orm.Mapped[list["RecordingFeature"]] = orm.relationship(
         back_populates="recording",
         default_factory=list,
+        cascade="all",
         passive_deletes=True,
         lazy="selectin",
     )
@@ -179,12 +180,14 @@ class Recording(Base):
 
     # Secondary relationships
     recording_notes: orm.Mapped[list["RecordingNote"]] = orm.relationship(
+        cascade="all",
         passive_deletes=True,
         back_populates="recording",
         default_factory=list,
         lazy="selectin",
     )
     recording_tags: orm.Mapped[list["RecordingTag"]] = orm.relationship(
+        cascade="all",
         passive_deletes=True,
         back_populates="recording",
         default_factory=list,
@@ -200,12 +203,14 @@ class Recording(Base):
         back_populates="recording",
         default_factory=list,
         init=False,
+        cascade="all",
         passive_deletes=True,
         repr=False,
     )
     recording_datasets: orm.Mapped[list["DatasetRecording"]] = orm.relationship(
         init=False,
         repr=False,
+        cascade="all",
         passive_deletes=True,
         back_populates="recording",
         default_factory=list,
@@ -357,6 +362,7 @@ class RecordingFeature(Base):
         back_populates="features",
         init=False,
         repr=False,
+        cascade="all",
         passive_deletes=True,
     )
     feature_name: orm.Mapped[FeatureName] = orm.relationship(
@@ -402,6 +408,7 @@ class RecordingOwner(Base):
         back_populates="recording_owners",
         init=False,
         repr=False,
+        cascade="all",
         passive_deletes=True,
     )
     user: orm.Mapped[User] = orm.relationship(

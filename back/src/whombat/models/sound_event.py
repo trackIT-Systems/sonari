@@ -105,6 +105,7 @@ class SoundEvent(Base):
     features: orm.Mapped[list["SoundEventFeature"]] = orm.relationship(
         "SoundEventFeature",
         back_populates="sound_event",
+        cascade="all",
         passive_deletes=True,
         init=False,
         repr=False,
@@ -173,6 +174,7 @@ class SoundEventFeature(Base):
     # Relations
     sound_event: orm.Mapped[SoundEvent] = orm.relationship(
         back_populates="features",
+        cascade="all",
         passive_deletes=True,
         init=False,
         repr=False,

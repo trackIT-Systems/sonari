@@ -86,11 +86,13 @@ class UserRun(Base):
     user_run_predictions: orm.Mapped[list["UserRunPrediction"]] = orm.relationship(
         init=False,
         repr=False,
+        cascade="all",
         passive_deletes=True,
     )
     user_run_evaluations: orm.Mapped[list["UserRunEvaluation"]] = orm.relationship(
         init=False,
         repr=False,
+        cascade="all",
         passive_deletes=True,
     )
 

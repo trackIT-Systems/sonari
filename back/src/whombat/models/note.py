@@ -116,6 +116,7 @@ class Note(Base):
         repr=False,
         back_populates="note",
         single_parent=True,
+        cascade="all",
         passive_deletes=True,
     )
 
@@ -134,6 +135,7 @@ class Note(Base):
         repr=False,
         back_populates="note",
         single_parent=True,
+        cascade="all",
         passive_deletes=True,
     )
 
@@ -152,5 +154,6 @@ class Note(Base):
         repr=False,
         back_populates="note",
         single_parent=True,
+        cascade="all",
         passive_deletes=True,
     )

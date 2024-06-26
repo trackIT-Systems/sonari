@@ -84,12 +84,14 @@ class Evaluation(Base):
         back_populates="evaluation",
         init=False,
         repr=False,
+        cascade="all",
         passive_deletes=True,
         lazy="selectin",
     )
     clip_evaluations: orm.Mapped[list[ClipEvaluation]] = orm.relationship(
         back_populates="evaluation",
         default_factory=list,
+        cascade="all",
         passive_deletes=True,
         init=False,
         repr=False,

@@ -99,6 +99,7 @@ class ClipEvaluation(Base):
     )
     sound_event_evaluations: orm.Mapped[list[SoundEventEvaluation]] = orm.relationship(
         back_populates="clip_evaluation",
+        cascade="all",
         passive_deletes=True,
         init=False,
         repr=False,
@@ -107,6 +108,7 @@ class ClipEvaluation(Base):
     )
     metrics: orm.Mapped[list["ClipEvaluationMetric"]] = orm.relationship(
         back_populates="clip_evaluation",
+        cascade="all",
         passive_deletes=True,
         init=False,
         repr=False,

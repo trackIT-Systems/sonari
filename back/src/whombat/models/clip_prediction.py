@@ -62,6 +62,7 @@ class ClipPrediction(Base):
         lazy="joined",
     )
     tags: orm.Mapped[list["ClipPredictionTag"]] = orm.relationship(
+        cascade="all",
         passive_deletes=True,
         init=False,
         repr=False,
@@ -70,6 +71,7 @@ class ClipPrediction(Base):
     )
     sound_events: orm.Mapped[list[SoundEventPrediction]] = orm.relationship(
         back_populates="clip_prediction",
+        cascade="all",
         passive_deletes=True,
         init=False,
         repr=False,
