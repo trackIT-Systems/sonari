@@ -6,7 +6,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends
 from soundevent.data import AnnotationState
 
-from whombat import api, schemas
+from whombat import api, models, schemas
 from whombat.filters.annotation_tasks import AnnotationTaskFilter
 from whombat.filters.clips import UUIDFilter as ClipUUIDFilter
 from whombat.routes.dependencies import Session, get_current_user_dependency
@@ -85,6 +85,7 @@ def get_annotation_tasks_router(settings: WhombatSettings) -> APIRouter:
             offset=offset,
             filters=[filter],
             sort_by=sort_by,
+            noloads=[models.AnnotationTask.clip, models.AnnotationTask.clip_annotation],
         )
         return schemas.Page(
             items=tasks,

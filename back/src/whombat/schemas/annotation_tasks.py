@@ -1,5 +1,6 @@
 """Schemas for annotation tasks."""
 
+from typing import Optional
 from uuid import UUID
 
 from pydantic import BaseModel, Field
@@ -52,10 +53,10 @@ class AnnotationTask(BaseSchema):
     status_badges: list[AnnotationStatusBadge]
     """Status badges for the task."""
 
-    clip: Clip
+    clip: Optional[Clip]
     """Clip of the task."""
 
-    clip_annotation: ClipAnnotation
+    clip_annotation: Optional[ClipAnnotation]
     """Clip annotation for the task."""
 
 

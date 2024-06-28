@@ -10,7 +10,7 @@ from sqlalchemy import Result, Select, func, insert, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.inspection import inspect
-from sqlalchemy.orm import InstrumentedAttribute
+from sqlalchemy.orm import InstrumentedAttribute, noload
 from sqlalchemy.sql._typing import _ColumnExpressionArgument
 from sqlalchemy.sql.expression import ColumnElement
 
@@ -238,6 +238,7 @@ async def get_objects_from_query(
     offset: int | None = 0,
     filters: Sequence[Filter | _ColumnExpressionArgument] | None = None,
     sort_by: _ColumnExpressionArgument | str | None = None,
+    noloads: list[Any] | None = None,
 ) -> tuple[Result[Any], int]:
     """Get a list of objects from a query.
 
@@ -266,6 +267,9 @@ async def get_objects_from_query(
         The total number of objects. This is the number of objects that would
         have been returned if no limit or offset was applied.
     """
+    for nl in noloads or []:
+        query = query.options(noload(nl))
+
     for filter_ in filters or []:
         if isinstance(filter_, Filter):
             query = filter_.filter(query)
@@ -297,6 +301,7 @@ async def get_objects(
     offset: int | None = 0,
     filters: Sequence[Filter | _ColumnExpressionArgument] | None = None,
     sort_by: _ColumnExpressionArgument | str | None = None,
+    noloads: list[Any] | None = None,
 ) -> tuple[Sequence[A], int]:
     """Get all objects.
 
@@ -332,6 +337,7 @@ async def get_objects(
         offset=offset,
         filters=filters,
         sort_by=sort_by,
+        noloads=noloads,
     )
     return result.unique().scalars().all(), count
 

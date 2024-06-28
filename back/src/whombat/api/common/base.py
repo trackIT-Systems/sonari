@@ -104,6 +104,7 @@ class BaseAPI(
         offset: int | None = 0,
         filters: Sequence[Filter | _ColumnExpressionArgument] | None = None,
         sort_by: _ColumnExpressionArgument | str | None = "-created_on",
+        noloads: list[Any] | None = None,
     ) -> tuple[Sequence[WhombatSchema], int]:
         """Get many objects.
 
@@ -135,6 +136,7 @@ class BaseAPI(
             offset=offset,
             filters=filters,
             sort_by=sort_by,
+            noloads=noloads,
         )
         return [self._schema.model_validate(obj) for obj in objs], count
 
