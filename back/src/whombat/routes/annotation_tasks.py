@@ -79,13 +79,17 @@ def get_annotation_tasks_router(settings: WhombatSettings) -> APIRouter:
         sort_by: str = "-created_on",
     ):
         """Get a page of annotation tasks."""
+        if limit == -1:
+            noloads = [models.AnnotationTask.clip, models.AnnotationTask.clip_annotation]
+        else:
+            noloads = None
         tasks, total = await api.annotation_tasks.get_many(
             session,
             limit=limit,
             offset=offset,
             filters=[filter],
             sort_by=sort_by,
-            noloads=[models.AnnotationTask.clip, models.AnnotationTask.clip_annotation],
+            noloads=noloads,
         )
         return schemas.Page(
             items=tasks,
