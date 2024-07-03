@@ -77,14 +77,17 @@ class ClipEvaluation(Base):
     evaluation_id: orm.Mapped[int] = orm.mapped_column(
         ForeignKey("evaluation.id", ondelete="CASCADE"),
         nullable=False,
+        index=True,
     )
     clip_annotation_id: orm.Mapped[int] = orm.mapped_column(
         ForeignKey("clip_annotation.id", ondelete="CASCADE"),
         nullable=False,
+        index=True,
     )
     clip_prediction_id: orm.Mapped[int] = orm.mapped_column(
         ForeignKey("clip_prediction.id", ondelete="CASCADE"),
         nullable=False,
+        index=True,
     )
     score: orm.Mapped[float] = orm.mapped_column(nullable=False)
 
@@ -164,10 +167,12 @@ class ClipEvaluationMetric(Base):
     clip_evaluation_id: orm.Mapped[int] = orm.mapped_column(
         ForeignKey("clip_evaluation.id", ondelete="CASCADE"),
         nullable=False,
+        index=True,
     )
     feature_name_id: orm.Mapped[int] = orm.mapped_column(
         ForeignKey("feature_name.id", ondelete="CASCADE"),
         nullable=False,
+        index=True,
     )
     value: orm.Mapped[float] = orm.mapped_column(nullable=False)
     name: AssociationProxy[str] = association_proxy(

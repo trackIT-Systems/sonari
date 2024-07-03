@@ -115,6 +115,8 @@ class Tag(Base):
         init=False,
         repr=False,
         default_factory=list,
+        passive_deletes=True,
+        cascade="all, delete-orphan",
     )
     sound_event_annotations: orm.Mapped[list["SoundEventAnnotation"]] = orm.relationship(
         back_populates="tags",
@@ -129,6 +131,8 @@ class Tag(Base):
         init=False,
         repr=False,
         default_factory=list,
+        cascade="all, delete-orphan",
+        passive_deletes=True,
     )
     clip_annotations: orm.Mapped[list["ClipAnnotation"]] = orm.relationship(
         back_populates="tags",
@@ -137,6 +141,7 @@ class Tag(Base):
         repr=False,
         viewonly=True,
         default_factory=list,
+        cascade="all, delete-orphan",
     )
     clip_annotation_tags: orm.Mapped[list["ClipAnnotationTag"]] = orm.relationship(
         back_populates="tag",
@@ -149,6 +154,8 @@ class Tag(Base):
         init=False,
         repr=False,
         default_factory=list,
+        cascade="all, delete-orphan",
+        passive_deletes=True,
     )
     annotation_projects: orm.Mapped[list["AnnotationProject"]] = orm.relationship(
         back_populates="tags",
@@ -163,6 +170,8 @@ class Tag(Base):
         init=False,
         repr=False,
         default_factory=list,
+        cascade="all, delete-orphan",
+        passive_deletes=True,
     )
     sound_event_prediction_tags: orm.Mapped[list["SoundEventPredictionTag"]] = orm.relationship(
         back_populates="tag",
@@ -175,4 +184,6 @@ class Tag(Base):
         init=False,
         repr=False,
         default_factory=list,
+        cascade="all, delete-orphan",
+        passive_deletes=True,
     )

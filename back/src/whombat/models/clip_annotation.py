@@ -62,6 +62,7 @@ class ClipAnnotation(Base):
     clip_id: orm.Mapped[int] = orm.mapped_column(
         ForeignKey("clip.id", ondelete="CASCADE"),
         nullable=False,
+        index=True,
     )
 
     # Relations
@@ -174,9 +175,18 @@ class ClipAnnotationTag(Base):
     )
 
     id: orm.Mapped[int] = orm.mapped_column(primary_key=True, init=False)
-    clip_annotation_id: orm.Mapped[int] = orm.mapped_column(ForeignKey("clip_annotation.id", ondelete="CASCADE"))
-    tag_id: orm.Mapped[int] = orm.mapped_column(ForeignKey("tag.id"))
-    created_by_id: orm.Mapped[Optional[int]] = orm.mapped_column(ForeignKey("user.id"))
+    clip_annotation_id: orm.Mapped[int] = orm.mapped_column(
+        ForeignKey("clip_annotation.id", ondelete="CASCADE"),
+        index=True,
+    )
+    tag_id: orm.Mapped[int] = orm.mapped_column(
+        ForeignKey("tag.id", ondelete="CASCADE"),
+        index=True,
+    )
+    created_by_id: orm.Mapped[Optional[int]] = orm.mapped_column(
+        ForeignKey("user.id"),
+        index=True,
+    )
 
     # Relations
     tag: orm.Mapped[Tag] = orm.relationship(
@@ -224,8 +234,14 @@ class ClipAnnotationNote(Base):
     )
 
     id: orm.Mapped[int] = orm.mapped_column(primary_key=True, init=False)
-    clip_annotation_id: orm.Mapped[int] = orm.mapped_column(ForeignKey("clip_annotation.id", ondelete="CASCADE"))
-    note_id: orm.Mapped[int] = orm.mapped_column(ForeignKey("note.id", ondelete="CASCADE"))
+    clip_annotation_id: orm.Mapped[int] = orm.mapped_column(
+        ForeignKey("clip_annotation.id", ondelete="CASCADE"),
+        index=True,
+    )
+    note_id: orm.Mapped[int] = orm.mapped_column(
+        ForeignKey("note.id", ondelete="CASCADE"),
+        index=True,
+    )
 
     # Relations
     clip_annotation: orm.Mapped[ClipAnnotation] = orm.relationship(

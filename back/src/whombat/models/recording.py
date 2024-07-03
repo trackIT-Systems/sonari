@@ -243,11 +243,13 @@ class RecordingNote(Base):
         ForeignKey("recording.id", ondelete="CASCADE"),
         nullable=False,
         primary_key=True,
+        index=True,
     )
     note_id: orm.Mapped[int] = orm.mapped_column(
         ForeignKey("note.id", ondelete="CASCADE"),
         nullable=False,
         primary_key=True,
+        index=True,
     )
     recording: orm.Mapped[Recording] = orm.relationship(
         back_populates="recording_notes",
@@ -287,11 +289,13 @@ class RecordingTag(Base):
         ForeignKey("recording.id", ondelete="CASCADE"),
         nullable=False,
         primary_key=True,
+        index=True,
     )
     tag_id: orm.Mapped[int] = orm.mapped_column(
-        ForeignKey("tag.id"),
+        ForeignKey("tag.id", ondelete="CASCADE"),
         nullable=False,
         primary_key=True,
+        index=True,
     )
     recording: orm.Mapped[Recording] = orm.relationship(
         back_populates="recording_tags",
@@ -345,11 +349,13 @@ class RecordingFeature(Base):
         ForeignKey("recording.id", ondelete="CASCADE"),
         nullable=False,
         primary_key=True,
+        index=True,
     )
     feature_name_id: orm.Mapped[int] = orm.mapped_column(
         ForeignKey("feature_name.id", ondelete="CASCADE"),
         nullable=False,
         primary_key=True,
+        index=True,
     )
     value: orm.Mapped[float] = orm.mapped_column(nullable=False)
     name: AssociationProxy[str] = association_proxy(
@@ -399,11 +405,13 @@ class RecordingOwner(Base):
         ForeignKey("recording.id", ondelete="CASCADE"),
         nullable=False,
         primary_key=True,
+        index=True,
     )
     user_id: orm.Mapped[UUID] = orm.mapped_column(
         ForeignKey("user.id"),
         nullable=False,
         primary_key=True,
+        index=True,
     )
     recording: orm.Mapped[Recording] = orm.relationship(
         back_populates="recording_owners",

@@ -93,6 +93,7 @@ class SoundEvent(Base):
     recording_id: orm.Mapped[int] = orm.mapped_column(
         ForeignKey("recording.id", ondelete="CASCADE"),
         nullable=False,
+        index=True,
     )
     geometry_type: orm.Mapped[str] = orm.mapped_column(nullable=False)
     geometry: orm.Mapped[Geometry] = orm.mapped_column(nullable=False)
@@ -118,6 +119,8 @@ class SoundEvent(Base):
         back_populates="sound_event",
         init=False,
         repr=False,
+        passive_deletes=True,
+        cascade="all, delete-orphan",
     )
     sound_event_prediction: orm.Mapped[Optional["SoundEventPrediction"]] = orm.relationship(
         back_populates="sound_event",
@@ -158,11 +161,13 @@ class SoundEventFeature(Base):
         ForeignKey("sound_event.id", ondelete="CASCADE"),
         nullable=False,
         primary_key=True,
+        index=True,
     )
     feature_name_id: orm.Mapped[int] = orm.mapped_column(
         ForeignKey("feature_name.id", ondelete="CASCADE"),
         nullable=False,
         primary_key=True,
+        index=True,
     )
     value: orm.Mapped[float] = orm.mapped_column(nullable=False)
     name: AssociationProxy[str] = association_proxy(

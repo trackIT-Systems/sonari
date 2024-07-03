@@ -70,6 +70,7 @@ class Note(Base):
     created_by_id: orm.Mapped[UUID] = orm.mapped_column(
         ForeignKey("user.id"),
         nullable=True,
+        index=True,
     )
     is_issue: orm.Mapped[bool] = orm.mapped_column(
         nullable=False,

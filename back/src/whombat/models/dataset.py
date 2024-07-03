@@ -145,11 +145,13 @@ class DatasetRecording(Base):
         ForeignKey("dataset.id", ondelete="CASCADE"),
         nullable=False,
         primary_key=True,
+        index=True,
     )
     recording_id: orm.Mapped[int] = orm.mapped_column(
         ForeignKey("recording.id", ondelete="CASCADE"),
         nullable=False,
         primary_key=True,
+        index=True,
     )
     path: orm.Mapped[Path]
 

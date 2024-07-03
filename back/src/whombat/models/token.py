@@ -45,6 +45,7 @@ class AccessToken(Base):
         GUID,
         ForeignKey("user.id", ondelete="CASCADE"),
         nullable=False,
+        index=True,
     )
 
     # NOTE: The hybrid_property decorator is used to make the created_at

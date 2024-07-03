@@ -69,13 +69,16 @@ class SoundEventAnnotation(Base):
     clip_annotation_id: orm.Mapped[int] = orm.mapped_column(
         ForeignKey("clip_annotation.id", ondelete="CASCADE"),
         nullable=False,
+        index=True,
     )
     created_by_id: orm.Mapped[Optional[int]] = orm.mapped_column(
         ForeignKey("user.id"),
+        index=True,
     )
     sound_event_id: orm.Mapped[int] = orm.mapped_column(
-        ForeignKey("sound_event.id"),
+        ForeignKey("sound_event.id", ondelete="CASCADE"),
         nullable=False,
+        index=True,
     )
 
     # Relationships
@@ -159,11 +162,13 @@ class SoundEventAnnotationNote(Base):
         ForeignKey("sound_event_annotation.id", ondelete="CASCADE"),
         primary_key=True,
         nullable=False,
+        index=True,
     )
     note_id: orm.Mapped[int] = orm.mapped_column(
         ForeignKey("note.id", ondelete="CASCADE"),
         primary_key=True,
         nullable=False,
+        index=True,
     )
     sound_event_annotation: orm.Mapped[SoundEventAnnotation] = orm.relationship(
         back_populates="sound_event_annotation_notes",
@@ -209,8 +214,14 @@ class SoundEventAnnotationTag(Base):
     sound_event_annotation_id: orm.Mapped[int] = orm.mapped_column(
         ForeignKey("sound_event_annotation.id", ondelete="CASCADE")
     )
-    tag_id: orm.Mapped[int] = orm.mapped_column(ForeignKey("tag.id"))
-    created_by_id: orm.Mapped[Optional[int]] = orm.mapped_column(ForeignKey("user.id"))
+    tag_id: orm.Mapped[int] = orm.mapped_column(
+        ForeignKey("tag.id", ondelete="CASCADE"),
+        index=True,
+    )
+    created_by_id: orm.Mapped[Optional[int]] = orm.mapped_column(
+        ForeignKey("user.id"),
+        index=True,
+    )
 
     # Relationships
     sound_event_annotation: orm.Mapped[SoundEventAnnotation] = orm.relationship(

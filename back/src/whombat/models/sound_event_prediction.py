@@ -82,13 +82,16 @@ class SoundEventPrediction(Base):
     sound_event_id: orm.Mapped[int] = orm.mapped_column(
         ForeignKey("sound_event.id"),
         nullable=False,
+        index=True,
     )
     clip_prediction_id: orm.Mapped[int] = orm.mapped_column(
         ForeignKey("clip_prediction.id", ondelete="CASCADE"),
         nullable=False,
+        index=True,
     )
     score: orm.Mapped[float] = orm.mapped_column(
         nullable=False,
+        index=True,
     )
 
     # Relations
@@ -155,6 +158,7 @@ class SoundEventPredictionTag(Base):
         ForeignKey("tag.id"),
         primary_key=True,
         nullable=False,
+        index=True,
     )
     score: orm.Mapped[float] = orm.mapped_column(
         nullable=False,

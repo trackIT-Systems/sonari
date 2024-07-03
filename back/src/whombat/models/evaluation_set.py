@@ -225,11 +225,13 @@ class EvaluationSetAnnotation(Base):
         ForeignKey("evaluation_set.id", ondelete="CASCADE"),
         nullable=False,
         primary_key=True,
+        index=True,
     )
     clip_annotation_id: orm.Mapped[int] = orm.mapped_column(
         ForeignKey("clip_annotation.id", ondelete="CASCADE"),
         nullable=False,
         primary_key=True,
+        index=True,
     )
 
     # Relationships
@@ -269,11 +271,13 @@ class EvaluationSetTag(Base):
         ForeignKey("evaluation_set.id", ondelete="CASCADE"),
         nullable=False,
         primary_key=True,
+        index=True,
     )
     tag_id: orm.Mapped[int] = orm.mapped_column(
-        ForeignKey("tag.id"),
+        ForeignKey("tag.id", ondelete="CASCADE"),
         nullable=False,
         primary_key=True,
+        index=True,
     )
 
     # Relationships
@@ -315,11 +319,13 @@ class EvaluationSetModelRun(Base):
         ForeignKey("evaluation_set.id", ondelete="CASCADE"),
         nullable=False,
         primary_key=True,
+        index=True,
     )
     model_run_id: orm.Mapped[int] = orm.mapped_column(
         ForeignKey("model_run.id", ondelete="CASCADE"),
         nullable=False,
         primary_key=True,
+        index=True,
     )
 
     # Relationships
@@ -332,6 +338,7 @@ class EvaluationSetModelRun(Base):
         back_populates="evaluation_set_model_runs",
         init=False,
         repr=False,
+        cascade="all, delete-orphan",
     )
 
 
@@ -360,11 +367,13 @@ class EvaluationSetUserRun(Base):
         ForeignKey("evaluation_set.id", ondelete="CASCADE"),
         nullable=False,
         primary_key=True,
+        index=True,
     )
     user_run_id: orm.Mapped[int] = orm.mapped_column(
         ForeignKey("user_run.id"),
         nullable=False,
         primary_key=True,
+        index=True,
     )
 
     # Relationships

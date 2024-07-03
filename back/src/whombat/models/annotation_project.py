@@ -142,11 +142,13 @@ class AnnotationProjectTag(Base):
         ForeignKey("annotation_project.id", ondelete="CASCADE"),
         nullable=False,
         primary_key=True,
+        index=True,
     )
     tag_id: orm.Mapped[int] = orm.mapped_column(
-        ForeignKey("tag.id"),
+        ForeignKey("tag.id", ondelete="CASCADE"),
         nullable=False,
         primary_key=True,
+        index=True,
     )
 
     # Relationships

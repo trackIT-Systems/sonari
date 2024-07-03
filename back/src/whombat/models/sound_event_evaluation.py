@@ -76,14 +76,17 @@ class SoundEventEvaluation(Base):
     clip_evaluation_id: orm.Mapped[int] = orm.mapped_column(
         ForeignKey("clip_evaluation.id", ondelete="CASCADE"),
         nullable=False,
+        index=True,
     )
     source_id: orm.Mapped[int | None] = orm.mapped_column(
         ForeignKey("sound_event_prediction.id"),
         nullable=True,
+        index=True,
     )
     target_id: orm.Mapped[int | None] = orm.mapped_column(
         ForeignKey("sound_event_annotation.id"),
         nullable=True,
+        index=True,
     )
     affinity: orm.Mapped[float]
     score: orm.Mapped[float]
@@ -148,10 +151,12 @@ class SoundEventEvaluationMetric(Base):
     sound_event_evaluation_id: orm.Mapped[int] = orm.mapped_column(
         ForeignKey("sound_event_evaluation.id", ondelete="CASCADE"),
         nullable=False,
+        index=True,
     )
     feature_name_id: orm.Mapped[int] = orm.mapped_column(
         ForeignKey("feature_name.id", ondelete="CASCADE"),
         nullable=False,
+        index=True,
     )
     value: orm.Mapped[float] = orm.mapped_column(
         nullable=False,

@@ -53,6 +53,7 @@ class ClipPrediction(Base):
     clip_id: orm.Mapped[int] = orm.mapped_column(
         ForeignKey("clip.id", ondelete="CASCADE"),
         nullable=False,
+        index=True,
     )
 
     # Relations
@@ -115,11 +116,13 @@ class ClipPredictionTag(Base):
         ForeignKey("clip_prediction.id", ondelete="CASCADE"),
         primary_key=True,
         nullable=False,
+        index=True,
     )
     tag_id: orm.Mapped[int] = orm.mapped_column(
-        ForeignKey("tag.id"),
+        ForeignKey("tag.id", ondelete="CASCADE"),
         primary_key=True,
         nullable=False,
+        index=True,
     )
     score: orm.Mapped[float] = orm.mapped_column(
         nullable=False,

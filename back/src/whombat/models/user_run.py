@@ -60,6 +60,7 @@ class UserRun(Base):
     user_id: orm.Mapped[int] = orm.mapped_column(
         ForeignKey("user.id"),
         nullable=False,
+        index=True,
     )
 
     # Relations
@@ -125,11 +126,13 @@ class UserRunPrediction(Base):
         ForeignKey("user_run.id", ondelete="CASCADE"),
         nullable=False,
         primary_key=True,
+        index=True,
     )
     clip_prediction_id: orm.Mapped[int] = orm.mapped_column(
         ForeignKey("clip_prediction.id"),
         nullable=False,
         primary_key=True,
+        index=True,
     )
 
 
@@ -143,14 +146,17 @@ class UserRunEvaluation(Base):
         ForeignKey("user_run.id", ondelete="CASCADE"),
         nullable=False,
         primary_key=True,
+        index=True,
     )
     evaluation_set_id: orm.Mapped[int] = orm.mapped_column(
         ForeignKey("evaluation_set.id"),
         nullable=False,
         primary_key=True,
+        index=True,
     )
     evaluation_id: orm.Mapped[int] = orm.mapped_column(
         ForeignKey("evaluation.id", ondelete="CASCADE"),
         nullable=False,
         primary_key=True,
+        index=True,
     )

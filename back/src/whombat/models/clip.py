@@ -82,7 +82,11 @@ class Clip(Base):
 
     id: orm.Mapped[int] = orm.mapped_column(primary_key=True, init=False)
     uuid: orm.Mapped[UUID] = orm.mapped_column(default_factory=uuid4, kw_only=True, unique=True)
-    recording_id: orm.Mapped[int] = orm.mapped_column(ForeignKey("recording.id", ondelete="CASCADE"), nullable=False)
+    recording_id: orm.Mapped[int] = orm.mapped_column(
+        ForeignKey("recording.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
     start_time: orm.Mapped[float] = orm.mapped_column(nullable=False)
     end_time: orm.Mapped[float] = orm.mapped_column(nullable=False)
     score: orm.Mapped[Optional[float]] = orm.mapped_column(default=None)
@@ -137,11 +141,13 @@ class ClipFeature(Base):
         ForeignKey("clip.id", ondelete="CASCADE"),
         nullable=False,
         primary_key=True,
+        index=True,
     )
     feature_name_id: orm.Mapped[int] = orm.mapped_column(
         ForeignKey("feature_name.id", ondelete="CASCADE"),
         nullable=False,
         primary_key=True,
+        index=True,
     )
     value: orm.Mapped[float] = orm.mapped_column(nullable=False)
     name: AssociationProxy[str] = association_proxy(

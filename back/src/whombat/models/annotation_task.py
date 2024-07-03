@@ -76,14 +76,17 @@ class AnnotationTask(Base):
     annotation_project_id: orm.Mapped[int] = orm.mapped_column(
         ForeignKey("annotation_project.id", ondelete="CASCADE"),
         nullable=False,
+        index=True,
     )
     clip_id: orm.Mapped[int] = orm.mapped_column(
         ForeignKey("clip.id", ondelete="CASCADE"),
         nullable=False,
+        index=True,
     )
     clip_annotation_id: orm.Mapped[int] = orm.mapped_column(
         ForeignKey("clip_annotation.id", ondelete="CASCADE"),
         nullable=True,
+        index=True,
     )
     uuid: orm.Mapped[UUID] = orm.mapped_column(
         default_factory=uuid4,
@@ -157,9 +160,11 @@ class AnnotationStatusBadge(Base):
     annotation_task_id: orm.Mapped[int] = orm.mapped_column(
         ForeignKey("annotation_task.id", ondelete="CASCADE"),
         nullable=False,
+        index=True,
     )
     user_id: orm.Mapped[Optional[UUID]] = orm.mapped_column(
         ForeignKey("user.id"),
+        index=True,
     )
     state: orm.Mapped[data.AnnotationState]
 

@@ -133,10 +133,12 @@ class EvaluationMetric(Base):
     evaluation_id: orm.Mapped[int] = orm.mapped_column(
         ForeignKey("evaluation.id", ondelete="CASCADE"),
         nullable=False,
+        index=True,
     )
     feature_name_id: orm.Mapped[int] = orm.mapped_column(
         ForeignKey("feature_name.id", ondelete="CASCADE"),
         nullable=False,
+        index=True,
     )
     value: orm.Mapped[float] = orm.mapped_column(nullable=False)
     name: AssociationProxy[str] = association_proxy(

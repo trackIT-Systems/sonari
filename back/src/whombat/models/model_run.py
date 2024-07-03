@@ -130,11 +130,13 @@ class ModelRunPrediction(Base):
         ForeignKey("model_run.id", ondelete="CASCADE"),
         nullable=False,
         primary_key=True,
+        index=True,
     )
     clip_prediction_id: orm.Mapped[int] = orm.mapped_column(
-        ForeignKey("clip_prediction.id"),
+        ForeignKey("clip_prediction.id", ondelete="CASCADE"),
         nullable=False,
         primary_key=True,
+        index=True,
     )
 
 
@@ -153,14 +155,17 @@ class ModelRunEvaluation(Base):
         ForeignKey("model_run.id", ondelete="CASCADE"),
         nullable=False,
         primary_key=True,
+        index=True,
     )
     evaluation_set_id: orm.Mapped[int] = orm.mapped_column(
-        ForeignKey("evaluation_set.id"),
+        ForeignKey("evaluation_set.id", ondelete="CASCADE"),
         nullable=False,
         primary_key=True,
+        index=True,
     )
     evaluation_id: orm.Mapped[int] = orm.mapped_column(
         ForeignKey("evaluation.id", ondelete="CASCADE"),
         nullable=False,
         primary_key=True,
+        index=True,
     )
