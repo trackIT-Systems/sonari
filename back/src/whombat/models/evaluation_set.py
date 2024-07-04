@@ -338,7 +338,6 @@ class EvaluationSetModelRun(Base):
         back_populates="evaluation_set_model_runs",
         init=False,
         repr=False,
-        cascade="all, delete-orphan",
     )
 
 
