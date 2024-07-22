@@ -7,13 +7,13 @@ import {
   AddIcon,
   CompleteIcon,
   EditIcon,
+  InformationCircleIcon,
   NeedsReviewIcon,
   VerifiedIcon,
 } from "@/components/icons";
 import Link from "@/components/Link";
 import Loading from "@/components/Loading";
 import MetricBadge from "@/components/MetricBadge";
-import ProgressBar from "@/components/ProgressBar";
 import useAnnotationTasks from "@/hooks/api/useAnnotationTasks";
 import { computeAnnotationTasksProgress } from "@/utils/annotation_tasks";
 
@@ -36,13 +36,14 @@ export default function ProjectProgress({
     pageSize: -1,
   });
 
-  const { missing, needReview, completed, verified } = useMemo(() => {
+  const { missing, needReview, completed, verified, total } = useMemo(() => {
     if (isLoading || annotationTasks == null) {
       return {
         missing: 0,
         needReview: 0,
         completed: 0,
         verified: 0,
+        total: 0
       };
     }
     return computeAnnotationTasksProgress(annotationTasks);
@@ -72,6 +73,7 @@ export default function ProjectProgress({
           needReview={needReview}
           completed={completed}
           verified={verified}
+          total={total}
         />
       )}
     </Card>
@@ -97,6 +99,7 @@ function ProgressReport({
   needReview,
   completed,
   verified,
+  total,
 }: {
   annotationTasks: any;
   isLoading: boolean;
@@ -104,10 +107,17 @@ function ProgressReport({
   needReview: number;
   completed: number;
   verified: number;
+  total: number,
 }) {
   return (
     <>
       <div className="flex flex-row gap-2 justify-around">
+        <MetricBadge
+          icon={<InformationCircleIcon className="inline-block w-8 h-8 text-gray-500" />}
+          title="Total"
+          value={total}
+          isLoading={isLoading}
+        />
         <MetricBadge
           icon={<EditIcon className="inline-block w-8 h-8 text-blue-500" />}
           title="Remaining"
@@ -139,7 +149,7 @@ function ProgressReport({
           isLoading={isLoading}
         />
       </div>
-      <div className="mt-4">
+      {/* <div className="mt-4">
         <div className="mb-2 text-stone-500">
           Total tasks: {annotationTasks.length}
         </div>
@@ -149,7 +159,7 @@ function ProgressReport({
           verified={verified}
           error={needReview}
         />
-      </div>
+      </div> */}
     </>
   );
 }

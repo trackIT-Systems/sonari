@@ -35,6 +35,24 @@ const tasksFilterDefs: FilterDef<AnnotationTaskFilter>[] = [
     ),
   },
   {
+    field: "completed",
+    name: "Done",
+    render: ({ value, clear }) => (
+      <FilterBadge
+        field="done"
+        value={value ? "Yes" : "No"}
+        onRemove={clear}
+      />
+    ),
+    selector: ({ setFilter }) => (
+      <BooleanFilter onChange={(val) => setFilter("completed", val)} />
+    ),
+    description: "Select only tasks that are done",
+    icon: (
+      <EditIcon className="h-5 w-5 inline-block text-stone-500 mr-1 align-middle" />
+    ),
+  },
+  {
     field: "verified",
     name: "Verified",
     render: ({ value, clear }) => (

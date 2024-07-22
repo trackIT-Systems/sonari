@@ -26,7 +26,7 @@ const annotationTaskFilterDefs: FilterDef<AnnotationTaskFilter>[] = [
       <VerifiedIcon className="h-5 w-5 inline-block text-stone-500 mr-1 align-middle" />
     ),
   },
-      {
+  {
     name: "Rejected",
     field: "rejected",
     selector: ({ setFilter }) => (
@@ -45,7 +45,26 @@ const annotationTaskFilterDefs: FilterDef<AnnotationTaskFilter>[] = [
       <NeedsReviewIcon className="h-5 w-5 inline-block text-stone-500 mr-1 align-middle" />
     ),
   },
-    {
+  {
+    name: "Done",
+    field: "completed",
+    selector: ({ setFilter }) => (
+      <BooleanFilter
+        onChange={(val) => setFilter("completed", val)}
+      />
+    ),
+    render: ({ value, clear }) => (
+      <FilterBadge
+          field="Done"
+          value={value ? "Yes" : "No"}
+          onRemove={clear} />
+    ),
+    description: "Select only annotation tasks that are done.",
+    icon: (
+      <NeedsReviewIcon className="h-5 w-5 inline-block text-stone-500 mr-1 align-middle" />
+    ),
+  },
+  {
     name: "Pending",
     field: "pending",
     selector: ({ setFilter }) => (

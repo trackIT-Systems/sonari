@@ -3,7 +3,7 @@ import type { AnnotationTask } from "@/types";
 export function computeAnnotationTasksProgress(
   annotationTasks: AnnotationTask[],
 ) {
-  let missing = 0;
+  let missing = annotationTasks.length;
   let needReview = 0;
   let completed = 0;
   let verified = 0;
@@ -11,6 +11,7 @@ export function computeAnnotationTasksProgress(
     let isVerified = false;
     let isCompleted = false;
     let needsReview = false;
+    let alreadyMissing = false;
 
     task.status_badges?.forEach(({ state }) => {
       switch (state) {
@@ -26,14 +27,20 @@ export function computeAnnotationTasksProgress(
       }
     });
 
-    if (isVerified && !needsReview) {
+    if (isVerified) {
       verified += 1;
+      if (!alreadyMissing) {
+        missing -= 1;
+        alreadyMissing = true;
+      }
     }
 
-    if (isCompleted && !needsReview) {
+    if (isCompleted) {
       completed += 1;
-    } else {
-      missing += 1;
+      if (!alreadyMissing) {
+        missing -= 1;
+        alreadyMissing = true;
+      }
     }
 
     if (needsReview) {

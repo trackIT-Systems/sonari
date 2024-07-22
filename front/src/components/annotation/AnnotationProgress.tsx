@@ -6,7 +6,6 @@ import FilterMenu from "@/components/filters/FilterMenu";
 import taskFilterDefs from "@/components/filters/tasks";
 import { FilterIcon, NextIcon, PreviousIcon } from "@/components/icons";
 import Toggle from "@/components/inputs/Toggle";
-import ProgressBar from "@/components/ProgressBar";
 import Tooltip from "@/components/Tooltip";
 import Dialog from "@/components/Dialog";
 import KeyboardKey from "@/components/KeyboardKey";
@@ -81,7 +80,7 @@ export default function AnnotationProgress({
             <span className="text-stone-500">#:</span>
             <span className="font-bold text-blue-500">{current}</span>
           </span>
-          <span className="text-sm inline-flex gap-1 items-center whitespace-nowrap">
+          {/* <span className="text-sm inline-flex gap-1 items-center whitespace-nowrap">
             <span className="text-stone-500">Progress:</span>
             <div className="w-36">
               <ProgressBar
@@ -92,7 +91,7 @@ export default function AnnotationProgress({
                 className="mb-0"
               />
             </div>
-          </span>
+          </span> */}
         </div>
         <span className="text-sm inline-flex gap-1 items-center whitespace-nowrap text-stone-500">
           <span>Remaining:</span>
