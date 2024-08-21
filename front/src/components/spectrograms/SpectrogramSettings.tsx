@@ -21,6 +21,7 @@ import ResamplingSettings from "./settings/ResamplingSettings";
 import STFTSettings from "./settings/STFTSettings";
 
 import type { SpectrogramParameters } from "@/types";
+import ConfigPresets from "./settings/ConfigPresets";
 
 export function SpectrogramSettingForm({
   settings,
@@ -80,6 +81,7 @@ export function SpectrogramSettingForm({
 
   return (
     <div className="flex flex-col gap-2">
+      <ConfigPresets control={control} />
       <ResamplingSettings control={control} />
       <STFTSettings constraints={constraints} control={control} />
       <FilteringSettings constraints={constraints} control={control} />

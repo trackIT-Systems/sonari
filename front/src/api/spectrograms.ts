@@ -2,6 +2,7 @@ import {
   DEFAULT_CMAP,
   DEFAULT_FILTER_ORDER,
   DEFAULT_HOP_SIZE,
+  DEFAULT_CONF_PRESET,
   DEFAULT_SCALE,
   DEFAULT_WINDOW,
   DEFAULT_WINDOW_SIZE,
@@ -29,6 +30,7 @@ const DEFAULT_ENDPOINTS = {
 };
 
 export const DEFAULT_SPECTROGRAM_PARAMETERS: SpectrogramParameters = {
+  conf_preset: DEFAULT_CONF_PRESET,
   resample: false,
   scale: DEFAULT_SCALE,
   pcen: false,

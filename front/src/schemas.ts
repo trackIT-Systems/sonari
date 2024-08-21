@@ -4,6 +4,7 @@ import {
   DEFAULT_CMAP,
   DEFAULT_FILTER_ORDER,
   DEFAULT_HOP_SIZE,
+  DEFAULT_CONF_PRESET,
   DEFAULT_SCALE,
   DEFAULT_WINDOW,
   DEFAULT_WINDOW_SIZE,
@@ -305,6 +306,7 @@ export const SpectrogramWindowSchema = z.object({
 
 export const SpectrogramParametersSchema = z
   .object({
+    conf_preset: z.string().default(DEFAULT_CONF_PRESET),
     resample: z.boolean().default(false),
     samplerate: z.coerce
       .number()

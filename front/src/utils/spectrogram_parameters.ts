@@ -38,8 +38,8 @@ export type ParameterConstraints = {
  * based on the samplerate of the audio
  */
 export function computeConstraints(samplerate: number): ParameterConstraints {
-  const minWindowSize = MIN_FFT_SIZE / samplerate;
-  const maxWindowSize = MAX_FFT_SIZE / samplerate;
+  const minWindowSize = MIN_FFT_SIZE / (samplerate/2);
+  const maxWindowSize = MAX_FFT_SIZE / (samplerate/2);
   return {
     windowSize: {
       min: minWindowSize,

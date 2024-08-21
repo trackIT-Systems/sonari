@@ -11,6 +11,7 @@ export const DEFAULT_WINDOW = "blackmanharris";
 export const DEFAULT_SCALE = "dB";
 export const DEFAULT_FILTER_ORDER = 5;
 export const DEFAULT_CMAP = "plasma";
+export const DEFAULT_CONF_PRESET = "hsr";
 
 /* Restrictions on the settings for the STFT computation
  * These are to prevent the user from setting parameters that
@@ -22,7 +23,7 @@ export const MAX_HOP_FRACTION = 1; // 100% of window size
 export const MIN_HOP_FRACTION = 0.01; // 1% of window size
 
 /** Absolute maximum frequency that can be handled by the app */
-export const MAX_FREQ = 5_000_000;
+export const MAX_FREQ = 500_000;
 
 /** Factor to zoom in and out of a spectrogram */
 export const ZOOM_FACTOR = 0.2;

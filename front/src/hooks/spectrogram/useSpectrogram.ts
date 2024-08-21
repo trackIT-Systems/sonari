@@ -183,6 +183,10 @@ export default function useSpectrogram({
     initialViewport,
   );
 
+  let lastConfPreset = useMemo<String>(
+    () => {return initialParameters.conf_preset}, [initialParameters]
+  )
+
   const zoom = function (oldViewport: SpectrogramWindow, in_out: string): SpectrogramWindow {
     let zoom_factor = 1;
     if (in_out === "in") {
@@ -289,6 +293,31 @@ export default function useSpectrogram({
 
   const handleSetParameters = useCallback(
     (parameters: SpectrogramParameters) => {
+      if (parameters.conf_preset != lastConfPreset) {
+        lastConfPreset = parameters.conf_preset
+        switch (parameters.conf_preset) {
+          case "hsr":
+            parameters.window_size = 0.00319;
+            parameters.gamma = 1;
+            parameters.min_dB = -140;
+            break;
+          case "hsrn":
+            parameters.window_size = 0.00319;
+            parameters.gamma = 1.5;
+            parameters.min_dB = -90;
+            break;
+          case "lsr":
+            parameters.window_size = 0.03;
+            parameters.gamma = 1;
+            parameters.min_dB = -140;
+            break;
+          case "lsrn":
+            parameters.window_size = 0.03;
+            parameters.gamma = 1.5;
+            parameters.min_dB = -90;
+            break;
+        }
+      }
       const validated = validateParameters(parameters, recording);
       onParameterChange?.(validated);
       setParameters(validated);
@@ -297,6 +326,7 @@ export default function useSpectrogram({
   );
 
   const handleResetParameters = useCallback(() => {
+    lastConfPreset = initialParameters.conf_preset;
     setParameters(validateParameters(initialParameters, recording));
   }, [initialParameters, recording]);
 
