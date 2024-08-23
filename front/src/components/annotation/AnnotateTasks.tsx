@@ -2,7 +2,6 @@ import { useCallback, useState } from "react";
 
 import { DEFAULT_SPECTROGRAM_PARAMETERS } from "@/api/spectrograms";
 import AnnotationProgress from "@/components/annotation/AnnotationProgress";
-import AnnotationTagPalette from "@/components/annotation/AnnotationTagPalette";
 import RecordingAnnotationContext from "@/components/annotation/RecordingAnnotationContext";
 import SelectedSoundEventAnnotation from "@/components/annotation/SelectedSoundEventAnnotation";
 import AnnotationTaskStatus from "@/components/annotation_tasks/AnnotationTaskStatus";
@@ -205,15 +204,6 @@ export default function AnnotateTasks({
           )}
         </div>
         <div className="w-[30rem] flex-none flex flex-col gap-4">
-          <AnnotationTagPalette
-            tags={tagPalette}
-            tagFilter={tagFilter}
-            onClick={addTag.mutate}
-            onCreateTag={onCreateTag}
-            onAddTag={handleAddTagToPalette}
-            onRemoveTag={handleRemoveTagFromPalette}
-            onClearTags={handleClearTagPalette}
-          />
           <ClipAnnotationTags
             tagFilter={tagFilter}
             clipAnnotation={data}
