@@ -16,7 +16,6 @@ import api from "@/app/api";
 import useAnnotateTasksKeyShortcuts from "@/hooks/annotation/useAnnotateTasksKeyShortcuts";
 import useAnnotationTasks from "@/hooks/api/useAnnotationTasks";
 import { type Filter } from "@/hooks/utils/useFilter";
-import { shuffleArray } from "@/utils/arrays";
 
 import type { AnnotationStatus, AnnotationTask, ClipAnnotation } from "@/types";
 
@@ -55,7 +54,7 @@ type AnnotationControls = {
     value: AnnotationTaskFilter[T],
   ) => void;
   /** Select a random annotation task */
-  selectRandomTask: () => void;
+  getFirstTask: () => void;
   /** Mark the current task as completed */
   markCompleted: UseMutationResult<AnnotationTask, AxiosError, void>;
   /** Mark the current task as rejected */
@@ -71,7 +70,6 @@ const empty = {};
 export default function useAnnotateTasks({
   filter: initialFilter = empty,
   annotationTask: initialTask,
-  shuffle = false,
   onChangeTask,
   onCompleteTask,
   onRejectTask,
@@ -81,8 +79,6 @@ export default function useAnnotateTasks({
   filter?: AnnotationTaskFilter;
   /** Optional, initial annotation task to select */
   annotationTask?: AnnotationTask;
-  /** If true, the annotation tasks will be shuffled */
-  shuffle?: boolean;
   /** Callback when the selected annotation task changes */
   onChangeTask?: (task: AnnotationTask) => void;
   /** Callback when the current task is marked as completed */
@@ -110,11 +106,8 @@ export default function useAnnotateTasks({
   });
 
   const items = useMemo(() => {
-    if (shuffle) {
-      return shuffleArray(initialItems);
-    }
-    return initialItems;
-  }, [initialItems, shuffle]);
+    return initialItems.toSorted((item1, item2) => {return item1.uuid.toLowerCase().localeCompare(item2.uuid.toLowerCase())})
+  }, [initialItems]);
 
   const index = useMemo(() => {
     if (currentTask === null) return -1;
@@ -273,9 +266,9 @@ export default function useAnnotateTasks({
     },
   );
 
-  const selectRandomTask = useCallback(() => {
+  const getFirstTask = useCallback(() => {
     if (items.length === 0) return;
-    const task = items[Math.floor(Math.random() * items.length)];
+    const task = items[0];
     setCurrentTask(task);
     onChangeTask?.(task);
   }, [items, onChangeTask]);
@@ -312,7 +305,7 @@ export default function useAnnotateTasks({
     markRejected,
     markVerified,
     removeBadge,
-    selectRandomTask,
+    getFirstTask,
     _filter: filter,
   };
 }
