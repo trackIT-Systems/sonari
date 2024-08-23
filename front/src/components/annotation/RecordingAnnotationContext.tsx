@@ -64,12 +64,6 @@ export default function RecordingAnnotationContext({
           {recording.time_expansion.toLocaleString()}
         </div>
       </div>
-      <RecordingTagBar
-        label="Recording Tags"
-        recording={recording}
-        onTagClick={onTagClick}
-        disabled
-      />
     </div>
   );
 }
