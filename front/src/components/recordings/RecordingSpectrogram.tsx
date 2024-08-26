@@ -60,6 +60,8 @@ export default function RecordingSpectrogram({
     recording,
     endTime: bounds.time.max,
     startTime: bounds.time.min,
+    withAutoplay: false,
+    onWithAutoplayChange: () => {},
   });
 
   const spectrogram = useSpectrogram({

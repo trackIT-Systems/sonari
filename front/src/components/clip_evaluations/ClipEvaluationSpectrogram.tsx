@@ -73,6 +73,8 @@ export default function ClipEvaluationSpectrogram(props: {
     recording,
     endTime: bounds.time.max,
     startTime: bounds.time.min,
+    withAutoplay: false,
+    onWithAutoplayChange: () => {},
   });
 
   const { seek } = audio;
