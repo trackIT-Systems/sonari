@@ -241,13 +241,13 @@ export default function useSpectrogram({
   const handleZoomIn = useCallback(() => {
       handleZoomDrag(zoom(lastViewport, "in"));
     },
-    [],
+    [handleZoomDrag, zoom, lastViewport],
   )
 
   const handleZoomOut = useCallback(() => {
       handleZoomDrag(zoom(lastViewport, "out"));
     },
-    [],
+    [handleZoomDrag, zoom, lastViewport],
   )
 
   const handleScale = useCallback(
@@ -280,7 +280,7 @@ export default function useSpectrogram({
     handleZoomDrag(lastViewport);
 
     
-  }, [initialViewport]);
+  }, [initialViewport, handleZoomDrag, lastViewport]);
 
   const handleCenterOn = useCallback(
     ({ time, freq }: { time?: number; freq?: number }) => {
@@ -373,7 +373,7 @@ export default function useSpectrogram({
       drawMotions(ctx);
       drawPosition(ctx, viewport)
     },
-    [drawImage, drawMotions, viewport, canDrag, canZoom],
+    [drawImage, drawMotions, viewport, canDrag, canZoom, withSpectrogram],
   );
 
   useSpectrogramKeyShortcuts({

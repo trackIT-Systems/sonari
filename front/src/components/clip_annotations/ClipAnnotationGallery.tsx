@@ -72,6 +72,8 @@ function Spectrogram(props: {
   const { annotation, parameters, onParametersSave, height = 260 } = props;
   return (
     <ClipAnnotationSpectrogram
+      withSpectrogram={true}
+      onWithSpectrogramChange={() => {}}
       clipAnnotation={annotation}
       parameters={parameters}
       onParameterSave={onParametersSave}

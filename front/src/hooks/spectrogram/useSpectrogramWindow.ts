@@ -72,7 +72,7 @@ export default function useSpectrogramWindow({
         }
       }
     },
-    [image, spectrogramWindow, isLoading, isError],
+    [image, spectrogramWindow, isLoading, isError, withSpectrogram],
   );
 
   return {

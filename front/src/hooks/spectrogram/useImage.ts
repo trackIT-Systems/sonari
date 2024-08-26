@@ -55,7 +55,7 @@ export default function useImage({
       setLoading(true);
       setError(null);
     }
-  }, [url]);
+  }, [url, withSpectrogram]);
 
   // Timeout loading after a given time
   const handleOnTimeout = useCallback(() => {
