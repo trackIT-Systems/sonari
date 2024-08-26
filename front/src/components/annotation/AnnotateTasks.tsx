@@ -76,6 +76,16 @@ export default function AnnotateTasks({
     useState<SoundEventAnnotation | null>(null);
   const [tagPalette, setTagPalette] = useState<Tag[]>([]);
 
+
+  const [withSpectrogram, setWithSpectrogram] = useState(true);
+
+  const onWithSpectrogramChange = useCallback(
+    () => {
+      setWithSpectrogram(!withSpectrogram);
+    },
+    [withSpectrogram]
+  )
+
   const tasks = useAnnotationTasks({
     filter: taskFilter,
     annotationTask: annotationTask,
@@ -179,6 +189,8 @@ export default function AnnotateTasks({
                 onParameterSave={onParameterSave}
                 onSelectAnnotation={setSelectedAnnotation}
                 tagFilter={tagFilter}
+                withSpectrogram={withSpectrogram}
+                onWithSpectrogramChange={onWithSpectrogramChange}
                 onCreateTag={onCreateTag}
                 onAddSoundEventTag={onAddSoundEventTag}
                 onRemoveSoundEventTag={onRemoveSoundEventTag}

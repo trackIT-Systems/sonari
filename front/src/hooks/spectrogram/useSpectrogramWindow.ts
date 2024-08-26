@@ -31,11 +31,13 @@ export default function useSpectrogramWindow({
   window: spectrogramWindow,
   parameters = DEFAULT_SPECTROGRAM_PARAMETERS,
   getSpectrogramImageUrl = api.spectrograms.getUrl,
+  withSpectrogram,
 }: {
   recording: Recording;
   window: SpectrogramWindow;
   parameters?: SpectrogramParameters;
   getSpectrogramImageUrl?: GetUrlFn;
+  withSpectrogram: boolean;
 }) {
   // Get the url of the image to load
   const url = useMemo(() => {
@@ -47,7 +49,7 @@ export default function useSpectrogramWindow({
   }, [recording, spectrogramWindow.time, parameters, getSpectrogramImageUrl]);
 
   // Start loading the image
-  const { isLoading, isError, image } = useImage({ url });
+  const { isLoading, isError, image } = useImage({ url, withSpectrogram: withSpectrogram });
 
   // Create a callback to draw the image on a canvas. The callback takes in a
   // canvas context and the current viewport (window). It will draw the image
@@ -55,13 +57,20 @@ export default function useSpectrogramWindow({
   const draw = useCallback(
     (ctx: CanvasRenderingContext2D, view: SpectrogramWindow) => {
       if (isLoading || isError) return;
-
-      drawImage({
-        ctx,
-        image,
-        window: view,
-        bounds: spectrogramWindow,
-      });
+      if (withSpectrogram) {
+        drawImage({
+          ctx,
+          image,
+          window: view,
+          bounds: spectrogramWindow,
+        });
+      } else {
+        {
+          ctx.fillStyle = "rgb(156 163 175)";
+          ctx.roundRect(0, 0, ctx.canvas.width, ctx.canvas.height, 10);
+          ctx.fill();
+        }
+      }
     },
     [image, spectrogramWindow, isLoading, isError],
   );

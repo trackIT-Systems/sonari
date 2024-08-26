@@ -1,5 +1,5 @@
 import useRecordingSegments from "@/hooks/spectrogram/useRecordingSegments";
-import useSpectrogramWindow from "@/hooks/spectrogram/useSpectrogramWindow";
+import useSpectrogramWindow from "./useSpectrogramWindow";
 
 import type {
   Recording,
@@ -11,10 +11,12 @@ export default function useSpectrogramImage({
   recording,
   window,
   parameters,
+  withSpectrogram,
 }: {
   recording: Recording;
   window: SpectrogramWindow;
   parameters: SpectrogramParameters;
+  withSpectrogram: boolean;
 }) {
   // Get a spectrogram segment that covers the window
   const { selected, prev, next } = useRecordingSegments({
@@ -27,6 +29,7 @@ export default function useSpectrogramImage({
     recording,
     window: selected,
     parameters: parameters,
+    withSpectrogram,
   });
 
   // Load the previous and next spectrogram segments in the background
@@ -34,11 +37,13 @@ export default function useSpectrogramImage({
     recording,
     window: prev,
     parameters: parameters,
+    withSpectrogram,
   });
   useSpectrogramWindow({
     recording,
     window: next,
     parameters: parameters,
+    withSpectrogram,
   });
 
   return image;

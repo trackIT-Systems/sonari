@@ -30,12 +30,14 @@ export default function useImage({
   onLoad,
   onError,
   onTimeout,
+  withSpectrogram,
 }: {
   url: string;
   timeout?: number;
   onLoad?: () => void;
   onError?: () => void;
   onTimeout?: () => void;
+  withSpectrogram: boolean;
 }): ImageStatus {
   const ref = useRef<HTMLImageElement>(null);
   const [error, setError] = useState<string | null>(null);
@@ -71,7 +73,11 @@ export default function useImage({
     cancel();
     onLoad?.();
   }, [cancel, onLoad]);
-  useEvent("load", handleOnLoad, ref.current);
+  if (withSpectrogram) {
+    useEvent("load", handleOnLoad, ref.current);
+  } else {
+    useEvent("load", () => {}, null);
+  }
 
   // Handle error events
   const handleOnError = useCallback(() => {
@@ -80,7 +86,11 @@ export default function useImage({
     cancel();
     onError?.();
   }, [cancel, onError]);
-  useEvent("error", handleOnError, ref.current);
+  if (withSpectrogram) {
+    useEvent("error", handleOnError, ref.current);
+  } else {
+    useEvent("error", () => {}, null);
+  }
 
   // Cancel loading on unmount
   useUnmount(() => {
@@ -92,9 +102,9 @@ export default function useImage({
 
   return {
     url,
-    image: ref.current,
-    isLoading: loading,
-    isError: error != null,
+    image: withSpectrogram ? ref.current : new Image(),
+    isLoading: withSpectrogram ?  loading : false,
+    isError: withSpectrogram ? false : error != null,
     error,
   };
 }

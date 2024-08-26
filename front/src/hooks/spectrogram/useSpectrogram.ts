@@ -138,6 +138,7 @@ export default function useSpectrogram({
   onDoubleClick,
   enabled = true,
   withShortcuts = true,
+  withSpectrogram,
 }: {
   recording: Recording;
   dimensions: { width: number; height: number };
@@ -149,19 +150,20 @@ export default function useSpectrogram({
   onDoubleClick?: (dblClickProps: { position: Position }) => void;
   enabled?: boolean;
   withShortcuts?: boolean;
+  withSpectrogram: boolean;
 }): {
   draw: DrawFn;
   props: React.HTMLAttributes<HTMLCanvasElement>;
 } & SpectrogramState &
   SpectrogramControls {
-  const initialBounds = useMemo<SpectrogramWindow>(() => {
-    return (
-      bounds ?? {
-        time: { min: 0, max: recording.duration },
-        freq: { min: 0, max: recording.samplerate / 2 },
-      }
-    );
-  }, [bounds, recording]);
+    const initialBounds = useMemo<SpectrogramWindow>(() => {
+      return (
+        bounds ?? {
+          time: { min: 0, max: recording.duration },
+          freq: { min: 0, max: recording.samplerate / 2 },
+        }
+      );
+    }, [bounds, recording]);
 
   const initialViewport = useMemo<SpectrogramWindow>(() => {
     return initial ?? getInitialViewingWindow({ 
@@ -224,6 +226,7 @@ export default function useSpectrogram({
     recording,
     window: viewport,
     parameters,
+    withSpectrogram,
   });
 
   const handleZoomDrag = useCallback(
@@ -363,8 +366,10 @@ export default function useSpectrogram({
         ctx.canvas.style.cursor = "default";
       }
       drawImage(ctx, viewport);
-      drawTimeAxis(ctx, viewport.time);
-      drawFrequencyAxis(ctx, viewport.freq);
+      if (withSpectrogram) {
+        drawTimeAxis(ctx, viewport.time);
+        drawFrequencyAxis(ctx, viewport.freq);
+      }
       drawMotions(ctx);
       drawPosition(ctx, viewport)
     },

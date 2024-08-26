@@ -6,6 +6,7 @@ import Player from "@/components/audio/Player";
 import Card from "@/components/Card";
 import SpectrogramBar from "@/components/spectrograms/SpectrogramBar";
 import SpectrogramControls from "@/components/spectrograms/SpectrogramControls";
+import DisableSpectrogramButton from "../spectrograms/DisableSpectrogramButton";
 import SpectrogramSettings from "@/components/spectrograms/SpectrogramSettings";
 import SpectrogramTags from "@/components/spectrograms/SpectrogramTags";
 import useAnnotateClip from "@/hooks/annotation/useAnnotateClip";
@@ -38,7 +39,9 @@ export default function ClipAnnotationSpectrogram({
   withSettings = true,
   withAudioShortcuts = true,
   withSpectrogramShortcuts = true,
+  withSpectrogram,
   defaultTags,
+  onWithSpectrogramChange,
   onAddSoundEventTag,
   onRemoveSoundEventTag,
   onCreateSoundEventAnnotation,
@@ -60,6 +63,8 @@ export default function ClipAnnotationSpectrogram({
   withSettings?: boolean;
   withAudioShortcuts?: boolean;
   withSpectrogramShortcuts?: boolean;
+  withSpectrogram: boolean;
+  onWithSpectrogramChange: () => void;
   onParameterSave?: (params: SpectrogramParameters) => void;
   onSelectAnnotation?: (annotation: SoundEventAnnotation | null) => void;
   onCreateSoundEventAnnotation?: (annotation: SoundEventAnnotation) => void;
@@ -88,14 +93,22 @@ export default function ClipAnnotationSpectrogram({
   );
 
   const initial = useMemo(
-    () =>
-      getInitialViewingWindow({
-        startTime: clip.start_time,
-        endTime: clip.end_time,
-        samplerate: recording.samplerate,
-        parameters,
-      }),
-    [recording.samplerate, clip.start_time, clip.end_time, parameters],
+    () => {
+      if (withSpectrogram) {
+        return getInitialViewingWindow({
+          startTime: clip.start_time,
+          endTime: clip.end_time,
+          samplerate: recording.samplerate,
+          parameters,
+        })
+      } else {
+        return {
+          time: { min: clip.start_time, max: clip.end_time },
+          freq: { min: 0, max: recording.samplerate / 2 },
+        }
+      }
+    },
+    [recording.samplerate, clip.start_time, clip.end_time, parameters, bounds],
   );
 
   const audio = useAudio({
@@ -133,6 +146,7 @@ export default function ClipAnnotationSpectrogram({
     onModeChange: handleSpectrogramModeChange,
     enabled: !isAnnotating && !audio.isPlaying,
     withShortcuts: withSpectrogramShortcuts,
+    withSpectrogram: withSpectrogram,
   });
 
   const { centerOn } = spectrogram;
@@ -215,6 +229,10 @@ export default function ClipAnnotationSpectrogram({
   return (
     <Card>
       <div className="flex flex-row gap-4">
+        <DisableSpectrogramButton
+          withSpectrogram={withSpectrogram}
+          onWithSpectrogramChange={onWithSpectrogramChange}
+        />
         {withControls && (
           <SpectrogramControls
             canDrag={spectrogram.canDrag}
@@ -226,7 +244,7 @@ export default function ClipAnnotationSpectrogram({
             onZoomOut={spectrogram.zoomOut}
           />
         )}
-        {!disabled && withControls && (
+        {!disabled && withControls && withSpectrogram && (
           <AnnotationControls
             disabled={disabled}
             isDrawing={annotate.isDrawing}
@@ -240,7 +258,7 @@ export default function ClipAnnotationSpectrogram({
             onSelectGeometryType={annotate.setGeometryType}
           />
         )}
-        {withSettings && (
+        {withSettings && withSpectrogram && (
           <SpectrogramSettings
             samplerate={recording.samplerate}
             settings={spectrogram.parameters}
@@ -268,7 +286,7 @@ export default function ClipAnnotationSpectrogram({
       {withBar && (
         <SpectrogramBar
           bounds={spectrogram.bounds}
-          viewport={spectrogram.viewport}
+          viewport={withSpectrogram ? spectrogram.viewport : spectrogram.bounds}
           onMove={spectrogram.drag}
         />
       )}
