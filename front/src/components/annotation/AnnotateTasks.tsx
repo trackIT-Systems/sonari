@@ -78,12 +78,19 @@ export default function AnnotateTasks({
 
 
   const [withSpectrogram, setWithSpectrogram] = useState(true);
-
   const onWithSpectrogramChange = useCallback(
     () => {
       setWithSpectrogram(!withSpectrogram);
     },
     [withSpectrogram]
+  )
+
+  const [withAutoplay, setWithAutoplay] = useState(false);
+  const onWithAutoplayChange = useCallback(
+    () => {
+      setWithAutoplay(!withAutoplay);
+    },
+    [withAutoplay]
   )
 
   const tasks = useAnnotationTasks({
@@ -191,6 +198,8 @@ export default function AnnotateTasks({
                 tagFilter={tagFilter}
                 withSpectrogram={withSpectrogram}
                 onWithSpectrogramChange={onWithSpectrogramChange}
+                withAutoplay={withAutoplay}
+                onWithAutoplayChange={onWithAutoplayChange}
                 onCreateTag={onCreateTag}
                 onAddSoundEventTag={onAddSoundEventTag}
                 onRemoveSoundEventTag={onRemoveSoundEventTag}

@@ -40,8 +40,10 @@ export default function ClipAnnotationSpectrogram({
   withAudioShortcuts = true,
   withSpectrogramShortcuts = true,
   withSpectrogram,
+  withAutoplay,
   defaultTags,
   onWithSpectrogramChange,
+  onWithAutoplayChange,
   onAddSoundEventTag,
   onRemoveSoundEventTag,
   onCreateSoundEventAnnotation,
@@ -64,7 +66,9 @@ export default function ClipAnnotationSpectrogram({
   withAudioShortcuts?: boolean;
   withSpectrogramShortcuts?: boolean;
   withSpectrogram: boolean;
+  withAutoplay: boolean;
   onWithSpectrogramChange: () => void;
+  onWithAutoplayChange: () => void;
   onParameterSave?: (params: SpectrogramParameters) => void;
   onSelectAnnotation?: (annotation: SoundEventAnnotation | null) => void;
   onCreateSoundEventAnnotation?: (annotation: SoundEventAnnotation) => void;
@@ -116,6 +120,8 @@ export default function ClipAnnotationSpectrogram({
     endTime: bounds.time.max,
     startTime: bounds.time.min,
     withShortcuts: withAudioShortcuts,
+    withAutoplay: withAutoplay,
+    onWithAutoplayChange: onWithAutoplayChange,
   });
 
   const handleSpectrogramModeChange = useCallback(

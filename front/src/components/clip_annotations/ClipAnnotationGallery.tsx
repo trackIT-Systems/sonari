@@ -74,6 +74,8 @@ function Spectrogram(props: {
     <ClipAnnotationSpectrogram
       withSpectrogram={true}
       onWithSpectrogramChange={() => {}}
+      withAutoplay={false}
+      onWithAutoplayChange={() => {}}
       clipAnnotation={annotation}
       parameters={parameters}
       onParameterSave={onParametersSave}

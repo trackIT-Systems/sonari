@@ -14,6 +14,7 @@ export type PlayerControls = {
   setSpeed: (speed: number) => void;
   toggleLoop: () => void;
   togglePlay: () => void;
+  toggleAutoplay: () => void;
 };
 
 export type SpeedOption = {
@@ -30,6 +31,7 @@ export type PlayerState = {
   loop: boolean;
   isPlaying: boolean;
   speedOptions: SpeedOption[];
+  autoplay: boolean;
 };
 
 const LOWEST_SAMPLE_RATE = 8000;
@@ -70,9 +72,13 @@ export default function useAudio({
   startTime = 0,
   speed: initialSpeed,
   withShortcuts = true,
+  withAutoplay,
+  onWithAutoplayChange,
 }: {
   recording: Recording;
   withShortcuts?: boolean;
+  withAutoplay: boolean;
+  onWithAutoplayChange: () => void;
 } & Partial<PlayerState>): PlayerState & PlayerControls {
   const audio = useRef<HTMLAudioElement>(new Audio());
 
@@ -108,13 +114,15 @@ export default function useAudio({
   }
 
   useEffect(() => {
+    console.log(`Autoplay ${withAutoplay}`)
     const { current } = audio;
     current.preload = "auto";
     current.src = initialUrl;
     current.loop = loop;
     current.volume = volume;
+    current.autoplay = withAutoplay;
 
-    setIsPlaying(false);
+    setIsPlaying(withAutoplay ? true : false);
     setTime(startTime);
 
     let timer: number;
@@ -234,6 +242,8 @@ export default function useAudio({
     loop,
     isPlaying,
     speedOptions,
+    autoplay: withAutoplay,
+    toggleAutoplay: onWithAutoplayChange,
     togglePlay: handleTogglePlay,
     play: handlePlay,
     pause: handlePause,
