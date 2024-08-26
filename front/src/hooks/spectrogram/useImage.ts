@@ -51,7 +51,7 @@ export default function useImage({
   // Update the image when the url changes
   useEffect(() => {
     if (ref.current != null) {
-      ref.current.src = url;
+      ref.current.src = withSpectrogram ? url : "";
       setLoading(true);
       setError(null);
     }
@@ -73,11 +73,7 @@ export default function useImage({
     cancel();
     onLoad?.();
   }, [cancel, onLoad]);
-  if (withSpectrogram) {
-    useEvent("load", handleOnLoad, ref.current);
-  } else {
-    useEvent("load", () => {}, null);
-  }
+  useEvent("load", withSpectrogram ? handleOnLoad : () => {}, withSpectrogram ? ref.current : null);
 
   // Handle error events
   const handleOnError = useCallback(() => {
@@ -86,11 +82,7 @@ export default function useImage({
     cancel();
     onError?.();
   }, [cancel, onError]);
-  if (withSpectrogram) {
-    useEvent("error", handleOnError, ref.current);
-  } else {
-    useEvent("error", () => {}, null);
-  }
+  useEvent("error", withSpectrogram ? handleOnError : () => {}, withSpectrogram ? ref.current : null);
 
   // Cancel loading on unmount
   useUnmount(() => {

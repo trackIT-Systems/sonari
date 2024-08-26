@@ -108,7 +108,7 @@ export default function ClipAnnotationSpectrogram({
         }
       }
     },
-    [recording.samplerate, clip.start_time, clip.end_time, parameters, bounds],
+    [recording.samplerate, clip.start_time, clip.end_time, parameters, withSpectrogram],
   );
 
   const audio = useAudio({
