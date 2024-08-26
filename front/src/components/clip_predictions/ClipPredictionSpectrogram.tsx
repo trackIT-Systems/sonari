@@ -85,6 +85,7 @@ export default function ClipPredictionSpectrogram(props: {
     parameters,
     onDoubleClick: handleDoubleClick,
     enabled: !audio.isPlaying,
+    withSpectrogram: true,
   });
 
   const { centerOn } = spectrogram;

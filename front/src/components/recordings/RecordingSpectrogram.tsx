@@ -69,6 +69,7 @@ export default function RecordingSpectrogram({
     initial,
     parameters,
     enabled: !audio.isPlaying,
+    withSpectrogram: true,
   });
 
   const { centerOn } = spectrogram;

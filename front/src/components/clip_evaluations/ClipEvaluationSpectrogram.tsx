@@ -91,6 +91,7 @@ export default function ClipEvaluationSpectrogram(props: {
     parameters,
     onDoubleClick: handleDoubleClick,
     enabled: !audio.isPlaying,
+    withSpectrogram: true,
   });
 
   const { centerOn } = spectrogram;
