@@ -114,7 +114,6 @@ export default function useAudio({
   }
 
   useEffect(() => {
-    console.log(`Autoplay ${withAutoplay}`)
     const { current } = audio;
     current.preload = "auto";
     current.src = initialUrl;
