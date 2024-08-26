@@ -109,7 +109,7 @@ export default function useAudio({
 
   useEffect(() => {
     const { current } = audio;
-    current.preload = "none";
+    current.preload = "auto";
     current.src = initialUrl;
     current.loop = loop;
     current.volume = volume;
