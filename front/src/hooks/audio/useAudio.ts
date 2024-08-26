@@ -100,6 +100,13 @@ export default function useAudio({
     });
   }, [recording, startTime, endTime, speed]);
 
+  const stopAudio = function(audio: HTMLAudioElement, startTime: number) {
+      audio.pause();
+      audio.currentTime = 0;
+      setTime(startTime);
+      setIsPlaying(false);
+  }
+
   useEffect(() => {
     const { current } = audio;
     current.preload = "none";
@@ -147,6 +154,8 @@ export default function useAudio({
 
     return () => {
       cancelAnimationFrame(timer);
+      stopAudio(current, startTime);
+
       current.removeEventListener("play", onPlay);
       current.removeEventListener("pause", onPause);
       current.removeEventListener("error", onError);
@@ -186,10 +195,7 @@ export default function useAudio({
   }, []);
 
   const handleStop = useCallback(() => {
-    audio.current.pause();
-    audio.current.currentTime = 0;
-    setTime(startTime);
-    setIsPlaying(false);
+    stopAudio(audio.current, startTime);
   }, [startTime]);
 
   const handleSetVolume = useCallback((volume: number) => {
