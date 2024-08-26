@@ -67,6 +67,35 @@ type AnnotationControls = {
 
 const empty = {};
 
+function sortAnnotationTasks(a: AnnotationTask, b: AnnotationTask): number {
+
+  // Helper function to get a comparable date-time value
+  const getDateTime = (task: AnnotationTask): number => {
+    if (task.clip && task.clip.recording.date && task.clip.recording.time) {
+      const date = task.clip.recording.date;
+      const time = new Date(`1970-01-01T${task.clip.recording.time}`);
+      return date.getTime() + time.getTime();
+    }
+    return -1; // Indicates that date/time is not available
+  };
+
+  const dateTimeA = getDateTime(a);
+  const dateTimeB = getDateTime(b);
+
+  // If both tasks have valid date-time, compare them
+  if (dateTimeA !== -1 && dateTimeB !== -1) {
+    return dateTimeA - dateTimeB;
+  }
+
+  // If one task has a valid date-time and the other doesn't, prioritize the one with date-time
+  if (dateTimeA !== -1) return -1;
+  if (dateTimeB !== -1) return 1;
+
+  // If neither task has a valid date-time, compare UUIDs
+  return a.uuid.localeCompare(b.uuid);
+  
+}
+
 export default function useAnnotateTasks({
   filter: initialFilter = empty,
   annotationTask: initialTask,
@@ -106,7 +135,7 @@ export default function useAnnotateTasks({
   });
 
   const items = useMemo(() => {
-    return initialItems.toSorted((item1, item2) => {return item1.uuid.toLowerCase().localeCompare(item2.uuid.toLowerCase())})
+    return initialItems.toSorted((a, b) => sortAnnotationTasks(a, b))
   }, [initialItems]);
 
   const index = useMemo(() => {
