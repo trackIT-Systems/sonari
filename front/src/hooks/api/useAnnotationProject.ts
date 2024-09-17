@@ -6,7 +6,7 @@ import { type ClipCreateMany } from "@/api/clips";
 import api from "@/app/api";
 import useObject from "@/hooks/utils/useObject";
 
-import type { AnnotationProject, AnnotationTask } from "@/types";
+import type { AnnotationProject, AnnotationTask, AnnotationStatus } from "@/types";
 
 export default function useAnnotationProject({
   uuid,
@@ -79,11 +79,6 @@ export default function useAnnotationProject({
     },
   });
 
-  const download = useMemo(() => {
-    if (data == null) return;
-    return api.annotationProjects.getDownloadUrl(data);
-  }, [data]);
-
   return {
     ...query,
     update,
@@ -91,6 +86,5 @@ export default function useAnnotationProject({
     addAnnotationTasks,
     removeTag,
     delete: delete_,
-    download,
   } as const;
 }

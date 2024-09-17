@@ -11,7 +11,18 @@ from whombat.api import common
 from whombat.api.common import BaseAPI
 from whombat.system.users import UserDatabase, UserManager
 
-__all__ = []
+__all__ = [
+    "detector_users",
+]
+
+# This list solelly exists to filter out automatically
+# generated users generated with whombatdetect to cleanup the export.
+detector_users: list[str] = [
+    "batdetect2",
+    "yolobat",
+    "soundscapepipe",
+    "birdedge",
+]
 
 
 class UserAPI(

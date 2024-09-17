@@ -5,10 +5,8 @@ import Button from "@/components/Button";
 import {
   CloseIcon,
   DeleteIcon,
-  DownloadIcon,
   WarningIcon,
 } from "@/components/icons";
-import Link from "@/components/Link";
 import useAnnotationProject from "@/hooks/api/useAnnotationProject";
 
 import type { AnnotationProject } from "@/types";
@@ -67,7 +65,6 @@ export default function ProjectActions({
 }) {
   const {
     delete: { mutateAsync: deleteProject },
-    download,
   } = useAnnotationProject({
     uuid: annotationProject.uuid,
     annotationProject,
@@ -80,16 +77,7 @@ export default function ProjectActions({
   }, [deleteProject, onDelete]);
 
   return (
-    <div className="flex flex-row gap-2 justify-center">
-      <Link
-        mode="text"
-        variant="primary"
-        href={download || ""}
-        target="_blank"
-        download
-      >
-        <DownloadIcon className="inline-block mr-2 w-5 h-5" /> Download
-      </Link>
+    <div className="flex flex-row gap-2 justify-right">
       <DeleteProject onDelete={handleDelete} />
     </div>
   );

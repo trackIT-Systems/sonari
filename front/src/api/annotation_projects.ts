@@ -4,7 +4,7 @@ import { z } from "zod";
 import { GetManySchema, Page } from "@/api/common";
 import { AnnotationProjectSchema } from "@/schemas";
 
-import type { AnnotationProject, Tag } from "@/types";
+import type { AnnotationProject, Tag, AnnotationStatus } from "@/types";
 
 const DEFAULT_ENDPOINTS = {
   getMany: "/api/v1/annotation_projects/",
@@ -14,7 +14,7 @@ const DEFAULT_ENDPOINTS = {
   delete: "/api/v1/annotation_projects/detail/",
   addTag: "/api/v1/annotation_projects/detail/tags/",
   removeTag: "/api/v1/annotation_projects/detail/tags/",
-  download: "/api/v1/annotation_projects/detail/download/",
+  export: "/api/v1/annotation_projects/detail/export/",
   import: "/api/v1/annotation_projects/import/",
 };
 
@@ -141,9 +141,31 @@ export function registerAnnotationProjectAPI(
     });
     return AnnotationProjectSchema.parse(data);
   }
-
-  function getDownloadUrl(annotationProject: AnnotationProject): string {
-    return `${endpoints.download}?annotation_project_uuid=${annotationProject.uuid}`;
+  async function exportProject(
+    annotationProject: AnnotationProject,
+    queryString: string
+  ): Promise<{ blob: Blob; filename: string }> {
+    const response = await instance.get(`${endpoints.export}?annotation_project_uuid=${annotationProject.uuid}&${queryString}`, {
+      responseType: 'blob',
+      withCredentials: true,
+    });
+  
+    // Extract filename from Content-Disposition header
+    const contentDisposition = response.headers['content-disposition'];
+    let filename = 'export.xlsx'; // Default filename
+    if (contentDisposition) {
+      const filenameMatch = contentDisposition.match(/filename="?(.+)"?/i);
+      if (filenameMatch) {
+        filename = filenameMatch[1];
+      }
+    }
+  
+    // Create a Blob with the correct MIME type for XLSX
+    const blob = new Blob([response.data], { 
+      type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' 
+    });
+  
+    return { blob, filename };
   }
 
   async function importProject(data: FormData): Promise<AnnotationProject> {
@@ -160,6 +182,6 @@ export function registerAnnotationProjectAPI(
     addTag,
     removeTag,
     import: importProject,
-    getDownloadUrl,
+    download: exportProject,
   } as const;
 }

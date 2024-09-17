@@ -7,6 +7,7 @@
 #   all-features: false
 #   with-sources: false
 #   generate-hashes: false
+#   universal: false
 
 -e file:.
 aiosqlite==0.20.0
@@ -44,6 +45,8 @@ dnspython==2.6.1
 email-validator==2.1.1
     # via fastapi
     # via fastapi-users
+et-xmlfile==1.1.0
+    # via openpyxl
 fastapi==0.111.0
     # via fastapi-cli
     # via fastapi-pagination
@@ -86,6 +89,8 @@ markupsafe==2.1.5
     # via mako
 mdurl==0.1.2
     # via markdown-it-py
+openpyxl==3.1.5
+    # via whombat
 orjson==3.10.3
     # via fastapi
 passlib==1.7.4

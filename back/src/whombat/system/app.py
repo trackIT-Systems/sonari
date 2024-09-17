@@ -1,9 +1,9 @@
 """System module for Whombat."""
 
 import functools
+import os
 from contextlib import asynccontextmanager
 from pathlib import Path
-import os
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -42,6 +42,7 @@ def create_app(settings: Settings) -> FastAPI:
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],
+        expose_headers=["Content-Disposition"],
     )
 
     # Add default routes.

@@ -8,6 +8,9 @@ const BASE_ROUTE = `/api/v1`;
 const instance = axios.create({
   withCredentials: true,
   baseURL: HOST,
+  headers: {
+    exposedHeaders: ['content-disposition'],
+  }
 });
 
 const GetManySchema = z.object({

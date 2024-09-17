@@ -6,7 +6,7 @@ import {
 
 import Header from "@/components/Header";
 import { H1 } from "@/components/Headings";
-import { DatasetIcon, EditIcon, ClipsIcon, TagsIcon, TasksIcon } from "@/components/icons";
+import { DatasetIcon, EditIcon, ClipsIcon, TagsIcon, TasksIcon, DownloadIcon } from "@/components/icons";
 import Tabs from "@/components/Tabs";
 
 import type { AnnotationProject } from "@/types";
@@ -80,6 +80,17 @@ export default function AnnotationProjectHeader({
               onClick: () => {
                 router.push(
                   `/annotation_projects/detail/tags/?${params.toString()}`,
+                );
+              },
+            },
+            {
+              id: "export",
+              title: "Export",
+              isActive: selectedLayoutSegment === "export",
+              icon: <DownloadIcon className="w-5 h-5 align-middle" />,
+              onClick: () => {
+                router.push(
+                  `/annotation_projects/detail/export/?${params.toString()}`,
                 );
               },
             },

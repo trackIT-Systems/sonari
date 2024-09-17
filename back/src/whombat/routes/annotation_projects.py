@@ -1,15 +1,19 @@
 """REST API routes for annotation projects."""
 
+import datetime
 import json
+from io import BytesIO
 from typing import Annotated
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, UploadFile
+from fastapi import APIRouter, Depends, Query, UploadFile
 from fastapi.responses import Response
+from openpyxl import Workbook
 from soundevent.io.aoef import to_aeof
 
-from whombat import api, schemas
+from whombat import api, models, schemas
 from whombat.api.io import aoef
+from whombat.api.users import detector_users
 from whombat.filters.annotation_projects import AnnotationProjectFilter
 from whombat.routes.dependencies import Session, WhombatSettings
 from whombat.routes.types import Limit, Offset
@@ -171,21 +175,13 @@ async def remove_tag_from_annotation_project(
     return project
 
 
-@annotation_projects_router.get(
-    "/detail/download/",
-    response_model=schemas.Page[schemas.Recording],
-)
-async def download_annotation_project(
+async def export_annotation_project_soundevent(
     session: Session,
     annotation_project_uuid: UUID,
 ):
     """Export an annotation project."""
-    whombat_project = await api.annotation_projects.get(
-        session, annotation_project_uuid
-    )
-    project = await api.annotation_projects.to_soundevent(
-        session, whombat_project
-    )
+    whombat_project = await api.annotation_projects.get(session, annotation_project_uuid)
+    project = await api.annotation_projects.to_soundevent(session, whombat_project)
     obj = to_aeof(project)
     filename = f"{project.name}_{obj.created_on.isoformat()}.json"
     return Response(
@@ -194,6 +190,151 @@ async def download_annotation_project(
         status_code=200,
         headers={"Content-Disposition": f"attachment; filename={filename}"},
     )
+
+
+async def export_annotation_project_multibase(
+    session: Session,
+    annotation_project_uuid: UUID,
+    tags: Annotated[list[str], Query()],
+    statuses: Annotated[list[str], Query()],
+) -> Response:
+    """Export an annotation project."""
+    project = await api.annotation_projects.get(session, annotation_project_uuid)
+    tasks = await api.annotation_tasks.get_many(
+        session,
+        limit=-1,
+        filters=[
+            models.AnnotationTask.annotation_project_id == project.id,
+            models.AnnotationTask.status_badges.any(models.AnnotationStatusBadge.state.in_(statuses)),
+        ],
+    )
+
+    # Create a new workbook and select the active sheet
+    wb = Workbook()
+    ws = wb.active
+    if ws is None:
+        return Response(status_code=422)
+    ws.title = "Beobachtungen"
+
+    # Append the header to the excel file
+    ws.append(
+        [
+            "Art",
+            "Datum",
+            "Tag",
+            "Monat",
+            "Jahr",
+            "Beobachter",
+            "Bestimmer",
+            "Herkunft",
+            "Quelle",
+            "Sammlung",
+            "Fundort",
+            "Fundort_Zusatz",
+            "MTB",
+            "Quadrant",
+            "X",
+            "Y",
+            "EPSG",
+            "Toleranz",
+            "Hoehe",
+            "Biotop",
+            "Region",
+            "Nachweistyp",
+            "Verhalten",
+            "Reproduktion",
+            "Quartiertyp",
+            "Anzahl",
+            "Einheit",
+            "Anzahl_maennlich",
+            "Anzahl_weiblich",
+            "Anzahl_Details",
+            "Bemerkung_1",
+            "Bemerkung_2",
+            "Ringnummer",
+            "Merkmal",
+            "Status",
+            "Brutrevier",
+            "Anzahl",
+            "Einheit",
+        ]
+    )
+
+    for task in tasks[0]:
+        if not task.clip_annotation:
+            continue
+
+        for sound_event_annotation in task.clip_annotation.sound_events:
+            tag_set: set[str] = {f"{tag.key}:{tag.value}" for tag in sound_event_annotation.tags}
+            for tag in tags:
+                if tag in tag_set:
+                    if not task.clip:
+                        continue
+
+                    species = tag.split(":")[-1]
+
+                    date = task.clip.recording.date
+                    if date is None:
+                        continue
+
+                    station = task.clip.recording.path.stem.split("_")[0]
+
+                    note = ""
+                    for n in sound_event_annotation.notes:
+                        if n.message.startswith(f"{species},"):
+                            note = n.message.replace(",", ";")
+                            note = note.replace(f"{species},", "")
+
+                    status = []
+                    for s in task.status_badges:
+                        username: str = s.user.name if s.user and s.user.name else ""
+                        state: str = s.state.name
+                        if username in detector_users:
+                            continue
+                        status = list(map(lambda x: f"{state} ({username})", task.status_badges))
+
+                    # Write the content to the worksheet
+                    ws.append(
+                        f"{species},{date},{date.day},{date.month},{date.year},trackIT Systems/Bioplan Marburg,trackIT Systems/Bioplan Marburg,,,,{station},,,,{station}x,{station}y,4326,,,,,Akustik,,,,,,,,,{note},,,,{status},,1,Revier(e)".split(
+                            ","
+                        )
+                    )
+
+    # Save the workbook to a BytesIO object
+    excel_file = BytesIO()
+    wb.save(excel_file)
+    excel_file.seek(0)
+
+    # Generate the filename
+    filename = f"{project.name}_{datetime.datetime.now().strftime('%d.%m.%Y_%H_%M')}.xlsx"
+
+    return Response(
+        excel_file.getvalue(),
+        status_code=200,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={
+            "content-disposition": f"attachment; filename={filename}",
+            "content-type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        },
+    )
+
+
+@annotation_projects_router.get(
+    "/detail/export/",
+)
+async def export_annotation_project(
+    session: Session,
+    annotation_project_uuid: UUID,
+    tags: Annotated[list[str], Query()],
+    statuses: Annotated[list[str], Query()],
+    format: str,
+) -> Response:
+    if format == "MultiBase":
+        return await export_annotation_project_multibase(session, annotation_project_uuid, tags, statuses)
+    elif format == "SoundEvent":
+        return await export_annotation_project_soundevent(session, annotation_project_uuid)
+    else:
+        return Response(status_code=501)
 
 
 @annotation_projects_router.post(
