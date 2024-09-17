@@ -5,12 +5,8 @@ import { HorizontalDivider } from "@/components/Divider";
 import {
   AnnotationProjectIcon,
   DatasetsIcon,
-  EvaluationIcon,
-  ExplorationIcon,
-  HomeIcon,
   LogOutIcon,
-  PluginIcon,
-  SettingsIcon,
+  UserIcon,
   WhombatIcon,
 } from "@/components/icons";
 import Button from "@/components/Button";
@@ -111,7 +107,7 @@ function MainNavigation({ pathname }: { pathname?: string }) {
           <AnnotationProjectIcon className="w-6 h-6" />
         </SideMenuLink>
       </li>
-      <li className="px-3">
+      {/* <li className="px-3">
         <SideMenuLink
           isActive={pathname?.startsWith("/evaluation")}
           tooltip={"Evaluation"}
@@ -128,7 +124,7 @@ function MainNavigation({ pathname }: { pathname?: string }) {
         >
           <ExplorationIcon className="w-6 h-6" />
         </SideMenuLink>
-      </li>
+      </li> */}
     </ul>
   );
 }
@@ -149,7 +145,7 @@ function SecondaryNavigation({
   return (
     <ul className="flex flex-col space-y-3 py-4 text-stone-400">
       <HorizontalDivider />
-      <li className="px-3">
+      {/* <li className="px-3">
         <SideMenuLink isActive={pathname === "/"} tooltip={"Home"} href="/">
           <HomeIcon className="w-6 h-6" />
         </SideMenuLink>
@@ -158,10 +154,10 @@ function SecondaryNavigation({
         <SideMenuLink href="/plugins" tooltip={"Plugins"}>
           <PluginIcon className="w-6 h-6" />
         </SideMenuLink>
-      </li>
+      </li> */}
       <li className="px-3">
-        <SideMenuLink href="/" tooltip={"Settings"}>
-          <SettingsIcon className="w-6 h-6" />
+        <SideMenuLink href="/profile" tooltip={"User"}>
+          <UserIcon className="w-6 h-6" />
         </SideMenuLink>
       </li>
       <HorizontalDivider />
@@ -190,9 +186,9 @@ export function SideMenu({
     >
       <div className="flex flex-grow flex-col justify-between overflow-y-auto overflow-x-hidden bg-stone-50 dark:bg-stone-800">
         <div className="flex flex-col items-center">
-          <div className="px-2 py-4">
+          <Link href="/" className="px-2 py-4" mode="text">
             <WhombatIcon width={46} height={46} />
-          </div>
+          </Link>
           <MainNavigation pathname={pathname} />
         </div>
         <SecondaryNavigation

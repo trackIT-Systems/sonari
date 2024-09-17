@@ -68,7 +68,7 @@ function Contents({ children }: { children: ReactNode }) {
     <div className="flex flex-row w-full max-w-full h-full">
       <SideMenu user={user} onLogout={handleLogout} />
       <main className="w-full max-w-full h-full overflow-x-clip">
-        <NavBar user={user} onLogout={handleLogout} />
+        {/* <NavBar user={user} onLogout={handleLogout} /> */}
         {children}
       </main>
     </div>

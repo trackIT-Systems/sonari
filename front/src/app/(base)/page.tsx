@@ -27,12 +27,12 @@ export default function Page() {
             Whombat
           </span>
         </h1>
-        <h2 className="text-center text-3xl text-stone-500 dark:text-stone-500">
+        {/* <h2 className="text-center text-3xl text-stone-500 dark:text-stone-500">
           Audio annotation tool with ML in mind!
-        </h2>
+        </h2> */}
       </div>
       <div className="pt-16">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-8">
           <Card className="p-6 justify-between">
             <h2 className="text-2xl font-bold mb-4">
               Create and Manage Datasets
@@ -62,7 +62,7 @@ export default function Page() {
               Start Annotating
             </Link>
           </Card>
-          <Card className="p-6 justify-between">
+          {/* <Card className="p-6 justify-between">
             <h2 className="text-2xl font-bold mb-4">Evaluate your Models</h2>
             <p className="text-sm mb-4">
               Create evaluation sets, import model predictions, and test your
@@ -89,7 +89,7 @@ export default function Page() {
             >
               Start Exploring
             </Link>
-          </Card>
+          </Card> */}
         </div>
       </div>
     </div>
