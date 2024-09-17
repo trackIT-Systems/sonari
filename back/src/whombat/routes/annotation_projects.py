@@ -282,8 +282,7 @@ async def export_annotation_project_multibase(
                     note = ""
                     for n in sound_event_annotation.notes:
                         if n.message.startswith(f"{species},"):
-                            note = n.message.replace(",", ";")
-                            note = note.replace(f"{species},", "")
+                            note = n.message.replace(f"{species},", "")
 
                     status = []
                     for s in task.status_badges:
@@ -291,12 +290,14 @@ async def export_annotation_project_multibase(
                         state: str = s.state.name
                         if username in detector_users:
                             continue
+                        if state == "rejected" and username == "":
+                            continue
                         status = list(map(lambda x: f"{state} ({username})", task.status_badges))
 
                     # Write the content to the worksheet
                     ws.append(
-                        f"{species},{date},{date.day},{date.month},{date.year},trackIT Systems/Bioplan Marburg,trackIT Systems/Bioplan Marburg,,,,{station},,,,{station}x,{station}y,4326,,,,,Akustik,,,,,,,,,{note},,,,{status},,1,Revier(e)".split(
-                            ","
+                        f"{species};{date};{date.day};{date.month};{date.year};trackIT Systems/Bioplan Marburg;trackIT Systems/Bioplan Marburg;;;;{station};;;;{station}x;{station}y;4326;;;;;Akustik;;;;;;;;;{note};;;;{status};;1;Revier(e)".split(
+                            ";"
                         )
                     )
 
