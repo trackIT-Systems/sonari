@@ -303,6 +303,36 @@ class SoundEventAnnotationTagFilter(base.Filter):
         )
 
 
+class DateRangeFilter(base.Filter):
+    """Filter for tasks by date range."""
+
+    start: str | None = None
+    end: str | None = None
+
+    def filter(self, query: Select) -> Select:
+        """Filter the query."""
+        if self.start is None and self.end is None:
+            return query
+
+        query = (
+            query.join(
+                models.ClipAnnotation,
+                models.AnnotationTask.clip_annotation_id == models.ClipAnnotation.id,
+            )
+            .join(
+                models.Clip,
+                models.ClipAnnotation.clip_id == models.Clip.id,
+            )
+            .join(
+                models.Recording,
+                models.Recording.id == models.Clip.recording_id,
+            )
+        )
+        field = models.Recording.date
+
+        return query.where(field.between(self.start, self.end))
+
+
 AnnotationTaskFilter = base.combine(
     SearchRecordingsFilter,
     assigned_to=AssignedToFilter,
@@ -315,4 +345,5 @@ AnnotationTaskFilter = base.combine(
     dataset=DatasetFilter,
     recording_tag=RecordingTagFilter,
     sound_event_annotation_tag=SoundEventAnnotationTagFilter,
+    date=DateRangeFilter,
 )

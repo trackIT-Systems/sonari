@@ -58,7 +58,6 @@ export default function RecordingHeader({
               }}
             >
               {baseName}
-              <span className="text-sm text-stone-500">.WAV</span>
             </button>
           </Tooltip>
         </H3>

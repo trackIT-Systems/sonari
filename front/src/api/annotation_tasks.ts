@@ -35,6 +35,10 @@ export const AnnotationTaskFilterSchema = z.object({
   completed: z.boolean().optional(),
   assigned_to: UserSchema.optional(),
   search_recordings: z.string().optional(),
+  date_range: z.object({
+    start: z.date().optional(),
+    end: z.date().optional(),
+  }).optional(),
 });
 
 export type AnnotationTaskFilter = z.input<typeof AnnotationTaskFilterSchema>;
@@ -100,6 +104,8 @@ export function registerAnnotationTasksAPI(
         completed__eq: params.completed,
         assigned_to__eq: params.assigned_to?.id,
         search_recordings: params.search_recordings,
+        date__start: params.date_range?.start,
+        date__end: params.date_range?.end,
       },
     });
     return AnnotationTaskPageSchema.parse(response.data);

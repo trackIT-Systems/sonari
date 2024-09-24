@@ -7,6 +7,7 @@ import {
 } from "@/components/filters/Filters";
 import {
   DatasetIcon,
+  DateIcon,
   EditIcon,
   NeedsReviewIcon,
   TagIcon,
@@ -14,6 +15,7 @@ import {
 } from "@/components/icons";
 
 import type { AnnotationTaskFilter } from "@/api/annotation_tasks";
+import DateRangeFilter from "./DateRangeFilter";
 
 const tasksFilterDefs: FilterDef<AnnotationTaskFilter>[] = [
   {
@@ -137,6 +139,25 @@ const tasksFilterDefs: FilterDef<AnnotationTaskFilter>[] = [
     description: "Select task that come from a recording with a specific tag",
     icon: (
       <TagIcon className="h-5 w-5 inline-block text-stone-500 mr-1 align-middle" />
+    ),
+  },
+
+  {
+    field: "date_range",
+    name: "Date Range",
+    render: ({ value, clear }) => (
+      <FilterBadge
+        field="Date Range"
+        value={`${value.start?.toLocaleDateString() || 'Any'} - ${value.end?.toLocaleDateString() || 'Any'}`}
+        onRemove={clear}
+      />
+    ),
+    selector: ({ setFilter }) => (
+      <DateRangeFilter onChange={(val) => setFilter("date_range", val)} />
+    ),
+    description: "Select tasks within a specific date range",
+    icon: (
+      <DateIcon className="h-5 w-5 inline-block text-stone-500 mr-1 align-middle" />
     ),
   },
 ];
