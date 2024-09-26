@@ -264,7 +264,12 @@ async def export_annotation_project_multibase(
         if not task.clip_annotation:
             continue
 
-        for sound_event_annotation in task.clip_annotation.sound_events:
+        clip_annotation: schemas.ClipAnnotation = task.clip_annotation
+        clip_annotation_notes: list[str] = []
+        for n in clip_annotation.notes:
+            clip_annotation_notes.append(n.message)
+
+        for sound_event_annotation in clip_annotation.sound_events:
             tag_set: set[str] = {f"{tag.key}:{tag.value}" for tag in sound_event_annotation.tags}
             for tag in tags:
                 if tag in tag_set:
@@ -279,10 +284,13 @@ async def export_annotation_project_multibase(
 
                     station = task.clip.recording.path.stem.split("_")[0]
 
-                    note = ""
+                    sound_event_notes: list[str] = []
                     for n in sound_event_annotation.notes:
-                        if n.message.startswith(f"{species},"):
-                            note = n.message.replace(f"{species},", "")
+                        msg: str = n.message
+                        if msg.startswith(f"{species},"):
+                            msg = msg.replace(f"{species},", "")
+
+                        sound_event_notes.append(msg)
 
                     status = []
                     for s in task.status_badges:
@@ -296,7 +304,7 @@ async def export_annotation_project_multibase(
 
                     # Write the content to the worksheet
                     ws.append(
-                        f"{species};{date};{date.day};{date.month};{date.year};trackIT Systems/Bioplan Marburg;trackIT Systems/Bioplan Marburg;;;;{station};;;;{station}x;{station}y;4326;;;;;Akustik;;;;;;;;;{note};;;;{status};;1;Revier(e)".split(
+                        f"{species};{date};{date.day};{date.month};{date.year};trackIT Systems/Bioplan Marburg;trackIT Systems/Bioplan Marburg;;;;{station};;;;{station}x;{station}y;4326;;;;;Akustik;;;;;;;;;{sound_event_notes};{clip_annotation_notes};;;{status};;1;Revier(e)".split(
                             ";"
                         )
                     )
