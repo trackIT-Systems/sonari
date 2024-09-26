@@ -144,18 +144,18 @@ const tasksFilterDefs: FilterDef<AnnotationTaskFilter>[] = [
 
   {
     field: "date_range",
-    name: "Date Range",
+    name: "Date and Time",
     render: ({ value, clear }) => (
       <FilterBadge
-        field="Date Range"
-        value={`${value.start?.toLocaleDateString() || 'Any'} - ${value.end?.toLocaleDateString() || 'Any'}`}
+        field="Date and Time Range"
+        value={`${formatDate(value.start_date)} ${formatTime(value.start_time)} - ${formatDate(value.end_date)} ${formatTime(value.end_time)}`}
         onRemove={clear}
       />
     ),
     selector: ({ setFilter }) => (
       <DateRangeFilter onChange={(val) => setFilter("date_range", val)} />
     ),
-    description: "Select tasks within a specific date range",
+    description: "Select tasks within a specific date and time range",
     icon: (
       <DateIcon className="h-5 w-5 inline-block text-stone-500 mr-1 align-middle" />
     ),
@@ -163,3 +163,14 @@ const tasksFilterDefs: FilterDef<AnnotationTaskFilter>[] = [
 ];
 
 export default tasksFilterDefs;
+
+// Helper functions to format date and time
+function formatDate(date: Date | null | undefined): string {
+  if (!date) return 'Any Date,';
+  return `${date.toLocaleDateString()},`;
+}
+
+function formatTime(date: Date | null | undefined): string {
+  if (!date) return 'Any Time';
+  return `${date.toLocaleTimeString()}`;
+}

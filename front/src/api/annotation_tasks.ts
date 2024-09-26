@@ -36,8 +36,10 @@ export const AnnotationTaskFilterSchema = z.object({
   assigned_to: UserSchema.optional(),
   search_recordings: z.string().optional(),
   date_range: z.object({
-    start: z.date().optional(),
-    end: z.date().optional(),
+    start_date: z.date().nullish(),
+    end_date: z.date().nullish(),
+    start_time: z.date().nullish(),
+    end_time: z.date().nullish(),
   }).optional(),
 });
 
@@ -86,6 +88,7 @@ export function registerAnnotationTasksAPI(
     query: GetAnnotationTasksQuery,
   ): Promise<AnnotationTaskPage> {
     const params = GetAnnotationTasksQuerySchema.parse(query);
+
     const response = await instance.get(endpoints.getMany, {
       params: {
         limit: params.limit,
@@ -104,8 +107,10 @@ export function registerAnnotationTasksAPI(
         completed__eq: params.completed,
         assigned_to__eq: params.assigned_to?.id,
         search_recordings: params.search_recordings,
-        date__start: params.date_range?.start,
-        date__end: params.date_range?.end,
+        date__start_date: params.date_range?.start_date,
+        date__end_date: params.date_range?.end_date,
+        date__start_time: params.date_range?.start_time,
+        date__end_time: params.date_range?.end_time,
       },
     });
     return AnnotationTaskPageSchema.parse(response.data);

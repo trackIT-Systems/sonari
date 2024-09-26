@@ -1,9 +1,10 @@
 """Filters for Annotation Tasks."""
 
+from datetime import datetime, time
 from uuid import UUID
 
 from soundevent import data
-from sqlalchemy import Select, or_
+from sqlalchemy import Select, and_, func, or_
 
 from whombat import models
 from whombat.filters import base
@@ -306,12 +307,14 @@ class SoundEventAnnotationTagFilter(base.Filter):
 class DateRangeFilter(base.Filter):
     """Filter for tasks by date range."""
 
-    start: str | None = None
-    end: str | None = None
+    start_date: str | None = None
+    end_date: str | None = None
+    start_time: str | None = None
+    end_time: str | None = None
 
     def filter(self, query: Select) -> Select:
         """Filter the query."""
-        if self.start is None and self.end is None:
+        if self.start_date is None and self.end_date is None and self.start_time is None and self.end_time is None:
             return query
 
         query = (
@@ -328,9 +331,44 @@ class DateRangeFilter(base.Filter):
                 models.Recording.id == models.Clip.recording_id,
             )
         )
-        field = models.Recording.date
 
-        return query.where(field.between(self.start, self.end))
+        conditions = []
+        start_date = None
+        end_date = None
+
+        # Handle date range
+        if self.start_date:
+            start_date = datetime.strptime(self.start_date[:-1], "%Y-%m-%dT%H:%M:%S.%f").date()
+            conditions.append(models.Recording.date >= start_date)
+        if self.end_date:
+            end_date = datetime.strptime(self.end_date[:-1], "%Y-%m-%dT%H:%M:%S.%f").date()
+            conditions.append(models.Recording.date <= end_date)
+
+        # Handle time range
+        if self.start_time or self.end_time:
+            start_time = (
+                datetime.strptime(self.start_time[:-1], "%Y-%m-%dT%H:%M:%S.%f").time() if self.start_time else time.min
+            )
+            end_time = (
+                datetime.strptime(self.end_time[:-1], "%Y-%m-%dT%H:%M:%S.%f").time() if self.end_time else time.max
+            )
+
+            # Create a virtual datetime column for comparison
+            virtual_datetime = func.datetime(models.Recording.date, models.Recording.time)
+
+            if start_date and self.start_time:
+                start_datetime = datetime.combine(start_date, start_time)
+                conditions.append(virtual_datetime >= start_datetime)
+            elif self.start_time:
+                conditions.append(models.Recording.time >= start_time)
+
+            if end_date and self.end_time:
+                end_datetime = datetime.combine(end_date, end_time)
+                conditions.append(virtual_datetime <= end_datetime)
+            elif self.end_time:
+                conditions.append(models.Recording.time <= end_time)
+
+        return query.where(and_(*conditions))
 
 
 AnnotationTaskFilter = base.combine(
