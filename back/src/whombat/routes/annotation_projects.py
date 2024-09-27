@@ -252,11 +252,7 @@ async def export_annotation_project_multibase(
             "Bemerkung_1",
             "Bemerkung_2",
             "Ringnummer",
-            "Merkmal",
-            "Status",
-            "Brutrevier",
-            "Anzahl",
-            "Einheit",
+            "Merkmal"
         ]
     )
 
@@ -265,9 +261,9 @@ async def export_annotation_project_multibase(
             continue
 
         clip_annotation: schemas.ClipAnnotation = task.clip_annotation
-        clip_annotation_notes: list[str] = []
+        clip_annotation_notes: str = ""
         for n in clip_annotation.notes:
-            clip_annotation_notes.append(n.message)
+            clip_annotation_notes += f" | {n.message}"
 
         for sound_event_annotation in clip_annotation.sound_events:
             tag_set: set[str] = {f"{tag.key}:{tag.value}" for tag in sound_event_annotation.tags}
@@ -284,13 +280,13 @@ async def export_annotation_project_multibase(
 
                     station = task.clip.recording.path.stem.split("_")[0]
 
-                    sound_event_notes: list[str] = []
+                    sound_event_notes: str = ""
                     for n in sound_event_annotation.notes:
                         msg: str = n.message
                         if msg.startswith(f"{species},"):
                             msg = msg.replace(f"{species},", "")
 
-                        sound_event_notes.append(msg)
+                        sound_event_notes += f" | {msg}"
 
                     status = []
                     for s in task.status_badges:
@@ -304,7 +300,7 @@ async def export_annotation_project_multibase(
 
                     # Write the content to the worksheet
                     ws.append(
-                        f"{species};{date};{date.day};{date.month};{date.year};trackIT Systems/Bioplan Marburg;trackIT Systems/Bioplan Marburg;;;;{station};;;;{station}x;{station}y;4326;;;;;Akustik;;;;;;;;;{sound_event_notes};{clip_annotation_notes};;;{status};;1;Revier(e)".split(
+                        f"{species};{date};{date.day};{date.month};{date.year};trackIT Systems/Bioplan Marburg;trackIT Systems/Bioplan Marburg;;;;{station};;;;{station}x;{station}y;4326;;;;;Akustik;;;;;;;;;{sound_event_notes};{clip_annotation_notes};;;".split(
                             ";"
                         )
                     )
