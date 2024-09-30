@@ -27,3 +27,11 @@ export const MAX_FREQ = 500_000;
 
 /** Factor to zoom in and out of a spectrogram */
 export const ZOOM_FACTOR = 0.2;
+
+/** Users that are created automatically from whombatdetect */
+export const WHOMBATDETECT_USERS: string[] = [
+    "batdetect2",
+    "yolobat",
+    "soundscapepipe",
+    "birdedge",
+]

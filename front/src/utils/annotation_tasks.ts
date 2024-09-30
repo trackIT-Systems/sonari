@@ -1,4 +1,5 @@
 import type { AnnotationTask } from "@/types";
+import { WHOMBATDETECT_USERS } from "@/constants";
 
 export function computeAnnotationTasksProgress(
   annotationTasks: AnnotationTask[],
@@ -13,12 +14,19 @@ export function computeAnnotationTasksProgress(
     let needsReview = false;
     let alreadyMissing = false;
 
-    task.status_badges?.forEach(({ state }) => {
+    task.status_badges?.forEach(({ state, user }) => {
       switch (state) {
         case "verified":
           isVerified = true;
           break;
         case "rejected":
+          if (!user) {
+            needsReview = true;
+            break
+          }
+          if (WHOMBATDETECT_USERS.includes(user.username)) {
+            break;
+          }
           needsReview = true;
           break;
         case "completed":
