@@ -16,7 +16,7 @@ const CONFIG_PRESETS: Record<
   hsr: { id: "hsr", value: "hsr", label: "High samplerate" },
   hsrn: { id: "hsrn", value: "hsrn", label: "High samplerate (noisy)" },
   lsr: { id: "lsr", value: "lsr", label: "Low samplerate" },
-  lsrn: { id: "lsrn", value: "lsrn", label: "High samplerate (noisy)" },
+  lsrn: { id: "lsrn", value: "lsrn", label: "Low samplerate (noisy)" },
 };
 
 export default function ConfigPresets({
