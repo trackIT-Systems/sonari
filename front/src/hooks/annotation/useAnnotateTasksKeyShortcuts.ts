@@ -16,19 +16,24 @@ export const ANNOTATE_TASKS_KEY_SHORTCUTS: KeyShortcut[] = [
     description: "Go to previous annotation task",
   },
   {
-    label: "Mark Complete",
-    shortcut: "g",
-    description: "Mark the annotation task as complete (good)",
+    label: "Mark Accept",
+    shortcut: "a",
+    description: "Mark the annotation task as accepted",
   },
   {
-    label: "Mark Review",
+    label: "Mark Reject",
     shortcut: "r",
-    description: "Mark the annotation task for review",
+    description: "Mark the annotation task as rejected",
   },
   {
     label: "Mark Verified",
     shortcut: "v",
     description: "Mark the annotation task as verified",
+  },
+  {
+    label: "Mark Unsure",
+    shortcut: "u",
+    description: "Mark the annotation task as unsure",
   },
 ];
 

@@ -20,12 +20,8 @@ export function computeAnnotationTasksProgress(
           isVerified = true;
           break;
         case "rejected":
-          if (!user) {
-            needsReview = true;
+          if (!user || WHOMBATDETECT_USERS.includes(user.username)) {
             break
-          }
-          if (WHOMBATDETECT_USERS.includes(user.username)) {
-            break;
           }
           needsReview = true;
           break;
@@ -53,6 +49,10 @@ export function computeAnnotationTasksProgress(
 
     if (needsReview) {
       needReview += 1;
+      if (!alreadyMissing) {
+        missing -= 1;
+        alreadyMissing = true;
+      }
     }
   }
   return {

@@ -168,7 +168,7 @@ export default function useAudio({
       current.removeEventListener("error", onError);
       current.removeEventListener("ended", onEnded);
     };
-  }, [initialUrl, speed, startTime, loop, volume]);
+  }, [initialUrl, speed, startTime, loop, volume, withAutoplay]);
 
 
   // Some browsers return `Promise` on `.play()` and may throw errors

@@ -3,7 +3,7 @@ import { AnnotationStatusSchema } from "@/schemas";
 import Button from "@/components/Button";
 import Card from "@/components/Card";
 import { H2, H3 } from "@/components/Headings";
-import { DownloadIcon, CheckIcon, CloseIcon, VerifiedIcon } from "@/components/icons";
+import { DownloadIcon, CheckIcon, CloseIcon, VerifiedIcon, HelpIcon } from "@/components/icons";
 import TagList from "@/components/tags/TagList";
 import Tooltip from "@/components/Tooltip";
 import useAnnotationProject from "@/hooks/api/useAnnotationProject";
@@ -14,16 +14,18 @@ import Loading from "@/components/Loading";
 import type { Tag, AnnotationStatus, AnnotationProject } from "@/types";
 import api from "@/app/api";
 
-const statusIcons: Record<Exclude<AnnotationStatus, "assigned">, React.ReactNode> = {
+const statusIcons: Record<Exclude<AnnotationStatus>, React.ReactNode> = {
   completed: <CheckIcon className="w-6 h-6 text-emerald-500" />,
   rejected: <CloseIcon className="w-6 h-6 text-red-500" />,
   verified: <VerifiedIcon className="w-6 h-6 text-yellow-500" />,
+  assigned: <HelpIcon className="w-6 h-6 text-yellow-500" />,
 };
 
-const statusTooltips: Record<Exclude<AnnotationStatus, "assigned">, string> = {
-  completed: "Done",
-  rejected: "Needs Review",
+const statusTooltips: Record<Exclude<AnnotationStatus>, string> = {
+  completed: "Accept",
+  rejected: "Reject",
   verified: "Verified",
+  assigned: "Unsure"
 };
 
 type ExportFormat = 'MultiBase' | 'SoundEvent';
@@ -151,7 +153,6 @@ export default function AnnotationProjectExport({
               </p>
               <div className="flex flex-row gap-4">
                 {Object.values(AnnotationStatusSchema.enum)
-                  .filter(status => status !== "assigned")
                   .map(status => (
                     <Tooltip
                       key={status}

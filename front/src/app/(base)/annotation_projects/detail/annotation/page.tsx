@@ -65,15 +65,19 @@ export default function Page() {
   );
 
   const handleCompleteTask = useCallback(() => {
-    toast.success("Task marked as complete.");
+    toast.success("Accepted");
   }, []);
 
   const handleRejectTask = useCallback(() => {
-    toast.error("Task marked for review.");
+    toast.error("Rejeced.");
   }, []);
 
   const handleVerifyTask = useCallback(() => {
     toast.success("Task verified.");
+  }, []);
+
+  const handleUnsureTask = useCallback(() => {
+    toast.success("Unsure.");
   }, []);
 
   const filter = useMemo(

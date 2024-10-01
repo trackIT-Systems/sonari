@@ -55,7 +55,7 @@ export default function AnnotationTaskStatus({
         <Tooltip
           tooltip={
             <div className="inline-flex gap-2 items-center">
-              Needs Review
+              Reject
               <div className="text-xs">
                 <KeyboardKey code="r" />
               </div>

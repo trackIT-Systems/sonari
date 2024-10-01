@@ -40,13 +40,13 @@ const annotationTaskFilterDefs: FilterDef<AnnotationTaskFilter>[] = [
           value={value ? "Yes" : "No"}
           onRemove={clear} />
     ),
-    description: "Select only annotation tasks that need review.",
+    description: "Select only rejected annotation tasks.",
     icon: (
       <NeedsReviewIcon className="h-5 w-5 inline-block text-stone-500 mr-1 align-middle" />
     ),
   },
   {
-    name: "Done",
+    name: "Accepted",
     field: "completed",
     selector: ({ setFilter }) => (
       <BooleanFilter
@@ -55,11 +55,30 @@ const annotationTaskFilterDefs: FilterDef<AnnotationTaskFilter>[] = [
     ),
     render: ({ value, clear }) => (
       <FilterBadge
-          field="Done"
+          field="Accepted"
           value={value ? "Yes" : "No"}
           onRemove={clear} />
     ),
-    description: "Select only annotation tasks that are done.",
+    description: "Select only accepted annotation tasks.",
+    icon: (
+      <NeedsReviewIcon className="h-5 w-5 inline-block text-stone-500 mr-1 align-middle" />
+    ),
+  },
+  {
+    name: "Unsure",
+    field: "unsure",
+    selector: ({ setFilter }) => (
+      <BooleanFilter
+        onChange={(val) => setFilter("unsure", val)}
+      />
+    ),
+    render: ({ value, clear }) => (
+      <FilterBadge
+          field="Unsure"
+          value={value ? "Yes" : "No"}
+          onRemove={clear} />
+    ),
+    description: "Select only unsure annotation tasks.",
     icon: (
       <NeedsReviewIcon className="h-5 w-5 inline-block text-stone-500 mr-1 align-middle" />
     ),
@@ -81,25 +100,6 @@ const annotationTaskFilterDefs: FilterDef<AnnotationTaskFilter>[] = [
     description: "Select only pending annotation tasks.",
     icon: (
       <EditIcon className="h-5 w-5 inline-block text-stone-500 mr-1 align-middle" />
-    ),
-  },
-  {
-    name: "Completed",
-    field: "completed",
-    selector: ({ setFilter }) => (
-      <BooleanFilter
-        onChange={(val) => setFilter("completed", val)}
-      />
-    ),
-    render: ({ value, clear }) => (
-      <FilterBadge
-          field="Completed"
-          value={value ? "Yes" : "No"}
-          onRemove={clear} />
-    ),
-    description: "Select only verified annotation tasks.",
-    icon: (
-      <CompleteIcon className="h-5 w-5 inline-block text-stone-500 mr-1 align-middle" />
     ),
   },
 ];

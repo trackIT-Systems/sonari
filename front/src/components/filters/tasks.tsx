@@ -38,10 +38,10 @@ const tasksFilterDefs: FilterDef<AnnotationTaskFilter>[] = [
   },
   {
     field: "completed",
-    name: "Done",
+    name: "Accepted",
     render: ({ value, clear }) => (
       <FilterBadge
-        field="done"
+        field="accepted"
         value={value ? "Yes" : "No"}
         onRemove={clear}
       />
@@ -49,7 +49,7 @@ const tasksFilterDefs: FilterDef<AnnotationTaskFilter>[] = [
     selector: ({ setFilter }) => (
       <BooleanFilter onChange={(val) => setFilter("completed", val)} />
     ),
-    description: "Select only tasks that are done",
+    description: "Select only accepted tasks",
     icon: (
       <EditIcon className="h-5 w-5 inline-block text-stone-500 mr-1 align-middle" />
     ),
@@ -67,17 +67,17 @@ const tasksFilterDefs: FilterDef<AnnotationTaskFilter>[] = [
     selector: ({ setFilter }) => (
       <BooleanFilter onChange={(val) => setFilter("verified", val)} />
     ),
-    description: "Select tasks by their verified status",
+    description: "Select only verified tasks",
     icon: (
       <VerifiedIcon className="h-5 w-5 inline-block text-stone-500 mr-1 align-middle" />
     ),
   },
   {
     field: "rejected",
-    name: "Needs Review",
+    name: "Reject",
     render: ({ value, clear }) => (
       <FilterBadge
-        field="Needs Review"
+        field="Reject"
         value={value ? "Yes" : "No"}
         onRemove={clear}
       />
@@ -85,7 +85,7 @@ const tasksFilterDefs: FilterDef<AnnotationTaskFilter>[] = [
     selector: ({ setFilter }) => (
       <BooleanFilter onChange={(val) => setFilter("rejected", val)} />
     ),
-    description: "Select tasks by their review status",
+    description: "Select only rejected tasks",
     icon: (
       <NeedsReviewIcon className="h-5 w-5 inline-block text-stone-500 mr-1 align-middle" />
     ),

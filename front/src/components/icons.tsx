@@ -84,6 +84,7 @@ import {
   WrenchIcon,
   WrenchScrewdriverIcon,
   XMarkIcon,
+  XCircleIcon,
 } from "@heroicons/react/24/outline";
 import Image from "next/image";
 import { type ComponentProps, type HTMLProps } from "react";
@@ -274,7 +275,7 @@ export {
   DocumentPlusIcon as NewRecordingIcon,
   EllipsisHorizontalIcon as SampleRateIcon,
   ExclamationTriangleIcon as WarningIcon,
-  EyeIcon as NeedsReviewIcon,
+  XCircleIcon as NeedsReviewIcon,
   EyeSlashIcon as DisableIcon,
   FaceFrownIcon as SadIcon,
   FlagIcon as IssueIcon,

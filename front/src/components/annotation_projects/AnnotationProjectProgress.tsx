@@ -10,6 +10,7 @@ import {
   InformationCircleIcon,
   NeedsReviewIcon,
   VerifiedIcon,
+  HelpIcon,
 } from "@/components/icons";
 import Link from "@/components/Link";
 import Loading from "@/components/Loading";
@@ -126,18 +127,26 @@ function ProgressReport({
         />
         <MetricBadge
           icon={
-            <NeedsReviewIcon className="inline-block w-8 h-8 text-red-500" />
+            <CompleteIcon className="inline-block w-8 h-8 text-emerald-500" />
           }
-          title="Need Review"
-          value={needReview}
+          title="Accepted"
+          value={completed}
           isLoading={isLoading}
         />
         <MetricBadge
           icon={
-            <CompleteIcon className="inline-block w-8 h-8 text-emerald-500" />
+            <HelpIcon className="inline-block w-8 h-8 text-emerald-500" />
           }
-          title="Completed"
-          value={completed}
+          title="Unsure"
+          value={unsure}
+          isLoading={isLoading}
+        />
+        <MetricBadge
+          icon={
+            <NeedsReviewIcon className="inline-block w-8 h-8 text-red-500" />
+          }
+          title="Rejected"
+          value={needReview}
           isLoading={isLoading}
         />
         <MetricBadge
