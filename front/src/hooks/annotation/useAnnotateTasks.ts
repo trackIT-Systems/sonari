@@ -57,6 +57,8 @@ type AnnotationControls = {
   getFirstTask: () => void;
   /** Mark the current task as completed */
   markCompleted: UseMutationResult<AnnotationTask, AxiosError, void>;
+  /** Mark the current task as unsure */
+  markUnsure: UseMutationResult<AnnotationTask, AxiosError, void>;
   /** Mark the current task as rejected */
   markRejected: UseMutationResult<AnnotationTask, AxiosError, void>;
   /** Mark the current task as verified */
@@ -244,6 +246,22 @@ export default function useAnnotateTasks({
     },
   });
 
+  const markUnsureFn = useCallback(async () => {
+    if (currentTask == null) {
+      throw new Error("No selected task");
+    }
+    return api.annotationTasks.addBadge(currentTask, "assigned");
+  }, [currentTask]);
+
+  const markUnsure = useMutation<AnnotationTask, AxiosError>({
+    mutationFn: markUnsureFn,
+    onSuccess: (task) => {
+      updateTaskData(task);
+      onCompleteTask?.(task);
+      nextTask();
+    },
+  });
+
   const markRejectedFn = useCallback(async () => {
     if (currentTask == null) {
       throw new Error("No selected task");
@@ -312,6 +330,7 @@ export default function useAnnotateTasks({
     onGoNext: nextTask,
     onGoPrevious: prevTask,
     onMarkCompleted: markCompleted.mutate,
+    onMarkUnsure: markUnsure.mutate,
     onMarkRejected: markRejected.mutate,
     onMarkVerified: markVerified.mutate,
   });
@@ -331,6 +350,7 @@ export default function useAnnotateTasks({
     setFilter,
     annotations,
     markCompleted,
+    markUnsure,
     markRejected,
     markVerified,
     removeBadge,

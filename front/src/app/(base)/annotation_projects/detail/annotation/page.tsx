@@ -68,16 +68,16 @@ export default function Page() {
     toast.success("Accepted");
   }, []);
 
+  const handleUnsureTask = useCallback(() => {
+    toast.success("Unsure.");
+  }, []);
+
   const handleRejectTask = useCallback(() => {
     toast.error("Rejeced.");
   }, []);
 
   const handleVerifyTask = useCallback(() => {
     toast.success("Task verified.");
-  }, []);
-
-  const handleUnsureTask = useCallback(() => {
-    toast.success("Unsure.");
   }, []);
 
   const filter = useMemo(
@@ -102,6 +102,7 @@ export default function Page() {
       currentUser={user}
       onParameterSave={onParameterSave}
       onCompleteTask={handleCompleteTask}
+      onUnsureTask={handleUnsureTask}
       onRejectTask={handleRejectTask}
       onVerifyTask={handleVerifyTask}
       onCreateTag={handleTagCreate}

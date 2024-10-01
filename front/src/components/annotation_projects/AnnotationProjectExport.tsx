@@ -14,18 +14,18 @@ import Loading from "@/components/Loading";
 import type { Tag, AnnotationStatus, AnnotationProject } from "@/types";
 import api from "@/app/api";
 
-const statusIcons: Record<Exclude<AnnotationStatus>, React.ReactNode> = {
-  completed: <CheckIcon className="w-6 h-6 text-emerald-500" />,
+const statusIcons: Record<AnnotationStatus, React.ReactNode> = {
+  verified: <VerifiedIcon className="w-6 h-6 text-blue-500" />,
   rejected: <CloseIcon className="w-6 h-6 text-red-500" />,
-  verified: <VerifiedIcon className="w-6 h-6 text-yellow-500" />,
-  assigned: <HelpIcon className="w-6 h-6 text-yellow-500" />,
+  assigned: <HelpIcon className="w-6 h-6 text-amber-500" />,
+  completed: <CheckIcon className="w-6 h-6 text-emerald-500" />,
 };
 
-const statusTooltips: Record<Exclude<AnnotationStatus>, string> = {
-  completed: "Accept",
-  rejected: "Reject",
+const statusTooltips: Record<AnnotationStatus, string> = {
   verified: "Verified",
-  assigned: "Unsure"
+  rejected: "Reject",
+  assigned: "Unsure",
+  completed: "Accept",
 };
 
 type ExportFormat = 'MultiBase' | 'SoundEvent';

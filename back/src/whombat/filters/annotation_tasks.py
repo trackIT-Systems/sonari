@@ -75,8 +75,13 @@ class PendingFilter(base.Filter):
 
         return query.where(
             models.AnnotationTask.status_badges.any(
-                models.AnnotationStatusBadge.state
-                == data.AnnotationState.completed,
+                models.AnnotationStatusBadge.state.in_(
+                    [
+                        data.AnnotationState.completed,
+                        data.AnnotationState.rejected,
+                        data.AnnotationState.verified,
+                    ]
+                ),
             )
             != self.eq,
         )

@@ -1,6 +1,6 @@
 import Loading from "@/app/loading";
 import Button from "@/components/Button";
-import { CheckIcon, CloseIcon, VerifiedIcon } from "@/components/icons";
+import { CompleteIcon, NeedsReviewIcon, HelpIcon, VerifiedIcon } from "@/components/icons";
 import StatusBadge from "@/components/StatusBadge";
 import Tooltip from "@/components/Tooltip";
 import KeyboardKey from "@/components/KeyboardKey";
@@ -10,12 +10,14 @@ import type { AnnotationStatus, AnnotationTask } from "@/types";
 export default function AnnotationTaskStatus({
   task,
   onDone,
+  onUnsure,
   onReview,
   onVerify,
   onRemoveBadge,
 }: {
   task?: AnnotationTask;
   onDone?: () => void;
+  onUnsure?: () => void;
   onReview?: () => void;
   onVerify?: () => void;
   onRemoveBadge?: (state: AnnotationStatus) => void;
@@ -39,9 +41,9 @@ export default function AnnotationTaskStatus({
         <Tooltip
           tooltip={
             <div className="inline-flex gap-2 items-center">
-              Task Done!
+              Accept
               <div className="text-xs">
-                <KeyboardKey code="g" />
+                <KeyboardKey code="a" />
               </div>
             </div>
           }
@@ -49,7 +51,23 @@ export default function AnnotationTaskStatus({
           autoPlacement={false}
         >
           <Button mode="text" variant="primary" onClick={onDone}>
-            <CheckIcon className="w-8 h-8" />
+            <CompleteIcon className="w-8 h-8" />
+          </Button>
+        </Tooltip>
+        <Tooltip
+          tooltip={
+            <div className="inline-flex gap-2 items-center">
+              Unsure
+              <div className="text-xs">
+                <KeyboardKey code="u" />
+              </div>
+            </div>
+          }
+          placement="bottom"
+          autoPlacement={false}
+        >
+          <Button mode="text" variant="warning" onClick={onUnsure}>
+            <HelpIcon className="w-8 h-8" />
           </Button>
         </Tooltip>
         <Tooltip
@@ -65,13 +83,13 @@ export default function AnnotationTaskStatus({
           autoPlacement={false}
         >
           <Button mode="text" variant="danger" onClick={onReview}>
-            <CloseIcon className="w-8 h-8" />
+            <NeedsReviewIcon className="w-8 h-8" />
           </Button>
         </Tooltip>
         <Tooltip
           tooltip={
             <div className="inline-flex gap-2 items-center">
-              Verified
+              Verify
               <div className="text-xs">
                 <KeyboardKey code="v" />
               </div>
@@ -80,7 +98,7 @@ export default function AnnotationTaskStatus({
           placement="bottom"
           autoPlacement={false}
         >
-          <Button mode="text" variant="warning" onClick={onVerify}>
+          <Button mode="text" variant="info" onClick={onVerify}>
             <VerifiedIcon className="w-8 h-8" />
           </Button>
         </Tooltip>

@@ -37,13 +37,14 @@ export default function ProjectProgress({
     pageSize: -1,
   });
 
-  const { missing, needReview, completed, verified, total } = useMemo(() => {
+  const { missing, needReview, completed, verified, unsure, total } = useMemo(() => {
     if (isLoading || annotationTasks == null) {
       return {
         missing: 0,
         needReview: 0,
         completed: 0,
         verified: 0,
+        unsure: 0,
         total: 0
       };
     }
@@ -74,6 +75,7 @@ export default function ProjectProgress({
           needReview={needReview}
           completed={completed}
           verified={verified}
+          unsure={unsure}
           total={total}
         />
       )}
@@ -100,6 +102,7 @@ function ProgressReport({
   needReview,
   completed,
   verified,
+  unsure,
   total,
 }: {
   annotationTasks: any;
@@ -108,6 +111,7 @@ function ProgressReport({
   needReview: number;
   completed: number;
   verified: number;
+  unsure: number;
   total: number,
 }) {
   return (
@@ -120,7 +124,7 @@ function ProgressReport({
           isLoading={isLoading}
         />
         <MetricBadge
-          icon={<EditIcon className="inline-block w-8 h-8 text-blue-500" />}
+          icon={<EditIcon className="inline-block w-8 h-8 text-gray-500" />}
           title="Remaining"
           value={missing}
           isLoading={isLoading}
@@ -135,7 +139,7 @@ function ProgressReport({
         />
         <MetricBadge
           icon={
-            <HelpIcon className="inline-block w-8 h-8 text-emerald-500" />
+            <HelpIcon className="inline-block w-8 h-8 text-amber-500" />
           }
           title="Unsure"
           value={unsure}
@@ -151,7 +155,7 @@ function ProgressReport({
         />
         <MetricBadge
           icon={
-            <VerifiedIcon className="inline-block w-8 h-8 text-amber-500" />
+            <VerifiedIcon className="inline-block w-8 h-8 text-blue-500" />
           }
           title="Verified"
           value={verified}

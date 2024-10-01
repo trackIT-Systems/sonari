@@ -41,6 +41,7 @@ export default function useAnnotateTaskKeyShortcuts(props: {
   onGoNext?: () => void;
   onGoPrevious?: () => void;
   onMarkCompleted?: () => void;
+  onMarkUnsure?: () => void;
   onMarkRejected?: () => void;
   onMarkVerified?: () => void;
   enabled?: boolean;
@@ -49,6 +50,7 @@ export default function useAnnotateTaskKeyShortcuts(props: {
     onGoNext,
     onGoPrevious,
     onMarkCompleted,
+    onMarkUnsure,
     onMarkRejected,
     onMarkVerified,
     enabled = true,
@@ -56,7 +58,8 @@ export default function useAnnotateTaskKeyShortcuts(props: {
 
   useKeyPressEvent(useKeyFilter({ enabled, key: "n" }), onGoNext);
   useKeyPressEvent(useKeyFilter({ enabled, key: "p" }), onGoPrevious);
-  useKeyPressEvent(useKeyFilter({ enabled, key: "g" }), onMarkCompleted);
+  useKeyPressEvent(useKeyFilter({ enabled, key: "a" }), onMarkCompleted);
+  useKeyPressEvent(useKeyFilter({ enabled, key: "u" }), onMarkUnsure);
   useKeyPressEvent(useKeyFilter({ enabled, key: "r" }), onMarkRejected);
   useKeyPressEvent(useKeyFilter({ enabled, key: "v" }), onMarkVerified);
 }

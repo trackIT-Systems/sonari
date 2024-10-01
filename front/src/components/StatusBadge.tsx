@@ -3,24 +3,24 @@ import classNames from "classnames";
 import {
   CheckIcon,
   CloseIcon,
+  HelpIcon,
   NeedsReviewIcon,
-  UserIcon,
   VerifiedIcon,
 } from "@/components/icons";
 
 import type { AnnotationStatusBadge } from "@/types";
 
 const ICONS = {
-  assigned: UserIcon,
+  assigned: HelpIcon,
   completed: CheckIcon,
   verified: VerifiedIcon,
   rejected: NeedsReviewIcon,
 };
 
 const CLASSNAMES = {
-  assigned: "bg-blue-100 border-blue-200 text-blue-500",
+  assigned: "bg-amber-100 border-amber-200 text-amber-500",
   completed: "bg-emerald-100 border-emerald-200 text-emerald-500",
-  verified: "bg-amber-100 border-amber-200 text-amber-500",
+  verified: "bg-blue-100 border-blue-200 text-blue-500",
   rejected: "bg-red-100 border-red-200 text-red-500",
 };
 

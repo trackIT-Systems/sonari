@@ -171,6 +171,7 @@ export default function AnnotateTasks({
               task={tasks.task}
               onReview={tasks.markRejected.mutate}
               onDone={tasks.markCompleted.mutate}
+              onUnsure={tasks.markUnsure.mutate}
               onVerify={tasks.markVerified.mutate}
               onRemoveBadge={tasks.removeBadge.mutate}
             />

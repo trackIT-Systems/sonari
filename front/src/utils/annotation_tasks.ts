@@ -7,11 +7,13 @@ export function computeAnnotationTasksProgress(
   let missing = annotationTasks.length;
   let needReview = 0;
   let completed = 0;
+  let unsure = 0;
   let verified = 0;
   for (const task of annotationTasks) {
     let isVerified = false;
     let isCompleted = false;
     let needsReview = false;
+    let isUnsure = false;
     let alreadyMissing = false;
 
     task.status_badges?.forEach(({ state, user }) => {
@@ -28,6 +30,9 @@ export function computeAnnotationTasksProgress(
         case "completed":
           isCompleted = true;
           break;
+        case "assigned":
+          isUnsure = true;
+          break
       }
     });
 
@@ -54,12 +59,17 @@ export function computeAnnotationTasksProgress(
         alreadyMissing = true;
       }
     }
+
+    if (isUnsure) {
+      unsure += 1;
+    }
   }
   return {
     missing,
     needReview,
     completed,
     verified,
+    unsure,
     total: annotationTasks.length,
   };
 }

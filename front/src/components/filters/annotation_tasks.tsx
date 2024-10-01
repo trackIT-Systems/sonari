@@ -66,10 +66,10 @@ const annotationTaskFilterDefs: FilterDef<AnnotationTaskFilter>[] = [
   },
   {
     name: "Unsure",
-    field: "unsure",
+    field: "assigned",
     selector: ({ setFilter }) => (
       <BooleanFilter
-        onChange={(val) => setFilter("unsure", val)}
+        onChange={(val) => setFilter("assigned", val)}
       />
     ),
     render: ({ value, clear }) => (
