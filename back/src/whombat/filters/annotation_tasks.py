@@ -4,9 +4,10 @@ from datetime import datetime, time
 from uuid import UUID
 
 from soundevent import data
-from sqlalchemy import Select, and_, func, or_
+from sqlalchemy import Select, and_, func, not_, or_
 
 from whombat import models
+from whombat.api.users import detector_users
 from whombat.filters import base
 
 __all__ = [
@@ -74,16 +75,21 @@ class PendingFilter(base.Filter):
             return query
 
         return query.where(
-            models.AnnotationTask.status_badges.any(
-                models.AnnotationStatusBadge.state.in_(
-                    [
-                        data.AnnotationState.completed,
-                        data.AnnotationState.rejected,
-                        data.AnnotationState.verified,
-                    ]
-                ),
+            not_(
+                models.AnnotationTask.status_badges.any(
+                    and_(
+                        models.AnnotationStatusBadge.state.in_(
+                            [
+                                data.AnnotationState.completed,
+                                data.AnnotationState.rejected,
+                                data.AnnotationState.verified,
+                            ]
+                        ),
+                        not_(models.AnnotationStatusBadge.user.has(models.User.username.in_(detector_users))),
+                    )
+                )
             )
-            != self.eq,
+            == self.eq
         )
 
 

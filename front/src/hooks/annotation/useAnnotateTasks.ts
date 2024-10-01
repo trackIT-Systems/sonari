@@ -103,6 +103,7 @@ export default function useAnnotateTasks({
   annotationTask: initialTask,
   onChangeTask,
   onCompleteTask,
+  onUnsureTask,
   onRejectTask,
   onVerifyTask,
 }: {
@@ -114,6 +115,8 @@ export default function useAnnotateTasks({
   onChangeTask?: (task: AnnotationTask) => void;
   /** Callback when the current task is marked as completed */
   onCompleteTask?: (task: AnnotationTask) => void;
+  /** Callback when the current task is marked as completed */
+  onUnsureTask?: (task: AnnotationTask) => void;
   /** Callback when the current task is marked as rejected */
   onRejectTask?: (task: AnnotationTask) => void;
   /** Callback when the current task is marked as verified */
@@ -257,7 +260,7 @@ export default function useAnnotateTasks({
     mutationFn: markUnsureFn,
     onSuccess: (task) => {
       updateTaskData(task);
-      onCompleteTask?.(task);
+      onUnsureTask?.(task);
       nextTask();
     },
   });

@@ -42,6 +42,7 @@ export default function AnnotateTasks({
   onRemoveClipTag,
   onParameterSave,
   onCompleteTask,
+  onUnsureTask,
   onRejectTask,
   onVerifyTask,
 }: {
@@ -69,6 +70,7 @@ export default function AnnotateTasks({
   onRemoveStatusBadge?: (task: AnnotationTask) => void;
   onParameterSave?: (parameters: SpectrogramParameters) => void;
   onCompleteTask?: () => void;
+  onUnsureTask?: () => void;
   onRejectTask?: () => void;
   onVerifyTask?: () => void;
 }) {
@@ -98,6 +100,7 @@ export default function AnnotateTasks({
     annotationTask: annotationTask,
     onChangeTask,
     onCompleteTask,
+    onUnsureTask,
     onRejectTask,
     onVerifyTask,
   });
