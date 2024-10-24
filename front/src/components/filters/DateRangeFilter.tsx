@@ -12,7 +12,20 @@ interface DateRangeFilterProps {
   }) => void;
 }
 
-export default function DateRangeFilter({ onChange }: DateRangeFilterProps) {
+
+
+// Helper functions to format date and time
+export function formatDate(date: Date | null | undefined): string {
+  if (!date) return 'Any Date,';
+  return `${date.toLocaleDateString()},`;
+}
+
+export function formatTime(date: Date | null | undefined): string {
+  if (!date) return 'Any Time';
+  return `${date.toLocaleTimeString()}`;
+}
+
+export function DateRangeFilter({ onChange }: DateRangeFilterProps) {
   const [startDate, setStartDate] = useState<Date | null>(null);
   const [endDate, setEndDate] = useState<Date | null>(null);
   const [startTime, setStartTime] = useState<Date | null>(null);

@@ -15,7 +15,7 @@ import {
 } from "@/components/icons";
 
 import type { AnnotationTaskFilter } from "@/api/annotation_tasks";
-import DateRangeFilter from "./DateRangeFilter";
+import { DateRangeFilter, formatDate, formatTime } from "./DateRangeFilter";
 
 const tasksFilterDefs: FilterDef<AnnotationTaskFilter>[] = [
   {
@@ -91,6 +91,25 @@ const tasksFilterDefs: FilterDef<AnnotationTaskFilter>[] = [
     ),
   },
   {
+    name: "Unsure",
+    field: "assigned",
+    selector: ({ setFilter }) => (
+      <BooleanFilter
+        onChange={(val) => setFilter("assigned", val)}
+      />
+    ),
+    render: ({ value, clear }) => (
+      <FilterBadge
+          field="Unsure"
+          value={value ? "Yes" : "No"}
+          onRemove={clear} />
+    ),
+    description: "Select only unsure annotation tasks.",
+    icon: (
+      <NeedsReviewIcon className="h-5 w-5 inline-block text-stone-500 mr-1 align-middle" />
+    ),
+  },
+  {
     field: "sound_event_annotation_tag",
     name: "Sound Event Tag",
     render: ({ value, clear }) => (
@@ -122,26 +141,6 @@ const tasksFilterDefs: FilterDef<AnnotationTaskFilter>[] = [
       <DatasetIcon className="h-5 w-5 inline-block text-stone-500 mr-1 align-middle" />
     ),
   },
-
-  {
-    field: "recording_tag",
-    name: "Recording Tag",
-    render: ({ value, clear }) => (
-      <FilterBadge
-        field="Recording Tag"
-        value={`${value.key}: ${value.value}`}
-        onRemove={clear}
-      />
-    ),
-    selector: ({ setFilter }) => (
-      <TagFilter onChange={(val) => setFilter("recording_tag", val)} />
-    ),
-    description: "Select task that come from a recording with a specific tag",
-    icon: (
-      <TagIcon className="h-5 w-5 inline-block text-stone-500 mr-1 align-middle" />
-    ),
-  },
-
   {
     field: "date_range",
     name: "Date and Time",
@@ -163,14 +162,3 @@ const tasksFilterDefs: FilterDef<AnnotationTaskFilter>[] = [
 ];
 
 export default tasksFilterDefs;
-
-// Helper functions to format date and time
-function formatDate(date: Date | null | undefined): string {
-  if (!date) return 'Any Date,';
-  return `${date.toLocaleDateString()},`;
-}
-
-function formatTime(date: Date | null | undefined): string {
-  if (!date) return 'Any Time';
-  return `${date.toLocaleTimeString()}`;
-}

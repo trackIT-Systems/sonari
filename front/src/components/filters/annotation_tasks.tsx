@@ -1,6 +1,7 @@
 import FilterBadge from "@/components/filters/FilterBadge";
-import {  BooleanFilter, } from "@/components/filters/Filters";
-import {  CompleteIcon, EditIcon, NeedsReviewIcon, VerifiedIcon, } from "@/components/icons";
+import { BooleanFilter, TagFilter, DatasetFilter } from "@/components/filters/Filters";
+import { DateIcon, EditIcon, NeedsReviewIcon, VerifiedIcon, TagIcon, DatasetIcon } from "@/components/icons";
+import { DateRangeFilter, formatDate, formatTime } from "./DateRangeFilter";
 
 import type { AnnotationTaskFilter } from "@/api/annotation_tasks";
 import type { FilterDef } from "@/components/filters/FilterMenu";
@@ -100,6 +101,56 @@ const annotationTaskFilterDefs: FilterDef<AnnotationTaskFilter>[] = [
     description: "Select only pending annotation tasks.",
     icon: (
       <EditIcon className="h-5 w-5 inline-block text-stone-500 mr-1 align-middle" />
+    ),
+  },
+  {
+    field: "sound_event_annotation_tag",
+    name: "Sound Event Tag",
+    render: ({ value, clear }) => (
+      <FilterBadge
+        field="Sound Event Tag"
+        value={`${value.key}: ${value.value}`}
+        onRemove={clear}
+      />
+    ),
+    selector: ({ setFilter }) => (
+      <TagFilter onChange={(val) => setFilter("sound_event_annotation_tag", val)} />
+    ),
+    description: "Select task that contain a sound event with a specific tag",
+    icon: (
+      <TagIcon className="h-5 w-5 inline-block text-stone-500 mr-1 align-middle" />
+    ),
+  },
+  {
+    field: "dataset",
+    name: "Dataset",
+    render: ({ value, clear }) => (
+      <FilterBadge field="Dataset" value={value.name} onRemove={clear} />
+    ),
+    selector: ({ setFilter }) => (
+      <DatasetFilter onChange={(val) => setFilter("dataset", val)} />
+    ),
+    description: "Select tasks that come from a specific dataset",
+    icon: (
+      <DatasetIcon className="h-5 w-5 inline-block text-stone-500 mr-1 align-middle" />
+    ),
+  },
+  {
+    field: "date_range",
+    name: "Date and Time",
+    render: ({ value, clear }) => (
+      <FilterBadge
+        field="Date and Time Range"
+        value={`${formatDate(value.start_date)} ${formatTime(value.start_time)} - ${formatDate(value.end_date)} ${formatTime(value.end_time)}`}
+        onRemove={clear}
+      />
+    ),
+    selector: ({ setFilter }) => (
+      <DateRangeFilter onChange={(val) => setFilter("date_range", val)} />
+    ),
+    description: "Select tasks within a specific date and time range",
+    icon: (
+      <DateIcon className="h-5 w-5 inline-block text-stone-500 mr-1 align-middle" />
     ),
   },
 ];
