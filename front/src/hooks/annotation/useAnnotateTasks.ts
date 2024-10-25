@@ -17,6 +17,8 @@ import useAnnotateTasksKeyShortcuts from "@/hooks/annotation/useAnnotateTasksKey
 import useAnnotationTasks from "@/hooks/api/useAnnotationTasks";
 import { type Filter } from "@/hooks/utils/useFilter";
 
+import { WHOMBATDETECT_USERS } from "@/constants";
+
 import type { AnnotationStatus, AnnotationStatusBadge, AnnotationTask, ClipAnnotation } from "@/types";
 
 type AnnotationState = {
@@ -235,11 +237,10 @@ export default function useAnnotateTasks({
 
   // Add this helper function at the top level
   function shouldRemoveBadge(badge: AnnotationStatusBadge) {
-    const usersToCheck = ["user1", "user2"];
     return (
       badge.state === "rejected" &&
       badge.user?.username != null &&
-      usersToCheck.includes(badge.user.username)
+      WHOMBATDETECT_USERS.includes(badge.user.username)
     );
   }
 
