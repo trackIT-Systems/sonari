@@ -78,7 +78,7 @@ export default function AnnotationProgress({
           </Dialog>
           <span className="inline-flex gap-1 items-center text-sm whitespace-nowrap">
             <span className="text-stone-500">#:</span>
-            <span className="font-bold text-blue-500">{current}</span>
+            <span className="font-bold text-blue-500">{current ? current + 1 : 0}</span>
           </span>
           {/* <span className="text-sm inline-flex gap-1 items-center whitespace-nowrap">
             <span className="text-stone-500">Progress:</span>
