@@ -176,7 +176,7 @@ export default function AnnotateTasks({
               onDone={tasks.markCompleted.mutate}
               onUnsure={tasks.markUnsure.mutate}
               onVerify={tasks.markVerified.mutate}
-              onRemoveBadge={tasks.removeBadge.mutate}
+              onRemoveBadge={(state, userId) => tasks.removeBadge.mutate({ state, userId })}
             />
           )}
         </div>

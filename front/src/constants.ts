@@ -34,4 +34,5 @@ export const WHOMBATDETECT_USERS: string[] = [
     "yolobat",
     "soundscapepipe",
     "birdedge",
+    "batectron",
 ]

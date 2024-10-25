@@ -22,6 +22,7 @@ detector_users: list[str] = [
     "yolobat",
     "soundscapepipe",
     "birdedge",
+    "batectron",
 ]
 
 

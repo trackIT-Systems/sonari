@@ -165,11 +165,13 @@ export function registerAnnotationTasksAPI(
   async function removeBadge(
     annotationTask: AnnotationTask,
     state: AnnotationStatus,
+    userId?: string,
   ): Promise<AnnotationTask> {
     const response = await instance.delete(endpoints.removeBadge, {
       params: {
         annotation_task_uuid: annotationTask.uuid,
         state,
+        user_id: userId,
       },
     });
     return AnnotationTaskSchema.parse(response.data);

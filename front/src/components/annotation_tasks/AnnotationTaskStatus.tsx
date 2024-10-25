@@ -20,7 +20,7 @@ export default function AnnotationTaskStatus({
   onUnsure?: () => void;
   onReview?: () => void;
   onVerify?: () => void;
-  onRemoveBadge?: (state: AnnotationStatus) => void;
+  onRemoveBadge?: (state: AnnotationStatus, userId?: string) => void;
 }) {
   return (
     <div className="flex flex-row justify-between items-center border rounded-md border-stone-200 dark:border-stone-800 px-6">
@@ -32,7 +32,7 @@ export default function AnnotationTaskStatus({
             <StatusBadge
               key={`${badge.state}-${badge.user?.id}`}
               badge={badge}
-              onRemove={() => onRemoveBadge?.(badge.state)}
+              onRemove={() => onRemoveBadge?.(badge.state, badge.user?.id)}
             />
           ))
         )}

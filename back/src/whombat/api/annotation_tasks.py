@@ -170,6 +170,7 @@ class AnnotationTaskAPI(
         session: AsyncSession,
         obj: schemas.AnnotationTask,
         state: data.AnnotationState,
+        user_id: str | None = None,
     ) -> schemas.AnnotationTask:
         """Remove a status badge from a task.
 
@@ -191,24 +192,23 @@ class AnnotationTaskAPI(
             if b.state == state:
                 break
         else:
-            raise exceptions.NotFoundError(
-                f"Status badge with state {state} not found in task {obj.id}"
-            )
+            raise exceptions.NotFoundError(f"Status badge with state {state} not found in task {obj.id}")
 
+        filters = [
+            models.AnnotationStatusBadge.annotation_task_id == obj.id,
+            models.AnnotationStatusBadge.state == b.state,
+        ]
+        if user_id is not None:
+            filters.append(models.AnnotationStatusBadge.user_id == user_id)
         await common.delete_object(
             session,
             models.AnnotationStatusBadge,
-            and_(
-                models.AnnotationStatusBadge.annotation_task_id == obj.id,
-                models.AnnotationStatusBadge.state == b.state,
-            ),
+            and_(*filters),
         )
 
         obj = obj.model_copy(
             update=dict(
-                status_badges=[
-                    b for b in obj.status_badges if (b.state != state)
-                ],
+                status_badges=[b for b in obj.status_badges if (b.state != state)],
             ),
             deep=True,
         )

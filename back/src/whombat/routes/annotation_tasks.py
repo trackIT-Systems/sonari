@@ -178,6 +178,7 @@ def get_annotation_tasks_router(settings: WhombatSettings) -> APIRouter:
         session: Session,
         annotation_task_uuid: UUID,
         state: AnnotationState,
+        user_id: str | None = None,
     ):
         """Remove a badge from an annotation task."""
         annotation_task = await api.annotation_tasks.get(
@@ -188,6 +189,7 @@ def get_annotation_tasks_router(settings: WhombatSettings) -> APIRouter:
             session,
             annotation_task,
             state,
+            user_id,
         )
         await session.commit()
         return updated
