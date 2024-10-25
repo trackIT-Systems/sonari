@@ -248,10 +248,7 @@ export default function useAnnotateTasks({
     if (task.status_badges) {
       const badgesToRemove = task.status_badges.filter(shouldRemoveBadge);
       for (const badge of badgesToRemove) {
-        await removeBadge.mutateAsync({
-          state: badge.state,
-          userId: badge.user?.id
-        });
+        await api.annotationTasks.removeBadge(task, badge.state, badge.user?.id);
       }
     }
   }
