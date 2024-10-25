@@ -240,33 +240,7 @@ async def get_objects_from_query(
     sort_by: _ColumnExpressionArgument | str | None = None,
     noloads: list[Any] | None = None,
 ) -> tuple[Result[Any], int]:
-    """Get a list of objects from a query.
-
-    Parameters
-    ----------
-    session
-        The database session to use.
-    query
-        The query to use to get the objects.
-    model
-        The model to query.
-    limit
-        The maximum number of objects to return, by default 1000
-    offset
-        The offset to use, by default 0
-    filters
-        A list of filters to apply, by default None
-    sort_by
-        The column to sort by, by default None
-
-    Returns
-    -------
-    list[A]
-        The objects.
-    count : int
-        The total number of objects. This is the number of objects that would
-        have been returned if no limit or offset was applied.
-    """
+    """Get a list of objects from a query."""
     for nl in noloads or []:
         query = query.options(noload(nl))
 
@@ -280,8 +254,21 @@ async def get_objects_from_query(
 
     if sort_by is not None:
         if isinstance(sort_by, str):
-            sort_by = get_sort_by_col_from_str(model, sort_by)
-        query = query.order_by(sort_by)
+            if sort_by == "recording_datetime":
+                # Join with related tables to access recording date and time
+                query = (
+                    query.join(models.Clip, models.AnnotationTask.clip_id == models.Clip.id)
+                    .join(models.Recording, models.Clip.recording_id == models.Recording.id)
+                    .order_by(
+                        models.Recording.date.asc(),
+                        models.Recording.time.asc(),
+                    )
+                )
+            else:
+                sort_by = get_sort_by_col_from_str(model, sort_by)
+                query = query.order_by(sort_by)
+        else:
+            query = query.order_by(sort_by)
 
     if limit is not None and limit >= 0:
         query = query.limit(limit)

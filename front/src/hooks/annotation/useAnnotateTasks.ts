@@ -142,7 +142,7 @@ export default function useAnnotateTasks({
   });
 
   const items = useMemo(() => {
-    return initialItems.toSorted((a, b) => sortAnnotationTasks(a, b))
+    return initialItems;
   }, [initialItems]);
 
   const index = useMemo(() => {

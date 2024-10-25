@@ -76,7 +76,7 @@ def get_annotation_tasks_router(settings: WhombatSettings) -> APIRouter:
         filter: Annotated[AnnotationTaskFilter, Depends(AnnotationTaskFilter)],  # type: ignore
         limit: Limit = 10,
         offset: Offset = 0,
-        sort_by: str = "-created_on",
+        sort_by: str = "recording_datetime",
     ):
         """Get a page of annotation tasks."""
         if limit == -1:
