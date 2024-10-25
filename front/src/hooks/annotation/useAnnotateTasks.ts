@@ -266,10 +266,15 @@ export default function useAnnotateTasks({
   const markCompleted = useMutation<AnnotationTask, AxiosError>({
     mutationFn: markCompletedFn,
     onSuccess: (task) => {
+      let updatedTask = task;
       removeDetectorBadge(task);
-      updateTaskData(task);
-      onCompleteTask?.(task);
-      nextTask();
+      onCompleteTask?.(updatedTask);
+      updateTaskData(updatedTask);
+      const nextTaskIndex = index + 1;
+      const nextTaskToLoad = items[nextTaskIndex];
+      if (nextTaskToLoad) {
+        goToTask(nextTaskToLoad);
+      }
     },
   });
 
@@ -283,10 +288,15 @@ export default function useAnnotateTasks({
   const markUnsure = useMutation<AnnotationTask, AxiosError>({
     mutationFn: markUnsureFn,
     onSuccess: (task) => {
+      let updatedTask = task;
       removeDetectorBadge(task);
-      updateTaskData(task);
-      onUnsureTask?.(task);
-      nextTask();
+      onCompleteTask?.(updatedTask);
+      updateTaskData(updatedTask);
+      const nextTaskIndex = index + 1;
+      const nextTaskToLoad = items[nextTaskIndex];
+      if (nextTaskToLoad) {
+        goToTask(nextTaskToLoad);
+      }
     },
   });
 
@@ -300,10 +310,15 @@ export default function useAnnotateTasks({
   const markRejected = useMutation<AnnotationTask, AxiosError>({
     mutationFn: markRejectedFn,
     onSuccess: (task) => {
+      let updatedTask = task;
       removeDetectorBadge(task);
-      updateTaskData(task);
-      onRejectTask?.(task);
-      nextTask();
+      onCompleteTask?.(updatedTask);
+      updateTaskData(updatedTask);
+      const nextTaskIndex = index + 1;
+      const nextTaskToLoad = items[nextTaskIndex];
+      if (nextTaskToLoad) {
+        goToTask(nextTaskToLoad);
+      }
     },
   });
 
@@ -317,10 +332,15 @@ export default function useAnnotateTasks({
   const markVerified = useMutation<AnnotationTask, AxiosError>({
     mutationFn: markVerifiedFn,
     onSuccess: (task) => {
+      let updatedTask = task;
       removeDetectorBadge(task);
-      updateTaskData(task);
-      onVerifyTask?.(task);
-      nextTask();
+      onCompleteTask?.(updatedTask);
+      updateTaskData(updatedTask);
+      const nextTaskIndex = index + 1;
+      const nextTaskToLoad = items[nextTaskIndex];
+      if (nextTaskToLoad) {
+        goToTask(nextTaskToLoad);
+      }
     },
   });
 
