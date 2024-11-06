@@ -309,33 +309,13 @@ async def export_annotation_project_multibase(
             "Jahr",
             "Beobachter",
             "Bestimmer",
-            "Herkunft",
-            "Quelle",
-            "Sammlung",
             "Fundort",
-            "Fundort_Zusatz",
-            "MTB",
-            "Quadrant",
             "X",
             "Y",
             "EPSG",
-            "Toleranz",
-            "Hoehe",
-            "Biotop",
-            "Region",
             "Nachweistyp",
-            "Verhalten",
-            "Reproduktion",
-            "Quartiertyp",
-            "Anzahl",
-            "Einheit",
-            "Anzahl_maennlich",
-            "Anzahl_weiblich",
-            "Anzahl_Details",
             "Bemerkung_1",
             "Bemerkung_2",
-            "Ringnummer",
-            "Merkmal"
         ]
     )
 
@@ -371,7 +351,6 @@ async def export_annotation_project_multibase(
 
                         sound_event_notes += f" | {msg}"
 
-                    status = []
                     for s in task.status_badges:
                         username: str = s.user.name if s.user and s.user.name else ""
                         state: str = s.state.name
@@ -379,11 +358,10 @@ async def export_annotation_project_multibase(
                             continue
                         if state == "rejected" and username == "":
                             continue
-                        status = list(map(lambda x: f"{state} ({username})", task.status_badges))
 
                     # Write the content to the worksheet
                     ws.append(
-                        f"{species};{date};{date.day};{date.month};{date.year};trackIT Systems/Bioplan Marburg;trackIT Systems/Bioplan Marburg;;;;{station};;;;{station}x;{station}y;4326;;;;;Akustik;;;;;;;;;{sound_event_notes};{clip_annotation_notes};;;".split(
+                        f"{species};{date};{date.day};{date.month};{date.year};trackIT Systems/Bioplan Marburg;trackIT Systems/Bioplan Marburg;{station};{station}x;{station}y;4326;Akustik;{sound_event_notes};{clip_annotation_notes}".split(
                             ";"
                         )
                     )
@@ -394,7 +372,7 @@ async def export_annotation_project_multibase(
     excel_file.seek(0)
 
     # Generate the filename
-    filename = f"{project.name}_{datetime.datetime.now().strftime('%d.%m.%Y_%H_%M')}.xlsx"
+    filename = f"{project.name}_{datetime.datetime.now().strftime('%d.%m.%Y_%H_%M')}_multibase.xlsx"
 
     return Response(
         excel_file.getvalue(),
