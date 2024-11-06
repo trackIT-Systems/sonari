@@ -28,7 +28,7 @@ const statusTooltips: Record<AnnotationStatus, string> = {
   completed: "Accept",
 };
 
-type ExportFormat = 'MultiBase' | 'SoundEvent';
+type ExportFormat = 'MultiBase' | 'SoundEvent' | 'Territory';
 
 export default function AnnotationProjectExport({
   project,
@@ -188,6 +188,15 @@ export default function AnnotationProjectExport({
                   <Toggle
                     isSelected={exportFormat === 'MultiBase'}
                     onChange={() => handleExportFormatChange('MultiBase')}
+                  />
+                </InputGroup>
+                <InputGroup
+                  name="territory-format"
+                  label="Territory"
+                >
+                  <Toggle
+                    isSelected={exportFormat === 'Territory'}
+                    onChange={() => handleExportFormatChange('Territory')}
                   />
                 </InputGroup>
                 <InputGroup

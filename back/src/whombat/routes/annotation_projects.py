@@ -192,6 +192,89 @@ async def export_annotation_project_soundevent(
     )
 
 
+async def export_annotation_project_territory(
+    session: Session,
+    annotation_project_uuid: UUID,
+    tags: Annotated[list[str], Query()],
+    statuses: Annotated[list[str], Query()],
+) -> Response:
+    """Export an annotation project."""
+    project = await api.annotation_projects.get(session, annotation_project_uuid)
+    tasks = await api.annotation_tasks.get_many(
+        session,
+        limit=-1,
+        filters=[
+            models.AnnotationTask.annotation_project_id == project.id,
+            models.AnnotationTask.status_badges.any(models.AnnotationStatusBadge.state.in_(statuses)),
+        ],
+    )
+
+    # Create a new workbook
+    wb = Workbook()
+    # Remove default sheet
+    ws = wb.active
+    if ws is None:
+        return Response(status_code=422)
+    wb.remove(ws)
+
+    # Keep track of species, stations and dates
+    species_data: dict[str, dict[str, set[datetime.date]]] = {}
+
+    for task in tasks[0]:
+        if not task.clip_annotation:
+            continue
+
+        clip_annotation: schemas.ClipAnnotation = task.clip_annotation
+
+        for sound_event_annotation in clip_annotation.sound_events:
+            tag_set: set[str] = {f"{tag.key}:{tag.value}" for tag in sound_event_annotation.tags}
+            for tag in tags:
+                if tag in tag_set:
+                    if not task.clip:
+                        continue
+
+                    species = tag.split(":")[-1]
+                    station = task.clip.recording.path.stem.split("_")[0]
+                    date = task.clip.recording.date
+                    if date is None:
+                        continue
+
+                    if species not in species_data:
+                        species_data[species] = {}
+                    if station not in species_data[species]:
+                        species_data[species][station] = set()
+                    species_data[species][station].add(date)
+
+    for species in species_data:
+        ws = wb.create_sheet(species)
+
+        all_dates = sorted(set().union(*[dates for dates in species_data[species].values()]))
+
+        for col, date in enumerate(all_dates, start=2):
+            ws.cell(row=1, column=col, value=date.strftime("%Y-%m-%d"))
+
+        for row, station in enumerate(sorted(species_data[species].keys()), start=2):
+            ws.cell(row=row, column=1, value=station)
+
+    # Save the workbook to a BytesIO object
+    excel_file = BytesIO()
+    wb.save(excel_file)
+    excel_file.seek(0)
+
+    # Generate the filename
+    filename = f"{project.name}_{datetime.datetime.now().strftime('%d.%m.%Y_%H_%M')}_territory.xlsx"
+
+    return Response(
+        excel_file.getvalue(),
+        status_code=200,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={
+            "content-disposition": f"attachment; filename={filename}",
+            "content-type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        },
+    )
+
+
 async def export_annotation_project_multibase(
     session: Session,
     annotation_project_uuid: UUID,
@@ -336,6 +419,8 @@ async def export_annotation_project(
 ) -> Response:
     if format == "MultiBase":
         return await export_annotation_project_multibase(session, annotation_project_uuid, tags, statuses)
+    elif format == "Territory":
+        return await export_annotation_project_territory(session, annotation_project_uuid, tags, statuses)
     elif format == "SoundEvent":
         return await export_annotation_project_soundevent(session, annotation_project_uuid)
     else:
