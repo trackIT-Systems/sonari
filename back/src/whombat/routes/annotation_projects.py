@@ -217,11 +217,15 @@ async def export_annotation_project_territory(
         return Response(status_code=422)
     wb.remove(ws)
 
-    # Keep track of species, stations and dates
-    species_data: dict[str, dict[str, set[datetime.date]]] = {}
+    # Keep track of species, stations, dates and status badges
+    # Structure: species -> station -> date -> list of status badges
+    species_data: dict[str, dict[str, dict[datetime.date, list[str]]]] = {}
+    all_dates: set[datetime.date] = set()
+    all_stations: set[str] = set()
 
+    # Collect all data
     for task in tasks[0]:
-        if not task.clip_annotation:
+        if not task.clip_annotation or not task.clip:
             continue
 
         clip_annotation: schemas.ClipAnnotation = task.clip_annotation
@@ -230,31 +234,70 @@ async def export_annotation_project_territory(
             tag_set: set[str] = {f"{tag.key}:{tag.value}" for tag in sound_event_annotation.tags}
             for tag in tags:
                 if tag in tag_set:
-                    if not task.clip:
+                    if not task.clip.recording.date:
                         continue
 
                     species = tag.split(":")[-1]
                     station = task.clip.recording.path.stem.split("_")[0]
                     date = task.clip.recording.date
-                    if date is None:
-                        continue
+
+                    # Track all dates and stations across all species
+                    all_dates.add(date)
+                    all_stations.add(station)
 
                     if species not in species_data:
                         species_data[species] = {}
                     if station not in species_data[species]:
-                        species_data[species][station] = set()
-                    species_data[species][station].add(date)
+                        species_data[species][station] = {}
+                    if date not in species_data[species][station]:
+                        species_data[species][station][date] = []
 
+                    # Collect status badges for this task
+                    status_badges = []
+                    for s in task.status_badges:
+                        username: str = s.user.name if s.user and s.user.name else ""
+                        state: str = s.state.name
+                        if state == "rejected" and (username == "" or username in detector_users):
+                            continue
+                        status_badges.append(f"{state}")
+
+                    species_data[species][station][date].extend(status_badges)
+
+    # After collecting all_dates, generate complete date range
+    if all_dates:  # Only if we have any dates
+        min_date = min(all_dates)
+        max_date = max(all_dates)
+        complete_dates = set()
+
+        current_date = min_date
+        while current_date <= max_date:
+            complete_dates.add(current_date)
+            current_date += datetime.timedelta(days=1)
+
+        # Replace all_dates with complete range
+        all_dates = complete_dates
+
+    # Sort all dates and stations once
+    sorted_dates = sorted(all_dates)
+    sorted_stations = sorted(all_stations)
+
+    # Create worksheets and populate headers
     for species in species_data:
         ws = wb.create_sheet(species)
 
-        all_dates = sorted(set().union(*[dates for dates in species_data[species].values()]))
-
-        for col, date in enumerate(all_dates, start=2):
+        # Write date headers starting from B1 using all dates
+        for col, date in enumerate(sorted_dates, start=2):
             ws.cell(row=1, column=col, value=date.strftime("%Y-%m-%d"))
 
-        for row, station in enumerate(sorted(species_data[species].keys()), start=2):
+        # Write station names in first column using all stations
+        for row, station in enumerate(sorted_stations, start=2):
             ws.cell(row=row, column=1, value=station)
+
+            # Fill in status badges for each date
+            for col, date in enumerate(sorted_dates, start=2):
+                badges = species_data[species].get(station, {}).get(date, [])
+                cell_value = " | ".join(badges) if badges else ""
+                ws.cell(row=row, column=col, value=cell_value)
 
     # Save the workbook to a BytesIO object
     excel_file = BytesIO()
