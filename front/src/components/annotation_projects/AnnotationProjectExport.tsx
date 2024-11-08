@@ -71,13 +71,15 @@ export default function AnnotationProjectExport({
   const handleExport = async () => {
     setIsExporting(true);
     try {
-      const tagParams = selectedTags
-        .map(tag => `tags=${encodeURIComponent(`${tag.key}:${tag.value}`)}`)
-        .join('&');
-      const statusParams = selectedStatuses
-        .map(status => `statuses=${encodeURIComponent(status)}`)
-        .join('&');
-        const queryString = `${tagParams}&${statusParams}&format=${exportFormat}`;
+      const tagParams = selectedTags.length > 0
+        ? selectedTags.map(tag => `tags=${encodeURIComponent(`${tag.key}:${tag.value}`)}`).join('&')
+        : 'tags=[]';
+      
+      const statusParams = selectedStatuses.length > 0
+        ? selectedStatuses.map(status => `statuses=${encodeURIComponent(status)}`).join('&')
+        : 'statuses=[]';
+
+      const queryString = `${tagParams}&${statusParams}&format=${exportFormat}`;
       
       const { blob, filename } = await api.annotationProjects.download(project, queryString);
   
@@ -86,14 +88,13 @@ export default function AnnotationProjectExport({
       const a = document.createElement('a');
       a.style.display = 'none';
       a.href = url;
-      a.download = filename; // Use the filename provided by the server
+      a.download = filename;
       document.body.appendChild(a);
       a.click();
       window.URL.revokeObjectURL(url);
-      document.body.removeChild(a); // Clean up
+      document.body.removeChild(a);
     } catch (error) {
       console.error('Export failed:', error);
-      // Handle the error - maybe show a notification to the user
     } finally {
       setIsExporting(false);
     }
@@ -103,7 +104,8 @@ export default function AnnotationProjectExport({
     !selectedTags.some(t => t.key === tag.key && t.value === tag.value)
   );
 
-  const isSelectionMade = selectedTags.length > 0 && selectedStatuses.length > 0;
+  const isSelectionMade = (exportFormat === 'SoundEvent') || 
+    (selectedTags.length > 0 && selectedStatuses.length > 0);
 
   return (
     <div className="flex flex-col gap-8">
@@ -221,18 +223,22 @@ export default function AnnotationProjectExport({
               ) : isSelectionMade ? (
                 <>
                   <H3>Summary</H3>
-                  <ul className="list-disc list-inside mb-4">
-                    <li>
-                      Selected tags:{" "}
-                      <span className="text-emerald-500">{selectedTags.length}</span>
-                    </li>
-                    <li>
-                      Selected statuses:{" "}
-                      <span className="text-emerald-500">{selectedStatuses.length}</span>
-                    </li>
-                  </ul>
+                  {exportFormat !== 'SoundEvent' && (
+                    <ul className="list-disc list-inside mb-4">
+                      <li>
+                        Selected tags:{" "}
+                        <span className="text-emerald-500">{selectedTags.length}</span>
+                      </li>
+                      <li>
+                        Selected statuses:{" "}
+                        <span className="text-emerald-500">{selectedStatuses.length}</span>
+                      </li>
+                    </ul>
+                  )}
                   <p className="text-stone-500 mb-4">
-                    Once satisfied with your selections, click the button below to export the project.
+                    {exportFormat === 'SoundEvent' 
+                      ? "Click the button below to export the project in SoundEvent format."
+                      : "Once satisfied with your selections, click the button below to export the project."}
                   </p>
                   <Button onClick={handleExport} className="w-full">
                     Export
@@ -240,7 +246,7 @@ export default function AnnotationProjectExport({
                 </>
               ) : (
                 <p className="text-stone-500">
-                  Select at least one tag and one status badge
+                  Select at least one tag and one status badge, or export as SoundEvent
                 </p>
               )}
             </Card>
