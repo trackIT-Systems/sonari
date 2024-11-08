@@ -279,10 +279,6 @@ class SoundEventAnnotationTagFilter(base.Filter):
 
         query = (
             query.join(
-                models.Clip,
-                models.Clip.id == models.AnnotationTask.clip_id,
-            )
-            .join(
                 models.ClipAnnotation,
                 models.ClipAnnotation.clip_id == models.Clip.id,
             )
