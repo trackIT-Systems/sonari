@@ -7,7 +7,7 @@ import type { KeyShortcut } from "@/hooks/utils/useKeyFilter";
 export const ANNOTATION_KEY_SHORTCUTS: KeyShortcut[] = [
   {
     label: "Add Annotation",
-    shortcut: "a",
+    shortcut:"c",
     description: "Add a new annotation",
   },
   {
@@ -29,7 +29,7 @@ export default function useAnnotateClipKeyShortcuts(props: {
   enabled?: boolean;
 }) {
   const { onGoCreate, onGoSelect, onGoDelete, enabled = true } = props;
-  useKeyPressEvent(useKeyFilter({ enabled, key: "a" }), onGoCreate);
+  useKeyPressEvent(useKeyFilter({ enabled, key: "c" }), onGoCreate);
   useKeyPressEvent(useKeyFilter({ enabled, key: "s" }), onGoSelect);
   useKeyPressEvent(useKeyFilter({ enabled, key: "d" }), onGoDelete);
 }

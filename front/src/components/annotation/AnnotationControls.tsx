@@ -102,7 +102,7 @@ export default function AnnotationControls({
           <div className="inline-flex gap-1">
             Create
             <span className="text-xs">
-              <KeyboardKey code="a" />
+              <KeyboardKey code="c" />
             </span>
           </div>
         }
