@@ -257,7 +257,7 @@ async def export_annotation_project_territory(
                     for s in task.status_badges:
                         username: str = s.user.name if s.user and s.user.name else ""
                         state: str = s.state.name
-                        if state == "rejected" and (username == "" or username in detector_users):
+                        if state == "rejected" and username in detector_users:
                             continue
                         status_badges.append(f"{state}")
 
