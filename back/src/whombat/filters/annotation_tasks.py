@@ -4,7 +4,7 @@ from datetime import datetime, time
 from uuid import UUID
 
 from soundevent import data
-from sqlalchemy import Select, and_, func, not_, or_
+from sqlalchemy import Select, and_, exists, func, not_, or_, select
 
 from whombat import models
 from whombat.api.users import detector_users
@@ -277,37 +277,22 @@ class SoundEventAnnotationTagFilter(base.Filter):
         if self.key is None and self.value is None:
             return query
 
-        query = (
-            query.join(
-                models.ClipAnnotation,
-                models.ClipAnnotation.clip_id == models.Clip.id,
-            )
-            .join(
-                models.SoundEventAnnotation,
-                models.SoundEventAnnotation.clip_annotation_id == models.ClipAnnotation.id,
-            )
-            .join(
-                models.SoundEventAnnotationTag,
-                models.SoundEventAnnotationTag.sound_event_annotation_id == models.SoundEventAnnotation.id,
-            )
-            .join(
-                models.Tag,
-                models.Tag.id == models.SoundEventAnnotationTag.tag_id,
+        subquery = (
+            select(models.SoundEventAnnotationTag.sound_event_annotation_id)
+            .join(models.Tag, models.Tag.id == models.SoundEventAnnotationTag.tag_id)
+            .where(
+                models.Tag.key == self.key if self.key is not None else True,
+                models.Tag.value == self.value if self.value is not None else True,
             )
         )
-        if self.key is None:
-            return query.where(
-                models.Tag.value == self.value,
-            )
-
-        if self.value is None:
-            return query.where(
-                models.Tag.key == self.key,
-            )
 
         return query.where(
-            models.Tag.key == self.key,
-            models.Tag.value == self.value,
+            exists(
+                select(1).where(
+                    models.SoundEventAnnotation.clip_annotation_id == models.AnnotationTask.clip_annotation_id,
+                    models.SoundEventAnnotation.id.in_(subquery),
+                )
+            )
         )
 
 
