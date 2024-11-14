@@ -92,6 +92,7 @@ export default function Page() {
   }
 
   return (
+    <div className="w-full">
     <AnnotateTasks
       instructions={project.annotation_instructions || ""}
       taskFilter={filter}
@@ -107,5 +108,6 @@ export default function Page() {
       onVerifyTask={handleVerifyTask}
       onCreateTag={handleTagCreate}
     />
+    </div>
   );
 }
