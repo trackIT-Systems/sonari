@@ -93,7 +93,7 @@ export default function Tag({
         onClick={onClick}
       >
         <span className="font-thin min-w-fit shrink">{tag.key}</span>
-        <span className="ml-1 grow flex-1 font-bold group-hover:underline truncate group-hover:decoration-2 group-hover:underline-offset-2">
+        <span className="ml-1 grow flex-1 font-bold italic group-hover:underline truncate group-hover:decoration-2 group-hover:underline-offset-2">
           {tag.value}
         </span>
       </button>

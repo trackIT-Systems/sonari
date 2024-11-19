@@ -70,7 +70,7 @@ export function SpectrogramTag({
         <span className="hidden text-xs font-thin whitespace-nowrap opacity-0 transition-all group-hover:inline-block group-hover:opacity-100">
           {tag.key}
         </span>
-        <span className="hidden text-sm font-medium whitespace-nowrap opacity-0 transition-all group-hover:inline-block group-hover:opacity-100">
+        <span className="hidden text-sm font-medium italic whitespace-nowrap opacity-0 transition-all group-hover:inline-block group-hover:opacity-100">
           {tag.value}
         </span>
         {!disabled && <CloseIcon className="inline-block w-3 h-3 stroke-2" />}
