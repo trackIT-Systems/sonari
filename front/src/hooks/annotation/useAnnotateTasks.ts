@@ -287,7 +287,7 @@ export default function useAnnotateTasks({
     onSuccess: (task) => {
       let updatedTask = task;
       removeDetectorBadge(task);
-      onCompleteTask?.(updatedTask);
+      onUnsureTask?.(updatedTask);
       updateTaskData(updatedTask);
       const nextTaskIndex = index + 1;
       const nextTaskToLoad = items[nextTaskIndex];
@@ -309,7 +309,7 @@ export default function useAnnotateTasks({
     onSuccess: (task) => {
       let updatedTask = task;
       removeDetectorBadge(task);
-      onCompleteTask?.(updatedTask);
+      onRejectTask?.(updatedTask);
       updateTaskData(updatedTask);
       const nextTaskIndex = index + 1;
       const nextTaskToLoad = items[nextTaskIndex];
@@ -331,7 +331,7 @@ export default function useAnnotateTasks({
     onSuccess: (task) => {
       let updatedTask = task;
       removeDetectorBadge(task);
-      onCompleteTask?.(updatedTask);
+      onVerifyTask?.(updatedTask);
       updateTaskData(updatedTask);
       const nextTaskIndex = index + 1;
       const nextTaskToLoad = items[nextTaskIndex];

@@ -69,15 +69,15 @@ export default function Page() {
   }, []);
 
   const handleUnsureTask = useCallback(() => {
-    toast.success("Unsure.");
+    toast.success("Marked as unsure");
   }, []);
 
   const handleRejectTask = useCallback(() => {
-    toast.error("Rejeced.");
+    toast.success("Rejeced");
   }, []);
 
   const handleVerifyTask = useCallback(() => {
-    toast.success("Task verified.");
+    toast.success("Verified");
   }, []);
 
   const filter = useMemo(
