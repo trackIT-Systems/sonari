@@ -168,7 +168,7 @@ export default function AnnotateTasks({
             onPrevious={tasks.prevTask}
           />
         </div>
-        <div className="flex-none">
+        <div className="flex-none flex flex-col">
           {tasks.task != null && (
             <AnnotationTaskStatus
               task={tasks.task}
@@ -182,7 +182,7 @@ export default function AnnotateTasks({
         </div>
       </div>
       <div className="flex flex-row justify-between gap-8">
-        <div className="grow min-w-[960px]">
+        <div className="grow min-w-[960px] gap-2">
           {isLoadingClipAnnotation ? (
             <Loading />
           ) : data == null ? (
@@ -232,7 +232,7 @@ export default function AnnotateTasks({
             </>
           )}
         </div>
-        <div className="flex-none">
+        <div className="flex-none flex flex-col gap-4">
           <ClipAnnotationTags
             tagFilter={tagFilter}
             clipAnnotation={data}
