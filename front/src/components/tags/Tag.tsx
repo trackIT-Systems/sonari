@@ -59,6 +59,7 @@ export default function Tag({
   color,
   level = 1,
   className,
+  count,
   onClick,
   onClose,
   ...props
@@ -66,6 +67,7 @@ export default function Tag({
   tag: Tag;
   level: (typeof LEVELS)[number];
   color: (typeof COLOR_NAMES)[number];
+  count: number | null,
   onClick?: () => void;
   onClose?: () => void;
 } & HTMLProps<HTMLDivElement>) {
@@ -96,6 +98,12 @@ export default function Tag({
         <span className="ml-1 grow flex-1 font-bold italic group-hover:underline truncate group-hover:decoration-2 group-hover:underline-offset-2">
           {tag.value}
         </span>
+        {count == null ? (
+            <span/>
+          ) : (
+            <span className="min-w-fit shrink ml-1">({count})</span>
+          )
+        }
       </button>
     </div>
   );

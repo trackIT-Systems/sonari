@@ -219,7 +219,7 @@ export default function AnnotateTasks({
                 </Empty>
               ) : (
                 <div className="min-w-0">
-                  <ClipAnnotationSpectrogram 
+                  <SelectedSoundEventAnnotation 
                     clipAnnotation={data}
                     tagFilter={tagFilter}
                     soundEventAnnotation={selectedAnnotation}
