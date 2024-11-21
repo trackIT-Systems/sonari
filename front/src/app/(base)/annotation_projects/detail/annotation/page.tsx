@@ -15,7 +15,7 @@ import { changeURLParam } from "@/utils/url";
 import AnnotationProjectContext from "../context";
 
 import api from "@/app/api";
-import type { AnnotationTask, SpectrogramParameters, Tag } from "@/types";
+import type { AnnotationTask, SpectrogramParameters, Tag, SoundEventAnnotation } from "@/types";
 
 export default function Page() {
   const search = useSearchParams();

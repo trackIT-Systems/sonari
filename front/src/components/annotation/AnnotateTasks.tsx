@@ -108,13 +108,37 @@ export default function AnnotateTasks({
   const { data: clipAnnotation, isLoading: isLoadingClipAnnotation } =
     tasks.annotations;
 
-  const { data, addTag, removeTag, addNote, removeNote } = useClipAnnotation({
-    uuid: clipAnnotation?.uuid,
-    clipAnnotation,
-    onAddTag: onAddClipTag,
-    onRemoveTag: onRemoveClipTag,
-    enabled: clipAnnotation != null,
-  });
+    const { data, addTag, removeTag, addNote, removeNote, removeTagFromSoundEvent } = useClipAnnotation({
+      uuid: clipAnnotation?.uuid,
+      clipAnnotation,
+      onAddTag: onAddClipTag,
+      onRemoveTag: onRemoveClipTag,
+      enabled: clipAnnotation != null,
+    });
+  
+    const handleRemoveTagFromSoundEvents = useCallback(
+      async (tagToRemove: Tag) => {
+        if (!data?.sound_events) return;
+        
+        // For each sound event that has this tag
+        const promises = data.sound_events
+          .filter(soundEvent => 
+            soundEvent.tags?.some(
+              tag => tag.key === tagToRemove.key && tag.value === tagToRemove.value
+            )
+          )
+          .map(soundEvent => {
+            console.log("Removing tag from sound event:", soundEvent.uuid);
+            return removeTagFromSoundEvent.mutateAsync({
+              soundEventAnnotation: soundEvent,
+              tag: tagToRemove
+            });
+          });
+    
+        await Promise.all(promises);
+      },
+      [data?.sound_events, removeTagFromSoundEvent]
+    );
 
   const onClearTags = useCallback(async () => {
     const tags = clipAnnotation?.tags?.slice(0);
@@ -240,6 +264,7 @@ export default function AnnotateTasks({
             onRemoveTag={removeTag.mutate}
             onClearTags={onClearTags}
             onCreateTag={onCreateTag}
+            onRemoveTagFromSoundEvents={handleRemoveTagFromSoundEvents}
           />
           <ClipAnnotationNotes
             onCreateNote={addNote.mutate}

@@ -49,6 +49,11 @@ export function getTagClassNames(color: string, level: number) {
   }
 }
 
+export type TagCount = {
+  tag: Tag;
+  count: number;
+}
+
 /** A Tag.
  * Will display a tag. The aspect can be customized by specifying
  * the color (hue) and the level (brightness).

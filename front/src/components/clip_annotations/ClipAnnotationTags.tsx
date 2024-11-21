@@ -1,12 +1,11 @@
-import { useMemo } from "react";
+import { useMemo, useCallback } from "react";
 
-import Button from "@/components/Button";
 import Card from "@/components/Card";
 import Empty from "@/components/Empty";
 import { H4 } from "@/components/Headings";
-import { DeleteIcon, TagsIcon } from "@/components/icons";
-import AddTagButton from "@/components/tags/AddTagButton";
+import { TagsIcon } from "@/components/icons";
 import TagComponent from "@/components/tags/Tag";
+import { TagCount } from "@/components/tags/Tag";
 import useStore from "@/store";
 
 import type { TagFilter } from "@/api/tags";
@@ -18,11 +17,6 @@ function NoTags() {
   );
 }
 
-type TagCount = {
-  tag: Tag;
-  count: number;
-}
-
 export default function ClipAnnotationTags({
   clipAnnotation,
   tagFilter,
@@ -31,6 +25,7 @@ export default function ClipAnnotationTags({
   onClickTag,
   onClearTags,
   onCreateTag,
+  onRemoveTagFromSoundEvents, // Add this new prop
   disabled = false,
 }: {
   clipAnnotation?: ClipAnnotation;
@@ -40,6 +35,7 @@ export default function ClipAnnotationTags({
   onRemoveTag?: (tag: Tag) => void;
   onCreateTag?: (tag: Tag) => void;
   onClearTags?: () => void;
+  onRemoveTagFromSoundEvents?: (tag: Tag) => void; // Add this new prop type
   disabled?: boolean;
 }) {
   const tagsWithCount = useMemo(() => {
@@ -66,6 +62,10 @@ export default function ClipAnnotationTags({
 
   const getTagColor = useStore((state) => state.getTagColor);
 
+  const handleRemoveTag = useCallback((tag: Tag) => {
+    onRemoveTagFromSoundEvents?.(tag);
+  }, [onRemoveTagFromSoundEvents]);
+
   return (
     <Card>
       <H4 className="text-center">
@@ -79,7 +79,9 @@ export default function ClipAnnotationTags({
             tag={tag}
             {...getTagColor(tag)}
             onClick={() => onClickTag?.(tag)}
-            onClose={() => onRemoveTag?.(tag)}
+            onClose={() => {
+              handleRemoveTag(tag);
+            }}
             count={count}
           />
         ))}
