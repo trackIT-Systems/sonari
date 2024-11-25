@@ -35,6 +35,11 @@ export const ANNOTATE_TASKS_KEY_SHORTCUTS: KeyShortcut[] = [
     shortcut: "u",
     description: "Mark the annotation task as unsure",
   },
+  {
+    label: "Search & Replace Tags",
+    shortcut: "t",
+    description: "Open the tag search and replace panel",
+  },
 ];
 
 export default function useAnnotateTaskKeyShortcuts(props: {
@@ -44,6 +49,7 @@ export default function useAnnotateTaskKeyShortcuts(props: {
   onMarkUnsure?: () => void;
   onMarkRejected?: () => void;
   onMarkVerified?: () => void;
+  onSearchReplaceTags?: () => void;
   enabled?: boolean;
 }) {
   const {
@@ -53,6 +59,7 @@ export default function useAnnotateTaskKeyShortcuts(props: {
     onMarkUnsure,
     onMarkRejected,
     onMarkVerified,
+    onSearchReplaceTags,
     enabled = true,
   } = props;
 
@@ -62,4 +69,5 @@ export default function useAnnotateTaskKeyShortcuts(props: {
   useKeyPressEvent(useKeyFilter({ enabled, key: "u" }), onMarkUnsure);
   useKeyPressEvent(useKeyFilter({ enabled, key: "r" }), onMarkRejected);
   useKeyPressEvent(useKeyFilter({ enabled, key: "v" }), onMarkVerified);
+  useKeyPressEvent(useKeyFilter({ enabled, key: "t" }), onSearchReplaceTags);
 }

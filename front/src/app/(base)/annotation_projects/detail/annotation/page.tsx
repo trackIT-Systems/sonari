@@ -51,6 +51,18 @@ export default function Page() {
     },
   });
 
+  const { mutateAsync: handleAddSoundEventTag } = useMutation({
+    mutationFn: async ({ annotation, tag }: { annotation: SoundEventAnnotation, tag: Tag }) => {
+      return await api.soundEventAnnotations.addTag(annotation, tag);
+    },
+  });
+
+  const { mutateAsync: handleRemoveSoundEventTag } = useMutation({
+    mutationFn: async ({ annotation, tag }: { annotation: SoundEventAnnotation, tag: Tag }) => {
+      return await api.soundEventAnnotations.removeTag(annotation, tag);
+    },
+  });
+
   const onChangeTask = useCallback(
     (task: AnnotationTask) => {
       const url = changeURLParam({
@@ -97,6 +109,7 @@ export default function Page() {
       instructions={project.annotation_instructions || ""}
       taskFilter={filter}
       tagFilter={filter}
+      projectTags={project.tags == null ? [] : project.tags}
       annotationTask={annotationTask.data}
       parameters={parameters}
       onChangeTask={onChangeTask}
