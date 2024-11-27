@@ -55,6 +55,8 @@ import {
   InformationCircleIcon,
   LinkIcon,
   ListBulletIcon,
+  LockClosedIcon,
+  LockOpenIcon,
   MagnifyingGlassIcon,
   MagnifyingGlassMinusIcon,
   MagnifyingGlassPlusIcon,
@@ -88,6 +90,7 @@ import {
 } from "@heroicons/react/24/outline";
 import Image from "next/image";
 import { type ComponentProps, type HTMLProps } from "react";
+import { HOST } from "@/api/common";
 
 function WhombatIcon(props: Omit<ComponentProps<typeof Image>, "src" | "alt">) {
   const whombat_svg_path = HOST + "/whombat.svg"
@@ -288,6 +291,8 @@ export {
   InformationCircleIcon,
   LinkIcon,
   ListBulletIcon as ListIcon,
+  LockClosedIcon,
+  LockOpenIcon,
   MagnifyingGlassIcon as SearchIcon,
   MagnifyingGlassMinusIcon as ZoomOutIcon,
   MagnifyingGlassPlusIcon as ZoomInIcon,

@@ -49,6 +49,7 @@ export default function useSpectrogramMotions({
   onScrollZoomTime,
   onScrollZoomFreq,
   onDoubleClick,
+  fixedAspectRatio,
   enabled = true,
 }: {
   viewport: SpectrogramWindow;
@@ -63,6 +64,7 @@ export default function useSpectrogramMotions({
   onScrollMoveFreq?: (props: { freq: number }) => void;
   onScrollZoomTime?: (props: { time: number }) => void;
   onScrollZoomFreq?: (props: { freq: number }) => void;
+  fixedAspectRatio: boolean;
   enabled?: boolean;
 }) {
   const [motionMode, setMotionMode] = useState<MotionMode>(
@@ -91,6 +93,7 @@ export default function useSpectrogramMotions({
     viewport,
     dimensions,
     onZoom: handleOnZoom,
+    fixedAspectRatio,
     enabled: enabled && motionMode === "zoom",
   });
 

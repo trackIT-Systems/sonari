@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { useCallback, useState, useMemo } from "react";
 
 import drawBBox from "@/draw/bbox";
 import useWindowMotions from "@/hooks/window/useWindowMotions";
@@ -33,15 +33,58 @@ function validateWindow(window: SpectrogramWindow) {
   );
 }
 
+function enforceAspectRatio(
+  window: SpectrogramWindow,
+  targetRatio: number,
+  initial: Position,
+  shift: Position
+): SpectrogramWindow {
+  const timeSpan = Math.abs(shift.time);
+  const freqSpan = Math.abs(shift.freq);
+  const currentRatio = timeSpan / freqSpan;
+
+  if (currentRatio > targetRatio) {
+    const newTimeSpan = freqSpan * targetRatio;
+    const timeDirection = shift.time >= 0 ? 1 : -1;
+    
+    return {
+      time: {
+        min: Math.min(initial.time, initial.time + newTimeSpan * timeDirection),
+        max: Math.max(initial.time, initial.time + newTimeSpan * timeDirection),
+      },
+      freq: {
+        min: Math.min(initial.freq, initial.freq - shift.freq),
+        max: Math.max(initial.freq, initial.freq - shift.freq),
+      }
+    };
+  } else {
+    const newFreqSpan = timeSpan / targetRatio;
+    const freqDirection = shift.freq >= 0 ? 1 : -1;
+    
+    return {
+      time: {
+        min: Math.min(initial.time, initial.time + shift.time),
+        max: Math.max(initial.time, initial.time + shift.time),
+      },
+      freq: {
+        min: Math.min(initial.freq, initial.freq - newFreqSpan * freqDirection),
+        max: Math.max(initial.freq, initial.freq - newFreqSpan * freqDirection),
+      }
+    };
+  }
+}
+
 export default function useSpectrogramZoom({
   viewport,
   dimensions,
   onZoom,
+  fixedAspectRatio,
   enabled = true,
 }: {
   viewport: SpectrogramWindow;
   dimensions: { width: number; height: number };
   onZoom?: (window: SpectrogramWindow) => void;
+  fixedAspectRatio: boolean;
   enabled?: boolean;
 }) {
   const [isValid, setIsValid] = useState(false);
@@ -49,13 +92,21 @@ export default function useSpectrogramZoom({
     null,
   );
 
+  // Calculate the target aspect ratio from the current viewport
+  const targetRatio = useMemo(() => {
+    if (!fixedAspectRatio) return null;
+    const timeSpan = viewport.time.max - viewport.time.min;
+    const freqSpan = viewport.freq.max - viewport.freq.min;
+    return timeSpan / freqSpan;
+  }, [viewport, fixedAspectRatio]);
+
   const handleMoveStart = useCallback(() => {
     setCurrentWindow(null);
   }, []);
 
   const handleMove = useCallback(
     ({ initial, shift }: { initial: Position; shift: Position }) => {
-      const window = {
+      let window = {
         time: {
           min: Math.min(initial.time, initial.time + shift.time),
           max: Math.max(initial.time, initial.time + shift.time),
@@ -65,10 +116,15 @@ export default function useSpectrogramZoom({
           max: Math.max(initial.freq, initial.freq - shift.freq),
         },
       };
+
+      if (fixedAspectRatio && targetRatio !== null) {
+        window = enforceAspectRatio(window, targetRatio, initial, shift);
+      }
+
       setCurrentWindow(window);
       setIsValid(validateWindow(window));
     },
-    [],
+    [fixedAspectRatio, targetRatio],
   );
 
   const handleMoveEnd = useCallback(() => {

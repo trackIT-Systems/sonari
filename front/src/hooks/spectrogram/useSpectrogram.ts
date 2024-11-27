@@ -59,6 +59,8 @@ export type SpectrogramControls = {
   enableDrag: () => void;
   enableZoom: () => void;
   disable: () => void;
+  fixedAspectRatio: boolean;
+  toggleFixedAspectRatio: () => void;
 };
 
 function hoverCallback(event: MouseEvent, canvas: HTMLCanvasElement, viewport: SpectrogramWindow) {
@@ -235,12 +237,17 @@ export default function useSpectrogram({
 
   const handleZoomDrag = useCallback(
     (window: SpectrogramWindow) => {
-      const newViewPort = adjustWindowToBounds(window, initialBounds)
+      const newViewPort = adjustWindowToBounds(window, initialBounds);
       lastViewportRef.current = newViewPort;
       setViewport(newViewPort);
     },
     [initialBounds],
   );
+
+  const [fixedAspectRatio, setFixedAspectRatio] = useState(false);
+  const toggleFixedAspectRatio = useCallback(() => {
+    setFixedAspectRatio(prev => !prev);
+  }, []);
 
   const handleZoomIn = useCallback(() => {
     handleZoomDrag(zoom(lastViewportRef.current, "in"));
@@ -356,6 +363,7 @@ export default function useSpectrogram({
     onModeChange,
     dimensions,
     enabled,
+    fixedAspectRatio,
   });
 
   // Create the drawing function
@@ -384,6 +392,7 @@ export default function useSpectrogram({
     onGoZoom: enableZoom,
     onZoomIn: handleZoomIn,
     onZoomOut: handleZoomOut,
+    onToggleAspectRatio: toggleFixedAspectRatio,
     enabled: withShortcuts,
   })
 
@@ -410,6 +419,8 @@ export default function useSpectrogram({
     enableDrag,
     enableZoom,
     disable,
+    fixedAspectRatio,
+    toggleFixedAspectRatio,
   };
 }
 

@@ -243,11 +243,13 @@ export default function ClipAnnotationSpectrogram({
           <SpectrogramControls
             canDrag={spectrogram.canDrag}
             canZoom={spectrogram.canZoom}
+            fixedAspectRatio={spectrogram.fixedAspectRatio}
             onReset={spectrogram.reset}
             onDrag={spectrogram.enableDrag}
             onZoom={spectrogram.enableZoom}
             onZoomIn={spectrogram.zoomIn}
             onZoomOut={spectrogram.zoomOut}
+            onToggleAspectRatio={spectrogram.toggleFixedAspectRatio}
           />
         )}
         {!disabled && withControls && withSpectrogram && (
