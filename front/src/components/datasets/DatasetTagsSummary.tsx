@@ -166,7 +166,7 @@ function TagCount({
           <>
             <div key={`${tag.key}-${tag.value}-tag`}>
               <div className="flex flex-row justify-end">
-                <TagComponent tag={tag} disabled {...getTagColor(tag)} />
+                <TagComponent tag={tag} disabled {...getTagColor(tag)} count={null} />
               </div>
             </div>
             <div

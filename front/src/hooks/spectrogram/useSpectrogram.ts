@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState, useRef } from "react";
 
 import { DEFAULT_SPECTROGRAM_PARAMETERS } from "@/api/spectrograms";
 import drawFrequencyAxis from "@/draw/freqAxis";
@@ -51,8 +51,8 @@ export type SpectrogramControls = {
   zoomIn: () => void;
   zoomOut: () => void;
   drag: (window: SpectrogramWindow) => void;
-  scale: ({ time , freq }: { time?: number; freq?: number }) => void;
-  shift({ time , freq }: { time?: number; freq?: number }): void;
+  scale: ({ time, freq }: { time?: number; freq?: number }) => void;
+  shift({ time, freq }: { time?: number; freq?: number }): void;
   centerOn: ({ time, freq }: { time?: number; freq?: number }) => void;
   setParameters: (parameters: SpectrogramParameters) => void;
   resetParameters: () => void;
@@ -156,17 +156,17 @@ export default function useSpectrogram({
   props: React.HTMLAttributes<HTMLCanvasElement>;
 } & SpectrogramState &
   SpectrogramControls {
-    const initialBounds = useMemo<SpectrogramWindow>(() => {
-      return (
-        bounds ?? {
-          time: { min: 0, max: recording.duration },
-          freq: { min: 0, max: recording.samplerate / 2 },
-        }
-      );
-    }, [bounds, recording]);
+  const initialBounds = useMemo<SpectrogramWindow>(() => {
+    return (
+      bounds ?? {
+        time: { min: 0, max: recording.duration },
+        freq: { min: 0, max: recording.samplerate / 2 },
+      }
+    );
+  }, [bounds, recording]);
 
   const initialViewport = useMemo<SpectrogramWindow>(() => {
-    return initial ?? getInitialViewingWindow({ 
+    return initial ?? getInitialViewingWindow({
       startTime: initialBounds.time.min,
       endTime: initialBounds.time.max,
       samplerate: recording.samplerate,
@@ -174,9 +174,10 @@ export default function useSpectrogram({
     });
   }, [initial, initialBounds, recording, initialParameters]);
 
-  let lastViewport = useMemo<SpectrogramWindow>(() => {
-    return initialViewport
-  }, [initialViewport])
+  const lastViewportRef = useRef<SpectrogramWindow>(initialViewport);
+  useEffect(() => {
+    lastViewportRef.current = initialViewport;
+  }, [initialViewport]);
 
   const [parameters, setParameters] = useState<SpectrogramParameters>(
     validateParameters(initialParameters, recording),
@@ -185,29 +186,32 @@ export default function useSpectrogram({
     initialViewport,
   );
 
-  let lastConfPreset = useMemo<String>(
-    () => {return initialParameters.conf_preset}, [initialParameters]
-  )
+  const lastConfPresetRef = useRef<string>(initialParameters.conf_preset);
 
-  const zoom = function (oldViewport: SpectrogramWindow, in_out: string): SpectrogramWindow {
-    let zoom_factor = 1;
-    if (in_out === "in") {
-      zoom_factor = 1 - ZOOM_FACTOR
-    } else if (in_out === "out") {
-      zoom_factor = 1 + ZOOM_FACTOR
-    } else {
-      console.warn(`Zoom not supported ${in_out}`);
-      return oldViewport;
-    }
-  
-    let duration = oldViewport.time.max - oldViewport.time.min;
-    duration = duration * zoom_factor;
-    duration = oldViewport.time.min + duration;
-    lastViewport = structuredClone(oldViewport);
-    lastViewport.time.max = duration;
-  
-    return lastViewport;
-  }
+  const zoom = useCallback(
+    (oldViewport: SpectrogramWindow, in_out: string): SpectrogramWindow => {
+      let zoom_factor = 1;
+      if (in_out === "in") {
+        zoom_factor = 1 - ZOOM_FACTOR
+      } else if (in_out === "out") {
+        zoom_factor = 1 + ZOOM_FACTOR
+      } else {
+        console.warn(`Zoom not supported ${in_out}`);
+        return oldViewport;
+      }
+
+      let duration = oldViewport.time.max - oldViewport.time.min;
+      duration = duration * zoom_factor;
+      duration = oldViewport.time.min + duration;
+
+      const newViewPort = structuredClone(oldViewport);
+      newViewPort.time.max = duration;
+      lastViewportRef.current = newViewPort;
+
+      return newViewPort;
+    },
+    []
+  );
 
   // NOTE: Need to update the viewport if the initial viewport
   // changes. This usually happens when the visualised clip
@@ -232,22 +236,22 @@ export default function useSpectrogram({
   const handleZoomDrag = useCallback(
     (window: SpectrogramWindow) => {
       const newViewPort = adjustWindowToBounds(window, initialBounds)
-      lastViewport = newViewPort;
+      lastViewportRef.current = newViewPort;
       setViewport(newViewPort);
     },
     [initialBounds],
   );
 
   const handleZoomIn = useCallback(() => {
-      handleZoomDrag(zoom(lastViewport, "in"));
-    },
-    [handleZoomDrag, zoom, lastViewport],
+    handleZoomDrag(zoom(lastViewportRef.current, "in"));
+  },
+    [handleZoomDrag, zoom, lastViewportRef],
   )
 
   const handleZoomOut = useCallback(() => {
-      handleZoomDrag(zoom(lastViewport, "out"));
-    },
-    [handleZoomDrag, zoom, lastViewport],
+    handleZoomDrag(zoom(lastViewportRef.current, "out"));
+  },
+    [handleZoomDrag, zoom, lastViewportRef],
   )
 
   const handleScale = useCallback(
@@ -272,15 +276,14 @@ export default function useSpectrogram({
   );
 
   const handleReset = useCallback(() => {
-    let time_max_new = initialViewport.time.min + (initialViewport.time.max - initialViewport.time.min);
-    lastViewport.time.max = lastViewport.time.min + time_max_new;
-
-    lastViewport.freq.min = initialViewport.freq.min
-    lastViewport.freq.max = initialViewport.freq.max
-    handleZoomDrag(lastViewport);
-
-    
-  }, [initialViewport, handleZoomDrag, lastViewport]);
+    if (lastViewportRef.current) {
+      const time_max_new = initialViewport.time.min + (initialViewport.time.max - initialViewport.time.min);
+      lastViewportRef.current.time.max = lastViewportRef.current.time.min + time_max_new;
+      lastViewportRef.current.freq.min = initialViewport.freq.min;
+      lastViewportRef.current.freq.max = initialViewport.freq.max;
+      handleZoomDrag(lastViewportRef.current);
+    }
+  }, [initialViewport, handleZoomDrag]);
 
   const handleCenterOn = useCallback(
     ({ time, freq }: { time?: number; freq?: number }) => {
@@ -296,8 +299,8 @@ export default function useSpectrogram({
 
   const handleSetParameters = useCallback(
     (parameters: SpectrogramParameters) => {
-      if (parameters.conf_preset != lastConfPreset) {
-        lastConfPreset = parameters.conf_preset
+      if (parameters.conf_preset != lastConfPresetRef.current) {
+        lastConfPresetRef.current = parameters.conf_preset
         switch (parameters.conf_preset) {
           case "hsr":
             parameters.window_size = 0.00319;
@@ -329,7 +332,7 @@ export default function useSpectrogram({
   );
 
   const handleResetParameters = useCallback(() => {
-    lastConfPreset = initialParameters.conf_preset;
+    lastConfPresetRef.current = initialParameters.conf_preset;
     setParameters(validateParameters(initialParameters, recording));
   }, [initialParameters, recording]);
 

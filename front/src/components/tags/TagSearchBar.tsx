@@ -46,7 +46,7 @@ function CreateNewTag({ tag: { key, value } }: { tag: TagCreate }) {
     <ComboBoxSection>
       <div className="relative py-2 px-4 cursor-default select-none">
         Create the tag{" "}
-        <Tag disabled tag={{ key, value }} color="blue" level={3} /> by pressing{" "}
+        <Tag disabled tag={{ key, value }} color="blue" level={3} count={null}/> by pressing{" "}
         <KeyboardKey code="Shift" />+<KeyboardKey code="Enter" />
       </div>
     </ComboBoxSection>
@@ -182,6 +182,7 @@ export default forwardRef<HTMLInputElement, TagSearchBarProps>(
                       className="pointer-events-none"
                       tag={tag}
                       {...getTagColor(tag)}
+                      count={null}
                     />
                   </Combobox.Option>
                 ))}

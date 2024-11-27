@@ -4,8 +4,7 @@ import {ColumnDef, getCoreRowModel, useReactTable, createColumnHelper} from "@ta
 import TableHeader from "@/components/tables/TableHeader";
 import TableCell from "@/components/tables/TableCell";
 import StatusBadge from "@/components/StatusBadge";
-import TagComponent from "@/components/tags/Tag";
-import { TagCount } from "@/components/tags/Tag";
+import TagComponent, { TagCount } from "@/components/tags/Tag";
 import useStore from "@/store";
 import {SunIcon} from "@/components/icons";
 import Link from "next/link";
@@ -23,46 +22,6 @@ export default function useAnnotationTaskTable({
 }) {
 
   const getTagColor = useStore((state) => state.getTagColor);
-  const columnHelper = createColumnHelper<AnnotationTask>();
-
-  const soundEventTagsColumn = columnHelper.accessor(
-    (row) => {
-      // Get all sound event tags and count their occurrences
-      const tags = row.clip_annotation?.sound_events?.flatMap(event => event.tags || []) || [];
-      const tagCounts = new Map<string, TagCount>();
-      
-      tags.forEach(tag => {
-        const key = `${tag.key}-${tag.value}`;
-        const existing = tagCounts.get(key);
-        if (existing) {
-          existing.count++;
-        } else {
-          tagCounts.set(key, { tag, count: 1 });
-        }
-      });
-
-      return Array.from(tagCounts.values());
-    },
-    {
-      id: "sound_event_tags",
-      header: "Sound Event Tags",
-      cell: (props) => {
-        const tagCounts = props.getValue();
-        return (
-          <div className="flex flex-wrap gap-1 p-1">
-            {tagCounts.map(({ tag, count }) => (
-              <TagComponent
-                key={`${tag.key}-${tag.value}`}
-                tag={tag}
-                {...getTagColor(tag)}
-                count={count}
-              />
-            ))}
-          </div>
-        );
-      },
-    }
-  );
 
   // Column definitions
   const columns = useMemo<ColumnDef<AnnotationTask>[]>(
@@ -109,7 +68,42 @@ export default function useAnnotationTaskTable({
           return <TableCell>{end}</TableCell>;
         },
       },
-        soundEventTagsColumn,
+      {
+        id: "sound_event_tags",
+        header: () => <TableHeader>Sound Event Tags</TableHeader>,
+        accessorFn: (row) => {
+          // Get all sound event tags and count their occurrences
+          const tags = row.clip_annotation?.sound_events?.flatMap(event => event.tags || []) || [];
+          const tagCounts = new Map<string, TagCount>();
+          
+          tags.forEach(tag => {
+            const key = `${tag.key}-${tag.value}`;
+            const existing = tagCounts.get(key);
+            if (existing) {
+              existing.count++;
+            } else {
+              tagCounts.set(key, { tag, count: 1 });
+            }
+          });
+
+          return Array.from(tagCounts.values());
+        },
+        cell: (props) => {
+          const tagCounts = props.getValue() as Array<{ tag: Tag; count: number }>;
+          return (
+            <div className="flex flex-wrap gap-1 p-1">
+              {tagCounts.map(({ tag, count }) => (
+                <TagComponent
+                  key={`${tag.key}-${tag.value}`}
+                  tag={tag}
+                  {...getTagColor(tag)}
+                  count={count}
+                />
+              ))}
+            </div>
+          );
+        },
+      },
       {
         id: "clip_anno_notes",
         header: () => <TableHeader>Annotation Notes</TableHeader>,
@@ -149,7 +143,7 @@ export default function useAnnotationTaskTable({
         },
       },
     ],
-    [getAnnotationTaskLink, getTagColor, pathFormatter, soundEventTagsColumn],
+    [getAnnotationTaskLink, pathFormatter, getTagColor],
   );
   return useReactTable<AnnotationTask>({
     data,

@@ -59,6 +59,7 @@ export default function RecordingTagBar({
             {...getTagColor(tag)}
             onClick={() => onTagClick?.(tag)}
             onClose={() => handleRemoveTag?.(tag)}
+            count={null}
           />
         ))}
         {tags?.length === 0 && (

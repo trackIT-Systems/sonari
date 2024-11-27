@@ -1,21 +1,19 @@
-import Input from "./Input";
-import InputGroup from "./InputGroup";
-import Location from "./Location";
-import RangeSlider from "./RangeSlider";
-import Select from "./Select";
-import Slider from "./Slider";
-import Submit from "./Submit";
-import TextArea from "./TextArea";
-import Toggle from "./Toggle";
+import InputComponent from "./Input";
+import InputGroupComponent from "./InputGroup";
+import LocationComponent from "./Location";
+import RangeSliderComponent from "./RangeSlider";
+import SelectComponent from "./Select";
+import SliderComponent from "./Slider";
+import SubmitComponent from "./Submit";
+import TextAreaComponent from "./TextArea";
+import ToggleComponent from "./Toggle";
 
-export {
-  InputGroup,
-  Submit,
-  TextArea,
-  Input,
-  Slider,
-  RangeSlider,
-  Toggle,
-  Select,
-  Location,
-};
+export const Input = InputComponent;
+export const InputGroup = InputGroupComponent;
+export const Location = LocationComponent;
+export const RangeSlider = RangeSliderComponent;
+export const Select = SelectComponent;
+export const Slider = SliderComponent;
+export const Submit = SubmitComponent;
+export const TextArea = TextAreaComponent;
+export const Toggle = ToggleComponent;

@@ -2,19 +2,14 @@ import { useMemo, useCallback, useState, useRef, useEffect } from "react";
 import Card from "@/components/Card";
 import Empty from "@/components/Empty";
 import { H4 } from "@/components/Headings";
-import { TagsIcon } from "@/components/icons";
-import TagComponent from "@/components/tags/Tag";
-import { TagCount } from "@/components/tags/Tag";
+import { TagsIcon, BackIcon } from "@/components/icons";
+import TagComponent, { TagCount } from "@/components/tags/Tag";
 import useStore from "@/store";
 import SearchMenu from "../search/SearchMenu";
 import Button from "../Button";
-import { BackIcon } from "@/components/icons";
 import { Float } from "@headlessui-float/react";
 import { Popover } from "@headlessui/react";
 import KeyboardKey from "../KeyboardKey";
-
-
-import type { TagFilter } from "@/api/tags";
 import type { ClipAnnotation, Tag } from "@/types";
 
 
@@ -228,12 +223,10 @@ export default function ClipAnnotationTags({
         </H4>
         <Popover as="div" className="relative inline-block text-left">
           {({ open, close }) => {
-            useEffect(() => {
-              popoverOpen.current = open;
-              if (!open) {
-                handleBlur();
-              }
-            }, [open]);
+            popoverOpen.current = open;
+            if (!open) {
+              handleBlur();
+            }
 
             return (
               <Float

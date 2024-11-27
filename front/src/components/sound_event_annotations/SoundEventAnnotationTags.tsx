@@ -49,6 +49,7 @@ export default function SoundEventAnnotationTags({
             {...getTagColor(tag)}
             onClick={() => onClickTag?.(tag)}
             onClose={() => onRemoveTag?.(tag)}
+            count={null}
           />
         ))}
         {tags.length === 0 && <NoTags />}

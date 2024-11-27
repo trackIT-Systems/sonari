@@ -46,6 +46,7 @@ export default function ClipEvaluationTags(props: {
               tag={tag}
               onClick={() => onTagClick?.(tag)}
               {...getTagColor(tag)}
+              count={null}
             />
           ))}
           {predictedTags.length === 0 && (
@@ -60,6 +61,7 @@ export default function ClipEvaluationTags(props: {
               tag={tag}
               onClick={() => onTagClick?.(tag)}
               {...getTagColor(tag)}
+              count={null}
             />
           ))}
           {predictedTags.length === 0 && (

@@ -37,6 +37,7 @@ export default function ClipPredictionTags(props: {
             tag={tag}
             onClick={() => onTagClick?.(tag)}
             {...getTagColor(tag)}
+            count={null}
           />
         ))}
         {tags.length === 0 && (

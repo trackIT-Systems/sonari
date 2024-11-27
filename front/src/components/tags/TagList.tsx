@@ -34,6 +34,7 @@ export default function TagList({
             {...getTagColor(tag)}
             onClick={onClick && (() => onClick(tag))}
             onClose={onRemove && (() => onRemove(tag))}
+            count={null}
           />
         ))}
         {hasMore && (

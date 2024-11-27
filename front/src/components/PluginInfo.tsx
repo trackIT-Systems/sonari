@@ -1,6 +1,7 @@
 import React from "react";
 
 import Link from "@/components/Link";
+import Image from "next/image";
 
 export default function PluginInfo({
   name,
@@ -20,7 +21,7 @@ export default function PluginInfo({
   return (
     <div className="flex flex-col items-center bg-white rounded-lg border shadow md:flex-row md:max-w-xl border-stone-200 dark:bg-stone-800 dark:border-stone-700">
       {thumbnail && (
-        <img
+        <Image
           className="object-cover w-96 h-full md:w-48 md:h-auto md:rounded-none pl-4"
           src={thumbnail}
           alt="Plugin thumbnail"

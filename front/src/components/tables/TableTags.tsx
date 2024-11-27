@@ -43,6 +43,7 @@ export default function TableTags({
           {...getTagColor(tag)}
           onClick={() => onClick?.(tag)}
           onClose={() => onRemove?.(tag)}
+          count={null}
         />
       ))}
       <AddTagButton variant="primary" onAdd={onAdd} {...props} />

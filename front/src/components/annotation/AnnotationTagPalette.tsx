@@ -68,6 +68,7 @@ export default function AnnotationTagPalette({
             {...getTagColor(tag)}
             onClick={() => onClick?.(tag)}
             onClose={() => onRemoveTag?.(tag)}
+            count={null}
           />
         ))}
       </div>

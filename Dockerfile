@@ -24,6 +24,7 @@ COPY front/ /front/
 
 ARG WHOMBAT_FOLDER
 RUN echo NEXT_PUBLIC_WHOMBAT_FOLDER=$WHOMBAT_FOLDER > /front/.env.local
+RUN echo NEXT_TELEMETRY_DISABLED=1 >> /front/.env.local
 
 RUN npm install
 

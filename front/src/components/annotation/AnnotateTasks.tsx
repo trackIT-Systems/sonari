@@ -278,6 +278,8 @@ export default function AnnotateTasks({
     [data?.sound_events, removeTagFromSoundEvent, addTagToSoundEvent]
   );
 
+  const menuRef = useRef<HTMLDivElement>(null);
+
   if (tasks.isLoading) {
     return <Loading />;
   }
@@ -384,8 +386,8 @@ export default function AnnotateTasks({
 
       {isDeletePopoverOpen && (
         <Popover>
+                   
           {({ open, close }) => {
-            const menuRef = useRef<HTMLDivElement>(null);
 
             const handleOverlayClick = (e: React.MouseEvent) => {
               // Check if click is inside menu
