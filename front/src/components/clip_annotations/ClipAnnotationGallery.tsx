@@ -86,6 +86,8 @@ function Spectrogram(props: {
       withSettings={false}
       withAudioShortcuts={false}
       disabled={true}
+      fixedAspectRatio={false}
+      toggleFixedAspectRatio={() => null}
     />
   );
 }

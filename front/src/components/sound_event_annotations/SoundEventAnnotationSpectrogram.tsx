@@ -106,7 +106,9 @@ export default function SoundEventAnnotationSpectrogram(props: {
     parameters,
     onDoubleClick: handleDoubleClick,
     enabled: !audio.isPlaying,
-    withSpectrogram: true
+    withSpectrogram: true,
+    fixedAspectRatio: false,
+    toggleFixedAspectRatio: () => null,
   });
 
   const { centerOn } = spectrogram;
@@ -176,11 +178,11 @@ export default function SoundEventAnnotationSpectrogram(props: {
           <SpectrogramControls
             canDrag={spectrogram.canDrag}
             canZoom={spectrogram.canZoom}
-            fixedAspectRatio={spectrogram.fixedAspectRatio}
+            fixedAspectRatio={false}
             onReset={spectrogram.reset}
             onDrag={spectrogram.enableDrag}
             onZoom={spectrogram.enableZoom}
-            onToggleAspectRatio={spectrogram.toggleFixedAspectRatio}
+            onToggleAspectRatio={() => null}
           />
         )}
         {withSettings && (

@@ -103,6 +103,11 @@ export default function AnnotateTasks({
     [withAutoplay]
   )
 
+  const [fixedAspectRatio, setFixedAspectRatio] = useState(false);
+  const toggleFixedAspectRatio = useCallback(() => {
+    setFixedAspectRatio(prev => !prev);
+  }, []);
+
   const tasks = useAnnotationTasks({
     filter: taskFilter,
     annotationTask: annotationTask,
@@ -342,6 +347,8 @@ export default function AnnotateTasks({
                   onWithSpectrogramChange={onWithSpectrogramChange}
                   withAutoplay={withAutoplay}
                   onWithAutoplayChange={onWithAutoplayChange}
+                  fixedAspectRatio={fixedAspectRatio}
+                  toggleFixedAspectRatio={toggleFixedAspectRatio}
                   onCreateTag={onCreateTag}
                   onAddSoundEventTag={onAddSoundEventTag}
                   onRemoveSoundEventTag={onRemoveSoundEventTag}

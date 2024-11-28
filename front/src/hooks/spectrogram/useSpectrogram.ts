@@ -59,8 +59,6 @@ export type SpectrogramControls = {
   enableDrag: () => void;
   enableZoom: () => void;
   disable: () => void;
-  fixedAspectRatio: boolean;
-  toggleFixedAspectRatio: () => void;
 };
 
 function hoverCallback(event: MouseEvent, canvas: HTMLCanvasElement, viewport: SpectrogramWindow) {
@@ -141,6 +139,8 @@ export default function useSpectrogram({
   enabled = true,
   withShortcuts = true,
   withSpectrogram,
+  fixedAspectRatio,
+  toggleFixedAspectRatio,
 }: {
   recording: Recording;
   dimensions: { width: number; height: number };
@@ -153,6 +153,8 @@ export default function useSpectrogram({
   enabled?: boolean;
   withShortcuts?: boolean;
   withSpectrogram: boolean;
+  fixedAspectRatio: boolean,
+  toggleFixedAspectRatio: () => void;
 }): {
   draw: DrawFn;
   props: React.HTMLAttributes<HTMLCanvasElement>;
@@ -243,11 +245,6 @@ export default function useSpectrogram({
     },
     [initialBounds],
   );
-
-  const [fixedAspectRatio, setFixedAspectRatio] = useState(false);
-  const toggleFixedAspectRatio = useCallback(() => {
-    setFixedAspectRatio(prev => !prev);
-  }, []);
 
   const handleZoomIn = useCallback(() => {
     handleZoomDrag(zoom(lastViewportRef.current, "in"));
@@ -419,8 +416,6 @@ export default function useSpectrogram({
     enableDrag,
     enableZoom,
     disable,
-    fixedAspectRatio,
-    toggleFixedAspectRatio,
   };
 }
 

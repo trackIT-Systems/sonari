@@ -42,6 +42,8 @@ export default function ClipAnnotationSpectrogram({
   withSpectrogram,
   withAutoplay,
   defaultTags,
+  fixedAspectRatio,
+  toggleFixedAspectRatio,
   onWithSpectrogramChange,
   onWithAutoplayChange,
   onAddSoundEventTag,
@@ -67,6 +69,8 @@ export default function ClipAnnotationSpectrogram({
   withSpectrogramShortcuts?: boolean;
   withSpectrogram: boolean;
   withAutoplay: boolean;
+  fixedAspectRatio: boolean;
+  toggleFixedAspectRatio: () => void;
   onWithSpectrogramChange: () => void;
   onWithAutoplayChange: () => void;
   onParameterSave?: (params: SpectrogramParameters) => void;
@@ -153,6 +157,8 @@ export default function ClipAnnotationSpectrogram({
     enabled: !isAnnotating && !audio.isPlaying,
     withShortcuts: withSpectrogramShortcuts,
     withSpectrogram: withSpectrogram,
+    fixedAspectRatio: fixedAspectRatio,
+    toggleFixedAspectRatio: toggleFixedAspectRatio,
   });
 
   const { centerOn } = spectrogram;
@@ -243,13 +249,13 @@ export default function ClipAnnotationSpectrogram({
           <SpectrogramControls
             canDrag={spectrogram.canDrag}
             canZoom={spectrogram.canZoom}
-            fixedAspectRatio={spectrogram.fixedAspectRatio}
+            fixedAspectRatio={fixedAspectRatio}
             onReset={spectrogram.reset}
             onDrag={spectrogram.enableDrag}
             onZoom={spectrogram.enableZoom}
             onZoomIn={spectrogram.zoomIn}
             onZoomOut={spectrogram.zoomOut}
-            onToggleAspectRatio={spectrogram.toggleFixedAspectRatio}
+            onToggleAspectRatio={toggleFixedAspectRatio}
           />
         )}
         {!disabled && withControls && withSpectrogram && (

@@ -72,6 +72,8 @@ export default function RecordingSpectrogram({
     parameters,
     enabled: !audio.isPlaying,
     withSpectrogram: true,
+    fixedAspectRatio: false,
+    toggleFixedAspectRatio: () => null,
   });
 
   const { centerOn } = spectrogram;
@@ -112,11 +114,11 @@ export default function RecordingSpectrogram({
           <SpectrogramControls
             canDrag={spectrogram.canDrag}
             canZoom={spectrogram.canZoom}
-            fixedAspectRatio={spectrogram.fixedAspectRatio}
+            fixedAspectRatio={false}
             onReset={spectrogram.reset}
             onDrag={spectrogram.enableDrag}
             onZoom={spectrogram.enableZoom}
-            onToggleAspectRatio={spectrogram.toggleFixedAspectRatio}
+            onToggleAspectRatio={() => null}
           />
         )}
         {withSettings && (
