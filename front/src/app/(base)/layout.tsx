@@ -65,10 +65,9 @@ function Contents({ children }: { children: ReactNode }) {
   }, [router]);
 
   return (
-    <div className="flex flex-row w-full max-w-full h-full">
+    <div className="flex flex-row w-full min-w-0 h-full overflow-hidden">
       <SideMenu user={user} onLogout={handleLogout} />
-      <main className="w-full max-w-full h-full overflow-x-clip">
-        {/* <NavBar user={user} onLogout={handleLogout} /> */}
+      <main className="w-full min-w-0 h-full overflow-x-auto">
         {children}
       </main>
     </div>

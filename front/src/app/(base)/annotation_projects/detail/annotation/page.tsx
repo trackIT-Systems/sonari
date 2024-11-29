@@ -105,22 +105,22 @@ export default function Page() {
 
   return (
     <div className="w-full">
-    <AnnotateTasks
-      instructions={project.annotation_instructions || ""}
-      taskFilter={filter}
-      tagFilter={filter}
-      projectTags={project.tags == null ? [] : project.tags}
-      annotationTask={annotationTask.data}
-      parameters={parameters}
-      onChangeTask={onChangeTask}
-      currentUser={user}
-      onParameterSave={onParameterSave}
-      onCompleteTask={handleCompleteTask}
-      onUnsureTask={handleUnsureTask}
-      onRejectTask={handleRejectTask}
-      onVerifyTask={handleVerifyTask}
-      onCreateTag={handleTagCreate}
-    />
+      <AnnotateTasks
+        instructions={project.annotation_instructions || ""}
+        taskFilter={filter}
+        tagFilter={filter}
+        projectTags={project.tags == null ? [] : project.tags}
+        annotationTask={annotationTask.data}
+        parameters={parameters}
+        onChangeTask={onChangeTask}
+        currentUser={user}
+        onParameterSave={onParameterSave}
+        onCompleteTask={handleCompleteTask}
+        onUnsureTask={handleUnsureTask}
+        onRejectTask={handleRejectTask}
+        onVerifyTask={handleVerifyTask}
+        onCreateTag={handleTagCreate}
+      />
     </div>
   );
 }

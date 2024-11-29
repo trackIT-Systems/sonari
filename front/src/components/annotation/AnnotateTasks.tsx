@@ -298,9 +298,9 @@ export default function AnnotateTasks({
   }
 
   return (
-    <div className="w-full flex flex-col gap-3 overflow-x-auto">
+    <div className="w-full flex flex-col gap-3">
       <div className="flex flex-row justify-between gap-8">
-        <div className="grow min-w-[960px]">
+        <div className="grow min-w-[1000px]">
           <AnnotationProgress
             current={tasks.current}
             instructions={instructions}
@@ -310,7 +310,7 @@ export default function AnnotateTasks({
             onPrevious={tasks.prevTask}
           />
         </div>
-        <div className="flex-none flex flex-col">
+        <div className="w-[35rem] flex-none">
           {tasks.task != null && (
             <AnnotationTaskStatus
               task={tasks.task}
@@ -324,7 +324,7 @@ export default function AnnotateTasks({
         </div>
       </div>
       <div className="flex flex-row justify-between gap-8">
-        <div className="grow min-w-[960px] gap-2">
+        <div className="grow min-w-[1000px] gap-2">
           {isLoadingClipAnnotation ? (
             <Loading />
           ) : data == null ? (
@@ -376,7 +376,7 @@ export default function AnnotateTasks({
             </>
           )}
         </div>
-        <div className="flex-none flex flex-col gap-4">
+        <div className="w-[35rem] flex-none flex flex-col gap-4">
           <ClipAnnotationTags
             clipAnnotation={data}
             projectTags={projectTags}
@@ -393,7 +393,6 @@ export default function AnnotateTasks({
 
       {isDeletePopoverOpen && (
         <Popover>
-                   
           {({ open, close }) => {
 
             const handleOverlayClick = (e: React.MouseEvent) => {
