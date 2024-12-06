@@ -299,8 +299,8 @@ export default function AnnotateTasks({
 
   return (
     <div className="w-full flex flex-col gap-3">
-      <div className="flex flex-row justify-between gap-8">
-        <div className="grow min-w-[1000px]">
+      <div className="flex flex-row gap-8">
+        <div className="min-w-[63rem]">
           <AnnotationProgress
             current={tasks.current}
             instructions={instructions}
@@ -323,8 +323,8 @@ export default function AnnotateTasks({
           )}
         </div>
       </div>
-      <div className="flex flex-row justify-between gap-8">
-        <div className="grow min-w-[1000px] gap-2">
+      <div className="flex flex-row gap-8">
+        <div className="min-w-[63rem] gap-2">
           {isLoadingClipAnnotation ? (
             <Loading />
           ) : data == null ? (
