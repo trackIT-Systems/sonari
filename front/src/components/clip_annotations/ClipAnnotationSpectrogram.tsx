@@ -302,6 +302,9 @@ export default function ClipAnnotationSpectrogram({
           bounds={spectrogram.bounds}
           viewport={withSpectrogram ? spectrogram.viewport : spectrogram.bounds}
           onMove={spectrogram.drag}
+          recording={recording}
+          parameters={spectrogram.parameters}
+          withSpectrogram={withSpectrogram}
         />
       )}
     </Card>

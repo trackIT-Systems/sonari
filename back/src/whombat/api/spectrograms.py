@@ -20,6 +20,7 @@ def compute_spectrogram(
     end_time: float,
     audio_parameters: schemas.AudioParameters,
     spectrogram_parameters: schemas.SpectrogramParameters,
+    low_res: bool = False,
     audio_dir: Path | None = None,
 ) -> np.ndarray:
     """Compute a spectrogram for a recording.
@@ -57,13 +58,17 @@ def compute_spectrogram(
     wav = wav[dict(channel=[spectrogram_parameters.channel])]
 
     # The hop size is expressed as a fraction of the window size.
-    hop_size = (
-        spectrogram_parameters.hop_size * spectrogram_parameters.window_size
-    )
+    hop_size = spectrogram_parameters.hop_size * spectrogram_parameters.window_size
+
+    if low_res:
+        window_size = spectrogram_parameters.window_size / 10
+        hop_size = hop_size * 10
+    else:
+        window_size = spectrogram_parameters.window_size
 
     spectrogram = audio.compute_spectrogram(
         wav,
-        window_size=spectrogram_parameters.window_size,
+        window_size=window_size,
         hop_size=hop_size,
         window_type=spectrogram_parameters.window,
     )

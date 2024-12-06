@@ -206,6 +206,9 @@ export default function ClipEvaluationSpectrogram(props: {
           bounds={spectrogram.bounds}
           viewport={spectrogram.viewport}
           onMove={spectrogram.zoom}
+          recording={recording}
+          parameters={spectrogram.parameters}
+          withSpectrogram={true}
         />
       </Card>
     </div>

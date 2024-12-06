@@ -16,10 +16,12 @@ type GetUrlFn = ({
   recording,
   segment,
   parameters,
+  lowRes,
 }: {
   recording: Recording;
   segment: Interval;
   parameters: SpectrogramParameters;
+  lowRes?: boolean;
 }) => string;
 
 /** Use the image of a spectrogram window.
@@ -32,12 +34,14 @@ export default function useSpectrogramWindow({
   parameters = DEFAULT_SPECTROGRAM_PARAMETERS,
   getSpectrogramImageUrl = api.spectrograms.getUrl,
   withSpectrogram,
+  lowRes = false,
 }: {
   recording: Recording;
   window: SpectrogramWindow;
   parameters?: SpectrogramParameters;
   getSpectrogramImageUrl?: GetUrlFn;
   withSpectrogram: boolean;
+  lowRes?: boolean;
 }) {
   // Get the url of the image to load
   const url = useMemo(() => {
@@ -45,6 +49,7 @@ export default function useSpectrogramWindow({
       recording,
       segment: spectrogramWindow.time,
       parameters,
+      lowRes,
     });
   }, [recording, spectrogramWindow.time, parameters, getSpectrogramImageUrl]);
 
@@ -58,7 +63,7 @@ export default function useSpectrogramWindow({
     (ctx: CanvasRenderingContext2D, view: SpectrogramWindow) => {
       if (isLoading || isError) return;
       if (withSpectrogram) {
-        drawImage({
+       drawImage({
           ctx,
           image,
           window: view,

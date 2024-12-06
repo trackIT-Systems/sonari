@@ -27,6 +27,7 @@ export {
 
 const DEFAULT_ENDPOINTS = {
   get: "/api/v1/spectrograms/",
+  getLow: "/api/v1/spectrograms/low"
 };
 
 export const DEFAULT_SPECTROGRAM_PARAMETERS: SpectrogramParameters = {
@@ -55,10 +56,12 @@ export function registerSpectrogramAPI(
     recording,
     segment,
     parameters = DEFAULT_SPECTROGRAM_PARAMETERS,
+    lowRes = false,
   }: {
     recording: Recording;
     segment: Interval;
     parameters?: SpectrogramParameters;
+    lowRes?: boolean;
   }) {
     // Validate parameters
     const parsed_params = SpectrogramParametersSchema.parse(parameters);
@@ -69,6 +72,7 @@ export function registerSpectrogramAPI(
       recording_uuid: recording.uuid,
       start_time: parsed_segment.min,
       end_time: parsed_segment.max,
+      low_res: lowRes,
       ...parsed_params,
     };
 
