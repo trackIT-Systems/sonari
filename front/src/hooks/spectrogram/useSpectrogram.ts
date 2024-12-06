@@ -50,6 +50,8 @@ export type SpectrogramControls = {
   zoom: (window: SpectrogramWindow) => void;
   zoomIn: () => void;
   zoomOut: () => void;
+  moveLeft: () => void,
+  moveRight: () => void,
   drag: (window: SpectrogramWindow) => void;
   scale: ({ time, freq }: { time?: number; freq?: number }) => void;
   shift({ time, freq }: { time?: number; freq?: number }): void;
@@ -384,14 +386,46 @@ export default function useSpectrogram({
     [drawImage, drawMotions, viewport, canDrag, canZoom, withSpectrogram],
   );
 
+  const handleMoveLeft = useCallback(() => {
+    setViewport((prev) => {
+      const timeWidth = prev.time.max - prev.time.min;
+      const shiftAmount = timeWidth * 0.1; // 10% of current view width
+      const newWindow = {
+        ...prev,
+        time: {
+          min: prev.time.min - shiftAmount,
+          max: prev.time.max - shiftAmount,
+        }
+      };
+      return adjustWindowToBounds(newWindow, initialBounds);
+    });
+  }, [initialBounds]);
+
+  const handleMoveRight = useCallback(() => {
+    setViewport((prev) => {
+      const timeWidth = prev.time.max - prev.time.min;
+      const shiftAmount = timeWidth * 0.1; // 10% of current view width
+      const newWindow = {
+        ...prev,
+        time: {
+          min: prev.time.min + shiftAmount,
+          max: prev.time.max + shiftAmount,
+        }
+      };
+      return adjustWindowToBounds(newWindow, initialBounds);
+    });
+  }, [initialBounds]);
+
   useSpectrogramKeyShortcuts({
     onGoMove: enableDrag,
     onGoZoom: enableZoom,
     onZoomIn: handleZoomIn,
     onZoomOut: handleZoomOut,
     onToggleAspectRatio: toggleFixedAspectRatio,
+    onMoveLeft: handleMoveLeft,
+    onMoveRight: handleMoveRight,
     enabled: withShortcuts,
-  })
+  });
 
   return {
     bounds: initialBounds,
@@ -407,6 +441,8 @@ export default function useSpectrogram({
     zoom: handleZoomDrag,
     zoomIn: handleZoomIn,
     zoomOut: handleZoomOut,
+    moveLeft: handleMoveLeft,
+    moveRight: handleMoveRight,
     drag: handleZoomDrag,
     scale: handleScale,
     shift: handleShift,

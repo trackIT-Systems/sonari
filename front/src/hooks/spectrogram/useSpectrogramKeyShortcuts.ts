@@ -20,6 +20,16 @@ export const SPECTROGRAM_KEY_SHORTCUTS: KeyShortcut[] = [
     shortcut: "l",
     description: "Toggle fixed aspect ratio for zoom",
   },
+  {
+    label: "Move Left",
+    shortcut: "←",
+    description: "Move spectrogram view 10% to the left",
+  },
+  {
+    label: "Move Right",
+    shortcut: "→",
+    description: "Move spectrogram view 10% to the right",
+  },
 ];
 
 export default function useAnnotateClipKeyShortcuts(props: {
@@ -28,12 +38,26 @@ export default function useAnnotateClipKeyShortcuts(props: {
   onZoomIn: () => void;
   onZoomOut: () => void;
   onToggleAspectRatio: () => void;
+  onMoveLeft: () => void;
+  onMoveRight: () => void;
   enabled?: boolean;
 }) {
-  const { onGoMove, onGoZoom, onZoomIn, onZoomOut, onToggleAspectRatio, enabled = true } = props;
+  const { 
+    onGoMove, 
+    onGoZoom, 
+    onZoomIn, 
+    onZoomOut, 
+    onToggleAspectRatio, 
+    onMoveLeft,
+    onMoveRight,
+    enabled = true 
+  } = props;
+
   useKeyPressEvent(useKeyFilter({ enabled, key: "x" }), onGoMove);
   useKeyPressEvent(useKeyFilter({ enabled, key: "z" }), onGoZoom);
   useKeyPressEvent(useKeyFilter({ enabled, key: "+" }), onZoomIn);
   useKeyPressEvent(useKeyFilter({ enabled, key: "-" }), onZoomOut);
   useKeyPressEvent(useKeyFilter({ enabled, key: "l" }), onToggleAspectRatio);
+  useKeyPressEvent(useKeyFilter({ enabled, key: "ArrowLeft" }), onMoveLeft);
+  useKeyPressEvent(useKeyFilter({ enabled, key: "ArrowRight" }), onMoveRight);
 }
