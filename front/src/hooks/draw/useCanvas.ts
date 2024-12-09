@@ -88,6 +88,13 @@ export default function useCanvas({
         e.preventDefault();
         e.stopPropagation();
       }
+
+      const isHorizontalScroll =
+      Math.abs(e.deltaX) > Math.abs(e.deltaY);
+
+      if (isHorizontalScroll) {
+        e.preventDefault(); // Prevent default navigation on horizontal scrolls
+      }
     };
 
     window.addEventListener("wheel", handleWheel, { passive: false });

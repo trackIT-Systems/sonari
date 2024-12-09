@@ -49,7 +49,19 @@ export default function useWindowScroll({
   const scrollProps = useMemo(() => {
     return {
       onWheel: (event: WheelEvent) => {
-        const { deltaY, shiftKey, ctrlKey, altKey, metaKey } = event;
+        const { deltaX, deltaY, shiftKey, ctrlKey, altKey, metaKey } = event;
+
+        // Handle horizontal scroll from trackpad
+        if (Math.abs(deltaX) > Math.abs(deltaY) && !relative) {
+          const deltaTime = scaleXToWindow(
+            deltaX,
+            viewport,
+            dimensions.width,
+            true,
+          );
+          return onScroll?.({ time: deltaTime });
+        }
+
         const specialKey = metaKey || altKey;
         if (
           !enabled ||
@@ -59,6 +71,7 @@ export default function useWindowScroll({
         )
           return;
 
+        // Handle vertical scroll (existing behavior)
         switch (true) {
           case shiftKey && relative:
             return onScroll?.({ timeRatio: deltaY / dimensions.width });
