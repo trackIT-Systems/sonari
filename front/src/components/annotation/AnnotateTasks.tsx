@@ -298,8 +298,8 @@ export default function AnnotateTasks({
   }
 
   return (
-    <div className="w-full flex flex-col gap-3">
-      <div className="flex flex-row gap-8">
+    <div className="w-full flex flex-col gap-4">
+      <div className="flex flex-row gap-4">
         <div className="min-w-[63rem]">
           <AnnotationProgress
             current={tasks.current}
@@ -323,72 +323,86 @@ export default function AnnotateTasks({
           )}
         </div>
       </div>
-      <div className="flex flex-row gap-8">
-        <div className="min-w-[63rem] gap-2">
-          {isLoadingClipAnnotation ? (
-            <Loading />
-          ) : data == null ? (
-            <NoClipSelected />
-          ) : (
-            <>
-              <RecordingAnnotationContext
-                recording={data.clip.recording}
-                onTagClick={handleAddTagToPalette}
-              />
-              <div className="min-w-0">
-                <ClipAnnotationSpectrogram
-                  parameters={parameters}
-                  clipAnnotation={data}
-                  defaultTags={tagPalette}
-                  onParameterSave={onParameterSave}
-                  onSelectAnnotation={setSelectedAnnotation}
-                  tagFilter={tagFilter}
-                  withSpectrogram={withSpectrogram}
-                  onWithSpectrogramChange={onWithSpectrogramChange}
-                  withAutoplay={withAutoplay}
-                  onWithAutoplayChange={onWithAutoplayChange}
-                  fixedAspectRatio={fixedAspectRatio}
-                  toggleFixedAspectRatio={toggleFixedAspectRatio}
-                  onCreateTag={onCreateTag}
-                  onAddSoundEventTag={onAddSoundEventTag}
-                  onRemoveSoundEventTag={onRemoveSoundEventTag}
-                  onCreateSoundEventAnnotation={onCreateSoundEventAnnotation}
-                  onUpdateSoundEventAnnotation={onUpdateSoundEventAnnotation}
-                  onDeleteSoundEventAnnotation={onDeleteSoundEventAnnotation}
+      <div className="flex flex-col gap-4">
+        <div className="flex flex-row gap-4">
+          <div className="min-w-[63rem]">
+            {isLoadingClipAnnotation ? (
+              <Loading />
+            ) : data == null ? (
+              <NoClipSelected />
+            ) : (
+              <div className="flex flex-col gap-2">
+                <RecordingAnnotationContext
+                  recording={data.clip.recording}
+                  onTagClick={handleAddTagToPalette}
                 />
-              </div>
-              {selectedAnnotation == null ? (
-                <Empty>
-                  No sound event selected. Select a sound event to view details.
-                </Empty>
-              ) : (
-                <div className="min-w-0">
-                  <SelectedSoundEventAnnotation
+                <div className="min-w-0 grow-0">
+                  <ClipAnnotationSpectrogram
+                    parameters={parameters}
                     clipAnnotation={data}
+                    defaultTags={tagPalette}
+                    onParameterSave={onParameterSave}
+                    onSelectAnnotation={setSelectedAnnotation}
                     tagFilter={tagFilter}
-                    soundEventAnnotation={selectedAnnotation}
-                    onAddTag={onAddSoundEventTag}
+                    withSpectrogram={withSpectrogram}
+                    onWithSpectrogramChange={onWithSpectrogramChange}
+                    withAutoplay={withAutoplay}
+                    onWithAutoplayChange={onWithAutoplayChange}
+                    fixedAspectRatio={fixedAspectRatio}
+                    toggleFixedAspectRatio={toggleFixedAspectRatio}
                     onCreateTag={onCreateTag}
-                    onRemoveTag={onRemoveSoundEventTag}
+                    onAddSoundEventTag={onAddSoundEventTag}
+                    onRemoveSoundEventTag={onRemoveSoundEventTag}
+                    onCreateSoundEventAnnotation={onCreateSoundEventAnnotation}
+                    onUpdateSoundEventAnnotation={onUpdateSoundEventAnnotation}
+                    onDeleteSoundEventAnnotation={onDeleteSoundEventAnnotation}
                   />
                 </div>
-              )}
-            </>
-          )}
+              </div>
+            )}
+          </div>
+
+            {selectedAnnotation == null || data == null ? (
+          <div className="w-[35rem] flex-none mt-9">
+              <Empty
+              padding="p-0">
+                No sound event selected. Select a sound event to view details.
+              </Empty>
+              </div>
+            ) : (
+              <div className="w-[35rem] flex-none mt-5">
+              <SelectedSoundEventAnnotation
+                clipAnnotation={data}
+                tagFilter={tagFilter}
+                soundEventAnnotation={selectedAnnotation}
+                onAddTag={onAddSoundEventTag}
+                onCreateTag={onCreateTag}
+                onRemoveTag={onRemoveSoundEventTag}
+              />
+              </div>
+            )}
         </div>
-        <div className="w-[35rem] flex-none flex flex-col gap-4">
-          <ClipAnnotationTags
-            clipAnnotation={data}
-            projectTags={projectTags}
-            onReplaceTagInSoundEvents={handleReplaceTagInSoundEvents}
-          />
-          <ClipAnnotationNotes
-            onCreateNote={addNote.mutate}
-            onDeleteNote={removeNote.mutate}
-            clipAnnotation={data}
-            currentUser={currentUser}
-          />
-        </div>
+
+
+        {data && (
+          <div className="flex flex-row gap-4 w-full">
+            <div className="min-w-[63rem]">
+              <ClipAnnotationNotes
+                onCreateNote={addNote.mutate}
+                onDeleteNote={removeNote.mutate}
+                clipAnnotation={data}
+                currentUser={currentUser}
+              />
+            </div>
+            <div className="min-w-[35rem]">
+              <ClipAnnotationTags
+                clipAnnotation={data}
+                projectTags={projectTags}
+                onReplaceTagInSoundEvents={handleReplaceTagInSoundEvents}
+              />
+            </div>
+          </div>
+        )}
       </div>
 
       {isDeletePopoverOpen && (
