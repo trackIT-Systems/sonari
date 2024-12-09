@@ -20,16 +20,30 @@ export const ANNOTATION_KEY_SHORTCUTS: KeyShortcut[] = [
     shortcut: "d",
     description: "Delete an annotation",
   },
+  {
+    label: "Select next",
+    shortcut: "k",
+    description: "Select next sound event annotation",
+  },
+  {
+    label: "Select previous",
+    shortcut: "j",
+    description: "Select previous sound event annotation",
+  },
 ];
 
 export default function useAnnotateClipKeyShortcuts(props: {
   onGoCreate: () => void;
   onGoSelect: () => void;
   onGoDelete: () => void;
+  onGoNext: () => void;
+  onGoPrev: () => void;
   enabled?: boolean;
 }) {
-  const { onGoCreate, onGoSelect, onGoDelete, enabled = true } = props;
+  const { onGoCreate, onGoSelect, onGoDelete, onGoNext, onGoPrev, enabled = true } = props;
   useKeyPressEvent(useKeyFilter({ enabled, key: "c" }), onGoCreate);
   useKeyPressEvent(useKeyFilter({ enabled, key: "s" }), onGoSelect);
   useKeyPressEvent(useKeyFilter({ enabled, key: "d" }), onGoDelete);
+  useKeyPressEvent(useKeyFilter({ enabled, key: "k" }), onGoNext);
+  useKeyPressEvent(useKeyFilter({ enabled, key: "j" }), onGoPrev);
 }

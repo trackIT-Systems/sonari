@@ -47,6 +47,40 @@ export type AnnotateClipActions = {
   disable: () => void;
 };
 
+const getStartCoordinate = (geometry: Geometry) => {
+  switch (geometry.type) {
+    case "BoundingBox":
+      return geometry.coordinates[0];
+
+    case "TimeInterval":
+      return geometry.coordinates[0];
+
+    default:
+      throw new Error(`Unsupported geometry type: ${geometry.type}`);
+  }
+}
+
+const getEndCoordinate = (geometry: Geometry) => {
+  switch (geometry.type) {
+    case "BoundingBox":
+      return geometry.coordinates[2];
+
+    case "TimeInterval":
+      return geometry.coordinates[1];
+
+    default:
+      throw new Error(`Unsupported geometry type: ${geometry.type}`);
+  }
+}
+
+const sortSoundEvents = (soundEvents: SoundEventAnnotation[]) => {
+  return [...soundEvents].sort((a, b) => {
+    const startA = getStartCoordinate(a.sound_event.geometry);
+    const startB = getStartCoordinate(b.sound_event.geometry);
+    return startA - startB;
+  });
+};
+
 export default function useAnnotateClip(props: {
   /** The clip annotation to annotate */
   clipAnnotation: ClipAnnotation;
@@ -83,6 +117,7 @@ export default function useAnnotateClip(props: {
   onModeChange?: (mode: AnnotateMode) => void;
   /** Callback when an annotation is deselected */
   onDeselect?: () => void;
+  onCenterOn: (time: number) => void;
 }) {
   const {
     clipAnnotation: data,
@@ -100,6 +135,7 @@ export default function useAnnotateClip(props: {
     onUpdateAnnotation,
     onDeleteAnnotation,
     onDeselect,
+    onCenterOn,
   } = props;
 
   const {
@@ -227,6 +263,72 @@ export default function useAnnotateClip(props: {
     [addSoundEvent, setSelectedAnnotation, disabled],
   );
 
+  const selectNextAnnotation = useCallback(() => {
+    if (!soundEvents.length) return;
+  
+    const sortedAnnotations = sortSoundEvents(soundEvents);
+  
+    const currentIndex = sortedAnnotations.findIndex(
+      (annotation) => annotation === selectedAnnotation
+    );
+  
+    const nextIndex = (currentIndex + 1) % sortedAnnotations.length;
+    const nextAnnotation = sortedAnnotations[nextIndex];
+    setSelectedAnnotation(nextAnnotation);
+    onSelectAnnotation?.(nextAnnotation);
+  
+    // Assume `centerOn` is a function provided by the spectrogram to adjust the viewport.
+    if (viewport && nextAnnotation) {
+      const annotationStart = getStartCoordinate(nextAnnotation.sound_event.geometry);
+      const annotationEnd = getEndCoordinate(nextAnnotation.sound_event.geometry); // Implement getEndCoordinate if necessary
+  
+      // Check if annotation is outside viewport:
+      if (annotationStart < viewport.time.min || annotationEnd > viewport.time.max) {
+        // Calculate the new center position
+        const newCenterTime = (annotationStart + annotationEnd) / 2;
+        onCenterOn(newCenterTime);
+      }
+    }
+  }, [
+    soundEvents,
+    selectedAnnotation,
+    onSelectAnnotation,
+    onCenterOn,
+  ]);
+
+  const selectPrevAnnotation = useCallback(() => {
+    if (!soundEvents.length) return;
+  
+    const sortedAnnotations = sortSoundEvents(soundEvents);
+  
+    const currentIndex = sortedAnnotations.findIndex(
+      (annotation) => annotation === selectedAnnotation
+    );
+  
+    const nextIndex = (currentIndex - 1) % sortedAnnotations.length;
+    const nextAnnotation = sortedAnnotations[nextIndex];
+    setSelectedAnnotation(nextAnnotation);
+    onSelectAnnotation?.(nextAnnotation);
+  
+    // Assume `centerOn` is a function provided by the spectrogram to adjust the viewport.
+    if (viewport && nextAnnotation) {
+      const annotationStart = getStartCoordinate(nextAnnotation.sound_event.geometry);
+      const annotationEnd = getEndCoordinate(nextAnnotation.sound_event.geometry); // Implement getEndCoordinate if necessary
+  
+      // Check if annotation is outside viewport:
+      if (annotationStart < viewport.time.min || annotationEnd > viewport.time.max) {
+        // Calculate the new center position
+        const newCenterTime = (annotationStart + annotationEnd) / 2;
+        onCenterOn(newCenterTime);
+      }
+    }
+  }, [
+    soundEvents,
+    selectedAnnotation,
+    onSelectAnnotation,
+    onCenterOn,
+  ]);
+
   const { props: editProps, draw: drawEdit } = useAnnotationEdit({
     viewport,
     dimensions,
@@ -343,6 +445,8 @@ export default function useAnnotateClip(props: {
     onGoCreate: enableDraw,
     onGoDelete: enableDelete,
     onGoSelect: enableSelect,
+    onGoNext: selectNextAnnotation,
+    onGoPrev: selectPrevAnnotation,
     enabled: !disabled,
   });
 

@@ -82,8 +82,7 @@ export default function AnnotateTasks({
   onRejectTask?: () => void;
   onVerifyTask?: () => void;
 }) {
-  const [selectedAnnotation, setSelectedAnnotation] =
-    useState<SoundEventAnnotation | null>(null);
+  const [selectedAnnotation, setSelectedAnnotation] = useState<SoundEventAnnotation | null>(null);
   const [tagPalette, setTagPalette] = useState<Tag[]>([]);
 
 
@@ -362,15 +361,15 @@ export default function AnnotateTasks({
             )}
           </div>
 
-            {selectedAnnotation == null || data == null ? (
-          <div className="w-[35rem] flex-none mt-9">
+          {selectedAnnotation == null || data == null ? (
+            <div className="w-[35rem] flex-none mt-9">
               <Empty
-              padding="p-0">
+                padding="p-0">
                 No sound event selected. Select a sound event to view details.
               </Empty>
-              </div>
-            ) : (
-              <div className="w-[35rem] flex-none mt-5">
+            </div>
+          ) : (
+            <div className="w-[35rem] flex-none mt-5">
               <SelectedSoundEventAnnotation
                 clipAnnotation={data}
                 tagFilter={tagFilter}
@@ -379,8 +378,8 @@ export default function AnnotateTasks({
                 onCreateTag={onCreateTag}
                 onRemoveTag={onRemoveSoundEventTag}
               />
-              </div>
-            )}
+            </div>
+          )}
         </div>
 
 

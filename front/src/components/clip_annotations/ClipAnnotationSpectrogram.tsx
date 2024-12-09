@@ -189,6 +189,7 @@ export default function ClipAnnotationSpectrogram({
   const annotate = useAnnotateClip({
     clipAnnotation,
     viewport: spectrogram.viewport,
+    onCenterOn: handleTimeChange,
     dimensions,
     defaultTags,
     onModeChange: handleAnnotationModeChange,
