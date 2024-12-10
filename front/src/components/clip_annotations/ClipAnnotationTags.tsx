@@ -220,25 +220,6 @@ export default function ClipAnnotationTags({
     };
   }, []);
 
-
-  const handleBlur = useCallback(() => {
-    // Remove focus from current element
-    var activeElement = document.activeElement as HTMLElement;
-    if (activeElement) {
-      activeElement.blur();
-    }
-  }, []);
-
-
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      handleBlur();
-    };
-
-    document.addEventListener('click', handleClickOutside);
-    return () => document.removeEventListener('click', handleClickOutside);
-  }, [handleBlur]);
-
   const tagsWithCount = useMemo(() => {
     if (!clipAnnotation?.sound_events) return [];
 
@@ -275,10 +256,6 @@ export default function ClipAnnotationTags({
         <div className="flex items-center">
         <Popover as="div" className="relative inline-block text-left">
           {({ open, close }) => {
-            if (!open) {
-              handleBlur();
-            }
-
             return (
               <Float
                 autoPlacement
@@ -293,7 +270,6 @@ export default function ClipAnnotationTags({
               >
                 <div className="group relative">
                   <Popover.Button
-                    onBlur={() => handleBlur()}
                     className={`
                     inline-flex items-center justify-center text-sm font-medium
                     text-info-600 hover:text-info-700
@@ -304,7 +280,6 @@ export default function ClipAnnotationTags({
                       mode="text"
                       variant="info"
                       type="button"
-                      onBlur={() => handleBlur()}
                       autoFocus={false}
                     >
                       Replace
@@ -341,7 +316,6 @@ export default function ClipAnnotationTags({
                     projectTags={projectTags}
                     onReplaceTag={async (oldTag, newTag) => {
                       close();
-                      handleBlur()
                       await handleTagReplaceRemove(oldTag, newTag);
                     }}
                   />
@@ -353,10 +327,6 @@ export default function ClipAnnotationTags({
         <div className="h-4 w-px bg-stone-200 dark:bg-stone-600 mx-2" />
         <Popover as="div" className="relative inline-block text-left">
           {({ open, close }) => {
-            if (!open) {
-              handleBlur();
-            }
-
             return (
               <Float
                 autoPlacement
@@ -375,14 +345,12 @@ export default function ClipAnnotationTags({
                     inline-flex items-center justify-center text-sm font-medium
                     text-info-600 hover:text-info-700
                   `}
-                  onBlur={() => handleBlur()}
                   >
                     <Button
                       ref={addButtonRef}
                       mode="text"
                       variant="info"
                       type="button"
-                      onBlur={() => handleBlur()}
                       autoFocus={false}
                     >
                       Add
@@ -418,7 +386,6 @@ export default function ClipAnnotationTags({
                     projectTags={projectTags}
                     onReplaceTag={async (_, newTag) => {
                       close();
-                      handleBlur()
                       await handleTagReplaceRemove(null, newTag);
                     }}
                   />
