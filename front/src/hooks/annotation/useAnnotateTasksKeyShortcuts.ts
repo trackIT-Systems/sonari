@@ -40,6 +40,11 @@ export const ANNOTATE_TASKS_KEY_SHORTCUTS: KeyShortcut[] = [
     shortcut: "t",
     description: "Open the tag search and replace panel",
   },
+  {
+    label: "Add ag",
+    shortcut: "f",
+    description: "Open panel to add tag to all sound events",
+  },
 ];
 
 export default function useAnnotateTaskKeyShortcuts(props: {
@@ -50,6 +55,7 @@ export default function useAnnotateTaskKeyShortcuts(props: {
   onMarkRejected?: () => void;
   onMarkVerified?: () => void;
   onSearchReplaceTags?: () => void;
+  onAddTags?: () => void;
   enabled?: boolean;
 }) {
   const {
@@ -60,6 +66,7 @@ export default function useAnnotateTaskKeyShortcuts(props: {
     onMarkRejected,
     onMarkVerified,
     onSearchReplaceTags,
+    onAddTags,
     enabled = true,
   } = props;
 
@@ -70,4 +77,5 @@ export default function useAnnotateTaskKeyShortcuts(props: {
   useKeyPressEvent(useKeyFilter({ enabled, key: "r" }), onMarkRejected);
   useKeyPressEvent(useKeyFilter({ enabled, key: "v" }), onMarkVerified);
   useKeyPressEvent(useKeyFilter({ enabled, key: "t" }), onSearchReplaceTags);
+  useKeyPressEvent(useKeyFilter({ enabled, key: "f" }), onAddTags);
 }

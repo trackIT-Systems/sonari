@@ -165,7 +165,7 @@ export default function AnnotateTasks({
       }
 
       if (
-        event.key === 'y' &&
+        event.key === "y" &&
         !(event.target instanceof HTMLInputElement) &&
         !(event.target instanceof HTMLTextAreaElement)
       ) {
@@ -174,7 +174,7 @@ export default function AnnotateTasks({
       }
 
       if (
-        event.key === 'm' &&
+        event.key === "m" &&
         !(event.target instanceof HTMLInputElement) &&
         !(event.target instanceof HTMLTextAreaElement)
       ) {
@@ -254,20 +254,27 @@ export default function AnnotateTasks({
       if (!data?.sound_events) return;
 
       // Get all sound events that need updating
-      const soundEventsToUpdate = oldTag === null
-        ? data.sound_events.filter(soundEvent =>
-          soundEvent.tags && soundEvent.tags.length > 0
-        ) // If oldTag is null (all tags), get only sound events that have tags
-        : data.sound_events.filter(soundEvent =>
-          soundEvent.tags?.some(
-            tag => tag.key === oldTag.key && tag.value === oldTag.value
-          )
-        );
+      var soundEventsToUpdate;
+      if (oldTag === null) {
+        soundEventsToUpdate = data.sound_events
+      } else {
+        soundEventsToUpdate = oldTag.key === "all"
+          ? data.sound_events.filter(soundEvent =>
+            soundEvent.tags && soundEvent.tags.length > 0
+          ) // If oldTag is null (all tags), get only sound events that have tags
+          : data.sound_events.filter(soundEvent =>
+            soundEvent.tags?.some(
+              tag => tag.key === oldTag.key && tag.value === oldTag.value
+            )
+          );
+      }
+
+      console.log("Handling tagging", oldTag, newTag)
 
       const promises = soundEventsToUpdate.map(async soundEvent => {
         try {
           // If replacing all tags, remove all existing tags first
-          if (oldTag === null && soundEvent.tags) {
+          if (oldTag?.key === "all" && soundEvent.tags) {
             for (const tag of soundEvent.tags) {
               await removeTagFromSoundEvent.mutateAsync({
                 soundEventAnnotation: soundEvent,
@@ -284,6 +291,7 @@ export default function AnnotateTasks({
 
           // Add new tag
           if (newTag) {
+            console.log(`Adding tag ${newTag.key}`)
             await addTagToSoundEvent.mutateAsync({
               soundEventAnnotation: soundEvent,
               tag: newTag

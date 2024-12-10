@@ -47,34 +47,32 @@ function TagReplacePanel({
   }, [taskTags, totalCount]);
 
   if (selectedTagWithCount === null) {
-    if (selectedTagWithCount === null) {
-      return (
-        <div className="p-4">
-          <div className="mb-2 text-stone-700 dark:text-stone-300 underline underline-offset-2 decoration-amber-500 decoration-2">
-            Replace ...
-          </div>
-          <SearchMenu
-            key="first-search"
-            options={allOptions}
-            fields={["type", "tag.key", "tag.value"]}
-            renderOption={(option) =>
-              <TagComponent
-                key={`${option.tag.key}-${option.tag.value}`}
-                tag={option.tag}
-                {...getTagColor(option.tag)}
-                onClose={() => { }}
-                count={option.count}
-              />
-
-            }
-            getOptionKey={(option) => `${option.tag.key}-${option.tag.value}`}
-            onSelect={(option) => setSelectedTagWithCount(option)}
-            empty={<div className="text-stone-500 text-center w-full">No tags found</div>}
-            autoFocus
-          />
+    return (
+      <div className="p-4">
+        <div className="mb-2 text-stone-700 dark:text-stone-300 underline underline-offset-2 decoration-amber-500 decoration-2">
+          Replace ...
         </div>
-      );
-    }
+        <SearchMenu
+          key="first-search"
+          options={allOptions}
+          fields={["type", "tag.key", "tag.value"]}
+          renderOption={(option) =>
+            <TagComponent
+              key={`${option.tag.key}-${option.tag.value}`}
+              tag={option.tag}
+              {...getTagColor(option.tag)}
+              onClose={() => { }}
+              count={option.count}
+            />
+
+          }
+          getOptionKey={(option) => `${option.tag.key}-${option.tag.value}`}
+          onSelect={(option) => setSelectedTagWithCount(option)}
+          empty={<div className="text-stone-500 text-center w-full">No tags found</div>}
+          autoFocus
+        />
+      </div>
+    );
   }
 
   return (
@@ -117,7 +115,7 @@ function TagReplacePanel({
         getOptionKey={(tag) => `${tag.key}-${tag.value}`}
         onSelect={(newTag) => {
           onReplaceTag(
-            selectedTagWithCount.tag.key === "all" ? null : selectedTagWithCount.tag,
+            selectedTagWithCount.tag,
             newTag
           );
           setSelectedTagWithCount(null);
@@ -129,6 +127,51 @@ function TagReplacePanel({
   );
 }
 
+
+function TagAddPanel({
+  projectTags,
+  onReplaceTag,
+}: {
+  projectTags: Tag[];
+  onReplaceTag: (oldTag: Tag | null, newTag: Tag) => void;
+}) {
+  const getTagColor = useStore((state) => state.getTagColor);
+
+  return (
+    <div className="p-4">
+      <div className="mb-2 flex flex-row items-center justify-between">
+        <div>
+          <span className="mb-2 text-stone-700 dark:text-stone-300 underline underline-offset-2 decoration-amber-500 decoration-2">Select Tag to add to all Sound Events</span>
+        </div>
+      </div>
+      <SearchMenu
+        key="second-search"
+        options={projectTags}
+        fields={["key", "value"]}
+        renderOption={(tag) => (
+          <TagComponent
+            key={`${tag.key}-${tag.value}`}
+            tag={tag}
+            {...getTagColor(tag)}
+            onClose={() => { }}
+            count={null}
+          />
+        )}
+        getOptionKey={(tag) => `${tag.key}-${tag.value}`}
+        onSelect={(newTag) => {
+          onReplaceTag(
+            null,
+            newTag
+          );
+        }}
+        empty={<div className="text-stone-500 text-center w-full">No tags found</div>}
+        autoFocus
+      />
+    </div>
+  );
+}
+
+
 export default function ClipAnnotationTags({
   clipAnnotation,
   projectTags,
@@ -138,14 +181,15 @@ export default function ClipAnnotationTags({
   projectTags: Tag[];
   onReplaceTagInSoundEvents?: (oldTag: Tag | null, newTag: Tag | null) => void;
 }) {
+
   const getTagColor = useStore((state) => state.getTagColor);
-  const buttonRef = useRef<HTMLButtonElement>(null);
-  const popoverOpen = useRef(false);
+  
+  const replaceButtonRef = useRef<HTMLButtonElement>(null);
+  const addButtonRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     const handleKeyPress = (event: KeyboardEvent) => {
-      // Only handle 't' key when no input elements are focused
-      if (event.key !== 't' ||
+      if (!(event.key === "t" || event.key === "f") ||
         event.target instanceof HTMLInputElement ||
         event.target instanceof HTMLTextAreaElement) {
         return;
@@ -153,9 +197,18 @@ export default function ClipAnnotationTags({
 
       event.preventDefault();
 
-      const button = buttonRef.current || document.querySelector('[data-search-replace-button]');
-      if (button instanceof HTMLButtonElement && !popoverOpen.current) {
-        button.click();
+      if (event.key === "t") {
+        const button = replaceButtonRef.current;
+        if (button instanceof HTMLButtonElement) {
+          button.click();
+        }
+      }
+
+      if (event.key === "f") {
+        const button = addButtonRef.current;
+        if (button instanceof HTMLButtonElement) {
+          button.click();
+        }
       }
     };
     // Add event listener to document
@@ -169,19 +222,17 @@ export default function ClipAnnotationTags({
 
 
   const handleBlur = useCallback(() => {
-    requestAnimationFrame(() => {
-      document.querySelectorAll('button').forEach(button => button.blur());
-      document.body.focus();
-      popoverOpen.current = false;
-    });
+    // Remove focus from current element
+    var activeElement = document.activeElement as HTMLElement;
+    if (activeElement) {
+      activeElement.blur();
+    }
   }, []);
 
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (popoverOpen.current && !event.defaultPrevented) {
-        handleBlur();
-      }
+      handleBlur();
     };
 
     document.addEventListener('click', handleClickOutside);
@@ -221,9 +272,9 @@ export default function ClipAnnotationTags({
           <TagsIcon className="inline-block mr-1 w-5 h-5" />
           Sound Event Tags
         </H4>
+        <div className="flex items-center">
         <Popover as="div" className="relative inline-block text-left">
           {({ open, close }) => {
-            popoverOpen.current = open;
             if (!open) {
               handleBlur();
             }
@@ -242,18 +293,19 @@ export default function ClipAnnotationTags({
               >
                 <div className="group relative">
                   <Popover.Button
+                    onBlur={() => handleBlur()}
                     className={`
-                    inline-flex items-center justify-center px-4 py-2 text-sm font-medium
-                    text-info-600 hover:text-info-700 focus:outline-none focus-visible:ring-2
-                    focus-visible:ring-info-500 focus-visible:ring-offset-2
+                    inline-flex items-center justify-center text-sm font-medium
+                    text-info-600 hover:text-info-700
                   `}
-                    data-search-replace-button
                   >
                     <Button
-                      ref={buttonRef}
+                      ref={replaceButtonRef}
                       mode="text"
                       variant="info"
                       type="button"
+                      onBlur={() => handleBlur()}
+                      autoFocus={false}
                     >
                       Replace
                     </Button>
@@ -298,6 +350,86 @@ export default function ClipAnnotationTags({
             );
           }}
         </Popover>
+        <div className="h-4 w-px bg-stone-200 dark:bg-stone-600 mx-2" />
+        <Popover as="div" className="relative inline-block text-left">
+          {({ open, close }) => {
+            if (!open) {
+              handleBlur();
+            }
+
+            return (
+              <Float
+                autoPlacement
+                portal={true}
+                offset={4}
+                enter="transition ease-out duration-100"
+                enterFrom="transform opacity-0 scale-95"
+                enterTo="transform opacity-100 scale-100"
+                leave="transition ease-in duration-75"
+                leaveFrom="transform opacity-100 scale-100"
+                leaveTo="transform opacity-0 scale-95"
+              >
+                <div className="group relative">
+                  <Popover.Button
+                    className={`
+                    inline-flex items-center justify-center text-sm font-medium
+                    text-info-600 hover:text-info-700
+                  `}
+                  onBlur={() => handleBlur()}
+                  >
+                    <Button
+                      ref={addButtonRef}
+                      mode="text"
+                      variant="info"
+                      type="button"
+                      onBlur={() => handleBlur()}
+                      autoFocus={false}
+                    >
+                      Add
+                    </Button>
+                  </Popover.Button>
+                  <div
+                    className="
+                      opacity-0 scale-95 group-hover:opacity-100 group-hover:scale-100
+                      transition duration-100 ease-out
+                      pointer-events-none
+                      absolute top-full left-1/2 -translate-x-1/2 mt-2 
+                      rounded p-2 shadow-lg 
+                      bg-stone-50 dark:bg-stone-700 
+                      text-stone-600 dark:text-stone-400 
+                      text-sm
+                      z-50
+                    "
+                  >
+                    <div className="inline-flex gap-2 items-center">
+                      Add Tags to all Sound Events
+                      <div className="text-xs">
+                        <KeyboardKey code="f" />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <Popover.Panel
+                  unmount
+                  onMouseDown={(e) => e.preventDefault()}
+                  className="w-96 divide-y divide-stone-100 rounded-md bg-stone-50 dark:bg-stone-700 border border-stone-200 dark:border-stone-500 shadow-md dark:shadow-stone-800 ring-1 ring-stone-900 ring-opacity-5 z-50"
+                >
+                  <TagAddPanel
+                    projectTags={projectTags}
+                    onReplaceTag={async (_, newTag) => {
+                      close();
+                      handleBlur()
+                      await handleTagReplaceRemove(null, newTag);
+                    }}
+                  />
+                </Popover.Panel>
+              </Float>
+            );
+          }}
+        </Popover>
+        </div>
+
+
       </div>
       <div className="flex flex-row items-center flex-wrap gap-1">
         {tagsWithCount.map(({ tag, count }) => (
