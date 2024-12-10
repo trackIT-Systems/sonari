@@ -4,21 +4,17 @@ import Tooltip from "@/components/Tooltip";
 import KeyboardKey from "@/components/KeyboardKey";
 
 export default function SpectrogramControls({
-  canDrag,
   canZoom,
   fixedAspectRatio,
-  onDrag,
   onZoom,
   onReset,
   onZoomIn,
   onZoomOut,
   onToggleAspectRatio,
 }: {
-  canDrag: boolean;
   canZoom: boolean;
   fixedAspectRatio: boolean;
   onReset?: () => void;
-  onDrag?: () => void;
   onZoom?: () => void;
   onZoomIn?: () => void;
   onZoomOut?: () => void;
@@ -26,21 +22,6 @@ export default function SpectrogramControls({
 }) {
   return (
     <div className="flex space-x-2">
-      <Tooltip
-        tooltip={
-          <div className="inline-flex gap-2 items-center">
-            Drag spectrogram
-            <div className="text-xs">
-              <KeyboardKey code="x" />
-            </div>
-          </div>
-        }
-        placement="bottom"
-      >
-        <Button variant={canDrag ? "primary" : "secondary"} onClick={onDrag}>
-          <DragIcon className="w-5 h-5" />
-        </Button>
-      </Tooltip>
       <Tooltip
         tooltip={
           <div className="inline-flex gap-2 items-center">

@@ -417,7 +417,6 @@ export default function useSpectrogram({
   }, [initialBounds]);
 
   useSpectrogramKeyShortcuts({
-    onGoMove: enableDrag,
     onGoZoom: enableZoom,
     onZoomIn: handleZoomIn,
     onZoomOut: handleZoomOut,

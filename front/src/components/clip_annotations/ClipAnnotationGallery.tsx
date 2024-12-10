@@ -79,6 +79,8 @@ function Spectrogram(props: {
       clipAnnotation={annotation}
       parameters={parameters}
       onParameterSave={onParametersSave}
+      selectedTag={null}
+      onClearSelectedTag={() => {}}
       height={height}
       withBar={false}
       withPlayer={false}

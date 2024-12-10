@@ -490,10 +490,8 @@ function useAnnotateClipState({
   onChangeGeometryType?: (geometryType: GeometryType) => void;
 }) {
   const [mode, setMode] = useState<AnnotateMode>(initialMode);
-  const [geometryType, setGeometryType] =
-    useState<GeometryType>(initialGeometryType);
-  const [selectedAnnotation, setSelectedAnnotation] =
-    useState<SoundEventAnnotation | null>(initialSelectedAnnotation);
+  const [geometryType, setGeometryType] = useState<GeometryType>(initialGeometryType);
+  const [selectedAnnotation, setSelectedAnnotation] = useState<SoundEventAnnotation | null>(initialSelectedAnnotation);
 
   const changeMode = useCallback(
     (mode: AnnotateMode) => {

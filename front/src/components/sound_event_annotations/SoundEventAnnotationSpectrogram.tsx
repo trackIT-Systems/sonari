@@ -176,11 +176,9 @@ export default function SoundEventAnnotationSpectrogram(props: {
       <div className="flex flex-row gap-4">
         {withControls && (
           <SpectrogramControls
-            canDrag={spectrogram.canDrag}
             canZoom={spectrogram.canZoom}
             fixedAspectRatio={false}
             onReset={spectrogram.reset}
-            onDrag={spectrogram.enableDrag}
             onZoom={spectrogram.enableZoom}
             onToggleAspectRatio={() => null}
           />

@@ -163,11 +163,9 @@ export default function ClipPredictionSpectrogram(props: {
       <Card>
         <div className="flex flex-row gap-4">
           <SpectrogramControls
-            canDrag={spectrogram.canDrag}
             canZoom={spectrogram.canZoom}
             fixedAspectRatio={false}
             onReset={spectrogram.reset}
-            onDrag={spectrogram.enableDrag}
             onZoom={spectrogram.enableZoom}
             onToggleAspectRatio={() => null}
           />

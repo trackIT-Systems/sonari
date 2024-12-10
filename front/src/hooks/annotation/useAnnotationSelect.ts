@@ -1,4 +1,4 @@
-import { useCallback } from "react";
+import { useCallback, useEffect } from "react";
 import { mergeProps, usePress } from "react-aria";
 
 import drawGeometry from "@/draw/geometry";
@@ -41,6 +41,18 @@ export default function useAnnotationSelect({
       annotations,
       enabled,
     });
+
+  useEffect(() => {
+    const handleKeyPress = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        onDeselect?.();
+        return;
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyPress);
+    return () => document.removeEventListener('keydown', handleKeyPress);
+  }, [onDeselect]);
 
   const handleClick = useCallback(() => {
     if (!enabled) return;
