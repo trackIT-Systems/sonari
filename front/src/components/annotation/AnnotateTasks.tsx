@@ -84,6 +84,7 @@ export default function AnnotateTasks({
 }) {
   const [selectedAnnotation, setSelectedAnnotation] = useState<SoundEventAnnotation | null>(null);
   const [tagPalette, setTagPalette] = useState<Tag[]>([]);
+  const [selectedTag, setSelectedTag] = useState<{ tag: Tag; count: number } | null>(null);
 
 
   const [withSpectrogram, setWithSpectrogram] = useState(true);
@@ -152,12 +153,14 @@ export default function AnnotateTasks({
   );
 
 
-  const [isDeletePopoverOpen, setIsDeletePopoverOpen] = useState(false);
+  const [isDeletePopoverOpen, setIsDeletePopoverOpen] = useState(false); 
+  const [isTagPopoverOpen, setIsTagPopoverOpen] = useState(false);
 
   useEffect(() => {
     const handleKeyPress = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
         setIsDeletePopoverOpen(false);
+        setIsTagPopoverOpen(false);
         return;
       }
 
@@ -169,11 +172,25 @@ export default function AnnotateTasks({
         event.preventDefault();
         setIsDeletePopoverOpen(true);
       }
+
+      if (
+        event.key === 'm' &&
+        !(event.target instanceof HTMLInputElement) &&
+        !(event.target instanceof HTMLTextAreaElement)
+      ) {
+        event.preventDefault();
+        if (selectedTag) {
+          setSelectedTag(null);
+        } else {
+          setIsTagPopoverOpen(true);
+        }
+      }
     };
 
     document.addEventListener('keydown', handleKeyPress);
     return () => document.removeEventListener('keydown', handleKeyPress);
-  }, []);
+  }, [setIsTagPopoverOpen, setIsDeletePopoverOpen, selectedTag, setSelectedTag]);
+
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -340,6 +357,8 @@ export default function AnnotateTasks({
                     parameters={parameters}
                     clipAnnotation={data}
                     defaultTags={tagPalette}
+                    selectedTag={selectedTag}
+                    onClearSelectedTag={setSelectedTag}
                     onParameterSave={onParameterSave}
                     onSelectAnnotation={setSelectedAnnotation}
                     tagFilter={tagFilter}
@@ -412,26 +431,15 @@ export default function AnnotateTasks({
               // Check if click is inside menu
               if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
                 setIsDeletePopoverOpen(false);
-                e.stopPropagation();
               }
             };
 
             return (
               <>
                 <Popover.Button className="hidden" />
-                <Popover.Panel
-                  static={true}
-                  className="fixed inset-0 z-50"
-                >
-                  <div
-                    className="fixed inset-0 flex items-center justify-center"
-                    onClick={handleOverlayClick}
-                  >
-                    <div
-                      ref={menuRef}
-                      className="relative w-96 divide-y divide-stone-100 rounded-md bg-stone-50 dark:bg-stone-700 border border-stone-200 dark:border-stone-500 shadow-md dark:shadow-stone-800 ring-1 ring-stone-900 ring-opacity-5 focus:outline-none"
-                    >
-
+                <Popover.Panel static={true} className="fixed inset-0 z-50">
+                  <div className="fixed inset-0 flex items-center justify-center" onClick={handleOverlayClick}>
+                    <div ref={menuRef} className="relative w-96 divide-y divide-stone-100 rounded-md bg-stone-50 dark:bg-stone-700 border border-stone-200 dark:border-stone-500 shadow-md dark:shadow-stone-800 ring-1 ring-stone-900 ring-opacity-5 focus:outline-none">
                       <div className="p-4">
                         <div className="mb-2 text-stone-700 dark:text-stone-300 underline underline-offset-2 decoration-amber-500 decoration-2">
                           Select a tag to remove from all sound events
@@ -466,6 +474,60 @@ export default function AnnotateTasks({
             );
           }}
         </Popover>
+      )}
+
+      {isTagPopoverOpen && (
+        <Popover>
+        {({ open, close }) => {
+
+          const handleOverlayClick = (e: React.MouseEvent) => {
+            // Check if click is inside menu
+            if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+              setIsTagPopoverOpen(false);
+            }
+          };
+
+          return (
+            <>
+              <Popover.Button className="hidden" />
+              <Popover.Panel static={true} className="fixed inset-0 z-50">
+                <div className="fixed inset-0 flex items-center justify-center" onClick={handleOverlayClick}>
+                  <div ref={menuRef} className="relative w-96 divide-y divide-stone-100 rounded-md bg-stone-50 dark:bg-stone-700 border border-stone-200 dark:border-stone-500 shadow-md dark:shadow-stone-800 ring-1 ring-stone-900 ring-opacity-5 focus:outline-none">
+                    <div className="p-4">
+                      <div className="mb-2 text-stone-700 dark:text-stone-300 underline underline-offset-2 decoration-amber-500 decoration-2">
+                        Select a tag to cycle through
+                      </div>
+                      <SearchMenu
+                        options={tagsWithCount}
+                        fields={["tag.key", "tag.value"]}
+                        renderOption={(tagWithCount) => (
+                          <TagComponent
+                            key={`${tagWithCount.tag.key}-${tagWithCount.tag.value}`}
+                            tag={tagWithCount.tag}
+                            {...getTagColor(tagWithCount.tag)}
+                            onClose={() => { }}
+                            count={tagWithCount.count}
+                          />
+                        )}
+                        getOptionKey={(tagWithCount) => `${tagWithCount.tag.key}-${tagWithCount.tag.value}`}
+                        onSelect={(tagWithCount) => {
+                          if (menuRef.current?.contains(document.activeElement)) {
+                            setSelectedTag(tagWithCount)
+                            setIsTagPopoverOpen(false);
+                          }
+                        }}
+                        empty={<div className="text-stone-500 text-center w-full">No tags found</div>}
+                        autoFocus
+                        static={true}
+                      />
+                    </div>
+                  </div>
+                </div>
+              </Popover.Panel>
+            </>
+          );
+        }}
+      </Popover>
       )}
     </div>
   );

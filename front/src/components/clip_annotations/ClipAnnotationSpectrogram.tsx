@@ -9,6 +9,8 @@ import SpectrogramControls from "@/components/spectrograms/SpectrogramControls";
 import DisableSpectrogramButton from "../spectrograms/DisableSpectrogramButton";
 import SpectrogramSettings from "@/components/spectrograms/SpectrogramSettings";
 import SpectrogramTags from "@/components/spectrograms/SpectrogramTags";
+import useStore from "@/store";
+import TagComponent from "@/components/tags/Tag";
 import useAnnotateClip from "@/hooks/annotation/useAnnotateClip";
 import useAudio from "@/hooks/audio/useAudio";
 import useCanvas from "@/hooks/draw/useCanvas";
@@ -42,7 +44,9 @@ export default function ClipAnnotationSpectrogram({
   withSpectrogram,
   withAutoplay,
   defaultTags,
+  selectedTag,
   fixedAspectRatio,
+  onClearSelectedTag,
   toggleFixedAspectRatio,
   onWithSpectrogramChange,
   onWithAutoplayChange,
@@ -60,6 +64,7 @@ export default function ClipAnnotationSpectrogram({
   tagFilter?: TagFilter;
   disabled?: boolean;
   defaultTags?: Tag[];
+  selectedTag: { tag: Tag; count: number } | null;
   height?: number;
   withBar?: boolean;
   withPlayer?: boolean;
@@ -70,6 +75,7 @@ export default function ClipAnnotationSpectrogram({
   withSpectrogram: boolean;
   withAutoplay: boolean;
   fixedAspectRatio: boolean;
+  onClearSelectedTag: (tag: { tag: Tag; count: number } | null) => void;
   toggleFixedAspectRatio: () => void;
   onWithSpectrogramChange: () => void;
   onWithAutoplayChange: () => void;
@@ -192,6 +198,7 @@ export default function ClipAnnotationSpectrogram({
     onCenterOn: handleTimeChange,
     dimensions,
     defaultTags,
+    selectedTag,
     onModeChange: handleAnnotationModeChange,
     onDeselect: handleAnnotationDeselect,
     active: isAnnotating && !audio.isPlaying,
@@ -237,6 +244,11 @@ export default function ClipAnnotationSpectrogram({
   ]);
 
   useCanvas({ ref: canvasRef, draw });
+
+  const getTagColor = useStore((state) => state.getTagColor);
+  const handleClearSelectedTag = useCallback(() => {
+    onClearSelectedTag(null);
+  }, []);
 
   const props = isAnnotating ? annotateProps : spectrogramProps;
   return (
@@ -297,6 +309,17 @@ export default function ClipAnnotationSpectrogram({
             className="absolute w-full h-full"
           />
         </SpectrogramTags>
+        {selectedTag && (
+          <div className="absolute top-2 right-2 z-10">
+            <TagComponent
+              tag={selectedTag.tag}
+              {...getTagColor(selectedTag.tag)}
+              onClose={handleClearSelectedTag}
+              onClick={handleClearSelectedTag}
+              count={selectedTag.count}
+            />
+          </div>
+        )}
       </div>
       {withBar && (
         <SpectrogramBar

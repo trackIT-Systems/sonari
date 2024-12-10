@@ -92,6 +92,7 @@ export default function useAnnotateClip(props: {
   mode?: AnnotateMode;
   /** Tags to add to new sound event annotations by default */
   defaultTags?: Tag[];
+  selectedTag: { tag: Tag; count: number } | null
   /** Whether the annotation actions are active or not. The active state is
    * used to temporarily disable the annotation actions when other spectrogram
    * actions are active (e.g. zoom, pan, etc.)
@@ -124,6 +125,7 @@ export default function useAnnotateClip(props: {
     viewport,
     dimensions,
     defaultTags,
+    selectedTag,
     mode: initialMode = "select",
     active = true,
     disabled = false,
@@ -263,10 +265,19 @@ export default function useAnnotateClip(props: {
     [addSoundEvent, setSelectedAnnotation, disabled],
   );
 
+  const filteredSoundEvents = useMemo(() => {
+    if (!selectedTag) {
+      return soundEvents;
+    }
+    return soundEvents.filter(event =>
+      event.tags?.some(tag => tag.key === selectedTag.tag.key && tag.value === selectedTag.tag.value)
+    );
+  }, [soundEvents, selectedTag]);
+
   const selectNextAnnotation = useCallback(() => {
-    if (!soundEvents.length) return;
+    if (!filteredSoundEvents.length) return;
   
-    const sortedAnnotations = sortSoundEvents(soundEvents);
+    const sortedAnnotations = sortSoundEvents(filteredSoundEvents);
   
     const currentIndex = sortedAnnotations.findIndex(
       (annotation) => annotation === selectedAnnotation
@@ -280,7 +291,7 @@ export default function useAnnotateClip(props: {
     // Assume `centerOn` is a function provided by the spectrogram to adjust the viewport.
     if (viewport && nextAnnotation) {
       const annotationStart = getStartCoordinate(nextAnnotation.sound_event.geometry);
-      const annotationEnd = getEndCoordinate(nextAnnotation.sound_event.geometry); // Implement getEndCoordinate if necessary
+      const annotationEnd = getEndCoordinate(nextAnnotation.sound_event.geometry);
   
       // Check if annotation is outside viewport:
       if (annotationStart < viewport.time.min || annotationEnd > viewport.time.max) {
@@ -289,17 +300,12 @@ export default function useAnnotateClip(props: {
         onCenterOn(newCenterTime);
       }
     }
-  }, [
-    soundEvents,
-    selectedAnnotation,
-    onSelectAnnotation,
-    onCenterOn,
-  ]);
+  }, [filteredSoundEvents, selectedAnnotation, onSelectAnnotation, onCenterOn, viewport]);
 
   const selectPrevAnnotation = useCallback(() => {
-    if (!soundEvents.length) return;
+    if (!filteredSoundEvents.length) return;
   
-    const sortedAnnotations = sortSoundEvents(soundEvents);
+    const sortedAnnotations = sortSoundEvents(filteredSoundEvents);
   
     const currentIndex = sortedAnnotations.findIndex(
       (annotation) => annotation === selectedAnnotation
@@ -313,7 +319,7 @@ export default function useAnnotateClip(props: {
     // Assume `centerOn` is a function provided by the spectrogram to adjust the viewport.
     if (viewport && nextAnnotation) {
       const annotationStart = getStartCoordinate(nextAnnotation.sound_event.geometry);
-      const annotationEnd = getEndCoordinate(nextAnnotation.sound_event.geometry); // Implement getEndCoordinate if necessary
+      const annotationEnd = getEndCoordinate(nextAnnotation.sound_event.geometry);
   
       // Check if annotation is outside viewport:
       if (annotationStart < viewport.time.min || annotationEnd > viewport.time.max) {
@@ -322,12 +328,7 @@ export default function useAnnotateClip(props: {
         onCenterOn(newCenterTime);
       }
     }
-  }, [
-    soundEvents,
-    selectedAnnotation,
-    onSelectAnnotation,
-    onCenterOn,
-  ]);
+  }, [filteredSoundEvents, selectedAnnotation, onSelectAnnotation, onCenterOn, viewport]);
 
   const { props: editProps, draw: drawEdit } = useAnnotationEdit({
     viewport,
