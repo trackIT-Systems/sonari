@@ -20,6 +20,8 @@ anyio==4.3.0
     # via httpx
     # via starlette
     # via watchfiles
+astral==3.2
+    # via whombat
 asyncache==0.3.1
     # via whombat
 bcrypt==4.0.1
