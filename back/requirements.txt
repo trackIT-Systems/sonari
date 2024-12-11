@@ -15,3 +15,4 @@ asyncpg==0.29.0
 psycopg2==2.9.9
 matplotlib==3.7.5
 openpyxl==3.1.5
+astral==3.2
