@@ -1,8 +1,11 @@
 """REST API routes for annotation tasks."""
 
-from typing import Annotated
+from datetime import datetime, timedelta
+from typing import Annotated, Dict, Sequence
 from uuid import UUID
 
+from astral import LocationInfo
+from astral.sun import sun
 from fastapi import APIRouter, Depends
 from soundevent.data import AnnotationState
 
@@ -16,6 +19,53 @@ from whombat.routes.types import Limit, Offset
 __all__ = [
     "get_annotation_tasks_router",
 ]
+
+
+def _get_night_day_tasks(
+    tasks: Sequence[schemas.AnnotationTask],
+    tz: str,
+    night: bool,
+) -> tuple[Sequence[schemas.AnnotationTask], int]:
+    done_days = {}
+    filtered_idx = []
+    for idx, task in enumerate(tasks):
+        clip_annotation: schemas.ClipAnnotation | None = task.clip_annotation
+        if clip_annotation is None:
+            filtered_idx.append(idx)
+            continue
+
+        clip: schemas.Clip | None = clip_annotation.clip
+        if clip is None:
+            filtered_idx.append(idx)
+            continue
+
+        recording: schemas.Recording = clip.recording
+        if recording.time is None or recording.date is None:
+            filtered_idx.append(idx)
+            continue
+
+        if recording.latitude is None or recording.longitude is None:
+            observer = LocationInfo(timezone=tz).observer
+        else:
+            observer = LocationInfo(latitude=recording.latitude, longitude=recording.longitude).observer
+
+        s: Dict[str, datetime] = sun(observer, date=recording.date)
+        sunset, sunrise = done_days.get(recording.date, (s["sunset"], s["sunrise"]))
+        if night:
+            if (
+                recording.time > (sunset - timedelta(hours=1)).time()
+                and recording.time < (sunrise + timedelta(hours=1)).time()
+            ):
+                filtered_idx.append(idx)
+        else:
+            if (
+                recording.time > (sunrise - timedelta(hours=1)).time()
+                and recording.time < (sunset + timedelta(hours=1)).time()
+            ):
+                filtered_idx.append(idx)
+
+    new_tasks: list[schemas.AnnotationTask] = [task for idx, task in enumerate(tasks) if idx in filtered_idx]
+    return new_tasks, len(new_tasks)
 
 
 def get_annotation_tasks_router(settings: WhombatSettings) -> APIRouter:
@@ -80,9 +130,10 @@ def get_annotation_tasks_router(settings: WhombatSettings) -> APIRouter:
     ):
         """Get a page of annotation tasks."""
         if limit == -1:
-            noloads = [models.AnnotationTask.clip, models.AnnotationTask.clip_annotation]
+            noloads = [models.AnnotationTask.clip]
         else:
             noloads = None
+
         tasks, total = await api.annotation_tasks.get_many(
             session,
             limit=limit,
@@ -91,6 +142,15 @@ def get_annotation_tasks_router(settings: WhombatSettings) -> APIRouter:
             sort_by=sort_by,
             noloads=noloads,
         )
+
+        nigh_filter = next((f for f in filter if f[0] == "night__tz" and f[1] is not None), None)
+        if nigh_filter is not None:
+            tasks, total = _get_night_day_tasks(tasks, nigh_filter[1], True)
+
+        day_filter = next((f for f in filter if f[0] == "day__tz" and f[1] is not None), None)
+        if day_filter is not None:
+            tasks, total = _get_night_day_tasks(tasks, day_filter[1], False)
+
         return schemas.Page(
             items=tasks,
             total=total,
@@ -142,9 +202,7 @@ def get_annotation_tasks_router(settings: WhombatSettings) -> APIRouter:
             session,
             annotation_task_uuid,
         )
-        return await api.annotation_tasks.get_clip_annotation(
-            session, annotation_task
-        )
+        return await api.annotation_tasks.get_clip_annotation(session, annotation_task)
 
     @annotation_tasks_router.post(
         "/detail/badges/",

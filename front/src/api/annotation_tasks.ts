@@ -41,6 +41,14 @@ export const AnnotationTaskFilterSchema = z.object({
     start_time: z.date().nullish(),
     end_time: z.date().nullish(),
   }).optional(),
+  night: z.object({
+    eq: z.boolean(),
+    timezone: z.string(),
+  }).optional(),
+  day: z.object({
+    eq: z.boolean(),
+    timezone: z.string(),
+  }).optional(),
 });
 
 export type AnnotationTaskFilter = z.input<typeof AnnotationTaskFilterSchema>;
@@ -111,6 +119,10 @@ export function registerAnnotationTasksAPI(
         date__end_date: params.date_range?.end_date,
         date__start_time: params.date_range?.start_time,
         date__end_time: params.date_range?.end_time,
+        night__eq: params.night?.eq,
+        night__tz: params.night?.timezone,
+        day__eq: params.day?.eq,
+        day__tz: params.day?.timezone,
       },
     });
     return AnnotationTaskPageSchema.parse(response.data);

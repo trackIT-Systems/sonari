@@ -153,6 +153,52 @@ const annotationTaskFilterDefs: FilterDef<AnnotationTaskFilter>[] = [
       <DateIcon className="h-5 w-5 inline-block text-stone-500 mr-1 align-middle" />
     ),
   },
+  {
+    field: "night",
+    name: "Night",
+    render: ({ value, clear }) => (
+      <FilterBadge
+        field="night only"
+        value={value ? "Yes" : "No"}
+        onRemove={clear}
+      />
+    ),
+    selector: ({ setFilter }) => (
+      <BooleanFilter 
+        onChange={(val) => setFilter("night", {
+          eq: val,
+          timezone: Intl.DateTimeFormat().resolvedOptions().timeZone
+        })} 
+      />
+    ),
+    description: "Select tasks during night time",
+    icon: (
+      <EditIcon className="h-5 w-5 inline-block text-stone-500 mr-1 align-middle" />
+    ),
+  },
+  {
+    field: "day",
+    name: "Day",
+    render: ({ value, clear }) => (
+      <FilterBadge
+        field="day only"
+        value={value ? "Yes" : "No"}
+        onRemove={clear}
+      />
+    ),
+    selector: ({ setFilter }) => (
+      <BooleanFilter 
+        onChange={(val) => setFilter("day", {
+          eq: val,
+          timezone: Intl.DateTimeFormat().resolvedOptions().timeZone
+        })} 
+      />
+    ),
+    description: "Select tasks during day time",
+    icon: (
+      <EditIcon className="h-5 w-5 inline-block text-stone-500 mr-1 align-middle" />
+    ),
+  },
 ];
 
 export default annotationTaskFilterDefs;

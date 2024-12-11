@@ -30,6 +30,21 @@ export const ANNOTATION_KEY_SHORTCUTS: KeyShortcut[] = [
     shortcut: "j",
     description: "Select previous sound event annotation",
   },
+  {
+    label: "Delete tags",
+    shortcut: "y",
+    description: "Delete a tag from all sound events",
+  },
+  {
+    label: "Replace tags",
+    shortcut: "t",
+    description: "Replace a (or all) tag(s) in all sound events",
+  },
+  {
+    label: "Cycle filter",
+    shortcut: "m",
+    description: "Set or remove tag that will be used for selecting next or previous sound event",
+  },
 ];
 
 export default function useAnnotateClipKeyShortcuts(props: {

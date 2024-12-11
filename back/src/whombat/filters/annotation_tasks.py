@@ -105,8 +105,7 @@ class IsVerifiedFilter(base.Filter):
 
         return query.where(
             models.AnnotationTask.status_badges.any(
-                models.AnnotationStatusBadge.state
-                == data.AnnotationState.verified,
+                models.AnnotationStatusBadge.state == data.AnnotationState.verified,
             )
             == self.eq,
         )
@@ -124,8 +123,7 @@ class IsRejectedFilter(base.Filter):
 
         return query.where(
             models.AnnotationTask.status_badges.any(
-                models.AnnotationStatusBadge.state
-                == data.AnnotationState.rejected,
+                models.AnnotationStatusBadge.state == data.AnnotationState.rejected,
             )
             == self.eq,
         )
@@ -143,8 +141,7 @@ class IsCompletedFilter(base.Filter):
 
         return query.where(
             models.AnnotationTask.status_badges.any(
-                models.AnnotationStatusBadge.state
-                == data.AnnotationState.completed,
+                models.AnnotationStatusBadge.state == data.AnnotationState.completed,
             )
             == self.eq,
         )
@@ -162,8 +159,7 @@ class IsAssignedFilter(base.Filter):
 
         return query.where(
             models.AnnotationTask.status_badges.any(
-                models.AnnotationStatusBadge.state
-                == data.AnnotationState.assigned,
+                models.AnnotationStatusBadge.state == data.AnnotationState.assigned,
             )
             == self.eq,
         )
@@ -182,8 +178,7 @@ class AssignedToFilter(base.Filter):
         return query.join(
             models.AnnotationStatusBadge,
         ).where(
-            models.AnnotationStatusBadge.state
-            == data.AnnotationState.assigned,
+            models.AnnotationStatusBadge.state == data.AnnotationState.assigned,
             models.AnnotationStatusBadge.user_id == self.eq,
         )
 
@@ -200,8 +195,7 @@ class AnnotationProjectFilter(base.Filter):
 
         return query.join(
             models.AnnotationProject,
-            models.AnnotationProject.id
-            == models.AnnotationTask.annotation_project_id,
+            models.AnnotationProject.id == models.AnnotationTask.annotation_project_id,
         ).where(
             models.AnnotationProject.uuid == self.eq,
         )
@@ -245,7 +239,6 @@ class SearchRecordingsFilter(base.Filter):
 
     def filter(self, query: Select) -> Select:
         """Filter the query."""
-
         query = (
             query.join(
                 models.ClipAnnotation,
@@ -274,15 +267,15 @@ class SoundEventAnnotationTagFilter(base.Filter):
 
     def filter(self, query: Select) -> Select:
         """Filter the query."""
-        if self.key is None and self.value is None:
+        if self.key is None or self.value is None:
             return query
 
         subquery = (
             select(models.SoundEventAnnotationTag.sound_event_annotation_id)
             .join(models.Tag, models.Tag.id == models.SoundEventAnnotationTag.tag_id)
             .where(
-                models.Tag.key == self.key if self.key is not None else True,
-                models.Tag.value == self.value if self.value is not None else True,
+                models.Tag.key == self.key,
+                models.Tag.value == self.value,
             )
         )
 
@@ -363,6 +356,28 @@ class DateRangeFilter(base.Filter):
         return query.where(and_(*conditions))
 
 
+class NightFilter(base.Filter):
+    """Filter for tasks by night time recordings."""
+
+    eq: bool | None = None
+    tz: str | None = None  # Using a dict to hold location info
+
+    def filter(self, query: Select) -> Select:
+        """Filter the query."""
+        return query
+
+
+class DayFilter(base.Filter):
+    """Filter for tasks by night time recordings."""
+
+    eq: bool | None = None
+    tz: str | None = None  # Using a dict to hold location info
+
+    def filter(self, query: Select) -> Select:
+        """Filter the query."""
+        return query
+
+
 AnnotationTaskFilter = base.combine(
     SearchRecordingsFilter,
     assigned_to=AssignedToFilter,
@@ -376,4 +391,6 @@ AnnotationTaskFilter = base.combine(
     recording_tag=RecordingTagFilter,
     sound_event_annotation_tag=SoundEventAnnotationTagFilter,
     date=DateRangeFilter,
+    night=NightFilter,
+    day=DayFilter,
 )
