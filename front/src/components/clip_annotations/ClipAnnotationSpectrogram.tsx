@@ -305,6 +305,7 @@ export default function ClipAnnotationSpectrogram({
             ref={canvasRef}
             {...props}
             className="absolute w-full h-full"
+            id="main-spectrogram-canvas" // Add an ID to easily reference this canvas
           />
         </SpectrogramTags>
         {selectedTag && (

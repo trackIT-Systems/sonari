@@ -153,7 +153,7 @@ export default function AnnotateTasks({
   );
 
 
-  const [isDeletePopoverOpen, setIsDeletePopoverOpen] = useState(false); 
+  const [isDeletePopoverOpen, setIsDeletePopoverOpen] = useState(false);
   const [isTagPopoverOpen, setIsTagPopoverOpen] = useState(false);
 
   useEffect(() => {
@@ -401,6 +401,8 @@ export default function AnnotateTasks({
                 clipAnnotation={data}
                 tagFilter={tagFilter}
                 soundEventAnnotation={selectedAnnotation}
+                parameters={parameters}
+                withSpectrogram={withSpectrogram}
                 onAddTag={onAddSoundEventTag}
                 onCreateTag={onCreateTag}
                 onRemoveTag={onRemoveSoundEventTag}
@@ -486,56 +488,56 @@ export default function AnnotateTasks({
 
       {isTagPopoverOpen && (
         <Popover>
-        {({ open, close }) => {
+          {({ open, close }) => {
 
-          const handleOverlayClick = (e: React.MouseEvent) => {
-            // Check if click is inside menu
-            if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
-              setIsTagPopoverOpen(false);
-            }
-          };
+            const handleOverlayClick = (e: React.MouseEvent) => {
+              // Check if click is inside menu
+              if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+                setIsTagPopoverOpen(false);
+              }
+            };
 
-          return (
-            <>
-              <Popover.Button className="hidden" />
-              <Popover.Panel static={true} className="fixed inset-0 z-50">
-                <div className="fixed inset-0 flex items-center justify-center" onClick={handleOverlayClick}>
-                  <div ref={menuRef} className="relative w-96 divide-y divide-stone-100 rounded-md bg-stone-50 dark:bg-stone-700 border border-stone-200 dark:border-stone-500 shadow-md dark:shadow-stone-800 ring-1 ring-stone-900 ring-opacity-5 focus:outline-none">
-                    <div className="p-4">
-                      <div className="mb-2 text-stone-700 dark:text-stone-300 underline underline-offset-2 decoration-amber-500 decoration-2">
-                        Select a tag to cycle through
+            return (
+              <>
+                <Popover.Button className="hidden" />
+                <Popover.Panel static={true} className="fixed inset-0 z-50">
+                  <div className="fixed inset-0 flex items-center justify-center" onClick={handleOverlayClick}>
+                    <div ref={menuRef} className="relative w-96 divide-y divide-stone-100 rounded-md bg-stone-50 dark:bg-stone-700 border border-stone-200 dark:border-stone-500 shadow-md dark:shadow-stone-800 ring-1 ring-stone-900 ring-opacity-5 focus:outline-none">
+                      <div className="p-4">
+                        <div className="mb-2 text-stone-700 dark:text-stone-300 underline underline-offset-2 decoration-amber-500 decoration-2">
+                          Select a tag to cycle through
+                        </div>
+                        <SearchMenu
+                          options={tagsWithCount}
+                          fields={["tag.key", "tag.value"]}
+                          renderOption={(tagWithCount) => (
+                            <TagComponent
+                              key={`${tagWithCount.tag.key}-${tagWithCount.tag.value}`}
+                              tag={tagWithCount.tag}
+                              {...getTagColor(tagWithCount.tag)}
+                              onClose={() => { }}
+                              count={tagWithCount.count}
+                            />
+                          )}
+                          getOptionKey={(tagWithCount) => `${tagWithCount.tag.key}-${tagWithCount.tag.value}`}
+                          onSelect={(tagWithCount) => {
+                            if (menuRef.current?.contains(document.activeElement)) {
+                              setSelectedTag(tagWithCount)
+                              setIsTagPopoverOpen(false);
+                            }
+                          }}
+                          empty={<div className="text-stone-500 text-center w-full">No tags found</div>}
+                          autoFocus
+                          static={true}
+                        />
                       </div>
-                      <SearchMenu
-                        options={tagsWithCount}
-                        fields={["tag.key", "tag.value"]}
-                        renderOption={(tagWithCount) => (
-                          <TagComponent
-                            key={`${tagWithCount.tag.key}-${tagWithCount.tag.value}`}
-                            tag={tagWithCount.tag}
-                            {...getTagColor(tagWithCount.tag)}
-                            onClose={() => { }}
-                            count={tagWithCount.count}
-                          />
-                        )}
-                        getOptionKey={(tagWithCount) => `${tagWithCount.tag.key}-${tagWithCount.tag.value}`}
-                        onSelect={(tagWithCount) => {
-                          if (menuRef.current?.contains(document.activeElement)) {
-                            setSelectedTag(tagWithCount)
-                            setIsTagPopoverOpen(false);
-                          }
-                        }}
-                        empty={<div className="text-stone-500 text-center w-full">No tags found</div>}
-                        autoFocus
-                        static={true}
-                      />
                     </div>
                   </div>
-                </div>
-              </Popover.Panel>
-            </>
-          );
-        }}
-      </Popover>
+                </Popover.Panel>
+              </>
+            );
+          }}
+        </Popover>
       )}
     </div>
   );

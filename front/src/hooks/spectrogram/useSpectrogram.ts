@@ -26,7 +26,10 @@ import { ZOOM_FACTOR } from "@/constants";
 /**
  * A function type representing the drawing function for a spectrogram.
  */
-export type DrawFn = (ctx: CanvasRenderingContext2D) => void;
+export type DrawFn = (
+  ctx: CanvasRenderingContext2D,
+  options?: { withAxes?: boolean }
+) => void;
 
 /**
  * Represents the state of a spectrogram, including parameters, bounds, and
@@ -367,7 +370,7 @@ export default function useSpectrogram({
 
   // Create the drawing function
   const draw = useCallback<DrawFn>(
-    (ctx) => {
+    (ctx, options = { withAxes: true }) => {
       if (canDrag) {
         ctx.canvas.style.cursor = "crosshair";
       } else if (canZoom) {
@@ -376,7 +379,7 @@ export default function useSpectrogram({
         ctx.canvas.style.cursor = "default";
       }
       drawImage(ctx, viewport);
-      if (withSpectrogram) {
+      if (withSpectrogram && options.withAxes) {
         drawTimeAxis(ctx, viewport.time);
         drawFrequencyAxis(ctx, viewport.freq);
       }

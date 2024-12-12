@@ -183,7 +183,7 @@ export default function ClipAnnotationTags({
 }) {
 
   const getTagColor = useStore((state) => state.getTagColor);
-  
+
   const replaceButtonRef = useRef<HTMLButtonElement>(null);
   const addButtonRef = useRef<HTMLButtonElement>(null);
 
@@ -251,42 +251,42 @@ export default function ClipAnnotationTags({
       <div className="flex justify-between items-center gap-2 mb-2">
         <H4 className="text-center whitespace-nowrap">
           <TagsIcon className="inline-block mr-1 w-5 h-5" />
-          Sound Event Tags
+          Clip Tags
         </H4>
         <div className="flex items-center">
-        <Popover as="div" className="relative inline-block text-left">
-          {({ open, close }) => {
-            return (
-              <Float
-                autoPlacement
-                portal={true}
-                offset={4}
-                enter="transition ease-out duration-100"
-                enterFrom="transform opacity-0 scale-95"
-                enterTo="transform opacity-100 scale-100"
-                leave="transition ease-in duration-75"
-                leaveFrom="transform opacity-100 scale-100"
-                leaveTo="transform opacity-0 scale-95"
-              >
-                <div className="group relative">
-                  <Popover.Button
-                    className={`
+          <Popover as="div" className="relative inline-block text-left">
+            {({ open, close }) => {
+              return (
+                <Float
+                  autoPlacement
+                  portal={true}
+                  offset={4}
+                  enter="transition ease-out duration-100"
+                  enterFrom="transform opacity-0 scale-95"
+                  enterTo="transform opacity-100 scale-100"
+                  leave="transition ease-in duration-75"
+                  leaveFrom="transform opacity-100 scale-100"
+                  leaveTo="transform opacity-0 scale-95"
+                >
+                  <div className="group relative">
+                    <Popover.Button
+                      className={`
                     inline-flex items-center justify-center text-sm font-medium
                     text-info-600 hover:text-info-700
                   `}
-                  >
-                    <Button
-                      ref={replaceButtonRef}
-                      mode="text"
-                      variant="info"
-                      type="button"
-                      autoFocus={false}
                     >
-                      Replace
-                    </Button>
-                  </Popover.Button>
-                  <div
-                    className="
+                      <Button
+                        ref={replaceButtonRef}
+                        mode="text"
+                        variant="info"
+                        type="button"
+                        autoFocus={false}
+                      >
+                        Replace
+                      </Button>
+                    </Popover.Button>
+                    <div
+                      className="
                       opacity-0 scale-95 group-hover:opacity-100 group-hover:scale-100
                       transition duration-100 ease-out
                       pointer-events-none
@@ -297,67 +297,67 @@ export default function ClipAnnotationTags({
                       text-sm
                       z-50
                     "
-                  >
-                    <div className="inline-flex gap-2 items-center">
-                      Replace Tags in Task
-                      <div className="text-xs">
-                        <KeyboardKey code="t" />
+                    >
+                      <div className="inline-flex gap-2 items-center">
+                        Replace Tags in Task
+                        <div className="text-xs">
+                          <KeyboardKey code="t" />
+                        </div>
                       </div>
                     </div>
                   </div>
-                </div>
-                <Popover.Panel
-                  unmount
-                  onMouseDown={(e) => e.preventDefault()}
-                  className="w-96 divide-y divide-stone-100 rounded-md bg-stone-50 dark:bg-stone-700 border border-stone-200 dark:border-stone-500 shadow-md dark:shadow-stone-800 ring-1 ring-stone-900 ring-opacity-5 focus:outline-none z-50"
+                  <Popover.Panel
+                    unmount
+                    onMouseDown={(e) => e.preventDefault()}
+                    className="w-96 divide-y divide-stone-100 rounded-md bg-stone-50 dark:bg-stone-700 border border-stone-200 dark:border-stone-500 shadow-md dark:shadow-stone-800 ring-1 ring-stone-900 ring-opacity-5 focus:outline-none z-50"
+                  >
+                    <TagReplacePanel
+                      taskTags={tagsWithCount}
+                      projectTags={projectTags}
+                      onReplaceTag={async (oldTag, newTag) => {
+                        close();
+                        await handleTagReplaceRemove(oldTag, newTag);
+                      }}
+                    />
+                  </Popover.Panel>
+                </Float>
+              );
+            }}
+          </Popover>
+          <div className="h-4 w-px bg-stone-200 dark:bg-stone-600 mx-2" />
+          <Popover as="div" className="relative inline-block text-left">
+            {({ open, close }) => {
+              return (
+                <Float
+                  autoPlacement
+                  portal={true}
+                  offset={4}
+                  enter="transition ease-out duration-100"
+                  enterFrom="transform opacity-0 scale-95"
+                  enterTo="transform opacity-100 scale-100"
+                  leave="transition ease-in duration-75"
+                  leaveFrom="transform opacity-100 scale-100"
+                  leaveTo="transform opacity-0 scale-95"
                 >
-                  <TagReplacePanel
-                    taskTags={tagsWithCount}
-                    projectTags={projectTags}
-                    onReplaceTag={async (oldTag, newTag) => {
-                      close();
-                      await handleTagReplaceRemove(oldTag, newTag);
-                    }}
-                  />
-                </Popover.Panel>
-              </Float>
-            );
-          }}
-        </Popover>
-        <div className="h-4 w-px bg-stone-200 dark:bg-stone-600 mx-2" />
-        <Popover as="div" className="relative inline-block text-left">
-          {({ open, close }) => {
-            return (
-              <Float
-                autoPlacement
-                portal={true}
-                offset={4}
-                enter="transition ease-out duration-100"
-                enterFrom="transform opacity-0 scale-95"
-                enterTo="transform opacity-100 scale-100"
-                leave="transition ease-in duration-75"
-                leaveFrom="transform opacity-100 scale-100"
-                leaveTo="transform opacity-0 scale-95"
-              >
-                <div className="group relative">
-                  <Popover.Button
-                    className={`
+                  <div className="group relative">
+                    <Popover.Button
+                      className={`
                     inline-flex items-center justify-center text-sm font-medium
                     text-info-600 hover:text-info-700
                   `}
-                  >
-                    <Button
-                      ref={addButtonRef}
-                      mode="text"
-                      variant="info"
-                      type="button"
-                      autoFocus={false}
                     >
-                      Add
-                    </Button>
-                  </Popover.Button>
-                  <div
-                    className="
+                      <Button
+                        ref={addButtonRef}
+                        mode="text"
+                        variant="info"
+                        type="button"
+                        autoFocus={false}
+                      >
+                        Add
+                      </Button>
+                    </Popover.Button>
+                    <div
+                      className="
                       opacity-0 scale-95 group-hover:opacity-100 group-hover:scale-100
                       transition duration-100 ease-out
                       pointer-events-none
@@ -368,32 +368,32 @@ export default function ClipAnnotationTags({
                       text-sm
                       z-50
                     "
-                  >
-                    <div className="inline-flex gap-2 items-center">
-                      Add Tags to all Sound Events
-                      <div className="text-xs">
-                        <KeyboardKey code="f" />
+                    >
+                      <div className="inline-flex gap-2 items-center">
+                        Add Tags to all Sound Events
+                        <div className="text-xs">
+                          <KeyboardKey code="f" />
+                        </div>
                       </div>
                     </div>
                   </div>
-                </div>
-                <Popover.Panel
-                  unmount
-                  onMouseDown={(e) => e.preventDefault()}
-                  className="w-96 divide-y divide-stone-100 rounded-md bg-stone-50 dark:bg-stone-700 border border-stone-200 dark:border-stone-500 shadow-md dark:shadow-stone-800 ring-1 ring-stone-900 ring-opacity-5 z-50"
-                >
-                  <TagAddPanel
-                    projectTags={projectTags}
-                    onReplaceTag={async (_, newTag) => {
-                      close();
-                      await handleTagReplaceRemove(null, newTag);
-                    }}
-                  />
-                </Popover.Panel>
-              </Float>
-            );
-          }}
-        </Popover>
+                  <Popover.Panel
+                    unmount
+                    onMouseDown={(e) => e.preventDefault()}
+                    className="w-96 divide-y divide-stone-100 rounded-md bg-stone-50 dark:bg-stone-700 border border-stone-200 dark:border-stone-500 shadow-md dark:shadow-stone-800 ring-1 ring-stone-900 ring-opacity-5 z-50"
+                  >
+                    <TagAddPanel
+                      projectTags={projectTags}
+                      onReplaceTag={async (_, newTag) => {
+                        close();
+                        await handleTagReplaceRemove(null, newTag);
+                      }}
+                    />
+                  </Popover.Panel>
+                </Float>
+              );
+            }}
+          </Popover>
         </div>
 
 

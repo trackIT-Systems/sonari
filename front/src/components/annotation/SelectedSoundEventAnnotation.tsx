@@ -3,6 +3,8 @@ import SoundEventAnnotationDetails from "@/components/sound_event_annotations/So
 import SoundEventAnnotationNotes from "@/components/sound_event_annotations/SoundEventAnnotationNotes";
 import SoundEventAnnotationTags from "@/components/sound_event_annotations/SoundEventAnnotationTags";
 import useSoundEventAnnotation from "@/hooks/api/useSoundEventAnnotation";
+import SoundEventSpectrogramView from "../sound_event_annotations/SoundEventSpectrogram";
+import { SpectrogramParameters } from "@/types";
 
 import type { TagFilter } from "@/api/tags";
 import type { ClipAnnotation, SoundEventAnnotation, Tag } from "@/types";
@@ -11,6 +13,8 @@ export default function SelectedSoundEventAnnotation({
   soundEventAnnotation: data,
   clipAnnotation,
   tagFilter,
+  withSpectrogram,
+  parameters,
   onAddTag,
   onRemoveTag,
   onCreateTag,
@@ -21,6 +25,8 @@ export default function SelectedSoundEventAnnotation({
   clipAnnotation: ClipAnnotation;
   /** The tag filter to apply in case more tags want to be added */
   tagFilter?: TagFilter;
+  withSpectrogram: boolean;
+  parameters?: SpectrogramParameters;
   onAddTag?: (annotation: SoundEventAnnotation) => void;
   onRemoveTag?: (annotation: SoundEventAnnotation) => void;
   onCreateTag?: (tag: Tag) => void;
@@ -34,26 +40,32 @@ export default function SelectedSoundEventAnnotation({
   });
 
   return (
-    <div className="w-full flex flex-row gap-8 py-4">
+    <div className="w-full flex flex-col gap-4 py-4">
       <Card className="grow">
-        <div className="flex flex-col gap-8">
-          <SoundEventAnnotationDetails
-            soundEventAnnotation={soundEventAnnotation.data || data}
-          />
-          <SoundEventAnnotationTags
-            tagFilter={tagFilter}
-            soundEventAnnotation={soundEventAnnotation.data || data}
-            onAddTag={soundEventAnnotation.addTag.mutate}
-            onRemoveTag={soundEventAnnotation.removeTag.mutate}
-            onCreateTag={onCreateTag}
-          />
-        </div>
+        <SoundEventSpectrogramView
+          soundEventAnnotation={soundEventAnnotation.data || data}
+          recording={clipAnnotation.clip.recording}
+          parameters={parameters}
+          withSpectrogram={withSpectrogram}
+        />
       </Card>
       <Card className="grow">
-        <SoundEventAnnotationNotes
-          soundEventAnnotation={soundEventAnnotation.data || data}
-          onCreateNote={soundEventAnnotation.addNote.mutate}
-        />
+        <div className="flex gap-4">
+          <div className="flex-1">
+            <SoundEventAnnotationTags
+              tagFilter={tagFilter}
+              soundEventAnnotation={soundEventAnnotation.data || data}
+              onAddTag={soundEventAnnotation.addTag.mutate}
+              onRemoveTag={soundEventAnnotation.removeTag.mutate}
+              onCreateTag={onCreateTag}
+            />
+          </div>
+          <div className="flex-1">
+            <SoundEventAnnotationDetails
+              soundEventAnnotation={soundEventAnnotation.data || data}
+            />
+          </div>
+        </div>
       </Card>
     </div>
   );

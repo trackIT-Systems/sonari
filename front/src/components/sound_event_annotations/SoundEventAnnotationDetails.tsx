@@ -12,10 +12,6 @@ export default function SoundEventAnnotationDetails({
   return (
     <div className="flex flex-col gap-2">
       <H4 className="text-center">Sound Event Details</H4>
-      <DescriptionTerm>Geometry Type</DescriptionTerm>
-      <DescriptionData>
-        {soundEventAnnotation.sound_event.geometry_type}
-      </DescriptionData>
       <div className="flex flex-row flex-wrap gap-4">
         {soundEventAnnotation.sound_event.features?.map((feature) => (
           <div key={feature.name}>
