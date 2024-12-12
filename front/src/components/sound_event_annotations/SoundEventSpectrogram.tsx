@@ -6,8 +6,6 @@ import type { Recording, SoundEventAnnotation, SpectrogramParameters } from "@/t
 import { H4 } from "../Headings";
 import { ExplorationIcon } from "../icons";
 
-const specDimensions = { width: 455, height: 225 };
-
 function getWindowFromGeometry(annotation: SoundEventAnnotation, recording: Recording) {
     const { geometry, geometry_type } = annotation.sound_event;
     switch (geometry_type) {
@@ -67,40 +65,80 @@ function getWindowFromGeometry(annotation: SoundEventAnnotation, recording: Reco
     }
 }
 
+function calculateSpectrogramDimensions(
+    window: { time: { min: number; max: number }, freq: { min: number; max: number } },
+    parameters: SpectrogramParameters,
+    samplerate: number,
+    maxWidth = 455,
+    maxHeight = 225
+) {
+    // Convert window size from seconds to samples
+    const windowSizeSamples = Math.floor(parameters.window_size * samplerate);
+
+    // Calculate hop length in samples (hop_size is a fraction of window size)
+    const hopLengthSamples = Math.floor(windowSizeSamples * parameters.hop_size);
+
+    // Calculate time axis pixels
+    const duration = window.time.max - window.time.min;
+    const timePixels = Math.ceil((duration * samplerate) / hopLengthSamples);
+
+    // Calculate frequency axis pixels
+    const freqBins = Math.floor(windowSizeSamples / 2) + 1;
+    const minBin = Math.floor((window.freq.min * windowSizeSamples) / samplerate);
+    const maxBin = Math.ceil((window.freq.max * windowSizeSamples) / samplerate);
+    const freqPixels = maxBin - minBin;
+
+    // Calculate scaling to fit within max dimensions while maintaining aspect ratio
+    const scaleWidth = maxWidth / timePixels;
+    const scaleHeight = maxHeight / freqPixels;
+    const scale = Math.min(scaleWidth, scaleHeight);
+
+    return {
+        width: Math.round(timePixels * scale),
+        height: Math.round(freqPixels * scale)
+    };
+}
+
 export default function SoundEventSpectrogramView({
     soundEventAnnotation,
     recording,
     parameters = DEFAULT_SPECTROGRAM_PARAMETERS,
-    maxHeight = 500,  // renamed to maxHeight
     withSpectrogram,
 }: {
     soundEventAnnotation: SoundEventAnnotation;
     recording: Recording;
     parameters?: SpectrogramParameters;
-    maxHeight?: number;
     withSpectrogram: boolean;
 }) {
     const containerRef = useRef<HTMLDivElement>(null);
     const canvasRef = useRef<HTMLCanvasElement>(null);
 
-    // Create window based on the geometry
     const window = useMemo(
         () => getWindowFromGeometry(soundEventAnnotation, recording),
         [soundEventAnnotation, recording]
     );
 
+    const dimensions = useMemo(
+        () => calculateSpectrogramDimensions(window, parameters, recording.samplerate),
+        [window, parameters, recording.samplerate]
+    );
+
+    let local_params = { ...parameters };
+    local_params.window_size = parameters.window_size / 3
+
     const spectrogram = useSpectrogram({
         recording,
-        dimensions: specDimensions,
+        dimensions,
         bounds: window,
         initial: window,
-        parameters,
+        parameters: local_params,
         enabled: true,
         withSpectrogram,
         withShortcuts: false,
         fixedAspectRatio: false,
-        toggleFixedAspectRatio: () => { }, // No-op since we want to keep it fixed
+        toggleFixedAspectRatio: () => { },
     });
+
 
     const { draw } = spectrogram;
 
@@ -123,12 +161,12 @@ export default function SoundEventSpectrogramView({
 
                 <div
                     ref={containerRef}
-                    className="relative overflow-clip rounded-md border border-stone-200 dark:border-stone-600"
-                    style={specDimensions}
+                    className="relative flex items-center justify-center overflow-clip rounded-md border border-stone-200 dark:border-stone-600"
+                    style={{ width: "28rem", height: "14rem" }}
                 >
                     <canvas
                         ref={canvasRef}
-                        style={specDimensions}
+                        style={dimensions}
                         className="rounded-md"
                     />
                     {spectrogram.isLoading && (
@@ -139,7 +177,6 @@ export default function SoundEventSpectrogramView({
                 </div>
             </div>
 
-            {/* Time axis */}
             <div className="flex justify-between pl-16 pr-2 pt-2">
                 <span className="text-xs text-stone-600">{window.time.min.toFixed(2)}s</span>
                 <span className="text-xs text-stone-600">{window.time.max.toFixed(2)}s</span>
