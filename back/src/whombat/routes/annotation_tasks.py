@@ -1,13 +1,14 @@
 """REST API routes for annotation tasks."""
 
-from datetime import datetime, timedelta
-from typing import Annotated, Dict, Sequence
+from datetime import datetime, timedelta, timezone
+from typing import Annotated, Any, Dict, Sequence
 from uuid import UUID
 
 from astral import LocationInfo
 from astral.sun import sun
 from fastapi import APIRouter, Depends
 from soundevent.data import AnnotationState
+from sqlalchemy.orm.attributes import InstrumentedAttribute
 
 from whombat import api, models, schemas
 from whombat.filters.annotation_tasks import AnnotationTaskFilter
@@ -27,21 +28,22 @@ def _get_night_day_tasks(
     night: bool,
 ) -> tuple[Sequence[schemas.AnnotationTask], int]:
     done_days = {}
-    filtered_idx = []
-    for idx, task in enumerate(tasks):
+    kept_tasks = []
+
+    for task in tasks:
         clip_annotation: schemas.ClipAnnotation | None = task.clip_annotation
         if clip_annotation is None:
-            filtered_idx.append(idx)
+            kept_tasks.append(task)
             continue
 
         clip: schemas.Clip | None = clip_annotation.clip
         if clip is None:
-            filtered_idx.append(idx)
+            kept_tasks.append(task)
             continue
 
         recording: schemas.Recording = clip.recording
         if recording.time is None or recording.date is None:
-            filtered_idx.append(idx)
+            kept_tasks.append(task)
             continue
 
         if recording.latitude is None or recording.longitude is None:
@@ -49,23 +51,27 @@ def _get_night_day_tasks(
         else:
             observer = LocationInfo(latitude=recording.latitude, longitude=recording.longitude).observer
 
-        s: Dict[str, datetime] = sun(observer, date=recording.date)
-        sunset, sunrise = done_days.get(recording.date, (s["sunset"], s["sunrise"]))
-        if night:
-            if (
-                recording.time > (sunset - timedelta(hours=1)).time()
-                and recording.time < (sunrise + timedelta(hours=1)).time()
-            ):
-                filtered_idx.append(idx)
-        else:
-            if (
-                recording.time > (sunrise - timedelta(hours=1)).time()
-                and recording.time < (sunset + timedelta(hours=1)).time()
-            ):
-                filtered_idx.append(idx)
+        if recording.date not in done_days:
+            s: Dict[str, datetime] = sun(observer, date=recording.date)
+            done_days[recording.date] = (s["sunset"], s["sunrise"])
 
-    new_tasks: list[schemas.AnnotationTask] = [task for idx, task in enumerate(tasks) if idx in filtered_idx]
-    return new_tasks, len(new_tasks)
+        sunset, sunrise = done_days[recording.date]
+        rec_datetime = datetime.combine(recording.date, recording.time).replace(tzinfo=timezone.utc)
+
+        if night:
+            sunset_buffer = sunset - timedelta(hours=1)
+            sunrise_buffer = sunrise + timedelta(hours=1)
+            is_night_time = rec_datetime >= sunset_buffer or rec_datetime <= sunrise_buffer
+            if is_night_time:
+                kept_tasks.append(task)
+        else:
+            sunrise_buffer = sunrise - timedelta(hours=1)
+            sunset_buffer = sunset + timedelta(hours=1)
+            is_day_time = rec_datetime >= sunrise_buffer and rec_datetime <= sunset_buffer
+            if is_day_time:
+                kept_tasks.append(task)
+
+    return kept_tasks, len(kept_tasks)
 
 
 def get_annotation_tasks_router(settings: WhombatSettings) -> APIRouter:
@@ -129,8 +135,15 @@ def get_annotation_tasks_router(settings: WhombatSettings) -> APIRouter:
         sort_by: str = "recording_datetime",
     ):
         """Get a page of annotation tasks."""
+        nigh_filter = next((f for f in filter if f[0] == "night__tz" and f[1] is not None), None)
+        day_filter = next((f for f in filter if f[0] == "day__tz" and f[1] is not None), None)
+
         if limit == -1:
-            noloads = [models.AnnotationTask.clip]
+            noloads: list[InstrumentedAttribute[Any]] | None = [models.AnnotationTask.clip]
+
+            if nigh_filter is not None and day_filter is not None:
+                noloads.append(models.AnnotationTask.clip_annotation)
+
         else:
             noloads = None
 
@@ -143,11 +156,8 @@ def get_annotation_tasks_router(settings: WhombatSettings) -> APIRouter:
             noloads=noloads,
         )
 
-        nigh_filter = next((f for f in filter if f[0] == "night__tz" and f[1] is not None), None)
         if nigh_filter is not None:
             tasks, total = _get_night_day_tasks(tasks, nigh_filter[1], True)
-
-        day_filter = next((f for f in filter if f[0] == "day__tz" and f[1] is not None), None)
         if day_filter is not None:
             tasks, total = _get_night_day_tasks(tasks, day_filter[1], False)
 
