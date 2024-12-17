@@ -280,10 +280,13 @@ export default function useAnnotateClip(props: {
     const sortedAnnotations = sortSoundEvents(filteredSoundEvents);
   
     const currentIndex = sortedAnnotations.findIndex(
-      (annotation) => annotation === selectedAnnotation
+      (annotation) => annotation.uuid === selectedAnnotation?.uuid  // Use UUID for comparison
     );
   
-    const nextIndex = (currentIndex + 1) % sortedAnnotations.length;
+    const nextIndex = currentIndex === -1 
+      ? 0  // If no current selection, start from beginning
+      : (currentIndex + 1) % sortedAnnotations.length;
+  
     const nextAnnotation = sortedAnnotations[nextIndex];
     setSelectedAnnotation(nextAnnotation);
     onSelectAnnotation?.(nextAnnotation);
@@ -308,11 +311,14 @@ export default function useAnnotateClip(props: {
     const sortedAnnotations = sortSoundEvents(filteredSoundEvents);
   
     const currentIndex = sortedAnnotations.findIndex(
-      (annotation) => annotation === selectedAnnotation
+      (annotation) => annotation.uuid === selectedAnnotation?.uuid  // Use UUID for comparison
     );
   
-    const nextIndex = (currentIndex - 1) % sortedAnnotations.length;
-    const nextAnnotation = sortedAnnotations[nextIndex];
+    const prevIndex = currentIndex === -1 
+      ? sortedAnnotations.length - 1  // If no current selection, start from end
+      : (currentIndex - 1 + sortedAnnotations.length) % sortedAnnotations.length;
+  
+    const nextAnnotation = sortedAnnotations[prevIndex];
     setSelectedAnnotation(nextAnnotation);
     onSelectAnnotation?.(nextAnnotation);
   
