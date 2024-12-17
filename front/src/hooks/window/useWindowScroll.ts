@@ -51,15 +51,21 @@ export default function useWindowScroll({
       onWheel: (event: WheelEvent) => {
         const { deltaX, deltaY, shiftKey, ctrlKey, altKey, metaKey } = event;
 
-        // Handle horizontal scroll from trackpad
-        if (Math.abs(deltaX) > Math.abs(deltaY) && !relative) {
+        // Handle trackpad-based scrolling
+        if (!relative && !shiftKey && !ctrlKey && !altKey && !metaKey) {
           const deltaTime = scaleXToWindow(
             deltaX,
             viewport,
             dimensions.width,
             true,
           );
-          return onScroll?.({ time: deltaTime });
+          const deltaFreq = scaleYToWindow(
+            deltaY,
+            viewport,
+            dimensions.height,
+            true,
+          );
+          return onScroll?.({ time: deltaTime, freq: -deltaFreq });
         }
 
         const specialKey = metaKey || altKey;

@@ -89,11 +89,14 @@ export default function useCanvas({
         e.stopPropagation();
       }
 
-      const isHorizontalScroll =
-      Math.abs(e.deltaX) > Math.abs(e.deltaY);
+      const isHorizontalScroll = Math.abs(e.deltaX) > Math.abs(e.deltaY);
+      const isVerticalScroll = Math.abs(e.deltaX) <= Math.abs(e.deltaY);
 
       if (isHorizontalScroll) {
-        e.preventDefault(); // Prevent default navigation on horizontal scrolls
+        e.preventDefault();
+      }
+      if (isVerticalScroll) {
+        e.preventDefault();
       }
     };
 
