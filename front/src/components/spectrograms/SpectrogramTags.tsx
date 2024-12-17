@@ -7,7 +7,7 @@ import { useMemo } from "react";
 
 import { CloseIcon, TagIcon } from "@/components/icons";
 import TagSearchBar from "@/components/tags/TagSearchBar";
-import useStore from "@/store";
+import { getTagKey, getTagColor } from "../tags/Tag";
 
 import type { TagFilter } from "@/api/tags";
 import type { TagElement, TagGroup } from "@/utils/tags";
@@ -51,8 +51,7 @@ export function SpectrogramTag({
   onClick,
   disabled = false,
 }: TagElement & { disabled?: boolean }) {
-  const getTagColor = useStore((state) => state.getTagColor);
-  const color = getTagColor(tag);
+  const color = getTagColor(getTagKey(tag));
   const className = useMemo(() => {
     return `bg-${color.color}-500`;
   }, [color]);

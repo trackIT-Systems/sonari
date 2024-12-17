@@ -13,10 +13,9 @@ import Loading from "@/components/Loading";
 import useAnnotationTasks from "@/hooks/annotation/useAnnotateTasks";
 import useClipAnnotation from "@/hooks/api/useClipAnnotation";
 
-import useStore from "@/store";
 import { Popover } from "@headlessui/react";
 import SearchMenu from "@/components/search/SearchMenu";
-import TagComponent from "@/components/tags/Tag";
+import TagComponent, { getTagKey } from "@/components/tags/Tag";
 
 import type { AnnotationTaskFilter } from "@/api/annotation_tasks";
 import type { TagFilter } from "@/api/tags";
@@ -246,9 +245,6 @@ export default function AnnotateTasks({
     });
   }, []);
 
-
-  const getTagColor = useStore((state) => state.getTagColor);
-
   const handleReplaceTagInSoundEvents = useCallback(
     async (oldTag: Tag | null, newTag: Tag | null) => {
       if (!data?.sound_events) return;
@@ -459,9 +455,8 @@ export default function AnnotateTasks({
                           fields={["tag.key", "tag.value"]}
                           renderOption={(tagWithCount) => (
                             <TagComponent
-                              key={`${tagWithCount.tag.key}-${tagWithCount.tag.value}`}
+                              key={getTagKey(tagWithCount.tag)}
                               tag={tagWithCount.tag}
-                              {...getTagColor(tagWithCount.tag)}
                               onClose={() => { }}
                               count={tagWithCount.count}
                             />
@@ -512,9 +507,8 @@ export default function AnnotateTasks({
                           fields={["tag.key", "tag.value"]}
                           renderOption={(tagWithCount) => (
                             <TagComponent
-                              key={`${tagWithCount.tag.key}-${tagWithCount.tag.value}`}
+                              key={getTagKey(tagWithCount.tag)}
                               tag={tagWithCount.tag}
-                              {...getTagColor(tagWithCount.tag)}
                               onClose={() => { }}
                               count={tagWithCount.count}
                             />

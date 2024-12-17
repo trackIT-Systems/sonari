@@ -9,8 +9,7 @@ import SpectrogramControls from "@/components/spectrograms/SpectrogramControls";
 import DisableSpectrogramButton from "../spectrograms/DisableSpectrogramButton";
 import SpectrogramSettings from "@/components/spectrograms/SpectrogramSettings";
 import SpectrogramTags from "@/components/spectrograms/SpectrogramTags";
-import useStore from "@/store";
-import TagComponent from "@/components/tags/Tag";
+import TagComponent, { getTagKey } from "@/components/tags/Tag";
 import useAnnotateClip from "@/hooks/annotation/useAnnotateClip";
 import useAudio from "@/hooks/audio/useAudio";
 import useCanvas from "@/hooks/draw/useCanvas";
@@ -245,7 +244,6 @@ export default function ClipAnnotationSpectrogram({
 
   useCanvas({ ref: canvasRef, draw });
 
-  const getTagColor = useStore((state) => state.getTagColor);
   const handleClearSelectedTag = useCallback(() => {
     onClearSelectedTag(null);
   }, []);
@@ -311,8 +309,8 @@ export default function ClipAnnotationSpectrogram({
         {selectedTag && (
           <div className="absolute top-2 right-2 z-10">
             <TagComponent
+              key={getTagKey(selectedTag.tag)}
               tag={selectedTag.tag}
-              {...getTagColor(selectedTag.tag)}
               onClose={handleClearSelectedTag}
               onClick={handleClearSelectedTag}
               count={selectedTag.count}

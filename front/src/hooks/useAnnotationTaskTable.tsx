@@ -4,8 +4,7 @@ import {ColumnDef, getCoreRowModel, useReactTable, createColumnHelper} from "@ta
 import TableHeader from "@/components/tables/TableHeader";
 import TableCell from "@/components/tables/TableCell";
 import StatusBadge from "@/components/StatusBadge";
-import TagComponent, { TagCount } from "@/components/tags/Tag";
-import useStore from "@/store";
+import TagComponent, { TagCount, getTagKey } from "@/components/tags/Tag";
 import {SunIcon} from "@/components/icons";
 import Link from "next/link";
 
@@ -20,8 +19,6 @@ export default function useAnnotationTaskTable({
   pathFormatter?: (path: string) => string;
   getAnnotationTaskLink?: (annotationTask: AnnotationTask) => string;
 }) {
-
-  const getTagColor = useStore((state) => state.getTagColor);
 
   // Column definitions
   const columns = useMemo<ColumnDef<AnnotationTask>[]>(
@@ -94,9 +91,8 @@ export default function useAnnotationTaskTable({
             <div className="flex flex-wrap gap-1 p-1">
               {tagCounts.map(({ tag, count }) => (
                 <TagComponent
-                  key={`${tag.key}-${tag.value}`}
+                  key={getTagKey(tag)}
                   tag={tag}
-                  {...getTagColor(tag)}
                   count={count}
                 />
               ))}
@@ -143,7 +139,7 @@ export default function useAnnotationTaskTable({
         },
       },
     ],
-    [getAnnotationTaskLink, pathFormatter, getTagColor],
+    [getAnnotationTaskLink, pathFormatter],
   );
   return useReactTable<AnnotationTask>({
     data,

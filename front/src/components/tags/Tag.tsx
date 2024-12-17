@@ -36,6 +36,27 @@ const COLOR_NAMES = [
 
 const LEVELS = [1, 2, 3, 4, 5, 6];
 
+export function getTagKey(tag: Tag): string {
+  return `${tag.key}-${tag.value}`;
+}
+
+function tagHash(str: string): number {
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    const char = str.charCodeAt(i);
+    hash = ((hash << 5) - hash) + char;
+    hash = hash & hash; // Convert to 32-bit integer
+  }
+  return Math.abs(hash);
+}
+
+export function getTagColor(tagStr: string): {color: string, level: number} {
+  const hash = tagHash(tagStr);
+  const name = COLOR_NAMES[hash % COLOR_NAMES.length];
+  const level = LEVELS[hash % LEVELS.length];
+  return { color: name, level };
+}
+
 export function getTagClassNames(color: string, level: number) {
   const background = `bg-${color}-${level}00 dark:bg-${color}-${10 - level}00`;
   const border = `border-${color}-${level + 2}00 dark:border-${color}-${10 - level - 2
@@ -61,8 +82,6 @@ export type TagCount = {
  */
 export default function Tag({
   tag,
-  color,
-  level = 1,
   className,
   count,
   onClick,
@@ -70,12 +89,12 @@ export default function Tag({
   ...props
 }: {
   tag: Tag;
-  level: (typeof LEVELS)[number];
-  color: (typeof COLOR_NAMES)[number];
   count: number | null,
   onClick?: () => void;
   onClose?: () => void;
 } & HTMLProps<HTMLDivElement>) {
+
+  const {color, level} = getTagColor(getTagKey(tag))
   const classNames = getTagClassNames(color, level);
 
   return (

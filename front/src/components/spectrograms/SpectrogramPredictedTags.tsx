@@ -3,8 +3,7 @@ import classNames from "classnames";
 import { type ReactNode } from "react";
 import { useMemo } from "react";
 
-import useStore from "@/store";
-import { getTagClassNames } from "@/components/tags/Tag";
+import { getTagColor, getTagKey, getTagClassNames } from "@/components/tags/Tag";
 
 import type { TagElement, TagGroup } from "@/utils/tags";
 import type { Interval } from "@/types";
@@ -51,8 +50,7 @@ export function SpectrogramPredictedTag({
   onClick,
   score = 1,
 }: TagElement) {
-  const getTagColor = useStore((state) => state.getTagColor);
-  const color = getTagColor(tag);
+  const color = getTagColor(getTagKey(tag));
   const tagClassNames = useMemo(() => {
     return getTagClassNames(color.color, color.level);
   }, [color]);

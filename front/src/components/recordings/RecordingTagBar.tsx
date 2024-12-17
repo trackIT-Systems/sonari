@@ -2,9 +2,8 @@ import { useMemo } from "react";
 
 import { TagIcon } from "@/components/icons";
 import AddTagButton from "@/components/tags/AddTagButton";
-import TagComponent from "@/components/tags/Tag";
+import TagComponent, { getTagKey } from "@/components/tags/Tag";
 import useRecording from "@/hooks/api/useRecording";
-import useStore from "@/store";
 
 import type { Recording, Tag } from "@/types";
 
@@ -23,7 +22,6 @@ export default function RecordingTagBar({
   onRemoveTag?: (data: Recording) => void;
   disabled?: boolean;
 }) {
-  const getTagColor = useStore((state) => state.getTagColor);
   const {
     data: { tags } = {},
     addTag: { mutate: addTag },
@@ -54,9 +52,8 @@ export default function RecordingTagBar({
       <div className="flex flex-row flex-wrap gap-2">
         {tags?.map((tag: Tag) => (
           <TagComponent
-            key={`${tag.key}-${tag.value}`}
+            key={getTagKey(tag)}
             tag={tag}
-            {...getTagColor(tag)}
             onClick={() => onTagClick?.(tag)}
             onClose={() => handleRemoveTag?.(tag)}
             count={null}

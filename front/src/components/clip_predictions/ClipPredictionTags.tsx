@@ -3,9 +3,8 @@ import { useMemo } from "react";
 import { H4 } from "@/components/Headings";
 import Empty from "@/components/Empty";
 import { TagsIcon } from "@/components/icons";
-import TagComponent from "@/components/tags/Tag";
+import TagComponent, { getTagKey } from "@/components/tags/Tag";
 import type { Tag, ClipPrediction, Interval } from "@/types";
-import useStore from "@/store";
 
 const DEFAULT_THRESHOLD: Interval = { min: 0.5, max: 1 };
 
@@ -14,7 +13,6 @@ export default function ClipPredictionTags(props: {
   onTagClick?: (tag: Tag) => void;
   threshold?: Interval;
 }) {
-  const getTagColor = useStore((state) => state.getTagColor);
   const { clipPrediction, onTagClick, threshold = DEFAULT_THRESHOLD } = props;
 
   const tags = useMemo(() => {
@@ -33,10 +31,9 @@ export default function ClipPredictionTags(props: {
       <div className="flex flex-col gap-1">
         {tags.map(({ tag }) => (
           <TagComponent
-            key={`${tag.key}-${tag.value}`}
+            key={getTagKey(tag)}
             tag={tag}
             onClick={() => onTagClick?.(tag)}
-            {...getTagColor(tag)}
             count={null}
           />
         ))}

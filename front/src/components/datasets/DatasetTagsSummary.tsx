@@ -11,7 +11,6 @@ import Select from "@/components/inputs/Select";
 import Search from "@/components/inputs/Search";
 import useListWithSearch from "@/hooks/lists/useListWithSearch";
 import usePagedQuery from "@/hooks/utils/usePagedQuery";
-import useStore from "@/store";
 
 import type { RecordingTag } from "@/api/tags";
 import type { Dataset, Tag } from "@/types";
@@ -132,7 +131,6 @@ function TagCount({
     limit: initialShowMax,
     shouldSort: false,
   });
-  const getTagColor = useStore((state) => state.getTagColor);
   const maxCount = Math.max(...items.map(({ count }) => count));
 
   return (
@@ -166,7 +164,7 @@ function TagCount({
           <>
             <div key={`${tag.key}-${tag.value}-tag`}>
               <div className="flex flex-row justify-end">
-                <TagComponent tag={tag} disabled {...getTagColor(tag)} count={null} />
+                <TagComponent key={getTagKey(tag)} tag={tag} disabled count={null} />
               </div>
             </div>
             <div

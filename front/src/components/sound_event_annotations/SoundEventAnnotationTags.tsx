@@ -4,8 +4,7 @@ import Empty from "@/components/Empty";
 import { H4 } from "@/components/Headings";
 import { TagsIcon } from "@/components/icons";
 import AddTagButton from "@/components/tags/AddTagButton";
-import TagComponent from "@/components/tags/Tag";
-import useStore from "@/store";
+import TagComponent, { getTagKey } from "@/components/tags/Tag";
 
 import type { TagFilter } from "@/api/tags";
 import type { SoundEventAnnotation, Tag } from "@/types";
@@ -34,7 +33,6 @@ export default function SoundEventAnnotationTags({
     [soundEventAnnotation],
   );
 
-  const getTagColor = useStore((state) => state.getTagColor);
   return (
     <div className="flex flex-col gap-2">
       <H4 className="text-center">
@@ -44,9 +42,8 @@ export default function SoundEventAnnotationTags({
       <div className="flex flex-row items-center flex-wrap gap-1">
         {tags.map((tag) => (
           <TagComponent
-            key={`${tag.key}-${tag.value}`}
+            key={getTagKey(tag)}
             tag={tag}
-            {...getTagColor(tag)}
             onClick={() => onClickTag?.(tag)}
             onClose={() => onRemoveTag?.(tag)}
             count={null}

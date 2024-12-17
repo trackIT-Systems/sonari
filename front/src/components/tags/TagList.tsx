@@ -1,8 +1,7 @@
 import Button from "@/components/Button";
 import Search from "@/components/inputs/Search";
-import TagComponent from "@/components/tags/Tag";
+import TagComponent, { getTagKey } from "@/components/tags/Tag";
 import useListWithSearch from "@/hooks/lists/useListWithSearch";
-import useStore from "@/store";
 
 import type { Tag } from "@/types";
 
@@ -22,16 +21,14 @@ export default function TagList({
     fields: ["key", "value"],
     limit: showMax,
   });
-  const getTagColor = useStore((state) => state.getTagColor);
   return (
     <div className="flex flex-col gap-4">
       <Search onChange={(value) => setSearch(value as string)} />
       <div className="flex overflow-hidden flex-col gap-2 w-full">
         {items.map((tag) => (
           <TagComponent
-            key={`${tag.key}-${tag.value}`}
+            key={getTagKey(tag)}
             tag={tag}
-            {...getTagColor(tag)}
             onClick={onClick && (() => onClick(tag))}
             onClose={onRemove && (() => onRemove(tag))}
             count={null}

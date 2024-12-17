@@ -4,13 +4,13 @@ import Empty from "@/components/Empty";
 import { H4 } from "@/components/Headings";
 import { TagsIcon, BackIcon } from "@/components/icons";
 import TagComponent, { TagCount } from "@/components/tags/Tag";
-import useStore from "@/store";
 import SearchMenu from "../search/SearchMenu";
 import Button from "../Button";
 import { Float } from "@headlessui-float/react";
 import { Popover } from "@headlessui/react";
 import KeyboardKey from "../KeyboardKey";
 import type { ClipAnnotation, Tag } from "@/types";
+import { getTagKey } from "@/components/tags/Tag";
 
 
 function NoTags() {
@@ -31,7 +31,6 @@ function TagReplacePanel({
   onReplaceTag: (oldTag: Tag | null, newTag: Tag) => void;
 }) {
   const [selectedTagWithCount, setSelectedTagWithCount] = useState<{ tag: Tag; count: number } | null>(null);
-  const getTagColor = useStore((state) => state.getTagColor);
 
   // Calculate total count
   const totalCount = useMemo(() =>
@@ -58,9 +57,8 @@ function TagReplacePanel({
           fields={["type", "tag.key", "tag.value"]}
           renderOption={(option) =>
             <TagComponent
-              key={`${option.tag.key}-${option.tag.value}`}
+              key={getTagKey(option.tag)}
               tag={option.tag}
-              {...getTagColor(option.tag)}
               onClose={() => { }}
               count={option.count}
             />
@@ -81,9 +79,8 @@ function TagReplacePanel({
         <div>
           <span className="mb-2 text-stone-700 dark:text-stone-300 underline underline-offset-2 decoration-amber-500 decoration-2">Replace </span>
           <TagComponent
-            key={`${selectedTagWithCount.tag.key}-${selectedTagWithCount.tag.value}`}
+            key={getTagKey(selectedTagWithCount.tag)}
             tag={selectedTagWithCount.tag}
-            {...getTagColor(selectedTagWithCount.tag)}
             onClose={() => { }}
             count={selectedTagWithCount.count}
           />
@@ -105,9 +102,8 @@ function TagReplacePanel({
         fields={["key", "value"]}
         renderOption={(tag) => (
           <TagComponent
-            key={`${tag.key}-${tag.value}`}
+            key={getTagKey(tag)}
             tag={tag}
-            {...getTagColor(tag)}
             onClose={() => { }}
             count={null}
           />
@@ -135,8 +131,6 @@ function TagAddPanel({
   projectTags: Tag[];
   onReplaceTag: (oldTag: Tag | null, newTag: Tag) => void;
 }) {
-  const getTagColor = useStore((state) => state.getTagColor);
-
   return (
     <div className="p-4">
       <div className="mb-2 flex flex-row items-center justify-between">
@@ -150,9 +144,8 @@ function TagAddPanel({
         fields={["key", "value"]}
         renderOption={(tag) => (
           <TagComponent
-            key={`${tag.key}-${tag.value}`}
+            key={getTagKey(tag)}
             tag={tag}
-            {...getTagColor(tag)}
             onClose={() => { }}
             count={null}
           />
@@ -181,8 +174,6 @@ export default function ClipAnnotationTags({
   projectTags: Tag[];
   onReplaceTagInSoundEvents?: (oldTag: Tag | null, newTag: Tag | null) => void;
 }) {
-
-  const getTagColor = useStore((state) => state.getTagColor);
 
   const replaceButtonRef = useRef<HTMLButtonElement>(null);
   const addButtonRef = useRef<HTMLButtonElement>(null);
@@ -401,9 +392,8 @@ export default function ClipAnnotationTags({
       <div className="flex flex-row items-center flex-wrap gap-1">
         {tagsWithCount.map(({ tag, count }) => (
           <TagComponent
-            key={`${tag.key}-${tag.value}`}
+            key={getTagKey(tag)}
             tag={tag}
-            {...getTagColor(tag)}
             onClose={() => handleTagReplaceRemove(tag, null)}
             count={count}
           />

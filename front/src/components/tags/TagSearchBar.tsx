@@ -15,7 +15,6 @@ import { Input } from "@/components/inputs/index";
 import KeyboardKey from "@/components/KeyboardKey";
 import Tag from "@/components/tags/Tag";
 import useTags from "@/hooks/api/useTags";
-import useStore from "@/store";
 
 import type { TagCreate, TagFilter } from "@/api/tags";
 import type { Tag as TagType } from "@/types";
@@ -46,7 +45,7 @@ function CreateNewTag({ tag: { key, value } }: { tag: TagCreate }) {
     <ComboBoxSection>
       <div className="relative py-2 px-4 cursor-default select-none">
         Create the tag{" "}
-        <Tag disabled tag={{ key, value }} color="blue" level={3} count={null}/> by pressing{" "}
+        <Tag disabled tag={{ key, value }} color="blue" count={null}/> by pressing{" "}
         <KeyboardKey code="Shift" />+<KeyboardKey code="Enter" />
       </div>
     </ComboBoxSection>
@@ -94,7 +93,6 @@ export default forwardRef<HTMLInputElement, TagSearchBarProps>(
     const [query, setQuery] = useState("");
 
     const tags = useTags({ filter: initialFilter });
-    const getTagColor = useStore((state) => state.getTagColor);
 
     const key = query.split(":")[0];
     const value = query.split(":")[1];
@@ -181,7 +179,6 @@ export default forwardRef<HTMLInputElement, TagSearchBarProps>(
                       disabled
                       className="pointer-events-none"
                       tag={tag}
-                      {...getTagColor(tag)}
                       count={null}
                     />
                   </Combobox.Option>

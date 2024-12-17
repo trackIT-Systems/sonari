@@ -3,9 +3,8 @@ import { useMemo } from "react";
 import { H4 } from "@/components/Headings";
 import Empty from "@/components/Empty";
 import { TagsIcon } from "@/components/icons";
-import TagComponent from "@/components/tags/Tag";
+import TagComponent, { getTagKey } from "@/components/tags/Tag";
 import type { Tag, ClipEvaluation, Interval } from "@/types";
-import useStore from "@/store";
 
 const DEFAULT_THRESHOLD: Interval = { min: 0.5, max: 1 };
 
@@ -14,7 +13,6 @@ export default function ClipEvaluationTags(props: {
   onTagClick?: (tag: Tag) => void;
   threshold?: Interval;
 }) {
-  const getTagColor = useStore((state) => state.getTagColor);
   const { clipEvaluation, onTagClick, threshold = DEFAULT_THRESHOLD } = props;
 
   const { clip_prediction: clipPrediction, clip_annotation: clipAnnotation } =
@@ -42,10 +40,9 @@ export default function ClipEvaluationTags(props: {
           <h5 className="font-bold text-stone-500">Predicted</h5>
           {predictedTags.map(({ tag }) => (
             <TagComponent
-              key={`${tag.key}-${tag.value}`}
+              key={getTagKey(tag)}
               tag={tag}
               onClick={() => onTagClick?.(tag)}
-              {...getTagColor(tag)}
               count={null}
             />
           ))}
@@ -57,10 +54,9 @@ export default function ClipEvaluationTags(props: {
           <h5 className="font-bold text-stone-500">True</h5>
           {tags.map((tag) => (
             <TagComponent
-              key={`${tag.key}-${tag.value}`}
+              key={getTagKey(tag)}
               tag={tag}
               onClick={() => onTagClick?.(tag)}
-              {...getTagColor(tag)}
               count={null}
             />
           ))}

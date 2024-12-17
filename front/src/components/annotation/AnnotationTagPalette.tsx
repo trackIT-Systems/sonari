@@ -2,10 +2,9 @@ import Button from "@/components/Button";
 import Card from "@/components/Card";
 import { H4 } from "@/components/Headings";
 import { DeleteIcon, ToolsIcon } from "@/components/icons";
-import TagComponent from "@/components/tags/Tag";
+import TagComponent, { getTagKey } from "@/components/tags/Tag";
 import TagSearchBar from "@/components/tags/TagSearchBar";
 import Tooltip from "@/components/Tooltip";
-import useStore from "@/store";
 
 import type { TagFilter } from "@/api/tags";
 import type { Tag } from "@/types";
@@ -27,7 +26,6 @@ export default function AnnotationTagPalette({
   onRemoveTag?: (tag: Tag) => void;
   onClearTags?: () => void;
 }) {
-  const getTagColor = useStore((state) => state.getTagColor);
   return (
     <Card>
       <H4 className="text-center">
@@ -63,9 +61,8 @@ export default function AnnotationTagPalette({
       <div className="flex flex-row flex-wrap gap-1">
         {tags.map((tag) => (
           <TagComponent
-            key={`${tag.key}-${tag.value}`}
+            key={getTagKey(tag)}
             tag={tag}
-            {...getTagColor(tag)}
             onClick={() => onClick?.(tag)}
             onClose={() => onRemoveTag?.(tag)}
             count={null}
