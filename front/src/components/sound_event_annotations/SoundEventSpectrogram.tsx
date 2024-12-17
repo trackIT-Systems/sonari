@@ -123,8 +123,11 @@ export default function SoundEventSpectrogramView({
         [window, parameters, recording.samplerate]
     );
 
-    let local_params = { ...parameters };
-    local_params.window_size = parameters.window_size / 3
+    const local_params =  {
+        ...parameters,
+        window_size: 0.002,
+        hop_size: 0.01,
+    };
 
     const spectrogram = useSpectrogram({
         recording,
