@@ -1,7 +1,10 @@
 import classnames from "classnames";
 import { usePathname } from "next/navigation";
 
-import { HorizontalDivider } from "@/components/Divider";
+import { useKeyPressEvent } from "react-use";
+import useKeyFilter from "@/hooks/utils/useKeyFilter";
+
+import KeyboardKey from "../KeyboardKey";
 import {
   AnnotationProjectIcon,
   DatasetsIcon,
@@ -17,22 +20,57 @@ import useActiveUser from "@/hooks/api/useActiveUser";
 import type { User } from "@/types";
 import type { ComponentProps } from "react";
 
+
+type ShortcutConfig = {
+  key: string;
+  action: () => void;
+  href?: string;
+}
+
+function useShiftShortcuts(shortcuts: ShortcutConfig[]) {
+  shortcuts.forEach(({ key, action }) => {
+    const filterKey = useKeyFilter({
+      key,
+      preventDefault: true,
+      stopPropagation: true,
+    });
+
+    useKeyPressEvent(
+      (event) => filterKey(event) && event.shiftKey && event.metaKey,
+      action
+    );
+  });
+}
+
+const getMetaKeyLabel = () => {
+  const isMacOS = typeof window !== 'undefined' && navigator.platform.toUpperCase().indexOf('MAC') >= 0;
+  return isMacOS ? '⌘' : 'Ctrl';
+};
+
 function SideMenuLink({
   children,
   tooltip,
   isActive,
   href,
+  keyboardKey,
   ...props
 }: ComponentProps<typeof Link> & {
   tooltip?: string;
   isActive?: boolean;
   href?: string;
+  keyboardKey?: string;
 }) {
   return (
     <Tooltip
       tooltip={
         <p className="whitespace-nowrap text-stone-700 dark:text-stone-300">
           {tooltip}
+          {keyboardKey ? (
+            <span className="pl-2">
+              <KeyboardKey code={keyboardKey} />
+            </span>
+          ) : (null)
+          }
         </p>
       }
     >
@@ -57,16 +95,24 @@ function SideMenuButton({
   children,
   tooltip,
   isActive,
+  keyboardKey,
   ...props
 }: ComponentProps<typeof Button> & {
   tooltip?: string;
   isActive?: boolean;
+  keyboardKey?: string;
 }) {
   return (
     <Tooltip
       tooltip={
         <p className="whitespace-nowrap text-stone-700 dark:text-stone-300">
           {tooltip}
+          {keyboardKey ? (
+            <span className="pl-2">
+              <KeyboardKey code={keyboardKey} />
+            </span>
+          ) : (null)
+          }
         </p>
       }
     >
@@ -94,6 +140,7 @@ function MainNavigation({ pathname }: { pathname?: string }) {
           isActive={pathname?.startsWith("/datasets")}
           tooltip={"Datasets"}
           href="/datasets"
+          keyboardKey={`shift+${getMetaKeyLabel()}+1`}
         >
           <DatasetsIcon className="w-6 h-6" />
         </SideMenuLink>
@@ -103,28 +150,11 @@ function MainNavigation({ pathname }: { pathname?: string }) {
           isActive={pathname?.startsWith("/annotation_projects")}
           tooltip={"Annotation Projects"}
           href="/annotation_projects"
+          keyboardKey={`shift+${getMetaKeyLabel()}+2`}
         >
           <AnnotationProjectIcon className="w-6 h-6" />
         </SideMenuLink>
       </li>
-      {/* <li className="px-3">
-        <SideMenuLink
-          isActive={pathname?.startsWith("/evaluation")}
-          tooltip={"Evaluation"}
-          href="/evaluation"
-        >
-          <EvaluationIcon className="w-6 h-6" />
-        </SideMenuLink>
-      </li>
-      <li className="px-3">
-        <SideMenuLink
-          isActive={pathname?.startsWith("/exploration")}
-          tooltip={"Exploration"}
-          href="/exploration"
-        >
-          <ExplorationIcon className="w-6 h-6" />
-        </SideMenuLink>
-      </li> */}
     </ul>
   );
 }
@@ -144,25 +174,15 @@ function SecondaryNavigation({
 
   return (
     <ul className="flex flex-col space-y-3 py-4 text-stone-400">
-      <HorizontalDivider />
-      {/* <li className="px-3">
-        <SideMenuLink isActive={pathname === "/"} tooltip={"Home"} href="/">
-          <HomeIcon className="w-6 h-6" />
-        </SideMenuLink>
-      </li>
       <li className="px-3">
-        <SideMenuLink href="/plugins" tooltip={"Plugins"}>
-          <PluginIcon className="w-6 h-6" />
-        </SideMenuLink>
-      </li> */}
-      <li className="px-3">
-        <SideMenuLink href="/profile" tooltip={"User"}>
+        <SideMenuLink href="/profile" tooltip={"User"}
+          keyboardKey={`shift+${getMetaKeyLabel()}+9`}>
           <UserIcon className="w-6 h-6" />
         </SideMenuLink>
       </li>
-      <HorizontalDivider />
       <li className="px-3">
-        <SideMenuButton tooltip={"Log Out"}>
+        <SideMenuButton tooltip={"Log Out"}
+          keyboardKey={`shift+${getMetaKeyLabel()}+0`}>
           <LogOutIcon onClick={() => logout()} className="w-6 h-6" />
         </SideMenuButton>
       </li>
@@ -174,10 +194,35 @@ export function SideMenu({
   onLogout,
   user,
 }: {
-  onLogout?: () => void;
+  onLogout: () => void;
   user: User;
 }) {
   const pathname = usePathname();
+
+  const shortcuts: ShortcutConfig[] = [
+    {
+      key: "1",
+      action: () => { window.location.href = "/datasets" },
+      href: "/datasets"
+    },
+    {
+      key: "2",
+      action: () => { window.location.href = "/annotation_projects" },
+      href: "/annotation_projects"
+    },
+    {
+      key: "9",
+      action: () => { window.location.href = "/profile" },
+      href: "/profile"
+    },
+    {
+      key: "0",
+      action: () => { onLogout() },
+    }
+  ];
+
+  useShiftShortcuts(shortcuts);
+
   return (
     <aside
       id="side-menu"
