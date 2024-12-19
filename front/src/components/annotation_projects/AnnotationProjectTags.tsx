@@ -46,7 +46,7 @@ export default function AnnotationProjectTags({
           </small>
           <div className="py-2">
             <TagSearchBar
-              autoFocus={false}
+              autoFocus
               onSelect={project.addTag.mutate}
               onCreate={project.addTag.mutate}
             />

@@ -7,10 +7,12 @@ import useDatasets from "@/hooks/api/useDatasets";
 import type { Dataset } from "@/types";
 
 export default function DatasetSearch({
+  autoFocus,
   selected,
   onSelect,
   showMax = 10,
 }: {
+  autoFocus?: boolean;
   selected?: Dataset | null;
   onSelect?: (dataset: Dataset) => void;
   emptyMessage?: string;
@@ -34,6 +36,7 @@ export default function DatasetSearch({
 
   return (
     <Search
+      autoFocus
       label="search-datasets"
       value={selected}
       options={items}

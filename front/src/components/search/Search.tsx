@@ -39,6 +39,7 @@ export default function Search<T extends object>({
   onSelect,
   onChangeSearch,
   children,
+  autoFocus,
 }: {
   label: string;
   value?: T | null;
@@ -53,6 +54,7 @@ export default function Search<T extends object>({
   displayValue: (value: T) => string;
   delay?: number;
   children: (option: T) => CollectionElement<T>;
+  autoFocus?: boolean;
 }) {
   const { search, items, setSearch } = useListWithSearch({
     options,
@@ -82,6 +84,7 @@ export default function Search<T extends object>({
       onInputChange: (value: string) => setSearch(value),
       onSelectionChange,
       children,
+      autoFocus,
     }),
     [
       label,

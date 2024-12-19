@@ -10,11 +10,13 @@ export default function TagList({
   onClick,
   onRemove,
   showMax = 10,
+  autoFocus,
 }: {
   tags: Tag[];
   onClick?: (tag: Tag) => void;
   onRemove?: (tag: Tag) => void;
   showMax?: number;
+  autoFocus?: boolean;
 }) {
   const { items, setSearch, setLimit, hasMore } = useListWithSearch({
     options: tags,
@@ -23,7 +25,7 @@ export default function TagList({
   });
   return (
     <div className="flex flex-col gap-4">
-      <Search onChange={(value) => setSearch(value as string)} />
+      <Search autoFocus onChange={(value) => setSearch(value as string)} />
       <div className="flex overflow-hidden flex-col gap-2 w-full">
         {items.map((tag) => (
           <TagComponent

@@ -133,7 +133,7 @@ export default function AnnotationProjectExport({
                   Click on a tag to add it to the export selection.
                 </small>
                 <div className="py-2">
-                  <TagList tags={availableTags} onClick={handleTagSelect} />
+                  <TagList autoFocus={true} tags={availableTags} onClick={handleTagSelect} />
                 </div>
               </div>
               <div className="col-span-2 md:col-span-1">
@@ -142,7 +142,7 @@ export default function AnnotationProjectExport({
                   Click on a tag to remove it from the export selection.
                 </small>
                 <div className="py-2">
-                  <TagList tags={selectedTags} onClick={handleTagDeselect} />
+                  <TagList autoFocus={false} tags={selectedTags} onClick={handleTagDeselect} />
                 </div>
               </div>
             </div>

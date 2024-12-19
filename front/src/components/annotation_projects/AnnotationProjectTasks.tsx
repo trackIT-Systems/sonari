@@ -54,7 +54,7 @@ export default function AnnotationProjectTasks({
             selection, and configure how audio clips are extracted from the
             chosen recordings.
           </p>
-          <SelectDataset selected={dataset} onSelect={setDataset} />
+          <SelectDataset autoFocus selected={dataset} onSelect={setDataset} />
           {dataset != null && (
             <>
               <SelectRecordings
@@ -84,9 +84,11 @@ export default function AnnotationProjectTasks({
 }
 
 function SelectDataset({
+  autoFocus,
   selected,
   onSelect,
 }: {
+  autoFocus?: boolean
   selected: Dataset | null;
   onSelect: (dataset: Dataset) => void;
 }) {
@@ -98,7 +100,7 @@ function SelectDataset({
           Choose a dataset from which to source recordings.
         </p>
       </div>
-      <DatasetSearch selected={selected} onSelect={onSelect} />
+      <DatasetSearch autoFocus selected={selected} onSelect={onSelect} />
     </Card>
   );
 }
