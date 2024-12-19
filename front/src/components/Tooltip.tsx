@@ -11,6 +11,7 @@ export default function Tooltip({
   placement = "right",
   autoPlacement = false,
   offset = 8,
+  interactive = false,
 }: {
   children: ReactNode;
   tooltip: ReactNode;
@@ -29,6 +30,7 @@ export default function Tooltip({
     | "left-start"
     | "left-end";
   offset?: number;
+  interactive?: boolean;
 }) {
   const content = <span className="max-w-fit">{children}</span>;
   const [hoverable, hovered] = useHover(content);
@@ -48,7 +50,11 @@ export default function Tooltip({
         portal={true}
         autoPlacement={autoPlacement}
       >
-        <Popover.Button as={Fragment}>{hoverable}</Popover.Button>
+        {interactive ? (
+          <Popover.Button as={Fragment}>{hoverable}</Popover.Button>
+        ) : (
+          <div>{hoverable}</div>
+        )}
         <Popover.Panel
           static
           className="rounded p-2 shadow-lg bg-stone-50 dark:bg-stone-700 text-stone-600 dark:text-stone-400 text-sm pointer-events-none"
