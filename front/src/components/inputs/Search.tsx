@@ -1,4 +1,4 @@
-import { ReactElement, useRef } from "react";
+import { ReactElement, useRef, useCallback } from "react";
 import { VisuallyHidden, useSearchField } from "react-aria";
 import { type SearchFieldProps, useSearchFieldState } from "react-stately";
 
@@ -15,15 +15,22 @@ export default function Search({
   placeholder = "Search...",
   isLoading = false,
   icon,
+  onKeyDown,
+  inputRef,
+  isHighlighted = false,
   ...props
 }: {
   placeholder?: string;
   isLoading?: boolean;
   icon?: ReactElement;
+  onKeyDown?: (e: React.KeyboardEvent) => void;
+  inputRef?: React.RefObject<HTMLInputElement>;
+  isHighlighted?: boolean;
 } & SearchFieldProps &
   InputHTMLAttributes<HTMLInputElement>) {
   const state = useSearchFieldState({ label, ...props });
-  const ref = useRef(null);
+  const localRef = useRef(null);
+  const ref = inputRef || localRef;
 
   const { labelProps, inputProps, clearButtonProps } = useSearchField(
     { label, ...props },
@@ -40,7 +47,13 @@ export default function Search({
         <div className="flex absolute inset-y-0 left-0 items-center pl-3 w-8 pointer-events-none">
           {isLoading ? <Loading /> : icon || <SearchIcon />}
         </div>
-        <Input className="pl-10 text-sm 5" ref={ref} {...inputProps} />
+        <Input
+          className={`pl-10 text-sm 5 ${isHighlighted ? 'bg-stone-100 dark:bg-stone-800' : ''
+            }`}
+          ref={ref}
+          {...inputProps}
+          onKeyDown={onKeyDown}
+        />
         {state.value !== "" && (
           <Button
             variant="primary"

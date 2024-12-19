@@ -1,3 +1,7 @@
+import { useCallback, ReactElement, useState, useEffect, useRef } from "react";
+import { useKeyPressEvent } from "react-use";
+import useKeyFilter from "@/hooks/utils/useKeyFilter";
+import { useRouter } from "next/navigation";
 import DatasetComponent from "@/components/datasets/Dataset";
 import DatasetCreate from "@/components/datasets/DatasetCreate";
 import DatasetImport from "@/components/datasets/DatasetImport";
@@ -52,6 +56,56 @@ export default function DatasetList(props: {
 }) {
   const { onCreate } = props;
   const datasets = useDatasets();
+  const router = useRouter();
+  const [selectedDataset, setSelectedDataset] = useState<Dataset | null>(null);
+  const [shouldNavigate, setShouldNavigate] = useState(false);
+  const searchInputRef = useRef<HTMLInputElement>(null);
+  const [focusedElement, setFocusedElement] = useState<'search' | number>(-1);
+
+  useEffect(() => {
+    if (shouldNavigate && selectedDataset) {
+      router.push(`/datasets/detail/?dataset_uuid=${selectedDataset.uuid}`);
+      setShouldNavigate(false);
+    }
+  }, [shouldNavigate, selectedDataset, router, setShouldNavigate]);
+
+  const handleSelect = useCallback(() => {
+    setShouldNavigate(true);
+  }, [setShouldNavigate]);
+
+  const handleHighlight = useCallback((item: ReactElement) => {
+    const dataset = (item as any).props.dataset;
+    setSelectedDataset(dataset);
+  }, [setSelectedDataset]);
+
+  const handleSearchKeyDown = useCallback((e: React.KeyboardEvent) => {
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      if (datasets.items.length > 0) {
+        setFocusedElement(0);
+        setSelectedDataset(datasets.items[0]);
+        searchInputRef.current?.blur();
+      }
+    }
+  }, [datasets.items, focusedElement, setFocusedElement, setSelectedDataset, searchInputRef]);
+
+  useKeyPressEvent(useKeyFilter({ key: "ArrowDown" }), (event) => {
+    if (focusedElement === -1) {
+      event.preventDefault();
+      setFocusedElement('search');
+      searchInputRef.current?.focus();
+    }
+  });
+
+  const handleStackedListFocus = useCallback((index: number) => {
+    if (index === -1) {
+      setFocusedElement('search');
+      searchInputRef.current?.focus();
+    } else {
+      setFocusedElement(index);
+    }
+  }, [setFocusedElement, searchInputRef, setFocusedElement]);
+
 
   return (
     <div className="flex flex-col p-8 space-y-2 w-full">
@@ -65,6 +119,9 @@ export default function DatasetList(props: {
             onChange={(value) => datasets.filter.set("search", value)}
             onSubmit={() => datasets.filter.submit()}
             icon={<DatasetIcon />}
+            onKeyDown={handleSearchKeyDown}
+            inputRef={searchInputRef}
+            isHighlighted={focusedElement === 'search'}
           />
         </div>
         <div className="h-full">
@@ -104,6 +161,11 @@ export default function DatasetList(props: {
             items={datasets.items.map((item) => (
               <DatasetComponent key={item.uuid} dataset={item} />
             ))}
+            onSelect={handleSelect}
+            onHighlight={handleHighlight}
+            onFocusChange={handleStackedListFocus}
+            selectedIndex={typeof focusedElement === 'number' ? focusedElement : -1}
+            handleNumberKeys={focusedElement !== 'search'}
           />
           {datasets.pagination.numPages > 1 && (
             <Pagination {...datasets.pagination} />

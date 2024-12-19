@@ -1,3 +1,7 @@
+import { useCallback, ReactElement, useState, useEffect, useRef } from "react";
+import { useKeyPressEvent } from "react-use";
+import useKeyFilter from "@/hooks/utils/useKeyFilter";
+import { useRouter } from "next/navigation";
 import Loading from "@/app/loading";
 import AnnotationProjectComponent from "@/components/annotation_projects/AnnotationProject";
 import AnnotationProjectCreate from "@/components/annotation_projects/AnnotationProjectCreate";
@@ -40,6 +44,55 @@ export default function AnnotationProjectList({
   onCreate?: (annotationProject: Promise<AnnotationProject>) => void;
 }) {
   const { items, pagination, isLoading, filter } = useAnnotationProjects();
+  const router = useRouter();
+  const [selectedAnnotationProject, setselectedAnnotationProject] = useState<AnnotationProject | null>(null);
+  const [shouldNavigate, setShouldNavigate] = useState(false);
+  const searchInputRef = useRef<HTMLInputElement>(null);
+  const [focusedElement, setFocusedElement] = useState<'search' | number>(-1);
+
+  useEffect(() => {
+    if (shouldNavigate && selectedAnnotationProject) {
+      router.push(`/annotation_projects/detail/?annotation_project_uuid=${selectedAnnotationProject.uuid}`);
+      setShouldNavigate(false);
+    }
+  }, [shouldNavigate, selectedAnnotationProject, router, setShouldNavigate]);
+
+  const handleSelect = useCallback(() => {
+    setShouldNavigate(true);
+  }, [setShouldNavigate]);
+
+  const handleHighlight = useCallback((item: ReactElement) => {
+    const project = (item as any).props.annotationProject;
+    setselectedAnnotationProject(project);
+  }, [setselectedAnnotationProject]);
+
+  const handleSearchKeyDown = useCallback((e: React.KeyboardEvent) => {
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      if (items.length > 0) {
+        setFocusedElement(0);
+        setselectedAnnotationProject(items[0]);
+        searchInputRef.current?.blur();
+      }
+    }
+  }, [items, focusedElement, setFocusedElement, setselectedAnnotationProject, searchInputRef]);
+
+  useKeyPressEvent(useKeyFilter({ key: "ArrowDown" }), (event) => {
+    if (focusedElement === -1) {
+      event.preventDefault();
+      setFocusedElement('search');
+      searchInputRef.current?.focus();
+    }
+  });
+
+  const handleStackedListFocus = useCallback((index: number) => {
+    if (index === -1) {
+      setFocusedElement('search');
+      searchInputRef.current?.focus();
+    } else {
+      setFocusedElement(index);
+    }
+  }, [setFocusedElement, searchInputRef, setFocusedElement]);
 
   return (
     <div className="flex flex-col p-8 space-y-2 w-full">
@@ -52,6 +105,9 @@ export default function AnnotationProjectList({
             onChange={(value) => filter.set("search", value as string)}
             onSubmit={() => filter.submit()}
             icon={<DatasetIcon />}
+            onKeyDown={handleSearchKeyDown}
+            inputRef={searchInputRef}
+            isHighlighted={focusedElement === 'search'}
           />
         </div>
         <div className="h-full">
@@ -100,6 +156,11 @@ export default function AnnotationProjectList({
                 annotationProject={item}
               />
             ))}
+            onSelect={handleSelect}
+            onHighlight={handleHighlight}
+            onFocusChange={handleStackedListFocus}
+            selectedIndex={typeof focusedElement === 'number' ? focusedElement : -1}
+            handleNumberKeys={focusedElement !== 'search'}
           />
         </>
       )}
