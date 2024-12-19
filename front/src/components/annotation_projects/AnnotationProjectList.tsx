@@ -18,6 +18,7 @@ import Search from "@/components/inputs/Search";
 import Pagination from "@/components/lists/Pagination";
 import StackedList from "@/components/lists/StackedList";
 import useAnnotationProjects from "@/hooks/api/useAnnotationProjects";
+import { LIST_OVERVIEW_DOWN_SHORTCUT, SEARCH_BAR_LEAVE_SHORTCUT } from "@/utils/keyboard";
 
 import type { AnnotationProject } from "@/types";
 
@@ -67,7 +68,7 @@ export default function AnnotationProjectList({
   }, [setselectedAnnotationProject]);
 
   const handleSearchKeyDown = useCallback((e: React.KeyboardEvent) => {
-    if (e.key === 'ArrowDown') {
+    if (e.key === LIST_OVERVIEW_DOWN_SHORTCUT) {
       e.preventDefault();
       if (items.length > 0) {
         setFocusedElement(0);
@@ -77,7 +78,7 @@ export default function AnnotationProjectList({
     }
   }, [items, focusedElement, setFocusedElement, setselectedAnnotationProject, searchInputRef]);
 
-  useKeyPressEvent(useKeyFilter({ key: "ArrowDown" }), (event) => {
+  useKeyPressEvent(useKeyFilter({ key: SEARCH_BAR_LEAVE_SHORTCUT }), (event) => {
     if (focusedElement === -1) {
       event.preventDefault();
       setFocusedElement('search');

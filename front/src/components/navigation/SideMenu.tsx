@@ -1,5 +1,6 @@
 import classnames from "classnames";
 import { usePathname } from "next/navigation";
+import { useRouter } from "next/navigation";
 
 import {
   useSpecialKeyShortcuts,
@@ -178,25 +179,26 @@ export function SideMenu({
   user: User;
 }) {
   const pathname = usePathname();
+  const router = useRouter()
 
   const shortcuts: ShortcutConfig[] = [
     {
       key: GO_DATASETS_SHORTCUT,
       shiftKey: true,
       metaKey: true,
-      action: () => { window.location.href = "/datasets" },
+      action: () => { router.push("/datasets") },
     },
     {
       key: GO_PROJECTS_SHORTCUT,
       shiftKey: true,
       metaKey: true,
-      action: () => { window.location.href = "/annotation_projects" },
+      action: () => { router.push("/annotation_projects") },
     },
     {
       key: GO_PROFILE_SHORTCUT,
       shiftKey: true,
       metaKey: true,
-      action: () => { window.location.href = "/profile" },
+      action: () => { router.push("/profile") },
     },
     {
       key: LOGOUT_SHORTCUT,

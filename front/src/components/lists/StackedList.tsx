@@ -1,6 +1,20 @@
 import { type Key, type ReactElement, useEffect, useCallback } from "react";
 import useKeyFilter from "@/hooks/utils/useKeyFilter";
 import { useKeyPressEvent } from "react-use";
+import {
+  LIST_ELEMENT_UP_SHORTCUT,
+  SELECT_LIST_ELEMENT_SHORTCUT,
+  LIST_ELEMENT_DOWN_SHORTCUT,
+  SELECT_FST_ELEMENT_SHORTCUT,
+  SELECT_SND_ELEMENT_SHORTCUT,
+  SELECT_TRD_ELEMENT_SHORTCUT,
+  SELECT_FRT_ELEMENT_SHORTCUT,
+  SELECT_FTH_ELEMENT_SHORTCUT,
+  SELECT_STH_ELEMENT_SHORTCUT,
+  SELECT_SVNTH_ELEMENT_SHORTCUT,
+  SELECT_ETH_ELEMENT_SHORTCUT,
+  SELECT_NTH_ELEMENT_SHORTCUT,
+} from "@/utils/keyboard";
 
 type ElementWithKey = ReactElement & { key: Key | null };
 
@@ -20,7 +34,7 @@ export default function StackedList({
   handleNumberKeys?: boolean;
 }) {
 
-  useKeyPressEvent(useKeyFilter({ key: "ArrowDown" }), (event) => {
+  useKeyPressEvent(useKeyFilter({ key: LIST_ELEMENT_DOWN_SHORTCUT }), (event) => {
     event.preventDefault();
     if (selectedIndex > -1) {
       const newIndex = Math.min(items.length - 1, selectedIndex + 1);
@@ -32,7 +46,7 @@ export default function StackedList({
   });
 
 
-  useKeyPressEvent(useKeyFilter({ key: "ArrowUp" }), (event) => {
+  useKeyPressEvent(useKeyFilter({ key: LIST_ELEMENT_UP_SHORTCUT }), (event) => {
     event.preventDefault();
     if (selectedIndex <= 0) {
       onFocusChange?.(-1);
@@ -45,13 +59,16 @@ export default function StackedList({
     }
   });
 
-  useKeyPressEvent(useKeyFilter({ key: "Enter" }), () => {
+  useKeyPressEvent(useKeyFilter({ key: SELECT_LIST_ELEMENT_SHORTCUT }), () => {
     if (selectedIndex >= 0 && selectedIndex < items.length && onSelect) {
       onSelect(items[selectedIndex]);
     }
   });
 
   const hndlNumberKeys = useCallback((event: KeyboardEvent) => {
+    if (event.metaKey || event.shiftKey) {
+      return
+    }
     const index = parseInt(event.key) - 1;
     if (index < items.length && onSelect && onHighlight) {
       event.preventDefault();
@@ -61,15 +78,15 @@ export default function StackedList({
     }
   }, [items, onSelect, onHighlight])
 
-  useKeyPressEvent(useKeyFilter({ key: "1" }), hndlNumberKeys);
-  useKeyPressEvent(useKeyFilter({ key: "2" }), hndlNumberKeys);
-  useKeyPressEvent(useKeyFilter({ key: "3" }), hndlNumberKeys);
-  useKeyPressEvent(useKeyFilter({ key: "4" }), hndlNumberKeys);
-  useKeyPressEvent(useKeyFilter({ key: "5" }), hndlNumberKeys);
-  useKeyPressEvent(useKeyFilter({ key: "6" }), hndlNumberKeys);
-  useKeyPressEvent(useKeyFilter({ key: "7" }), hndlNumberKeys);
-  useKeyPressEvent(useKeyFilter({ key: "8" }), hndlNumberKeys);
-  useKeyPressEvent(useKeyFilter({ key: "9" }), hndlNumberKeys);
+  useKeyPressEvent(useKeyFilter({ key: SELECT_FST_ELEMENT_SHORTCUT }), hndlNumberKeys);
+  useKeyPressEvent(useKeyFilter({ key: SELECT_SND_ELEMENT_SHORTCUT }), hndlNumberKeys);
+  useKeyPressEvent(useKeyFilter({ key: SELECT_TRD_ELEMENT_SHORTCUT }), hndlNumberKeys);
+  useKeyPressEvent(useKeyFilter({ key: SELECT_FRT_ELEMENT_SHORTCUT }), hndlNumberKeys);
+  useKeyPressEvent(useKeyFilter({ key: SELECT_FTH_ELEMENT_SHORTCUT }), hndlNumberKeys);
+  useKeyPressEvent(useKeyFilter({ key: SELECT_STH_ELEMENT_SHORTCUT }), hndlNumberKeys);
+  useKeyPressEvent(useKeyFilter({ key: SELECT_SVNTH_ELEMENT_SHORTCUT }), hndlNumberKeys);
+  useKeyPressEvent(useKeyFilter({ key: SELECT_ETH_ELEMENT_SHORTCUT }), hndlNumberKeys);
+  useKeyPressEvent(useKeyFilter({ key: SELECT_NTH_ELEMENT_SHORTCUT }), hndlNumberKeys);
 
 
   return (

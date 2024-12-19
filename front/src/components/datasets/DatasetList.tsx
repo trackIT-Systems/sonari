@@ -18,6 +18,7 @@ import Pagination from "@/components/lists/Pagination";
 import StackedList from "@/components/lists/StackedList";
 import Loading from "@/components/Loading";
 import useDatasets from "@/hooks/api/useDatasets";
+import { LIST_OVERVIEW_DOWN_SHORTCUT, SEARCH_BAR_LEAVE_SHORTCUT } from "@/utils/keyboard";
 
 import type { Dataset } from "@/types";
 
@@ -79,7 +80,7 @@ export default function DatasetList(props: {
   }, [setSelectedDataset]);
 
   const handleSearchKeyDown = useCallback((e: React.KeyboardEvent) => {
-    if (e.key === 'ArrowDown') {
+    if (e.key === LIST_OVERVIEW_DOWN_SHORTCUT) {
       e.preventDefault();
       if (datasets.items.length > 0) {
         setFocusedElement(0);
@@ -89,7 +90,7 @@ export default function DatasetList(props: {
     }
   }, [datasets.items, focusedElement, setFocusedElement, setSelectedDataset, searchInputRef]);
 
-  useKeyPressEvent(useKeyFilter({ key: "ArrowDown" }), (event) => {
+  useKeyPressEvent(useKeyFilter({ key: SEARCH_BAR_LEAVE_SHORTCUT }), (event) => {
     if (focusedElement === -1) {
       event.preventDefault();
       setFocusedElement('search');
