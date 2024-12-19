@@ -2,6 +2,7 @@ import Button from "@/components/Button";
 import { BackIcon, DragIcon, LockClosedIcon, LockOpenIcon, SearchIcon, ZoomInIcon, ZoomOutIcon } from "@/components/icons";
 import Tooltip from "@/components/Tooltip";
 import KeyboardKey from "@/components/KeyboardKey";
+import { LOCK_ASPECT_RATIO_SHORTCUT, ZOOM_SHORTCUT, ZOOM_IN_SHORTCUT, ZOOM_OUT_SHORTCUT } from "@/utils/keyboard";
 
 export default function SpectrogramControls({
   canZoom,
@@ -27,7 +28,7 @@ export default function SpectrogramControls({
           <div className="inline-flex gap-2 items-center">
             Fixed aspect ratio
             <div className="text-xs">
-              <KeyboardKey code="l" />
+              <KeyboardKey code={LOCK_ASPECT_RATIO_SHORTCUT} />
             </div>
           </div>
         }
@@ -49,7 +50,7 @@ export default function SpectrogramControls({
           <div className="inline-flex gap-2 items-center">
             Zoom to selection
             <div className="text-xs">
-              <KeyboardKey code="z" />
+              <KeyboardKey code={ZOOM_SHORTCUT} />
             </div>
           </div>
         }
@@ -64,7 +65,7 @@ export default function SpectrogramControls({
           <div className="inline-flex gap-2 items-center">
             Zoom in
             <div className="text-xs">
-              <KeyboardKey code="+" />
+              <KeyboardKey code={ZOOM_IN_SHORTCUT} />
             </div>
           </div>
         }
@@ -79,7 +80,7 @@ export default function SpectrogramControls({
           <div className="inline-flex gap-2 items-center">
             Zoom out
             <div className="text-xs">
-              <KeyboardKey code="-" />
+              <KeyboardKey code={ZOOM_OUT_SHORTCUT} />
             </div>
           </div>
         }

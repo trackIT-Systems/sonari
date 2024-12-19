@@ -1,8 +1,14 @@
 import classnames from "classnames";
 import { usePathname } from "next/navigation";
 
-import { useKeyPressEvent } from "react-use";
-import useKeyFilter from "@/hooks/utils/useKeyFilter";
+import {
+  useSpecialKeyShortcuts,
+  getMetaKeyLabel, ShortcutConfig,
+  GO_PROJECTS_SHORTCUT,
+  GO_PROFILE_SHORTCUT,
+  LOGOUT_SHORTCUT,
+  GO_DATASETS_SHORTCUT
+} from "@/utils/keyboard";
 
 import KeyboardKey from "../KeyboardKey";
 import {
@@ -20,32 +26,6 @@ import useActiveUser from "@/hooks/api/useActiveUser";
 import type { User } from "@/types";
 import type { ComponentProps } from "react";
 
-
-type ShortcutConfig = {
-  key: string;
-  action: () => void;
-  href?: string;
-}
-
-function useShiftShortcuts(shortcuts: ShortcutConfig[]) {
-  shortcuts.forEach(({ key, action }) => {
-    const filterKey = useKeyFilter({
-      key,
-      preventDefault: true,
-      stopPropagation: true,
-    });
-
-    useKeyPressEvent(
-      (event) => filterKey(event) && event.shiftKey && event.metaKey,
-      action
-    );
-  });
-}
-
-const getMetaKeyLabel = () => {
-  const isMacOS = typeof window !== 'undefined' && navigator.platform.toUpperCase().indexOf('MAC') >= 0;
-  return isMacOS ? '⌘' : 'Ctrl';
-};
 
 function SideMenuLink({
   children,
@@ -201,27 +181,32 @@ export function SideMenu({
 
   const shortcuts: ShortcutConfig[] = [
     {
-      key: "1",
+      key: GO_DATASETS_SHORTCUT,
+      shiftKey: true,
+      metaKey: true,
       action: () => { window.location.href = "/datasets" },
-      href: "/datasets"
     },
     {
-      key: "2",
+      key: GO_PROJECTS_SHORTCUT,
+      shiftKey: true,
+      metaKey: true,
       action: () => { window.location.href = "/annotation_projects" },
-      href: "/annotation_projects"
     },
     {
-      key: "9",
+      key: GO_PROFILE_SHORTCUT,
+      shiftKey: true,
+      metaKey: true,
       action: () => { window.location.href = "/profile" },
-      href: "/profile"
     },
     {
-      key: "0",
+      key: LOGOUT_SHORTCUT,
+      shiftKey: true,
+      metaKey: true,
       action: () => { onLogout() },
     }
   ];
 
-  useShiftShortcuts(shortcuts);
+  useSpecialKeyShortcuts(shortcuts);
 
   return (
     <aside

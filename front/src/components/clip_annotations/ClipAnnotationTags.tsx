@@ -3,15 +3,14 @@ import Card from "@/components/Card";
 import Empty from "@/components/Empty";
 import { H4 } from "@/components/Headings";
 import { TagsIcon, BackIcon } from "@/components/icons";
-import TagComponent, { TagCount } from "@/components/tags/Tag";
+import TagComponent, { TagCount, getTagKey } from "@/components/tags/Tag";
 import SearchMenu from "../search/SearchMenu";
 import Button from "../Button";
 import { Float } from "@headlessui-float/react";
 import { Popover } from "@headlessui/react";
 import KeyboardKey from "../KeyboardKey";
 import type { ClipAnnotation, Tag } from "@/types";
-import { getTagKey } from "@/components/tags/Tag";
-
+import { ADD_TAG_SHORTCUT, REPLACE_TAG_SHORTCUT } from "@/utils/keyboard";
 
 function NoTags() {
   return (
@@ -180,7 +179,7 @@ export default function ClipAnnotationTags({
 
   useEffect(() => {
     const handleKeyPress = (event: KeyboardEvent) => {
-      if (!(event.key === "t" || event.key === "f") ||
+      if (!(event.key === REPLACE_TAG_SHORTCUT || event.key === ADD_TAG_SHORTCUT) ||
         event.target instanceof HTMLInputElement ||
         event.target instanceof HTMLTextAreaElement) {
         return;
@@ -188,14 +187,14 @@ export default function ClipAnnotationTags({
 
       event.preventDefault();
 
-      if (event.key === "t") {
+      if (event.key === REPLACE_TAG_SHORTCUT) {
         const button = replaceButtonRef.current;
         if (button instanceof HTMLButtonElement) {
           button.click();
         }
       }
 
-      if (event.key === "f") {
+      if (event.key === ADD_TAG_SHORTCUT) {
         const button = addButtonRef.current;
         if (button instanceof HTMLButtonElement) {
           button.click();
@@ -292,7 +291,7 @@ export default function ClipAnnotationTags({
                       <div className="inline-flex gap-2 items-center">
                         Replace Tags in Task
                         <div className="text-xs">
-                          <KeyboardKey code="t" />
+                          <KeyboardKey code={REPLACE_TAG_SHORTCUT} />
                         </div>
                       </div>
                     </div>
@@ -363,7 +362,7 @@ export default function ClipAnnotationTags({
                       <div className="inline-flex gap-2 items-center">
                         Add Tags to all Sound Events
                         <div className="text-xs">
-                          <KeyboardKey code="f" />
+                          <KeyboardKey code={ADD_TAG_SHORTCUT} />
                         </div>
                       </div>
                     </div>

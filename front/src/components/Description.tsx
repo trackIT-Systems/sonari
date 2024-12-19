@@ -4,6 +4,7 @@ import { useState } from "react";
 import { EditIcon } from "@/components/icons";
 
 import type { FC, HTMLAttributes, ReactNode } from "react";
+import { ABORT_SHORTCUT, ACCEPT_SHORTCUT } from "@/utils/keyboard";
 
 export function DescriptionData({
   children,
@@ -77,11 +78,11 @@ export function EditableDescriptionData<T, S>({
         value={localValue}
         /* @ts-ignore */
         onKeyDown={(e) => {
-          if (e.key === "Enter" && !e.shiftKey) {
+          if (e.key === ACCEPT_SHORTCUT && !e.shiftKey) {
             onChange(localValue);
             setEditing(false);
           }
-          if (e.key === "Escape") {
+          if (e.key === ABORT_SHORTCUT) {
             setLocalValue(value);
             setEditing(false);
           }

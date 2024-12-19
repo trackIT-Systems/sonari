@@ -1,6 +1,7 @@
 import { type HTMLProps, useEffect, useRef, useState } from "react";
 
 import TableCell from "@/components/tables/TableCell";
+import { ABORT_SHORTCUT, ACCEPT_SHORTCUT } from "@/utils/keyboard";
 
 export default function TableInput({
   value: initialValue,
@@ -46,11 +47,11 @@ export default function TableInput({
       placeholder={initialValue}
       onChange={(e) => setValue(e.target.value)}
       onKeyDown={(e) => {
-        if (e.key === "Escape") {
+        if (e.key === ABORT_SHORTCUT) {
           setActive(false);
           setValue(initialValue);
           ref.current?.parentElement?.focus();
-        } else if (e.key === "Enter") {
+        } else if (e.key === ACCEPT_SHORTCUT) {
           setActive(false);
           onChange?.(value);
           ref.current?.parentElement?.focus();

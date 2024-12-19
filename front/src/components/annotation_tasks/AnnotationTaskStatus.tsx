@@ -5,6 +5,8 @@ import StatusBadge from "@/components/StatusBadge";
 import Tooltip from "@/components/Tooltip";
 import KeyboardKey from "@/components/KeyboardKey";
 
+import { ACCEPT_TASK_SHORTCUT, REJECT_TASK_SHORTCUT, UNSURE_TASK_SHORTCUT, VERIFY_TASK_SHORTCUT } from "@/utils/keyboard";
+
 import type { AnnotationStatus, AnnotationTask } from "@/types";
 
 export default function AnnotationTaskStatus({
@@ -43,7 +45,7 @@ export default function AnnotationTaskStatus({
             <div className="inline-flex gap-2 items-center">
               Accept
               <div className="text-xs">
-                <KeyboardKey code="a" />
+                <KeyboardKey code={ACCEPT_TASK_SHORTCUT} />
               </div>
             </div>
           }
@@ -59,7 +61,7 @@ export default function AnnotationTaskStatus({
             <div className="inline-flex gap-2 items-center">
               Unsure
               <div className="text-xs">
-                <KeyboardKey code="u" />
+                <KeyboardKey code={UNSURE_TASK_SHORTCUT} />
               </div>
             </div>
           }
@@ -75,7 +77,7 @@ export default function AnnotationTaskStatus({
             <div className="inline-flex gap-2 items-center">
               Reject
               <div className="text-xs">
-                <KeyboardKey code="r" />
+                <KeyboardKey code={REJECT_TASK_SHORTCUT} />
               </div>
             </div>
           }
@@ -91,7 +93,7 @@ export default function AnnotationTaskStatus({
             <div className="inline-flex gap-2 items-center">
               Verify
               <div className="text-xs">
-                <KeyboardKey code="v" />
+                <KeyboardKey code={VERIFY_TASK_SHORTCUT} />
               </div>
             </div>
           }

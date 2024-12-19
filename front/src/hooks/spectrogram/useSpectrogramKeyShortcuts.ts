@@ -3,16 +3,17 @@ import { useKeyPressEvent } from "react-use";
 import useKeyFilter from "@/hooks/utils/useKeyFilter";
 
 import type { KeyShortcut } from "@/hooks/utils/useKeyFilter";
+import { LOCK_ASPECT_RATIO_SHORTCUT, ZOOM_SHORTCUT, ZOOM_IN_SHORTCUT, ZOOM_OUT_SHORTCUT, MOVE_LEFT_SHORTCUT, MOVE_RIGHT_SHORTCUT } from "@/utils/keyboard";
 
 export const SPECTROGRAM_KEY_SHORTCUTS: KeyShortcut[] = [
   {
     label: "Zoom in",
-    shortcut: "z",
+    shortcut: ZOOM_SHORTCUT,
     description: "Zoom into a selection of the spectrogram",
   },
   {
     label: "Fix aspect ratio",
-    shortcut: "l",
+    shortcut: LOCK_ASPECT_RATIO_SHORTCUT,
     description: "Toggle fixed aspect ratio for zoom",
   },
   {
@@ -46,10 +47,10 @@ export default function useAnnotateClipKeyShortcuts(props: {
     enabled = true 
   } = props;
 
-  useKeyPressEvent(useKeyFilter({ enabled, key: "z" }), onGoZoom);
-  useKeyPressEvent(useKeyFilter({ enabled, key: "+" }), onZoomIn);
-  useKeyPressEvent(useKeyFilter({ enabled, key: "-" }), onZoomOut);
-  useKeyPressEvent(useKeyFilter({ enabled, key: "l" }), onToggleAspectRatio);
-  useKeyPressEvent(useKeyFilter({ enabled, key: "ArrowLeft" }), onMoveLeft);
-  useKeyPressEvent(useKeyFilter({ enabled, key: "ArrowRight" }), onMoveRight);
+  useKeyPressEvent(useKeyFilter({ enabled, key: ZOOM_SHORTCUT }), onGoZoom);
+  useKeyPressEvent(useKeyFilter({ enabled, key: ZOOM_IN_SHORTCUT }), onZoomIn);
+  useKeyPressEvent(useKeyFilter({ enabled, key: ZOOM_OUT_SHORTCUT }), onZoomOut);
+  useKeyPressEvent(useKeyFilter({ enabled, key: LOCK_ASPECT_RATIO_SHORTCUT }), onToggleAspectRatio);
+  useKeyPressEvent(useKeyFilter({ enabled, key: MOVE_LEFT_SHORTCUT }), onMoveLeft);
+  useKeyPressEvent(useKeyFilter({ enabled, key: MOVE_RIGHT_SHORTCUT }), onMoveRight);
 }

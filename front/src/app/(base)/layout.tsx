@@ -5,7 +5,6 @@ import toast from "react-hot-toast";
 
 import Loading from "@/app/loading";
 import { WhombatIcon } from "@/components/icons";
-import { NavBar } from "@/components/navigation/NavBar";
 import { SideMenu } from "@/components/navigation/SideMenu";
 import useActiveUser from "@/hooks/api/useActiveUser";
 

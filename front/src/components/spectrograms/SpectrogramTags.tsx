@@ -12,6 +12,7 @@ import { getTagKey, getTagColor } from "../tags/Tag";
 import type { TagFilter } from "@/api/tags";
 import type { TagElement, TagGroup } from "@/utils/tags";
 import type { Tag as TagType } from "@/types";
+import { ABORT_SHORTCUT, ACCEPT_SHORTCUT } from "@/utils/keyboard";
 
 function TagBarPopover({
   onClose,
@@ -34,9 +35,9 @@ function TagBarPopover({
       onCreate={onCreate}
       autoFocus={true}
       onKeyDown={(e) => {
-        if (e.key === "Escape") {
+        if (e.key === ABORT_SHORTCUT) {
           onClose?.();
-        } else if (e.key === "Enter") {
+        } else if (e.key === ACCEPT_SHORTCUT) {
           onClose?.();
         }
       }}

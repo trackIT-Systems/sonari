@@ -14,6 +14,7 @@ import {
 import KeyboardKey from "@/components/KeyboardKey";
 import Select from "@/components/inputs/Select";
 import Tooltip from "@/components/Tooltip";
+import { CREATE_SOUND_EVENT_SHORTCUT, DELETE_SOUND_EVENT_SHORTCUT, SELECT_SOUND_EVENT_SHORTCUT } from "@/utils/keyboard";
 
 import type { GeometryType } from "@/types";
 
@@ -78,7 +79,7 @@ export default function AnnotationControls({
             <div className="inline-flex gap-1">
               Select
               <span className="text-xs">
-                <KeyboardKey code="s" />
+                <KeyboardKey code={SELECT_SOUND_EVENT_SHORTCUT} />
               </span>
             </div>
           }
@@ -102,7 +103,7 @@ export default function AnnotationControls({
           <div className="inline-flex gap-1">
             Create
             <span className="text-xs">
-              <KeyboardKey code="c" />
+              <KeyboardKey code={CREATE_SOUND_EVENT_SHORTCUT} />
             </span>
           </div>
         }
@@ -119,7 +120,7 @@ export default function AnnotationControls({
             <div className="inline-flex gap-1">
               Select
               <span className="text-xs">
-                <KeyboardKey code="s" />
+                <KeyboardKey code={SELECT_SOUND_EVENT_SHORTCUT} />
               </span>
             </div>
           }
@@ -143,7 +144,7 @@ export default function AnnotationControls({
           <div className="inline-flex gap-1">
             Delete
             <span className="text-xs">
-              <KeyboardKey code="d" />
+              <KeyboardKey code={DELETE_SOUND_EVENT_SHORTCUT} />
             </span>
           </div>
         }

@@ -5,7 +5,7 @@ import drawGeometry from "@/draw/geometry";
 import { ORANGE } from "@/draw/styles";
 import useHoveredAnnotation from "@/hooks/annotation/useHoveredAnnotation";
 import { scaleGeometryToViewport } from "@/utils/geometry";
-
+import { ABORT_SHORTCUT } from "@/utils/keyboard";
 import type {
   Dimensions,
   SoundEventAnnotation,
@@ -44,7 +44,7 @@ export default function useAnnotationSelect({
 
   useEffect(() => {
     const handleKeyPress = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
+      if (event.key === ABORT_SHORTCUT) {
         onDeselect?.();
         return;
       }

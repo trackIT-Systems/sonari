@@ -5,6 +5,7 @@ import DatasetSearch from "@/components/datasets/DatasetSearch";
 import { CheckIcon, CloseIcon } from "@/components/icons";
 import Checkbox from "@/components/tables/TableCheckbox";
 import TagSearchBar from "@/components/tags/TagSearchBar";
+import { ACCEPT_SHORTCUT } from "@/utils/keyboard";
 
 import type { Dataset, NumberFilter, Tag } from "@/types";
 
@@ -59,7 +60,7 @@ function FloatField({
           className="block py-1 pr-14 pl-14 w-full rounded-md border-0 ring-1 ring-inset outline-none sm:text-sm sm:leading-6 focus:ring-2 focus:ring-inset focus:ring-emerald-600 bg-stone-50 text-stone-900 ring-stone-300 placeholder:text-stone-400 dark:bg-stone-900 dark:text-stone-300 dark:ring-stone-800"
           value={value}
           onKeyDown={(e) => {
-            if (e.key === "Enter") {
+            if (e.key === ACCEPT_SHORTCUT) {
               onSubmit();
             }
           }}

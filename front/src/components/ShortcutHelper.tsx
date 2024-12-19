@@ -6,6 +6,7 @@ import Button from "@/components/Button";
 import { useKeyPressEvent } from "react-use";
 
 import useKeyFilter from "@/hooks/utils/useKeyFilter";
+import { HELP_SHORTCUT } from "@/utils/keyboard";
 
 type Shortcut = {
   label: string;
@@ -19,7 +20,7 @@ export default function ShortcutHelper({
   shortcuts?: Shortcut[];
 } = {}) {
   const [show, setShow] = useState(false);
-  useKeyPressEvent(useKeyFilter({ key: "h" }), () => setShow((v) => !v));
+  useKeyPressEvent(useKeyFilter({ key: HELP_SHORTCUT }), () => setShow((v) => !v));
 
   return (
     <>
@@ -47,7 +48,7 @@ export default function ShortcutHelper({
             <tbody>
               <tr>
                 <td className="p-2 border border-stone-500 text-center">
-                  <KeyboardKey code={"h"} />
+                  <KeyboardKey code={HELP_SHORTCUT} />
                 </td>
                 <td className="p-2 border border-stone-500 text-center font-bold">
                   Help
@@ -59,7 +60,7 @@ export default function ShortcutHelper({
               {shortcuts?.map((shortcut) => (
                 <tr key={shortcut.shortcut}>
                   <td className="p-2 border border-stone-500 text-center">
-                    <KeyboardKey code={shortcut.shortcut.trim() || "Space"} />
+                    <KeyboardKey code={shortcut.shortcut.trim() || " "} />
                   </td>
                   <td className="p-2 border border-stone-500 text-center font-bold">
                     {shortcut.label}

@@ -19,6 +19,7 @@ import useTags from "@/hooks/api/useTags";
 import type { TagCreate, TagFilter } from "@/api/tags";
 import type { Tag as TagType } from "@/types";
 import type { InputHTMLAttributes, KeyboardEvent } from "react";
+import { ACCEPT_SHORTCUT } from "@/utils/keyboard";
 
 function ComboBoxSection({ children }: { children: React.ReactNode }) {
   return (
@@ -35,7 +36,7 @@ function CreateNewTag({ tag: { key, value } }: { tag: TagCreate }) {
         <div className="relative py-2 px-4 cursor-default select-none">
           To create a new tag, type the tag in the format{" "}
           <code className="text-emerald-500">key:value</code> and press{" "}
-          <KeyboardKey code="Shift" />+<KeyboardKey code="Enter" />
+          <KeyboardKey code="Shift" />+<KeyboardKey code={ACCEPT_SHORTCUT} />
         </div>
       </ComboBoxSection>
     );
@@ -46,7 +47,7 @@ function CreateNewTag({ tag: { key, value } }: { tag: TagCreate }) {
       <div className="relative py-2 px-4 cursor-default select-none">
         Create the tag{" "}
         <Tag disabled tag={{ key, value }} color="blue" count={null}/> by pressing{" "}
-        <KeyboardKey code="Shift" />+<KeyboardKey code="Enter" />
+        <KeyboardKey code="Shift" />+<KeyboardKey code={ACCEPT_SHORTCUT} />
       </div>
     </ComboBoxSection>
   );
@@ -138,7 +139,7 @@ export default forwardRef<HTMLInputElement, TagSearchBarProps>(
               autoFocus={autoFocus}
               onChange={(event) => setQuery(event.target.value)}
               onKeyDown={(event) => {
-                if (event.key === "Enter" && event.shiftKey && canCreate) {
+                if (event.key === ACCEPT_SHORTCUT && event.shiftKey && canCreate) {
                   event.preventDefault();
                   if (key && value) {
                     tags.create.mutate(

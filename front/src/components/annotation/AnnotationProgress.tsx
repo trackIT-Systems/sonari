@@ -18,6 +18,7 @@ import { ANNOTATION_KEY_SHORTCUTS } from "@/hooks/annotation/useAnnotateClipKeyS
 import type { AnnotationTaskFilter } from "@/api/annotation_tasks";
 import type { Filter } from "@/hooks/utils/useFilter";
 import type { AnnotationTask } from "@/types";
+import { NEXT_TASK_SHORTCUT, PREV_TASK_SHORTCUT } from "@/utils/keyboard";
 
 const SHORTCUTS = [
   ...AUDIO_KEY_SHORTCUTS,
@@ -55,7 +56,7 @@ export default function AnnotationProgress({
           <div className="inline-flex gap-2 items-center">
             Previous Task
             <div className="text-xs">
-              <KeyboardKey code="p" />
+              <KeyboardKey code={PREV_TASK_SHORTCUT} />
             </div>
           </div>
         }
@@ -141,7 +142,7 @@ export default function AnnotationProgress({
           <div className="inline-flex gap-2 items-center">
             Next Task
             <div className="text-xs">
-              <KeyboardKey code="n" />
+              <KeyboardKey code={NEXT_TASK_SHORTCUT} />
             </div>
           </div>
         }

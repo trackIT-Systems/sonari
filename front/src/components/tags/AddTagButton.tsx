@@ -4,6 +4,7 @@ import { Float } from "@headlessui-float/react";
 import Button from "@/components/Button";
 import { AddIcon } from "@/components/icons";
 import TagSearchBar from "@/components/tags/TagSearchBar";
+import { ABORT_SHORTCUT, ACCEPT_SHORTCUT } from "@/utils/keyboard";
 
 import type { TagFilter } from "@/api/tags";
 import type { Tag as TagType } from "@/types";
@@ -33,9 +34,9 @@ function TagBarPopover({
       }}
       autoFocus={true}
       onKeyDown={(e) => {
-        if (e.key === "Escape") {
+        if (e.key === ABORT_SHORTCUT) {
           onClose?.();
-        } else if (e.key === "Enter") {
+        } else if (e.key === ACCEPT_SHORTCUT) {
           onClose?.();
         }
       }}

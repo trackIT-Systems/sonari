@@ -17,6 +17,8 @@ import { Popover } from "@headlessui/react";
 import SearchMenu from "@/components/search/SearchMenu";
 import TagComponent, { getTagKey } from "@/components/tags/Tag";
 
+import { SOUND_EVENT_CYCLE_FILTER_SHORTCUT, DELETE_TAG_SHORTCUT, ABORT_SHORTCUT } from "@/utils/keyboard";
+
 import type { AnnotationTaskFilter } from "@/api/annotation_tasks";
 import type { TagFilter } from "@/api/tags";
 import type {
@@ -157,14 +159,14 @@ export default function AnnotateTasks({
 
   useEffect(() => {
     const handleKeyPress = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
+      if (event.key === ABORT_SHORTCUT) {
         setIsDeletePopoverOpen(false);
         setIsTagPopoverOpen(false);
         return;
       }
 
       if (
-        event.key === "y" &&
+        event.key === DELETE_TAG_SHORTCUT &&
         !(event.target instanceof HTMLInputElement) &&
         !(event.target instanceof HTMLTextAreaElement)
       ) {
@@ -173,7 +175,7 @@ export default function AnnotateTasks({
       }
 
       if (
-        event.key === "m" &&
+        event.key === SOUND_EVENT_CYCLE_FILTER_SHORTCUT &&
         !(event.target instanceof HTMLInputElement) &&
         !(event.target instanceof HTMLTextAreaElement)
       ) {
