@@ -53,26 +53,6 @@ export default function DatasetNavHeader({ dataset }: { dataset: Dataset }) {
                 );
               },
             },
-            // {
-            //   id: "sound_events",
-            //   title: "Sound Events",
-            //   icon: <icons.SoundEventIcon className="w-4 h-4 align-middle" />,
-            //   isActive: selectedLayoutSegment === "sound_events",
-            //   onClick: () => {
-            //     router.push(
-            //       `/datasets/detail/sound_events/?${params.toString()}`,
-            //     );
-            //   },
-            // },
-            // {
-            //   id: "notes",
-            //   icon: <icons.NotesIcon className="w-4 h-4 align-middle" />,
-            //   title: "Notes",
-            //   isActive: selectedLayoutSegment === "notes",
-            //   onClick: () => {
-            //     router.push(`/datasets/detail/notes/?${params.toString()}`);
-            //   },
-            // },
           ]}
         />
       </div>

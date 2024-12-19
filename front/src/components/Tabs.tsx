@@ -1,7 +1,22 @@
 import classnames from "classnames";
 import Link from "next/link";
+import { useCallback } from "react";
+import useKeyFilter from "@/hooks/utils/useKeyFilter";
+import { useKeyPressEvent } from "react-use";
 
 import type { ButtonHTMLAttributes, ComponentProps, ReactNode } from "react";
+import {
+  NAVIGATE_FST_ELEMENT_SHORTCUT,
+  NAVIGATE_SND_ELEMENT_SHORTCUT,
+  NAVIGATE_TRD_ELEMENT_SHORTCUT,
+  NAVIGATE_FOT_ELEMENT_SHORTCUT,
+  NAVIGATE_FTH_ELEMENT_SHORTCUT,
+  NAVIGATE_STH_ELEMENT_SHORTCUT,
+} from "@/utils/keyboard";
+
+import Tooltip from "./Tooltip";
+import KeyboardKey from "./KeyboardKey";
+
 
 type TabType = {
   id: string | number;
@@ -65,32 +80,86 @@ function TabLink({
   );
 }
 
+function TabContent({ tab, shortcutNumber }: { tab: TabType; shortcutNumber?: number }) {
+  const content = (
+    <>
+      {tab.icon ? (
+        <span className="mr-1 inline-block align-middle">
+          {tab.icon}
+        </span>
+      ) : null}
+      {tab.title}
+    </>
+  );
+
+  if (shortcutNumber !== undefined) {
+    return <Tooltip
+      tooltip={
+        <div className="inline-flex gap-2 items-center">
+          Press
+          <div className="text-xs">
+            <KeyboardKey code={shortcutNumber?.toString()} />
+          </div>
+        </div>
+      }
+      placement="bottom"
+      offset={20}
+    >
+      {content}
+    </Tooltip>
+  }
+
+  return content;
+}
+
 export default function Tabs({ tabs }: { tabs: TabType[] }) {
+  const handleNumberKey = useCallback((event: KeyboardEvent) => {
+    if (event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement) {
+      return;
+    }
+
+    const keyNumber = parseInt(event.key);
+    if ((keyNumber >= 5 && keyNumber <= 9) || keyNumber == 0) {
+      var tabIndex = keyNumber - 5;
+      if (keyNumber == 0) tabIndex = 5;
+
+      if (tabIndex < tabs.length && tabIndex < 6) {
+        const tab = tabs[tabIndex];
+        if (tab.onClick) {
+          tab.onClick();
+        } else if (tab.href) {
+          window.location.href = tab.href;
+        }
+      }
+    }
+  }, []);
+
+  useKeyPressEvent(useKeyFilter({ key: NAVIGATE_FST_ELEMENT_SHORTCUT }), handleNumberKey);
+  useKeyPressEvent(useKeyFilter({ key: NAVIGATE_SND_ELEMENT_SHORTCUT }), handleNumberKey);
+  useKeyPressEvent(useKeyFilter({ key: NAVIGATE_TRD_ELEMENT_SHORTCUT }), handleNumberKey);
+  useKeyPressEvent(useKeyFilter({ key: NAVIGATE_FOT_ELEMENT_SHORTCUT }), handleNumberKey);
+  useKeyPressEvent(useKeyFilter({ key: NAVIGATE_FTH_ELEMENT_SHORTCUT }), handleNumberKey);
+  useKeyPressEvent(useKeyFilter({ key: NAVIGATE_STH_ELEMENT_SHORTCUT }), handleNumberKey);
+
   return (
     <ul className="flex space-x-4">
-      {tabs.map((tab) => (
-        <li key={tab.id}>
-          {tab.href != null ? (
-            <TabLink href={tab.href} active={tab.isActive}>
-              {tab.icon ? (
-                <span className="mr-1 inline-block align-middle">
-                  {tab.icon}
-                </span>
-              ) : null}
-              {tab.title}
-            </TabLink>
-          ) : (
-            <TabButton onClick={tab.onClick} active={tab.isActive}>
-              {tab.icon ? (
-                <span className="mr-1 inline-block align-middle">
-                  {tab.icon}
-                </span>
-              ) : null}
-              {tab.title}
-            </TabButton>
-          )}
-        </li>
-      ))}
+      {tabs.map((tab, index) => {
+        const shortcutNumber = index < 6 ? (index + 5) % 10 : undefined;
+
+        return (
+          <li key={tab.id}>
+            {tab.href != null ? (
+              <TabLink href={tab.href} active={tab.isActive}>
+                <TabContent tab={tab} shortcutNumber={shortcutNumber} />
+              </TabLink>
+            ) : (
+              <TabButton onClick={tab.onClick} active={tab.isActive}>
+                <TabContent tab={tab} shortcutNumber={shortcutNumber} />
+              </TabButton>
+            )}
+          </li>
+        );
+      })}
     </ul>
   );
 }
