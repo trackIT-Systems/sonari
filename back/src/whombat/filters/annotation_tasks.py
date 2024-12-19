@@ -4,7 +4,7 @@ from datetime import datetime, time
 from uuid import UUID
 
 from soundevent import data
-from sqlalchemy import Select, and_, exists, func, not_, or_, select
+from sqlalchemy import Select, and_, exists, func, not_, select
 
 from whombat import models
 from whombat.api.users import detector_users
@@ -29,18 +29,22 @@ class RecordingTagFilter(base.Filter):
         if self.key is None and self.value is None:
             return query
 
+        # Should use aliases to avoid ambiguity
+        Recording = models.Recording.__table__.alias("recording_tag_recording")
+        Clip = models.Clip.__table__.alias("recording_tag_clip")
+
         query = (
             query.join(
-                models.Clip,
-                models.Clip.id == models.AnnotationTask.clip_id,
+                Clip,
+                Clip.c.id == models.AnnotationTask.clip_id,
             )
             .join(
-                models.Recording,
-                models.Recording.id == models.Clip.recording_id,
+                Recording,
+                Recording.c.id == Clip.c.recording_id,
             )
             .join(
                 models.RecordingTag,
-                models.RecordingTag.recording_id == models.Recording.id,
+                models.RecordingTag.recording_id == Recording.c.id,
             )
             .join(
                 models.Tag,
@@ -207,22 +211,25 @@ class DatasetFilter(base.Filter):
     eq: UUID | None = None
 
     def filter(self, query: Select) -> Select:
-        """Filter the query."""
         if not self.eq:
             return query
 
+        # Should use aliases
+        Recording = models.Recording.__table__.alias("dataset_recording")
+        Clip = models.Clip.__table__.alias("dataset_clip")
+
         return (
             query.join(
-                models.Clip,
-                models.Clip.id == models.AnnotationTask.clip_id,
+                Clip,
+                Clip.c.id == models.AnnotationTask.clip_id,
             )
             .join(
-                models.Recording,
-                models.Recording.id == models.Clip.recording_id,
+                Recording,
+                Recording.c.id == Clip.c.recording_id,
             )
             .join(
                 models.DatasetRecording,
-                models.DatasetRecording.recording_id == models.Recording.id,
+                models.DatasetRecording.recording_id == Recording.c.id,
             )
             .join(
                 models.Dataset,
@@ -239,24 +246,30 @@ class SearchRecordingsFilter(base.Filter):
 
     def filter(self, query: Select) -> Select:
         """Filter the query."""
+        if not self.search_recordings:
+            return query
+
+        # Use specific aliases for both Recording and Clip tables
+        Recording = models.Recording.__table__.alias("search_recording")
+        Clip = models.Clip.__table__.alias("search_clip")
+
         query = (
             query.join(
                 models.ClipAnnotation,
                 models.AnnotationTask.clip_annotation_id == models.ClipAnnotation.id,
             )
             .join(
-                models.Clip,
-                models.ClipAnnotation.clip_id == models.Clip.id,
+                Clip,
+                models.ClipAnnotation.clip_id == Clip.c.id,
             )
             .join(
-                models.Recording,
-                models.Recording.id == models.Clip.recording_id,
+                Recording,
+                Recording.c.id == Clip.c.recording_id,
             )
         )
-        fields = [models.Recording.path]
 
         term = f"%{self.search_recordings}%"
-        return query.where(or_(*[field.ilike(term) for field in fields]))
+        return query.where(Recording.c.path.ilike(term))
 
 
 class SoundEventAnnotationTagFilter(base.Filter):
@@ -298,9 +311,12 @@ class DateRangeFilter(base.Filter):
     end_time: str | None = None
 
     def filter(self, query: Select) -> Select:
-        """Filter the query."""
         if self.start_date is None and self.end_date is None and self.start_time is None and self.end_time is None:
             return query
+
+        # Should use aliases
+        Recording = models.Recording.__table__.alias("date_range_recording")
+        Clip = models.Clip.__table__.alias("date_range_clip")
 
         query = (
             query.join(
@@ -308,12 +324,12 @@ class DateRangeFilter(base.Filter):
                 models.AnnotationTask.clip_annotation_id == models.ClipAnnotation.id,
             )
             .join(
-                models.Clip,
-                models.ClipAnnotation.clip_id == models.Clip.id,
+                Clip,
+                models.ClipAnnotation.clip_id == Clip.c.id,
             )
             .join(
-                models.Recording,
-                models.Recording.id == models.Clip.recording_id,
+                Recording,
+                Recording.c.id == Clip.c.recording_id,
             )
         )
 
@@ -321,15 +337,14 @@ class DateRangeFilter(base.Filter):
         start_date = None
         end_date = None
 
-        # Handle date range
+        # Update conditions to use aliased tables
         if self.start_date:
             start_date = datetime.strptime(self.start_date[:-1], "%Y-%m-%dT%H:%M:%S.%f").date()
-            conditions.append(models.Recording.date >= start_date)
+            conditions.append(Recording.c.date >= start_date)
         if self.end_date:
             end_date = datetime.strptime(self.end_date[:-1], "%Y-%m-%dT%H:%M:%S.%f").date()
-            conditions.append(models.Recording.date <= end_date)
+            conditions.append(Recording.c.date <= end_date)
 
-        # Handle time range
         if self.start_time or self.end_time:
             start_time = (
                 datetime.strptime(self.start_time[:-1], "%Y-%m-%dT%H:%M:%S.%f").time() if self.start_time else time.min
@@ -338,20 +353,19 @@ class DateRangeFilter(base.Filter):
                 datetime.strptime(self.end_time[:-1], "%Y-%m-%dT%H:%M:%S.%f").time() if self.end_time else time.max
             )
 
-            # Create a virtual datetime column for comparison
-            virtual_datetime = func.datetime(models.Recording.date, models.Recording.time)
+            virtual_datetime = func.datetime(Recording.c.date, Recording.c.time)
 
             if start_date and self.start_time:
                 start_datetime = datetime.combine(start_date, start_time)
                 conditions.append(virtual_datetime >= start_datetime)
             elif self.start_time:
-                conditions.append(models.Recording.time >= start_time)
+                conditions.append(Recording.c.time >= start_time)
 
             if end_date and self.end_time:
                 end_datetime = datetime.combine(end_date, end_time)
                 conditions.append(virtual_datetime <= end_datetime)
             elif self.end_time:
-                conditions.append(models.Recording.time <= end_time)
+                conditions.append(Recording.c.time <= end_time)
 
         return query.where(and_(*conditions))
 
