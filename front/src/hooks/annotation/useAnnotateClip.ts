@@ -519,7 +519,7 @@ function useAnnotateClipState({
         onSelectAnnotation?.(null);
       }
     },
-    [onChangeMode, onSelectAnnotation, disabled],
+    [onChangeMode, onSelectAnnotation, setSelectedAnnotation, disabled],
   );
 
   const changeGeometryType = useCallback(
@@ -537,7 +537,7 @@ function useAnnotateClipState({
       if (disabled) return;
       changeMode("edit");
     },
-    [onSelectAnnotation, changeMode, disabled],
+    [onSelectAnnotation, changeMode, setSelectedAnnotation, disabled],
   );
 
   return {

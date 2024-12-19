@@ -246,7 +246,7 @@ export default function ClipAnnotationSpectrogram({
 
   const handleClearSelectedTag = useCallback(() => {
     onClearSelectedTag(null);
-  }, []);
+  }, [onClearSelectedTag]);
 
   const props = isAnnotating ? annotateProps : spectrogramProps;
   return (

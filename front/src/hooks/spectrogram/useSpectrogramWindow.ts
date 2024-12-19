@@ -51,7 +51,7 @@ export default function useSpectrogramWindow({
       parameters,
       lowRes,
     });
-  }, [recording, spectrogramWindow.time, parameters, getSpectrogramImageUrl]);
+  }, [recording, spectrogramWindow.time, parameters, lowRes, getSpectrogramImageUrl]);
 
   // Start loading the image
   const { isLoading, isError, image } = useImage({ url, withSpectrogram: withSpectrogram });
