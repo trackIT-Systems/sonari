@@ -14,6 +14,9 @@ import FilterBar from "@/components/filters/FilterBar";
 import Table from "@/components/tables/Table";
 import Pagination from "@/components/lists/Pagination";
 import { LIST_OVERVIEW_DOWN_SHORTCUT, SEARCH_BAR_LEAVE_SHORTCUT } from "@/utils/keyboard";
+import Button from "../Button";
+import { FilterIcon } from "../icons";
+import { FILTER_POPOVER_SHORTCUT } from "@/utils/keyboard";
 
 export default function AnnotationTaskTable({
   filter,
@@ -30,6 +33,7 @@ export default function AnnotationTaskTable({
   const searchInputRef = useRef<HTMLInputElement>(null);
   const [focusedElement, setFocusedElement] = useState<'search' | 'filter' | number>(-1);
   const router = useRouter();
+  const popoverButtonRef = useRef<HTMLButtonElement>(null);
 
   const table = useAnnotationTaskTable({
     data: annotationTasks.items,
@@ -71,6 +75,22 @@ export default function AnnotationTaskTable({
     }
   }, [router, getAnnotationTaskLink]);
 
+  const btn = <Button
+    padding="0"
+    className="border-none"
+    autoFocus={false}
+    ref={popoverButtonRef}
+  >
+    <FilterIcon className="h-4 w-4 stroke-2" />
+  </Button>
+
+  useKeyPressEvent(FILTER_POPOVER_SHORTCUT, () => {
+    const button = popoverButtonRef.current;
+    if (button instanceof HTMLButtonElement && focusedElement !== 'search' && focusedElement !== 'filter') {
+      button.click();
+    }
+  });
+
   if (annotationTasks.isLoading || annotationTasks.data == null) {
     return <Loading />;
   }
@@ -94,6 +114,9 @@ export default function AnnotationTaskTable({
           <FilterPopover
             filter={annotationTasks.filter}
             filterDef={annotationTaskFilterDefs}
+            button={btn}
+            
+
           />
         </div>
       </div>
@@ -104,8 +127,8 @@ export default function AnnotationTaskTable({
       />
       <div className="w-full">
         <div className="overflow-x-auto overflow-y-auto w-full max-h-screen rounded-md outline outline-1 outline-stone-200 dark:outline-stone-800">
-          <Table 
-            table={table} 
+          <Table
+            table={table}
             selectedIndex={typeof focusedElement === 'number' ? focusedElement : -1}
             onFocusChange={handleTableFocus}
             onSelect={handleSelect}
