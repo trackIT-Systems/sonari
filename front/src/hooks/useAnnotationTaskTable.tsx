@@ -1,20 +1,34 @@
-import type {AnnotationStatusBadge, AnnotationTask, Note, Recording, Tag} from "@/types";
-import {useMemo} from "react";
-import {ColumnDef, getCoreRowModel, useReactTable, createColumnHelper} from "@tanstack/react-table";
+import type { AnnotationStatusBadge, AnnotationTask, Note, Recording, Tag } from "@/types";
+import { useMemo } from "react";
+import { ColumnDef, getCoreRowModel, useReactTable, createColumnHelper } from "@tanstack/react-table";
 import TableHeader from "@/components/tables/TableHeader";
 import TableCell from "@/components/tables/TableCell";
 import StatusBadge from "@/components/StatusBadge";
 import TagComponent, { TagCount, getTagKey } from "@/components/tags/Tag";
-import {SunIcon} from "@/components/icons";
 import Link from "next/link";
+import { NoteIcon } from "@/components/icons";
 
 const defaultPathFormatter = (path: string) => path;
 
+function NoteOverview({
+  note,
+}: {
+  note: Note;
+}) {
+  return (
+    <li className="mb-2 pb-2 border-b border-stone-600 last:border-b-0">
+      <NoteIcon className="inline-block w-3 h-3 text-stone-500" />
+      <span className="text-sm text-stone-500 pl-2">{note.message}</span>
+    </li>
+  );
+}
+
+
 export default function useAnnotationTaskTable({
-                                                 data,
-                                                 pathFormatter = defaultPathFormatter,
-                                                 getAnnotationTaskLink,
-                                               }: {
+  data,
+  pathFormatter = defaultPathFormatter,
+  getAnnotationTaskLink,
+}: {
   data: AnnotationTask[];
   pathFormatter?: (path: string) => string;
   getAnnotationTaskLink?: (annotationTask: AnnotationTask) => string;
@@ -29,7 +43,7 @@ export default function useAnnotationTaskTable({
         enableResizing: true,
         size: 100,
         accessorFn: (row) => row.clip?.recording,
-        cell: ({row}) => {
+        cell: ({ row }) => {
           const recording = row.getValue("recording") as Recording;
           return (
             <TableCell>
@@ -44,35 +58,25 @@ export default function useAnnotationTaskTable({
         },
       },
       {
-        id: "start",
-        header: () => <TableHeader>Start</TableHeader>,
+        id: "duration",
+        header: () => <TableHeader>Duration</TableHeader>,
         enableResizing: true,
         size: 30,
-        accessorFn: (row) => row.clip?.start_time,
-        cell: ({row}) => {
-          const start = row.getValue("start") as string;
-          return <TableCell>{start}</TableCell>;
-        },
-      },
-      {
-        id: "end",
-        header: () => <TableHeader>End</TableHeader>,
-        enableResizing: true,
-        size: 30,
-        accessorFn: (row) => row.clip?.end_time,
-        cell: ({row}) => {
-          const end = row.getValue("end") as string;
-          return <TableCell>{end}</TableCell>;
+        accessorFn: (row) => row.clip,
+        cell: ({ row }) => {
+          const { start_time, end_time } = row.getValue("duration")
+          const duration = ((end_time - start_time) as number).toFixed(2);
+          return <TableCell>{duration}</TableCell>;
         },
       },
       {
         id: "sound_event_tags",
-        header: () => <TableHeader>Sound Event Tags</TableHeader>,
+        header: () => <TableHeader>Tags</TableHeader>,
         accessorFn: (row) => {
           // Get all sound event tags and count their occurrences
           const tags = row.clip_annotation?.sound_events?.flatMap(event => event.tags || []) || [];
           const tagCounts = new Map<string, TagCount>();
-          
+
           tags.forEach(tag => {
             const key = `${tag.key}-${tag.value}`;
             const existing = tagCounts.get(key);
@@ -102,37 +106,41 @@ export default function useAnnotationTaskTable({
       },
       {
         id: "clip_anno_notes",
-        header: () => <TableHeader>Annotation Notes</TableHeader>,
+        header: () => <TableHeader>Notes</TableHeader>,
         enableResizing: true,
-        size: 50,
         accessorFn: (row) => row.clip_annotation?.notes,
-        cell: ({row}) => {
+        cell: ({ row }) => {
           const clip_anno_notes = row.getValue("clip_anno_notes") as Note[];
           if ((clip_anno_notes || []).length == 0) return null;
 
-          return (
-            <span className="ms-2">
-              <SunIcon className="inline-block mr-2 w-5 h-5 text-stone-500 align-middle"/>{clip_anno_notes.length} notes
-            </span>
-          );
+          return <TableCell>
+            <ul>
+              {clip_anno_notes.map((note) => (
+                <NoteOverview
+                  key={note.uuid}
+                  note={note}
+                />
+              ))}
+            </ul>
+          </TableCell>
         }
       },
       {
         id: "status",
         header: () => <TableHeader>Status</TableHeader>,
         enableResizing: true,
-        size: 100,
+        size: 70,
         accessorFn: (row) => row.status_badges,
-        cell: ({row}) => {
+        cell: ({ row }) => {
           const status = row.getValue("status") as AnnotationStatusBadge[];
           return <TableCell>
             <div className="flex flex-row flex-wrap gap-1">
               {status?.map((badge) => (
-                  <StatusBadge
-                    key={`${badge.state}-${badge.user?.id}`}
-                    badge={badge}
-                  />
-                )
+                <StatusBadge
+                  key={`${badge.state}-${badge.user?.id}`}
+                  badge={badge}
+                />
+              )
               )}
             </div>
           </TableCell>
