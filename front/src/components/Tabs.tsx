@@ -132,7 +132,7 @@ export default function Tabs({ tabs }: { tabs: TabType[] }) {
         }
       }
     }
-  }, []);
+  }, [tabs]);
 
   useKeyPressEvent(useKeyFilter({ key: NAVIGATE_FST_ELEMENT_SHORTCUT }), handleNumberKey);
   useKeyPressEvent(useKeyFilter({ key: NAVIGATE_SND_ELEMENT_SHORTCUT }), handleNumberKey);

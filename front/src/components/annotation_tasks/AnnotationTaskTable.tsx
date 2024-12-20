@@ -13,10 +13,9 @@ import annotationTaskFilterDefs from "@/components/filters/annotation_tasks";
 import FilterBar from "@/components/filters/FilterBar";
 import Table from "@/components/tables/Table";
 import Pagination from "@/components/lists/Pagination";
-import { LIST_OVERVIEW_DOWN_SHORTCUT, SEARCH_BAR_LEAVE_SHORTCUT } from "@/utils/keyboard";
+import { LIST_OVERVIEW_DOWN_SHORTCUT, SEARCH_BAR_LEAVE_SHORTCUT, FILTER_POPOVER_SHORTCUT } from "@/utils/keyboard";
 import Button from "../Button";
 import { FilterIcon } from "../icons";
-import { FILTER_POPOVER_SHORTCUT } from "@/utils/keyboard";
 
 export default function AnnotationTaskTable({
   filter,

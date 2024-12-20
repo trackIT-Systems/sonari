@@ -303,7 +303,7 @@ export default function useAnnotateClip(props: {
         onCenterOn(newCenterTime);
       }
     }
-  }, [filteredSoundEvents, selectedAnnotation, onSelectAnnotation, onCenterOn, viewport]);
+  }, [filteredSoundEvents, selectedAnnotation, onSelectAnnotation, onCenterOn, viewport, setSelectedAnnotation]);
 
   const selectPrevAnnotation = useCallback(() => {
     if (!filteredSoundEvents.length) return;
@@ -334,7 +334,7 @@ export default function useAnnotateClip(props: {
         onCenterOn(newCenterTime);
       }
     }
-  }, [filteredSoundEvents, selectedAnnotation, onSelectAnnotation, onCenterOn, viewport]);
+  }, [filteredSoundEvents, selectedAnnotation, onSelectAnnotation, onCenterOn, viewport, setSelectedAnnotation]);
 
   const { props: editProps, draw: drawEdit } = useAnnotationEdit({
     viewport,

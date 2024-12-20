@@ -1,6 +1,5 @@
 import classnames from "classnames";
-import { usePathname } from "next/navigation";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 
 import {
   useSpecialKeyShortcuts,

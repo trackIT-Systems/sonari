@@ -88,7 +88,7 @@ export default function DatasetList(props: {
         searchInputRef.current?.blur();
       }
     }
-  }, [datasets.items, focusedElement, setFocusedElement, setSelectedDataset, searchInputRef]);
+  }, [datasets, setFocusedElement, setSelectedDataset, searchInputRef]);
 
   useKeyPressEvent(useKeyFilter({ key: SEARCH_BAR_LEAVE_SHORTCUT }), (event) => {
     if (focusedElement === -1) {
@@ -105,7 +105,7 @@ export default function DatasetList(props: {
     } else {
       setFocusedElement(index);
     }
-  }, [setFocusedElement, searchInputRef, setFocusedElement]);
+  }, [searchInputRef, setFocusedElement]);
 
 
   return (

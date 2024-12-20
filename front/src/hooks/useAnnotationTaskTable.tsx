@@ -1,4 +1,4 @@
-import type { AnnotationStatusBadge, AnnotationTask, Note, Recording, Tag } from "@/types";
+import type { AnnotationStatusBadge, AnnotationTask, Clip, Note, Recording, Tag } from "@/types";
 import { useMemo } from "react";
 import { ColumnDef, getCoreRowModel, useReactTable, createColumnHelper } from "@tanstack/react-table";
 import TableHeader from "@/components/tables/TableHeader";
@@ -80,7 +80,7 @@ export default function useAnnotationTaskTable({
         size: 40,
         accessorFn: (row) => row.clip,
         cell: ({ row }) => {
-          const { start_time, end_time } = row.getValue("duration")
+          const { start_time, end_time } = row.getValue("duration") as Clip
           const duration = ((end_time - start_time) as number).toFixed(2);
           return <TableCell>{duration}</TableCell>;
         },

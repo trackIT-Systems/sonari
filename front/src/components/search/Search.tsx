@@ -95,6 +95,7 @@ export default function Search<T extends object>({
       getOptionKey,
       onSelectionChange,
       children,
+      autoFocus,
     ],
   );
 

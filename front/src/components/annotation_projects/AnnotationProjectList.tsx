@@ -76,7 +76,7 @@ export default function AnnotationProjectList({
         searchInputRef.current?.blur();
       }
     }
-  }, [items, focusedElement, setFocusedElement, setselectedAnnotationProject, searchInputRef]);
+  }, [items, setFocusedElement, setselectedAnnotationProject, searchInputRef]);
 
   useKeyPressEvent(useKeyFilter({ key: SEARCH_BAR_LEAVE_SHORTCUT }), (event) => {
     if (focusedElement === -1) {
@@ -93,7 +93,7 @@ export default function AnnotationProjectList({
     } else {
       setFocusedElement(index);
     }
-  }, [setFocusedElement, searchInputRef, setFocusedElement]);
+  }, [searchInputRef, setFocusedElement]);
 
   return (
     <div className="flex flex-col p-8 space-y-2 w-full">
