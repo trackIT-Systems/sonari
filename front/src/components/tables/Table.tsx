@@ -1,8 +1,23 @@
-import { useTableNav } from "@table-nav/react";
+import { useCallback } from "react";
 import { flexRender } from "@tanstack/react-table";
+import { useKeyPressEvent } from "react-use";
+import useKeyFilter from "@/hooks/utils/useKeyFilter";
+import { 
+  LIST_ELEMENT_UP_SHORTCUT, 
+  LIST_ELEMENT_DOWN_SHORTCUT,
+  SELECT_LIST_ELEMENT_SHORTCUT,
+  SELECT_FST_ELEMENT_SHORTCUT,
+  SELECT_SND_ELEMENT_SHORTCUT,
+  SELECT_TRD_ELEMENT_SHORTCUT,
+  SELECT_FRT_ELEMENT_SHORTCUT,
+  SELECT_FTH_ELEMENT_SHORTCUT,
+  SELECT_STH_ELEMENT_SHORTCUT,
+  SELECT_SVNTH_ELEMENT_SHORTCUT,
+  SELECT_ETH_ELEMENT_SHORTCUT,
+  SELECT_NTH_ELEMENT_SHORTCUT,
+} from "@/utils/keyboard";
 
 import type { Table } from "@tanstack/react-table";
-import type { KeyboardEvent } from "react";
 
 /** A Table component.
  * Will display a table.
@@ -15,6 +30,10 @@ import type { KeyboardEvent } from "react";
 export default function Table<S>({
   table,
   onCellKeyDown,
+  selectedIndex = -1,
+  onFocusChange,
+  onSelect,
+  handleNumberKeys = true,
 }: {
   table: Table<S>;
   onCellKeyDown?: ({
@@ -29,22 +48,65 @@ export default function Table<S>({
     value: any;
     event: KeyboardEvent;
   }) => void;
+  selectedIndex?: number;
+  onFocusChange?: (index: number) => void;
+  onSelect?: (row: S) => void;
+  handleNumberKeys?: boolean;
 }) {
-  const {
-    listeners: { onKeyUp, onKeyDown },
-  } = useTableNav();
+
+  useKeyPressEvent(useKeyFilter({ key: LIST_ELEMENT_DOWN_SHORTCUT }), (event) => {
+    event.preventDefault();
+    if (selectedIndex > -1) {
+      const newIndex = Math.min(table.getRowModel().rows.length - 1, selectedIndex + 1);
+      onFocusChange?.(newIndex);
+    }
+  });
+
+  useKeyPressEvent(useKeyFilter({ key: LIST_ELEMENT_UP_SHORTCUT }), (event) => {
+    event.preventDefault();
+    if (selectedIndex <= 0) {
+      onFocusChange?.(-1);
+    } else {
+      onFocusChange?.(selectedIndex - 1);
+    }
+  });
+
+  useKeyPressEvent(useKeyFilter({ key: SELECT_LIST_ELEMENT_SHORTCUT }), () => {
+    if (selectedIndex >= 0 && selectedIndex < table.getRowModel().rows.length && onSelect) {
+      onSelect(table.getRowModel().rows[selectedIndex].original);
+    }
+  });
+
+  const handleNumberKey = useCallback((event: KeyboardEvent) => {
+    if (!handleNumberKeys || event.metaKey || event.shiftKey) {
+      return;
+    }
+    
+    const index = parseInt(event.key) - 1;
+    const rows = table.getRowModel().rows;
+    
+    if (index < rows.length && onSelect && onFocusChange) {
+      event.preventDefault();
+      event.stopPropagation();
+      onFocusChange(index);
+      onSelect(rows[index].original);
+    }
+  }, [table, onSelect, onFocusChange, handleNumberKeys]);
+
+  useKeyPressEvent(useKeyFilter({ key: SELECT_FST_ELEMENT_SHORTCUT }), handleNumberKey);
+  useKeyPressEvent(useKeyFilter({ key: SELECT_SND_ELEMENT_SHORTCUT }), handleNumberKey);
+  useKeyPressEvent(useKeyFilter({ key: SELECT_TRD_ELEMENT_SHORTCUT }), handleNumberKey);
+  useKeyPressEvent(useKeyFilter({ key: SELECT_FRT_ELEMENT_SHORTCUT }), handleNumberKey);
+  useKeyPressEvent(useKeyFilter({ key: SELECT_FTH_ELEMENT_SHORTCUT }), handleNumberKey);
+  useKeyPressEvent(useKeyFilter({ key: SELECT_STH_ELEMENT_SHORTCUT }), handleNumberKey);
+  useKeyPressEvent(useKeyFilter({ key: SELECT_SVNTH_ELEMENT_SHORTCUT }), handleNumberKey);
+  useKeyPressEvent(useKeyFilter({ key: SELECT_ETH_ELEMENT_SHORTCUT }), handleNumberKey);
+  useKeyPressEvent(useKeyFilter({ key: SELECT_NTH_ELEMENT_SHORTCUT }), handleNumberKey);
+
 
   return (
     <table
       className="relative min-w-full rounded-lg border border-collapse table-fixed border-stone-300 text-stone-700 dark:border-stone-700 dark:text-stone-300"
-      onKeyUp={(event) => {
-        if (event.target instanceof HTMLInputElement) return;
-        onKeyUp();
-      }}
-      onKeyDown={(event) => {
-        if (event.target instanceof HTMLInputElement) return;
-        onKeyDown(event);
-      }}
       {...{
         style: {
           width: table.getCenterTotalSize(),
@@ -85,11 +147,13 @@ export default function Table<S>({
         ))}
       </thead>
       <tbody className="z-0 text-sm text-stone-800 dark:text-stone-300">
-        {table.getRowModel().rows.map((row) => {
+        {table.getRowModel().rows.map((row, index) => {
           return (
             <tr
               key={row.id}
-              className="hover:dark:bg-stone-800 hover:bg-stone-200 max-h-40 h-min"
+              className={`hover:dark:bg-stone-800 hover:bg-stone-200 max-h-40 h-min ${
+                index === selectedIndex ? 'bg-stone-200 dark:bg-stone-800' : ''
+              }`}
             >
               {row.getVisibleCells().map((cell) => {
                 return (
@@ -98,16 +162,6 @@ export default function Table<S>({
                     className="border outline-none focus:ring-1 focus:ring-emerald-500 focus:ring-offset-1 focus:ring-offset-transparent border-stone-300 dark:border-stone-600 max-h-40"
                     tabIndex={-1}
                     key={cell.id}
-                    onKeyDown={(event) => {
-                      if (event.target instanceof HTMLInputElement) return;
-                      onCellKeyDown?.({
-                        data: row.original,
-                        row: row.index,
-                        column: cell.column.id,
-                        value: row.getValue(cell.column.id),
-                        event,
-                      });
-                    }}
                     style={{
                       width: cell.column.getSize(),
                     }}

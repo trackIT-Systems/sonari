@@ -38,6 +38,22 @@ export default function useAnnotationTaskTable({
   const columns = useMemo<ColumnDef<AnnotationTask>[]>(
     () => [
       {
+        id: "index",
+        header: () => { },
+        enableResizing: false,
+        size: 1,
+        accessorFn: () => {},
+        cell: ({ row }) => {
+          return (
+            <TableCell>
+              <span className="text-emerald-500 mr-2">
+                {row.index + 1}
+              </span>
+            </TableCell>
+          )
+        },
+      },
+      {
         id: "recording",
         header: () => <TableHeader>Recording</TableHeader>,
         enableResizing: true,
@@ -61,7 +77,7 @@ export default function useAnnotationTaskTable({
         id: "duration",
         header: () => <TableHeader>Duration</TableHeader>,
         enableResizing: true,
-        size: 30,
+        size: 40,
         accessorFn: (row) => row.clip,
         cell: ({ row }) => {
           const { start_time, end_time } = row.getValue("duration")
