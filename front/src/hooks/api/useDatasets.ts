@@ -11,7 +11,7 @@ const _fixed: (keyof DatasetFilter)[] = [];
 export default function useDatasets({
   filter: initialFilter = _empty,
   fixed = _fixed,
-  pageSize = 10,
+  pageSize = 100,
   enabled = true,
 }: {
   filter?: DatasetFilter;

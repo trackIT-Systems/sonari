@@ -21,7 +21,7 @@ export default function RecordingsGallery(props: {
   >({
     name: "recordings",
     queryFn: api.recordings.getMany,
-    pageSize: 12,
+    pageSize: 100,
     filter: props.filter || empty,
   });
 

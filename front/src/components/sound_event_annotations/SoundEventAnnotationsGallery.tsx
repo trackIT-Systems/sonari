@@ -24,7 +24,7 @@ export default function SoundEventAnnotationsGallery(props: {
   >({
     name: "sound_event_annotations_scatter",
     queryFn: api.soundEventAnnotations.getMany,
-    pageSize: 12,
+    pageSize: 100,
     filter: props.filter || empty,
   });
 

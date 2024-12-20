@@ -17,7 +17,7 @@ const _fixed: (keyof RecordingFilter)[] = [];
 export default function useRecordings({
   filter: initialFilter = emptyFilter,
   fixed = _fixed,
-  pageSize = 20,
+  pageSize = 100,
   enabled = true,
 }: {
   filter?: RecordingFilter;

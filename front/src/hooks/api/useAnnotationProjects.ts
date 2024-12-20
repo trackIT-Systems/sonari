@@ -9,7 +9,7 @@ const _fixed: (keyof AnnotationProjectFilter)[] = [];
 export default function useAnnotationProjects({
   filter: initialFilter = emptyFilter,
   fixed = _fixed,
-  pageSize = 10,
+  pageSize = 100,
 }: {
   filter?: AnnotationProjectFilter;
   fixed?: (keyof AnnotationProjectFilter)[];

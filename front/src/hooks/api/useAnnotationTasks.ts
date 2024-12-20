@@ -9,7 +9,7 @@ const _fixed: (keyof AnnotationTaskFilter)[] = [];
 export default function useAnnotationTasks({
   filter: initialFilter = emptyFilter,
   fixed = _fixed,
-  pageSize = 10,
+  pageSize = 100,
   enabled = true,
 }: {
   filter?: AnnotationTaskFilter;
