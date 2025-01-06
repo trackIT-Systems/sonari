@@ -1,17 +1,23 @@
 import classNames from "classnames";
-import { useRef } from "react";
+import { useRef, RefObject } from "react";
 import { type AriaToggleButtonProps, useToggleButton } from "react-aria";
 import { useToggleState } from "react-stately";
 
 export default function Toggle({
   label = "Toggle",
+  buttonRef,
   ...props
 }: {
   label?: string;
+  buttonRef?: RefObject<HTMLButtonElement>;
 } & AriaToggleButtonProps) {
-  let ref = useRef(null);
+
+  const defaultRef = useRef(null);
+  const ref = buttonRef || defaultRef;
+
   let state = useToggleState(props);
   let { buttonProps } = useToggleButton(props, state, ref);
+
   return (
     <button
       {...buttonProps}

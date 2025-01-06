@@ -262,8 +262,6 @@ export default function ClipAnnotationSpectrogram({
             fixedAspectRatio={fixedAspectRatio}
             onReset={spectrogram.reset}
             onZoom={spectrogram.enableZoom}
-            onZoomIn={spectrogram.zoomIn}
-            onZoomOut={spectrogram.zoomOut}
             onToggleAspectRatio={toggleFixedAspectRatio}
           />
         )}

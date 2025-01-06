@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useRef } from "react";
 
 import Button, { getButtonClassName } from "@/components/Button";
 import FilterBar from "@/components/filters/FilterBar";
@@ -11,19 +11,36 @@ import Dialog from "@/components/Dialog";
 import KeyboardKey from "@/components/KeyboardKey";
 import ShortcutHelper from "@/components/ShortcutHelper";
 import { computeAnnotationTasksProgress } from "@/utils/annotation_tasks";
-import { AUDIO_KEY_SHORTCUTS } from "@/hooks/audio/useAudioKeyShortcuts";
-import { SPECTROGRAM_KEY_SHORTCUTS } from "@/hooks/spectrogram/useSpectrogramKeyShortcuts";
-import { ANNOTATION_KEY_SHORTCUTS } from "@/hooks/annotation/useAnnotateClipKeyShortcuts";
+import { useKeyPressEvent } from "react-use";
 
 import type { AnnotationTaskFilter } from "@/api/annotation_tasks";
 import type { Filter } from "@/hooks/utils/useFilter";
 import type { AnnotationTask } from "@/types";
-import { NEXT_TASK_SHORTCUT, PREV_TASK_SHORTCUT } from "@/utils/keyboard";
+import {
+  NEXT_TASK_SHORTCUT,
+  PREV_TASK_SHORTCUT,
+  PENDING_SHORTCUT,
+  FILTER_SHORTCUT,
+  getSpecialKeyLabel,
+  ROOT_NAVIGATION_SHORTCUTS,
+  MISC_SHORTCUTS,
+  TASK_STATE_SHORTCUTS,
+  SPECTROGRAM_KEY_SHORTCUTS,
+  SPECTRGRAM_NAVIGATION_SHORTCUTS,
+  ANNOTATION_KEY_SHORTCUTS,
+  NAVIGATION_KEY_SHORTCUTS,
+  AUDIO_KEY_SHORTCUTS,
+} from "@/utils/keyboard";
 
 const SHORTCUTS = [
-  ...AUDIO_KEY_SHORTCUTS,
+  ...ROOT_NAVIGATION_SHORTCUTS,
+  ...MISC_SHORTCUTS,
+  ...TASK_STATE_SHORTCUTS,
   ...SPECTROGRAM_KEY_SHORTCUTS,
+  ...SPECTRGRAM_NAVIGATION_SHORTCUTS,
   ...ANNOTATION_KEY_SHORTCUTS,
+  ...NAVIGATION_KEY_SHORTCUTS,
+  ...AUDIO_KEY_SHORTCUTS,
 ];
 
 export default function AnnotationProgress({
@@ -49,6 +66,43 @@ export default function AnnotationProgress({
     total,
   } = useMemo(() => computeAnnotationTasksProgress(tasks), [tasks]);
 
+
+  const pendingButtonRef = useRef<HTMLButtonElement>(null);
+  const filterButtonRef = useRef<HTMLButtonElement>(null);
+
+  const filterBtn = <Button
+    padding="p-1"
+    mode="text"
+    variant="info"
+    autoFocus={false}
+    ref={filterButtonRef}
+  >
+    <FilterIcon className="inline-block mr-1 w-5 h-5" />
+    <span className="text-sm align-middle whitespace-nowrap">
+      Filters
+    </span>
+  </Button>
+
+  useKeyPressEvent(PENDING_SHORTCUT, (event: KeyboardEvent) => {
+    if (event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement) {
+      return;
+    }
+    const button = pendingButtonRef.current;
+    if (button instanceof HTMLButtonElement) {
+      button.click();
+    }
+  });
+
+  useKeyPressEvent(FILTER_SHORTCUT, (event) => {
+    if (event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement) {
+      return;
+    }
+    const button = filterButtonRef.current;
+    if (button instanceof HTMLButtonElement) {
+      button.click();
+    }
+  });
+
   return (
     <div className="inline-flex gap-1 items-center h-full w-full">
       <Tooltip
@@ -56,7 +110,7 @@ export default function AnnotationProgress({
           <div className="inline-flex gap-2 items-center">
             Previous Task
             <div className="text-xs">
-              <KeyboardKey code={PREV_TASK_SHORTCUT} />
+              <KeyboardKey code="ctrl" /><KeyboardKey code={`${getSpecialKeyLabel(PREV_TASK_SHORTCUT)}`} />
             </div>
           </div>
         }
@@ -81,18 +135,6 @@ export default function AnnotationProgress({
             <span className="text-stone-500">#:</span>
             <span className="font-bold text-blue-500">{current ? current + 1 : 0}</span>
           </span>
-          {/* <span className="text-sm inline-flex gap-1 items-center whitespace-nowrap">
-            <span className="text-stone-500">Progress:</span>
-            <div className="w-36">
-              <ProgressBar
-                error={needReview}
-                verified={verified}
-                total={total}
-                complete={complete}
-                className="mb-0"
-              />
-            </div>
-          </span> */}
         </div>
         <span className="text-sm inline-flex gap-1 items-center whitespace-nowrap text-stone-500">
           <span>Remaining:</span>
@@ -100,17 +142,32 @@ export default function AnnotationProgress({
         </span>
         <div className="inline-flex gap-1 items-center">
           <span className="text-sm text-stone-500">Pending:</span>
-          <Toggle
-            label="Only Pending"
-            isSelected={filter.get("pending") ?? false}
-            onChange={(checked) => {
-              if (checked) {
-                filter.set("pending", checked, true);
-              } else {
-                filter.clear("pending", true);
-              }
-            }}
-          />
+
+          <Tooltip
+            tooltip={
+              <div className="inline-flex gap-2 items-center">
+                Show only pending tasks
+                <div className="text-xs">
+                  <KeyboardKey code="p" />
+                </div>
+              </div>
+            }
+            placement="bottom"
+          >
+            <Toggle
+              label="Only Pending"
+              isSelected={filter.get("pending") ?? false}
+              onChange={(checked) => {
+                if (checked) {
+                  filter.set("pending", checked, true);
+                } else {
+                  filter.clear("pending", true);
+                }
+              }}
+              buttonRef={pendingButtonRef}
+            />
+          </Tooltip>
+
         </div>
         <FilterMenu
           filter={filter}
@@ -120,14 +177,7 @@ export default function AnnotationProgress({
             mode: "text",
             padding: "p-1",
           })}
-          button={
-            <>
-              <FilterIcon className="inline-block mr-1 w-5 h-5" />
-              <span className="text-sm align-middle whitespace-nowrap">
-                Filters
-              </span>
-            </>
-          }
+          button={filterBtn}
         />
         <div className="overflow-x-auto">
           <FilterBar
@@ -142,7 +192,7 @@ export default function AnnotationProgress({
           <div className="inline-flex gap-2 items-center">
             Next Task
             <div className="text-xs">
-              <KeyboardKey code={NEXT_TASK_SHORTCUT} />
+              <KeyboardKey code="ctrl" /><KeyboardKey code={`${getSpecialKeyLabel(NEXT_TASK_SHORTCUT)}`} />
             </div>
           </div>
         }

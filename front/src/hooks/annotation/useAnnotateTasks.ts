@@ -66,7 +66,7 @@ type AnnotationControls = {
   /** Mark the current task as verified */
   markVerified: UseMutationResult<AnnotationTask, AxiosError, void>;
   /** Remove a badge from the current task */
-  removeBadge: UseMutationResult<AnnotationTask, AxiosError, {state: AnnotationStatus, userId?: string}>;
+  removeBadge: UseMutationResult<AnnotationTask, AxiosError, { state: AnnotationStatus, userId?: string }>;
 };
 
 const empty = {};
@@ -97,7 +97,7 @@ function sortAnnotationTasks(a: AnnotationTask, b: AnnotationTask): number {
 
   // If neither task has a valid date-time, compare UUIDs
   return a.uuid.localeCompare(b.uuid);
-  
+
 }
 
 export default function useAnnotateTasks({
@@ -342,7 +342,7 @@ export default function useAnnotateTasks({
   });
 
   const removeBadgeFn = useCallback(
-    async (status: AnnotationStatus, userId? : string) => {
+    async (status: AnnotationStatus, userId?: string) => {
       if (currentTask == null) {
         throw new Error("No selected task");
       }
@@ -351,9 +351,9 @@ export default function useAnnotateTasks({
     [currentTask],
   );
 
-  const removeBadge = useMutation<AnnotationTask, AxiosError, {state: AnnotationStatus, userId?: string}>(
+  const removeBadge = useMutation<AnnotationTask, AxiosError, { state: AnnotationStatus, userId?: string }>(
     {
-      mutationFn: ({state, userId}) => removeBadgeFn(state, userId),
+      mutationFn: ({ state, userId }) => removeBadgeFn(state, userId),
       onSuccess: (task) => {
         updateTaskData(task);
       },

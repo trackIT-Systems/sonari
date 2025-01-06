@@ -162,6 +162,9 @@ export default function AnnotateTasks({
       if (event.key === ABORT_SHORTCUT) {
         setIsDeletePopoverOpen(false);
         setIsTagPopoverOpen(false);
+        if (document.activeElement instanceof HTMLElement) {
+          document.activeElement.blur();
+        }
         return;
       }
 
@@ -231,11 +234,20 @@ export default function AnnotateTasks({
   const handleDeleteTagFromAll = useCallback(
     async (tagWithCount: { tag: Tag; count: number }, shouldDelete: boolean) => {
       if (shouldDelete) {
-        await handleRemoveTagFromSoundEvents(tagWithCount.tag);
+        if (selectedAnnotation) {
+          // If an annotation is selected, only remove tag from it
+          await removeTagFromSoundEvent.mutateAsync({
+            soundEventAnnotation: selectedAnnotation,
+            tag: tagWithCount.tag
+          });
+        } else {
+          // Otherwise, remove from all sound events
+          await handleRemoveTagFromSoundEvents(tagWithCount.tag);
+        }
       }
       setIsDeletePopoverOpen(false);
     },
-    [handleRemoveTagFromSoundEvents]
+    [handleRemoveTagFromSoundEvents, removeTagFromSoundEvent, selectedAnnotation]
   );
 
   const handleAddTagToPalette = useCallback((tag: Tag) => {
@@ -248,26 +260,31 @@ export default function AnnotateTasks({
   }, []);
 
   const handleReplaceTagInSoundEvents = useCallback(
-    async (oldTag: Tag | null, newTag: Tag | null) => {
+    async (oldTag: Tag | null, newTag: Tag | null, selectedAnnotation?: SoundEventAnnotation | null) => {
       if (!data?.sound_events) return;
 
-      // Get all sound events that need updating
-      var soundEventsToUpdate;
-      if (oldTag === null) {
-        soundEventsToUpdate = data.sound_events
+      let soundEventsToUpdate: SoundEventAnnotation[] = [];
+      if (selectedAnnotation) {
+        soundEventsToUpdate = [selectedAnnotation];
       } else {
-        soundEventsToUpdate = oldTag.key === "all"
-          ? data.sound_events.filter(soundEvent =>
+        // If no specific annotation is selected, handle all sound events
+        if (oldTag?.key === "all") {
+          // If "all tags" is selected, get sound events that have any tags
+          soundEventsToUpdate = data.sound_events.filter(soundEvent =>
             soundEvent.tags && soundEvent.tags.length > 0
-          ) // If oldTag is null (all tags), get only sound events that have tags
-          : data.sound_events.filter(soundEvent =>
+          );
+        } else if (oldTag) {
+          // If a specific tag is selected, get sound events with that tag
+          soundEventsToUpdate = data.sound_events.filter(soundEvent =>
             soundEvent.tags?.some(
               tag => tag.key === oldTag.key && tag.value === oldTag.value
             )
           );
+        } else {
+          // Otherwise, update all sound events
+          soundEventsToUpdate = data.sound_events;
+        }
       }
-
-      console.log("Handling tagging", oldTag, newTag)
 
       const promises = soundEventsToUpdate.map(async soundEvent => {
         try {
@@ -289,7 +306,6 @@ export default function AnnotateTasks({
 
           // Add new tag
           if (newTag) {
-            console.log(`Adding tag ${newTag.key}`)
             await addTagToSoundEvent.mutateAsync({
               soundEventAnnotation: soundEvent,
               tag: newTag
@@ -425,6 +441,7 @@ export default function AnnotateTasks({
                 clipAnnotation={data}
                 projectTags={projectTags}
                 onReplaceTagInSoundEvents={handleReplaceTagInSoundEvents}
+                selectedAnnotation={selectedAnnotation}
               />
             </div>
           </div>
@@ -450,10 +467,12 @@ export default function AnnotateTasks({
                     <div ref={menuRef} className="relative w-96 divide-y divide-stone-100 rounded-md bg-stone-50 dark:bg-stone-700 border border-stone-200 dark:border-stone-500 shadow-md dark:shadow-stone-800 ring-1 ring-stone-900 ring-opacity-5 focus:outline-none">
                       <div className="p-4">
                         <div className="mb-2 text-stone-700 dark:text-stone-300 underline underline-offset-2 decoration-amber-500 decoration-2">
-                          Select a tag to remove from all sound events
+                          Select a tag to remove from {selectedAnnotation ? 'selected sound event' : 'all sound events'}
                         </div>
                         <SearchMenu
-                          options={tagsWithCount}
+                          options={selectedAnnotation
+                            ? (selectedAnnotation.tags || []).map(tag => ({ tag, count: 1 }))
+                            : tagsWithCount}
                           fields={["tag.key", "tag.value"]}
                           renderOption={(tagWithCount) => (
                             <TagComponent

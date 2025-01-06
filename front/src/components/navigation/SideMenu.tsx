@@ -3,11 +3,13 @@ import { usePathname, useRouter } from "next/navigation";
 
 import {
   useSpecialKeyShortcuts,
-  getMetaKeyLabel, ShortcutConfig,
+  getMetaKeyLabel,
+  ShortcutConfig,
   GO_PROJECTS_SHORTCUT,
   GO_PROFILE_SHORTCUT,
   LOGOUT_SHORTCUT,
-  GO_DATASETS_SHORTCUT
+  GO_DATASETS_SHORTCUT,
+  getSpecialKeyLabel
 } from "@/utils/keyboard";
 
 import KeyboardKey from "../KeyboardKey";
@@ -32,22 +34,25 @@ function SideMenuLink({
   tooltip,
   isActive,
   href,
-  keyboardKey,
+  keyboardKeys,
   ...props
 }: ComponentProps<typeof Link> & {
   tooltip?: string;
   isActive?: boolean;
   href?: string;
-  keyboardKey?: string;
+  keyboardKeys?: string[];
 }) {
   return (
     <Tooltip
       tooltip={
         <p className="whitespace-nowrap text-stone-700 dark:text-stone-300">
           {tooltip}
-          {keyboardKey ? (
+          {keyboardKeys ? (
             <span className="pl-2">
-              <KeyboardKey code={keyboardKey} />
+              {keyboardKeys.map((keyboardKey: string) => (
+                <KeyboardKey key="key1" code={keyboardKey} />
+              ))
+              }
             </span>
           ) : (null)
           }
@@ -75,21 +80,24 @@ function SideMenuButton({
   children,
   tooltip,
   isActive,
-  keyboardKey,
+  keyboardKeys,
   ...props
 }: ComponentProps<typeof Button> & {
   tooltip?: string;
   isActive?: boolean;
-  keyboardKey?: string;
+  keyboardKeys?: string[];
 }) {
   return (
     <Tooltip
       tooltip={
         <p className="whitespace-nowrap text-stone-700 dark:text-stone-300">
           {tooltip}
-          {keyboardKey ? (
+          {keyboardKeys ? (
             <span className="pl-2">
-              <KeyboardKey code={keyboardKey} />
+              {keyboardKeys.map((keyboardKey: string) => (
+                <KeyboardKey key="key2" code={keyboardKey} />
+              ))
+              }
             </span>
           ) : (null)
           }
@@ -120,7 +128,7 @@ function MainNavigation({ pathname }: { pathname?: string }) {
           isActive={pathname?.startsWith("/datasets")}
           tooltip={"Datasets"}
           href="/datasets"
-          keyboardKey={`shift+${getMetaKeyLabel()}+1`}
+          keyboardKeys={[`${getSpecialKeyLabel("Shift")}`, `${getMetaKeyLabel()}`, "1"]}
         >
           <DatasetsIcon className="w-6 h-6" />
         </SideMenuLink>
@@ -130,7 +138,7 @@ function MainNavigation({ pathname }: { pathname?: string }) {
           isActive={pathname?.startsWith("/annotation_projects")}
           tooltip={"Annotation Projects"}
           href="/annotation_projects"
-          keyboardKey={`shift+${getMetaKeyLabel()}+2`}
+          keyboardKeys={[`${getSpecialKeyLabel("Shift")}`, `${getMetaKeyLabel()}`, "2"]}
         >
           <AnnotationProjectIcon className="w-6 h-6" />
         </SideMenuLink>
@@ -156,13 +164,13 @@ function SecondaryNavigation({
     <ul className="flex flex-col space-y-3 py-4 text-stone-400">
       <li className="px-3">
         <SideMenuLink href="/profile" tooltip={"User"}
-          keyboardKey={`shift+${getMetaKeyLabel()}+9`}>
+          keyboardKeys={[`${getSpecialKeyLabel("Shift")}`, `${getMetaKeyLabel()}`, "9"]}>
           <UserIcon className="w-6 h-6" />
         </SideMenuLink>
       </li>
       <li className="px-3">
         <SideMenuButton tooltip={"Log Out"}
-          keyboardKey={`shift+${getMetaKeyLabel()}+0`}>
+          keyboardKeys={[`${getSpecialKeyLabel("Shift")}`, `${getMetaKeyLabel()}`, "0"]}>
           <LogOutIcon onClick={() => logout()} className="w-6 h-6" />
         </SideMenuButton>
       </li>

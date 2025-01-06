@@ -1,4 +1,4 @@
-import { type Key, type ReactElement, useEffect, useCallback } from "react";
+import { type Key, type ReactElement, useCallback } from "react";
 import useKeyFilter from "@/hooks/utils/useKeyFilter";
 import { useKeyPressEvent } from "react-use";
 import {
@@ -9,11 +9,6 @@ import {
   SELECT_SND_ELEMENT_SHORTCUT,
   SELECT_TRD_ELEMENT_SHORTCUT,
   SELECT_FRT_ELEMENT_SHORTCUT,
-  SELECT_FTH_ELEMENT_SHORTCUT,
-  SELECT_STH_ELEMENT_SHORTCUT,
-  SELECT_SVNTH_ELEMENT_SHORTCUT,
-  SELECT_ETH_ELEMENT_SHORTCUT,
-  SELECT_NTH_ELEMENT_SHORTCUT,
 } from "@/utils/keyboard";
 
 type ElementWithKey = ReactElement & { key: Key | null };
@@ -82,11 +77,6 @@ export default function StackedList({
   useKeyPressEvent(useKeyFilter({ key: SELECT_SND_ELEMENT_SHORTCUT }), hndlNumberKeys);
   useKeyPressEvent(useKeyFilter({ key: SELECT_TRD_ELEMENT_SHORTCUT }), hndlNumberKeys);
   useKeyPressEvent(useKeyFilter({ key: SELECT_FRT_ELEMENT_SHORTCUT }), hndlNumberKeys);
-  useKeyPressEvent(useKeyFilter({ key: SELECT_FTH_ELEMENT_SHORTCUT }), hndlNumberKeys);
-  useKeyPressEvent(useKeyFilter({ key: SELECT_STH_ELEMENT_SHORTCUT }), hndlNumberKeys);
-  useKeyPressEvent(useKeyFilter({ key: SELECT_SVNTH_ELEMENT_SHORTCUT }), hndlNumberKeys);
-  useKeyPressEvent(useKeyFilter({ key: SELECT_ETH_ELEMENT_SHORTCUT }), hndlNumberKeys);
-  useKeyPressEvent(useKeyFilter({ key: SELECT_NTH_ELEMENT_SHORTCUT }), hndlNumberKeys);
 
 
   return (
@@ -94,7 +84,7 @@ export default function StackedList({
       role="list"
       className="w-full divide-y divide-stone-300 dark:divide-stone-700"
       tabIndex={0}
-    > 
+    >
       {items.map((item, index) => (
         <li
           className={`flex justify-between gap-x-6 py-5 ${index === selectedIndex ? 'bg-stone-100 dark:bg-stone-800' : ''

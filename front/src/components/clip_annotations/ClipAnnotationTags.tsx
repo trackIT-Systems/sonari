@@ -9,7 +9,7 @@ import Button from "../Button";
 import { Float } from "@headlessui-float/react";
 import { Popover } from "@headlessui/react";
 import KeyboardKey from "../KeyboardKey";
-import type { ClipAnnotation, Tag } from "@/types";
+import type { ClipAnnotation, Tag, SoundEventAnnotation } from "@/types";
 import { ADD_TAG_SHORTCUT, REPLACE_TAG_SHORTCUT } from "@/utils/keyboard";
 
 function NoTags() {
@@ -134,7 +134,9 @@ function TagAddPanel({
     <div className="p-4">
       <div className="mb-2 flex flex-row items-center justify-between">
         <div>
-          <span className="mb-2 text-stone-700 dark:text-stone-300 underline underline-offset-2 decoration-amber-500 decoration-2">Select Tag to add to all Sound Events</span>
+          <span className="mb-2 text-stone-700 dark:text-stone-300 underline underline-offset-2 decoration-amber-500 decoration-2">
+            Select Tag to add
+          </span>
         </div>
       </div>
       <SearchMenu
@@ -168,10 +170,12 @@ export default function ClipAnnotationTags({
   clipAnnotation,
   projectTags,
   onReplaceTagInSoundEvents,
+  selectedAnnotation,
 }: {
   clipAnnotation?: ClipAnnotation;
   projectTags: Tag[];
-  onReplaceTagInSoundEvents?: (oldTag: Tag | null, newTag: Tag | null) => void;
+  onReplaceTagInSoundEvents?: (oldTag: Tag | null, newTag: Tag | null, selectedAnnotation?: SoundEventAnnotation | null) => void;
+  selectedAnnotation?: SoundEventAnnotation | null;
 }) {
 
   const replaceButtonRef = useRef<HTMLButtonElement>(null);
@@ -185,16 +189,18 @@ export default function ClipAnnotationTags({
         return;
       }
 
-      event.preventDefault();
-
       if (event.key === REPLACE_TAG_SHORTCUT) {
-        const button = replaceButtonRef.current;
-        if (button instanceof HTMLButtonElement) {
-          button.click();
+        if (!event.metaKey) {
+          event.preventDefault();
+          event.stopPropagation();
+          const button = replaceButtonRef.current;
+          if (button instanceof HTMLButtonElement) {
+            button.click();
+          }
         }
       }
 
-      if (event.key === ADD_TAG_SHORTCUT) {
+      if (event.key === ADD_TAG_SHORTCUT && !event.metaKey) {
         const button = addButtonRef.current;
         if (button instanceof HTMLButtonElement) {
           button.click();
@@ -210,6 +216,7 @@ export default function ClipAnnotationTags({
     };
   }, []);
 
+  // This always shows all tags in the task
   const tagsWithCount = useMemo(() => {
     if (!clipAnnotation?.sound_events) return [];
 
@@ -229,11 +236,35 @@ export default function ClipAnnotationTags({
     return Array.from(tagCounts.values());
   }, [clipAnnotation]);
 
+  // This shows tags for the popover menus - either all tags or just selected annotation tags
+  const popoverTagsWithCount = useMemo(() => {
+    if (!clipAnnotation?.sound_events) return [];
+
+    const relevantSoundEvents = selectedAnnotation
+      ? [selectedAnnotation]
+      : clipAnnotation.sound_events;
+
+    const allTags = relevantSoundEvents.flatMap(event => event.tags || []);
+    const tagCounts = new Map<string, TagCount>();
+
+    allTags.forEach(tag => {
+      const key = `${tag.key}-${tag.value}`;
+      const existing = tagCounts.get(key);
+      if (existing) {
+        existing.count++;
+      } else {
+        tagCounts.set(key, { tag, count: 1 });
+      }
+    });
+
+    return Array.from(tagCounts.values());
+  }, [clipAnnotation, selectedAnnotation]);
+
   const handleTagReplaceRemove = useCallback(
     async (oldTag: Tag | null, newTag: Tag | null) => {
-      await onReplaceTagInSoundEvents?.(oldTag, newTag);
+      await onReplaceTagInSoundEvents?.(oldTag, newTag, selectedAnnotation);
     },
-    [onReplaceTagInSoundEvents]
+    [onReplaceTagInSoundEvents, selectedAnnotation]
   );
 
   return (
@@ -302,7 +333,7 @@ export default function ClipAnnotationTags({
                     className="w-96 divide-y divide-stone-100 rounded-md bg-stone-50 dark:bg-stone-700 border border-stone-200 dark:border-stone-500 shadow-md dark:shadow-stone-800 ring-1 ring-stone-900 ring-opacity-5 focus:outline-none z-50"
                   >
                     <TagReplacePanel
-                      taskTags={tagsWithCount}
+                      taskTags={popoverTagsWithCount}
                       projectTags={projectTags}
                       onReplaceTag={async (oldTag, newTag) => {
                         close();

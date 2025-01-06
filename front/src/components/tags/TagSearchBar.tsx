@@ -1,11 +1,3 @@
-/** @module TagSearchBar.
- *
- * Definition of the TagSearchBar component which displays a search bar that
- * allows the user to search for tags and select them.
- * It provides a dropdown menu with the search results.
- * Additionally, it allows the user to create new tags by typing the tag in the
- * format `key:value` and pressing `Shift`+`Enter`.
- */
 import { Combobox } from "@headlessui/react";
 import { Float } from "@headlessui-float/react";
 import { ChevronUpDownIcon } from "@heroicons/react/20/solid";
@@ -19,7 +11,7 @@ import useTags from "@/hooks/api/useTags";
 import type { TagCreate, TagFilter } from "@/api/tags";
 import type { Tag as TagType } from "@/types";
 import type { InputHTMLAttributes, KeyboardEvent } from "react";
-import { ACCEPT_SHORTCUT } from "@/utils/keyboard";
+import { ACCEPT_SHORTCUT, getSpecialKeyLabel } from "@/utils/keyboard";
 
 function ComboBoxSection({ children }: { children: React.ReactNode }) {
   return (
@@ -36,7 +28,7 @@ function CreateNewTag({ tag: { key, value } }: { tag: TagCreate }) {
         <div className="relative py-2 px-4 cursor-default select-none">
           To create a new tag, type the tag in the format{" "}
           <code className="text-emerald-500">key:value</code> and press{" "}
-          <KeyboardKey code="Shift" />+<KeyboardKey code={ACCEPT_SHORTCUT} />
+          <KeyboardKey code={`${getSpecialKeyLabel("Shift")}`} /><KeyboardKey code={`${getSpecialKeyLabel(ACCEPT_SHORTCUT)}`} />
         </div>
       </ComboBoxSection>
     );
@@ -46,8 +38,8 @@ function CreateNewTag({ tag: { key, value } }: { tag: TagCreate }) {
     <ComboBoxSection>
       <div className="relative py-2 px-4 cursor-default select-none">
         Create the tag{" "}
-        <Tag disabled tag={{ key, value }} color="blue" count={null}/> by pressing{" "}
-        <KeyboardKey code="Shift" />+<KeyboardKey code={ACCEPT_SHORTCUT} />
+        <Tag disabled tag={{ key, value }} color="blue" count={null} /> by pressing{" "}
+        <KeyboardKey code={`${getSpecialKeyLabel("Shift")}`} /><KeyboardKey code={`${getSpecialKeyLabel(ACCEPT_SHORTCUT)}`} />
       </div>
     </ComboBoxSection>
   );
@@ -170,8 +162,7 @@ export default forwardRef<HTMLInputElement, TagSearchBarProps>(
                   <Combobox.Option
                     key={`${tag.key}:${tag.value}`}
                     className={({ active }) =>
-                      `cursor-default py-2 pl-4 pr-2 ${
-                        active ? "bg-stone-200 dark:bg-stone-600" : ""
+                      `cursor-default py-2 pl-4 pr-2 ${active ? "bg-stone-200 dark:bg-stone-600" : ""
                       }`
                     }
                     value={tag}

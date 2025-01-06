@@ -51,8 +51,6 @@ export type SpectrogramState = {
 export type SpectrogramControls = {
   reset: () => void;
   zoom: (window: SpectrogramWindow) => void;
-  zoomIn: () => void;
-  zoomOut: () => void;
   moveLeft: () => void,
   moveRight: () => void,
   drag: (window: SpectrogramWindow) => void;
@@ -184,9 +182,6 @@ export default function useSpectrogram({
   }, [initial, initialBounds, recording, initialParameters]);
 
   const lastViewportRef = useRef<SpectrogramWindow>(initialViewport);
-  useEffect(() => {
-    lastViewportRef.current = initialViewport;
-  }, [initialViewport]);
 
   const [parameters, setParameters] = useState<SpectrogramParameters>(
     validateParameters(initialParameters, recording),
@@ -200,24 +195,35 @@ export default function useSpectrogram({
   const zoom = useCallback(
     (oldViewport: SpectrogramWindow, in_out: string): SpectrogramWindow => {
       let zoom_factor = 1;
-      if (in_out === "in") {
+      if (in_out === "in" || in_out === "in_freq") {
         zoom_factor = 1 - ZOOM_FACTOR
-      } else if (in_out === "out") {
+      } else if (in_out === "out" || in_out === "out_freq") {
         zoom_factor = 1 + ZOOM_FACTOR
       } else {
-        console.warn(`Zoom not supported ${in_out}`);
         return oldViewport;
       }
 
-      let duration = oldViewport.time.max - oldViewport.time.min;
-      duration = duration * zoom_factor;
-      duration = oldViewport.time.min + duration;
+      if (in_out === "in" || in_out === "out") {
+        let duration = oldViewport.time.max - oldViewport.time.min;
+        duration = duration * zoom_factor;
+        duration = oldViewport.time.min + duration;
 
-      const newViewPort = structuredClone(oldViewport);
-      newViewPort.time.max = duration;
-      lastViewportRef.current = newViewPort;
+        const newViewPort = structuredClone(oldViewport);
+        newViewPort.time.max = duration;
+        lastViewportRef.current = newViewPort;
 
-      return newViewPort;
+        return newViewPort;
+      } else {
+        let bandwidth = oldViewport.freq.max - oldViewport.freq.min;
+        bandwidth = bandwidth * zoom_factor;
+        bandwidth = oldViewport.freq.min + bandwidth;
+
+        const newViewPort = structuredClone(oldViewport);
+        newViewPort.freq.max = bandwidth;
+        lastViewportRef.current = newViewPort;
+
+        return newViewPort;
+      }
     },
     []
   );
@@ -263,6 +269,18 @@ export default function useSpectrogram({
     [handleZoomDrag, zoom, lastViewportRef],
   )
 
+  const handleZoomInFreq = useCallback(() => {
+    handleZoomDrag(zoom(lastViewportRef.current, "in_freq"));
+  },
+    [handleZoomDrag, zoom, lastViewportRef],
+  )
+
+  const handleZoomOutFreq = useCallback(() => {
+    handleZoomDrag(zoom(lastViewportRef.current, "out_freq"));
+  },
+    [handleZoomDrag, zoom, lastViewportRef],
+  )
+
   const handleScale = useCallback(
     ({ time = 1, freq = 1 }: { time?: number; freq?: number }) => {
       setViewport((prev) =>
@@ -285,12 +303,23 @@ export default function useSpectrogram({
   );
 
   const handleReset = useCallback(() => {
-    if (lastViewportRef.current) {
-      const time_max_new = initialViewport.time.min + (initialViewport.time.max - initialViewport.time.min);
-      lastViewportRef.current.time.max = lastViewportRef.current.time.min + time_max_new;
-      lastViewportRef.current.freq.min = initialViewport.freq.min;
-      lastViewportRef.current.freq.max = initialViewport.freq.max;
-      handleZoomDrag(lastViewportRef.current);
+    const vprt = lastViewportRef.current
+    if (vprt) {
+      const vprtDuration = (vprt.time.max - vprt.time.min).toPrecision(4);
+      const vprtBandwidth = (vprt.freq.max - vprt.freq.min).toPrecision(4);
+      const initialViewportDuration = (initialViewport.time.max - initialViewport.time.min).toPrecision(4);
+      const initialViewportBandwidth = (initialViewport.freq.max - initialViewport.freq.min).toPrecision(4);
+
+      if (vprtDuration == initialViewportDuration && vprtBandwidth == initialViewportBandwidth) {
+        lastViewportRef.current = initialViewport;
+        handleZoomDrag(initialViewport);
+      } else {
+        const time_max_new = initialViewport.time.min + (initialViewport.time.max - initialViewport.time.min);
+        lastViewportRef.current.time.max = lastViewportRef.current.time.min + time_max_new;
+        lastViewportRef.current.freq.min = initialViewport.freq.min;
+        lastViewportRef.current.freq.max = initialViewport.freq.max;
+        handleZoomDrag(lastViewportRef.current);
+      }
     }
   }, [initialViewport, handleZoomDrag]);
 
@@ -400,7 +429,9 @@ export default function useSpectrogram({
           max: prev.time.max - shiftAmount,
         }
       };
-      return adjustWindowToBounds(newWindow, initialBounds);
+      const newViewPort = adjustWindowToBounds(newWindow, initialBounds);
+      lastViewportRef.current = newViewPort;
+      return newViewPort;
     });
   }, [initialBounds]);
 
@@ -415,7 +446,45 @@ export default function useSpectrogram({
           max: prev.time.max + shiftAmount,
         }
       };
-      return adjustWindowToBounds(newWindow, initialBounds);
+      const newViewPort = adjustWindowToBounds(newWindow, initialBounds);
+      lastViewportRef.current = newViewPort;
+      return newViewPort;
+    });
+  }, [initialBounds]);
+
+
+
+  const handleMoveUp = useCallback(() => {
+    setViewport((prev) => {
+      const bandwidth = prev.freq.max - prev.freq.min;
+      const shiftAmount = bandwidth * 0.1; // 10% of current view width
+      const newWindow = {
+        ...prev,
+        freq: {
+          min: prev.freq.min + shiftAmount,
+          max: prev.freq.max + shiftAmount,
+        }
+      };
+      const newViewPort = adjustWindowToBounds(newWindow, initialBounds);
+      lastViewportRef.current = newViewPort;
+      return newViewPort;
+    });
+  }, [initialBounds]);
+
+  const handleMoveDown = useCallback(() => {
+    setViewport((prev) => {
+      const bandwidth = prev.freq.max - prev.freq.min;
+      const shiftAmount = bandwidth * 0.1; // 10% of current view width
+      const newWindow = {
+        ...prev,
+        freq: {
+          min: prev.freq.min - shiftAmount,
+          max: prev.freq.max - shiftAmount,
+        }
+      };
+      const newViewPort = adjustWindowToBounds(newWindow, initialBounds);
+      lastViewportRef.current = newViewPort;
+      return newViewPort;
     });
   }, [initialBounds]);
 
@@ -423,9 +492,14 @@ export default function useSpectrogram({
     onGoZoom: enableZoom,
     onZoomIn: handleZoomIn,
     onZoomOut: handleZoomOut,
+    onZoomInFreq: handleZoomInFreq,
+    onZoomOutFreq: handleZoomOutFreq,
+    onResetZoom: handleReset,
     onToggleAspectRatio: toggleFixedAspectRatio,
     onMoveLeft: handleMoveLeft,
     onMoveRight: handleMoveRight,
+    onMoveDown: handleMoveDown,
+    onMoveUp: handleMoveUp,
     enabled: withShortcuts,
   });
 
@@ -441,8 +515,6 @@ export default function useSpectrogram({
     props,
     reset: handleReset,
     zoom: handleZoomDrag,
-    zoomIn: handleZoomIn,
-    zoomOut: handleZoomOut,
     moveLeft: handleMoveLeft,
     moveRight: handleMoveRight,
     drag: handleZoomDrag,

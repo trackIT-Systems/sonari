@@ -22,6 +22,10 @@ import STFTSettings from "./settings/STFTSettings";
 
 import type { SpectrogramParameters } from "@/types";
 import ConfigPresets from "./settings/ConfigPresets";
+import KeyboardKey from "../KeyboardKey";
+import { SETTINGS_SHORTCUT } from "@/utils/keyboard";
+import useKeyFilter from "@/hooks/utils/useKeyFilter";
+import { useKeyPressEvent } from "react-use";
 
 export function SpectrogramSettingForm({
   settings,
@@ -106,9 +110,20 @@ export default function SpectrogramSettings({
   onSave?: () => void;
 }) {
   const [open, setOpen] = useState(false);
+
+  useKeyPressEvent(useKeyFilter({ key: SETTINGS_SHORTCUT }), () => setOpen(true));
+
   return (
     <div>
-      <Tooltip placement="bottom" tooltip="Spectrogram settings">
+      <Tooltip
+        tooltip={
+          <div className="inline-flex gap-2 items-center">
+            Spectrogram settings
+            <KeyboardKey code={SETTINGS_SHORTCUT} />
+          </div>
+        }
+        placement="bottom"
+      >
         <Button variant="secondary" onClick={() => setOpen(true)}>
           <SettingsIcon className="w-5 h-5" />
         </Button>

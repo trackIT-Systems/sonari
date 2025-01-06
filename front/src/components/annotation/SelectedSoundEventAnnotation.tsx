@@ -1,10 +1,10 @@
 import Card from "@/components/Card";
 import SoundEventAnnotationDetails from "@/components/sound_event_annotations/SoundEventAnnotationDetails";
-import SoundEventAnnotationNotes from "@/components/sound_event_annotations/SoundEventAnnotationNotes";
 import SoundEventAnnotationTags from "@/components/sound_event_annotations/SoundEventAnnotationTags";
 import useSoundEventAnnotation from "@/hooks/api/useSoundEventAnnotation";
 import SoundEventSpectrogramView from "../sound_event_annotations/SoundEventSpectrogram";
 import { SpectrogramParameters } from "@/types";
+import { useEffect, useMemo } from "react";
 
 import type { TagFilter } from "@/api/tags";
 import type { ClipAnnotation, SoundEventAnnotation, Tag } from "@/types";
@@ -39,11 +39,21 @@ export default function SelectedSoundEventAnnotation({
     onRemoveTag,
   });
 
+  // Force refetch when the data prop changes
+  useEffect(() => {
+    soundEventAnnotation.refetch();
+  }, [data, soundEventAnnotation]);
+
+  // Use the latest data by combining prop and hook data
+  const currentAnnotation = useMemo(() => {
+    return soundEventAnnotation.data || data;
+  }, [soundEventAnnotation.data, data]);
+
   return (
     <div className="w-full flex flex-col gap-4 py-4">
       <Card className="grow">
         <SoundEventSpectrogramView
-          soundEventAnnotation={soundEventAnnotation.data || data}
+          soundEventAnnotation={currentAnnotation}
           recording={clipAnnotation.clip.recording}
           parameters={parameters}
           withSpectrogram={withSpectrogram}
@@ -54,7 +64,7 @@ export default function SelectedSoundEventAnnotation({
           <div className="flex-1">
             <SoundEventAnnotationTags
               tagFilter={tagFilter}
-              soundEventAnnotation={soundEventAnnotation.data || data}
+              soundEventAnnotation={currentAnnotation}
               onAddTag={soundEventAnnotation.addTag.mutate}
               onRemoveTag={soundEventAnnotation.removeTag.mutate}
               onCreateTag={onCreateTag}
@@ -62,7 +72,7 @@ export default function SelectedSoundEventAnnotation({
           </div>
           <div className="flex-1">
             <SoundEventAnnotationDetails
-              soundEventAnnotation={soundEventAnnotation.data || data}
+              soundEventAnnotation={currentAnnotation}
             />
           </div>
         </div>

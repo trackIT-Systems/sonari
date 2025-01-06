@@ -96,7 +96,7 @@ function TabContent({ tab, shortcutNumber }: { tab: TabType; shortcutNumber?: nu
     return <Tooltip
       tooltip={
         <div className="inline-flex gap-2 items-center">
-          Press
+          Go to {tab.title}
           <div className="text-xs">
             <KeyboardKey code={shortcutNumber?.toString()} />
           </div>

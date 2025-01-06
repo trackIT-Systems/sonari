@@ -2,19 +2,14 @@ import { useCallback } from "react";
 import { flexRender } from "@tanstack/react-table";
 import { useKeyPressEvent } from "react-use";
 import useKeyFilter from "@/hooks/utils/useKeyFilter";
-import { 
-  LIST_ELEMENT_UP_SHORTCUT, 
+import {
+  LIST_ELEMENT_UP_SHORTCUT,
   LIST_ELEMENT_DOWN_SHORTCUT,
   SELECT_LIST_ELEMENT_SHORTCUT,
   SELECT_FST_ELEMENT_SHORTCUT,
   SELECT_SND_ELEMENT_SHORTCUT,
   SELECT_TRD_ELEMENT_SHORTCUT,
   SELECT_FRT_ELEMENT_SHORTCUT,
-  SELECT_FTH_ELEMENT_SHORTCUT,
-  SELECT_STH_ELEMENT_SHORTCUT,
-  SELECT_SVNTH_ELEMENT_SHORTCUT,
-  SELECT_ETH_ELEMENT_SHORTCUT,
-  SELECT_NTH_ELEMENT_SHORTCUT,
 } from "@/utils/keyboard";
 
 import type { Table } from "@tanstack/react-table";
@@ -81,10 +76,10 @@ export default function Table<S>({
     if (!handleNumberKeys || event.metaKey || event.shiftKey) {
       return;
     }
-    
+
     const index = parseInt(event.key) - 1;
     const rows = table.getRowModel().rows;
-    
+
     if (index < rows.length && onSelect && onFocusChange) {
       event.preventDefault();
       event.stopPropagation();
@@ -97,11 +92,6 @@ export default function Table<S>({
   useKeyPressEvent(useKeyFilter({ key: SELECT_SND_ELEMENT_SHORTCUT }), handleNumberKey);
   useKeyPressEvent(useKeyFilter({ key: SELECT_TRD_ELEMENT_SHORTCUT }), handleNumberKey);
   useKeyPressEvent(useKeyFilter({ key: SELECT_FRT_ELEMENT_SHORTCUT }), handleNumberKey);
-  useKeyPressEvent(useKeyFilter({ key: SELECT_FTH_ELEMENT_SHORTCUT }), handleNumberKey);
-  useKeyPressEvent(useKeyFilter({ key: SELECT_STH_ELEMENT_SHORTCUT }), handleNumberKey);
-  useKeyPressEvent(useKeyFilter({ key: SELECT_SVNTH_ELEMENT_SHORTCUT }), handleNumberKey);
-  useKeyPressEvent(useKeyFilter({ key: SELECT_ETH_ELEMENT_SHORTCUT }), handleNumberKey);
-  useKeyPressEvent(useKeyFilter({ key: SELECT_NTH_ELEMENT_SHORTCUT }), handleNumberKey);
 
 
   return (
@@ -131,15 +121,14 @@ export default function Table<S>({
                 {header.isPlaceholder
                   ? null
                   : flexRender(
-                      header.column.columnDef.header,
-                      header.getContext(),
-                    )}
+                    header.column.columnDef.header,
+                    header.getContext(),
+                  )}
                 <div
                   onMouseDown={header.getResizeHandler()}
                   onTouchStart={header.getResizeHandler()}
-                  className={`resizer ${
-                    header.column.getIsResizing() ? "isResizing" : ""
-                  }`}
+                  className={`resizer ${header.column.getIsResizing() ? "isResizing" : ""
+                    }`}
                 />
               </th>
             ))}
@@ -151,9 +140,8 @@ export default function Table<S>({
           return (
             <tr
               key={row.id}
-              className={`hover:dark:bg-stone-800 hover:bg-stone-200 max-h-40 h-min ${
-                index === selectedIndex ? 'bg-stone-200 dark:bg-stone-800' : ''
-              }`}
+              className={`hover:dark:bg-stone-800 hover:bg-stone-200 max-h-40 h-min ${index === selectedIndex ? 'bg-stone-200 dark:bg-stone-800' : ''
+                }`}
             >
               {row.getVisibleCells().map((cell) => {
                 return (

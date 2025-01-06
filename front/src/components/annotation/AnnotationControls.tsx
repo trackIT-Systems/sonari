@@ -1,4 +1,4 @@
-import { ReactNode } from "react";
+import { ReactNode, useRef } from "react";
 
 import Button from "@/components/Button";
 import {
@@ -6,15 +6,15 @@ import {
   BoundingBoxIcon,
   DeleteIcon,
   EditIcon,
-  LineStringIcon,
   SelectIcon,
   TimeIntervalIcon,
-  TimeStampIcon,
 } from "@/components/icons";
 import KeyboardKey from "@/components/KeyboardKey";
 import Select from "@/components/inputs/Select";
 import Tooltip from "@/components/Tooltip";
-import { CREATE_SOUND_EVENT_SHORTCUT, DELETE_SOUND_EVENT_SHORTCUT, SELECT_SOUND_EVENT_SHORTCUT } from "@/utils/keyboard";
+import { CREATE_SOUND_EVENT_SHORTCUT, DELETE_SOUND_EVENT_SHORTCUT, SELECT_SOUND_EVENT_SHORTCUT, GEOMETRY_TYPE_SHORTCUT } from "@/utils/keyboard";
+import useKeyFilter from "@/hooks/utils/useKeyFilter";
+import { useKeyPressEvent } from "react-use";
 
 import type { GeometryType } from "@/types";
 
@@ -24,13 +24,8 @@ type Node = {
   value: string;
 };
 
-// @ts-ignore   TODO Add all geometry types
+// @ts-ignore
 const geometryTypes: Record<GeometryType, Node> = {
-  TimeStamp: {
-    id: "TimeStamp",
-    label: <TimeStampIcon className="w-5 h-5" />,
-    value: "TimeStamp",
-  },
   TimeInterval: {
     id: "TimeInterval",
     label: <TimeIntervalIcon className="w-5 h-5" />,
@@ -40,11 +35,6 @@ const geometryTypes: Record<GeometryType, Node> = {
     id: "BoundingBox",
     label: <BoundingBoxIcon className="w-5 h-5" />,
     value: "BoundingBox",
-  },
-  LineString: {
-    id: "LineString",
-    label: <LineStringIcon className="w-5 h-5" />,
-    value: "LineString",
   },
 };
 
@@ -71,6 +61,13 @@ export default function AnnotationControls({
   onSelect?: () => void;
   onSelectGeometryType?: (type: GeometryType) => void;
 }) {
+
+  const geometrySelectRef = useRef<HTMLButtonElement>(null);
+
+  useKeyPressEvent(useKeyFilter({ key: GEOMETRY_TYPE_SHORTCUT }), () => {
+    geometrySelectRef.current?.click();
+  });
+
   if (disabled)
     return (
       <div className="flex space-x-2">
@@ -163,6 +160,7 @@ export default function AnnotationControls({
         options={Object.values(geometryTypes)}
         selected={geometryTypes[geometryType]}
         onChange={(type) => onSelectGeometryType?.(type as GeometryType)}
+        buttonRef={geometrySelectRef}
       />
     </div>
   );
