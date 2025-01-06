@@ -32,14 +32,14 @@ function FilterCombobox<T extends Object>({
       </div>
       <SearchMenu
         options={filterDefs}
-        static={false}
+        static={true}
         renderOption={(filter) => (
           <>
             {filter.icon ?? filter.icon}
             {filter.name}
           </>
         )}
-        limit={5}
+        limit={100}
         fields={["name", "prefix"]}
         getOptionKey={(filter) => filter.name}
         onSelect={onChange}

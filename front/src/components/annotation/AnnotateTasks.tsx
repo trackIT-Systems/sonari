@@ -470,6 +470,7 @@ export default function AnnotateTasks({
                           Select a tag to remove from {selectedAnnotation ? 'selected sound event' : 'all sound events'}
                         </div>
                         <SearchMenu
+                          limit={100}
                           options={selectedAnnotation
                             ? (selectedAnnotation.tags || []).map(tag => ({ tag, count: 1 }))
                             : tagsWithCount}
@@ -524,6 +525,7 @@ export default function AnnotateTasks({
                           Select a tag to cycle through
                         </div>
                         <SearchMenu
+                          limit={100}
                           options={tagsWithCount}
                           fields={["tag.key", "tag.value"]}
                           renderOption={(tagWithCount) => (

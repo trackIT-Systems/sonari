@@ -51,6 +51,7 @@ function TagReplacePanel({
           Replace ...
         </div>
         <SearchMenu
+          limit={100}
           key="first-search"
           options={allOptions}
           fields={["type", "tag.key", "tag.value"]}
@@ -96,6 +97,7 @@ function TagReplacePanel({
         </Button>
       </div>
       <SearchMenu
+        limit={100}
         key="second-search"
         options={projectTags}
         fields={["key", "value"]}
@@ -140,6 +142,7 @@ function TagAddPanel({
         </div>
       </div>
       <SearchMenu
+        limit={100}
         key="second-search"
         options={projectTags}
         fields={["key", "value"]}
