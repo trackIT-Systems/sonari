@@ -9,7 +9,7 @@ import useAnnotationTaskTable from "@/hooks/useAnnotationTaskTable";
 import Loading from "@/app/loading";
 import Search from "@/components/inputs/Search";
 import FilterPopover from "@/components/filters/FilterMenu";
-import annotationTaskFilterDefs from "@/components/filters/annotation_tasks";
+import tasksFilterDefs from "../filters/tasks";
 import FilterBar from "@/components/filters/FilterBar";
 import Table from "@/components/tables/Table";
 import Pagination from "@/components/lists/Pagination";
@@ -112,7 +112,7 @@ export default function AnnotationTaskTable({
           </div>
           <FilterPopover
             filter={annotationTasks.filter}
-            filterDef={annotationTaskFilterDefs}
+            filterDef={tasksFilterDefs}
             button={btn}
             
 
@@ -122,7 +122,7 @@ export default function AnnotationTaskTable({
       <FilterBar
         filter={annotationTasks.filter}
         total={annotationTasks.total}
-        filterDef={annotationTaskFilterDefs}
+        filterDef={tasksFilterDefs}
       />
       <div className="w-full">
         <div className="overflow-x-auto overflow-y-auto w-full max-h-screen rounded-md outline outline-1 outline-stone-200 dark:outline-stone-800">

@@ -12,6 +12,10 @@ import {
   NeedsReviewIcon,
   TagIcon,
   VerifiedIcon,
+  CompleteIcon,
+  HelpIcon,
+  SunIcon,
+  MoonIcon,
 } from "@/components/icons";
 
 import type { AnnotationTaskFilter } from "@/api/annotation_tasks";
@@ -51,7 +55,7 @@ const tasksFilterDefs: FilterDef<AnnotationTaskFilter>[] = [
     ),
     description: "Select only accepted tasks",
     icon: (
-      <EditIcon className="h-5 w-5 inline-block text-stone-500 mr-1 align-middle" />
+      <CompleteIcon className="h-5 w-5 inline-block text-stone-500 mr-1 align-middle" />
     ),
   },
   {
@@ -106,7 +110,7 @@ const tasksFilterDefs: FilterDef<AnnotationTaskFilter>[] = [
     ),
     description: "Select only unsure annotation tasks.",
     icon: (
-      <NeedsReviewIcon className="h-5 w-5 inline-block text-stone-500 mr-1 align-middle" />
+      <HelpIcon className="h-5 w-5 inline-block text-stone-500 mr-1 align-middle" />
     ),
   },
   {
@@ -179,7 +183,7 @@ const tasksFilterDefs: FilterDef<AnnotationTaskFilter>[] = [
     ),
     description: "Select tasks for a given night",
     icon: (
-      <EditIcon className="h-5 w-5 inline-block text-stone-500 mr-1 align-middle" />
+      <MoonIcon className="h-5 w-5 inline-block text-stone-500 mr-1 align-middle" />
     ),
   },
   {
@@ -202,7 +206,7 @@ const tasksFilterDefs: FilterDef<AnnotationTaskFilter>[] = [
     ),
     description: "Select tasks during day time",
     icon: (
-      <EditIcon className="h-5 w-5 inline-block text-stone-500 mr-1 align-middle" />
+      <SunIcon className="h-5 w-5 inline-block text-stone-500 mr-1 align-middle" />
     ),
   },
 ];
