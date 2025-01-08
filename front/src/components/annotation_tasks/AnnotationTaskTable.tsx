@@ -83,8 +83,11 @@ export default function AnnotationTaskTable({
     <FilterIcon className="h-4 w-4 stroke-2" />
   </Button>
 
-  useKeyPressEvent(FILTER_POPOVER_SHORTCUT, () => {
+  useKeyPressEvent(FILTER_POPOVER_SHORTCUT, (event: KeyboardEvent) => {
     const button = popoverButtonRef.current;
+    if (event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement) {
+      return;
+    }
     if (button instanceof HTMLButtonElement && focusedElement !== 'search' && focusedElement !== 'filter') {
       button.click();
     }
