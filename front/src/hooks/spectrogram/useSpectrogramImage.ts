@@ -12,16 +12,19 @@ export default function useSpectrogramImage({
   window,
   parameters,
   withSpectrogram,
+  strict,
 }: {
   recording: Recording;
   window: SpectrogramWindow;
   parameters: SpectrogramParameters;
   withSpectrogram: boolean;
+  strict?: boolean;
 }) {
   // Get a spectrogram segment that covers the window
   const { selected, prev, next } = useRecordingSegments({
     recording: recording,
     window: window,
+    strict: strict,
   });
 
   // Load the spectrogram segment

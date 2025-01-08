@@ -1,5 +1,4 @@
-import { type Control, Controller, useController } from "react-hook-form";
-import { useCallback } from "react";
+import { type Control, Controller } from "react-hook-form";
 
 import { InputGroup } from "@/components/inputs/index";
 import Select from "@/components/inputs/Select";

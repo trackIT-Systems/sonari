@@ -57,14 +57,12 @@ def compute_spectrogram(
     # Select channel. Do this early to avoid unnecessary computation.
     wav = wav[dict(channel=[spectrogram_parameters.channel])]
 
-    # The hop size is expressed as a fraction of the window size.
     hop_size = spectrogram_parameters.hop_size * spectrogram_parameters.window_size
+    window_size = spectrogram_parameters.window_size
 
     if low_res:
         window_size = spectrogram_parameters.window_size / 10
         hop_size = hop_size * 10
-    else:
-        window_size = spectrogram_parameters.window_size
 
     spectrogram = audio.compute_spectrogram(
         wav,
@@ -85,13 +83,6 @@ def compute_spectrogram(
         min_db=spectrogram_parameters.min_dB,
         max_db=spectrogram_parameters.max_dB,
     )
-
-    # # Clamp amplitude.
-    # spectrogram = audio.clamp_amplitude(
-    #     spectrogram,
-    #     spectrogram_parameters.min_dB,
-    #     spectrogram_parameters.max_dB,
-    # )
 
     # Scale to [0, 1]. If normalization is relative, the minimum and maximum
     # values are computed from the spectrogram, otherwise they are taken from

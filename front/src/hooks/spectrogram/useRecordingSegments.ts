@@ -27,9 +27,11 @@ const OVERLAP = 0.4;
 export default function useRecordingSegments({
   recording,
   window,
+  strict,
 }: {
   recording: Recording;
   window: SpectrogramWindow;
+  strict?: boolean;
 }) {
   // The bounds of the spectrogram
   const bounds = useMemo(
@@ -42,10 +44,10 @@ export default function useRecordingSegments({
 
   // Compute the segments that cover the window
   const segments = useMemo(() => {
-    const duration = getCoveringSegmentDuration(window);
+    const duration = getCoveringSegmentDuration(window, strict);
     const segments = getSegments(bounds, duration, OVERLAP);
     return segments;
-  }, [bounds, window]);
+  }, [bounds, window, strict]);
 
   // Select the segment that best covers the window
   const indexSelected = useMemo(
@@ -77,8 +79,11 @@ export default function useRecordingSegments({
 }
 
 /** Compute the minimum segment duration that covers the given window. */
-function getCoveringSegmentDuration(window: SpectrogramWindow) {
+function getCoveringSegmentDuration(window: SpectrogramWindow, strict?: boolean) {
   const duration = window.time.max - window.time.min;
+  if (strict) {
+    return duration
+  }
   return (
     DURATIONS.find((d) => d >= 3 * duration) ?? DURATIONS[DURATIONS.length - 1]
   );

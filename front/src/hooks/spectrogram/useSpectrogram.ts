@@ -141,6 +141,7 @@ export default function useSpectrogram({
   onDoubleClick,
   enabled = true,
   withShortcuts = true,
+  strict = false,
   withSpectrogram,
   fixedAspectRatio,
   toggleFixedAspectRatio,
@@ -155,6 +156,7 @@ export default function useSpectrogram({
   onDoubleClick?: (dblClickProps: { position: Position }) => void;
   enabled?: boolean;
   withShortcuts?: boolean;
+  strict?: boolean;
   withSpectrogram: boolean;
   fixedAspectRatio: boolean,
   toggleFixedAspectRatio: () => void;
@@ -345,20 +347,10 @@ export default function useSpectrogram({
             parameters.gamma = 1;
             parameters.min_dB = -140;
             break;
-          case "hsrn":
-            parameters.window_size = 0.00319;
-            parameters.gamma = 1.5;
-            parameters.min_dB = -90;
-            break;
           case "lsr":
             parameters.window_size = 0.03;
             parameters.gamma = 1;
             parameters.min_dB = -140;
-            break;
-          case "lsrn":
-            parameters.window_size = 0.03;
-            parameters.gamma = 1.5;
-            parameters.min_dB = -90;
             break;
         }
       }

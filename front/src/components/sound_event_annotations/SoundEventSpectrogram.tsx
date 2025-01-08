@@ -39,7 +39,7 @@ function getWindowFromGeometry(annotation: SoundEventAnnotation, recording: Reco
 
         case "BoundingBox":
             const bb_coordinates = geometry.coordinates as [number, number, number, number];
-            const bandwidth_margin = (bb_coordinates[3] - bb_coordinates[1]) * 0.1;
+            var bandwidth_margin = (bb_coordinates[3] - bb_coordinates[1]) * 0.1;
             var duration_margin = (bb_coordinates[2] - bb_coordinates[0]) * 0.1
             return {
                 time: {
@@ -117,7 +117,7 @@ export default function SoundEventSpectrogramView({
         () => getWindowFromGeometry(soundEventAnnotation, recording),
         [soundEventAnnotation, recording]
     );
-
+    
     const dimensions = useMemo(
         () => calculateSpectrogramDimensions(window, parameters, recording.samplerate),
         [window, parameters, recording.samplerate]
@@ -132,10 +132,10 @@ export default function SoundEventSpectrogramView({
         enabled: true,
         withSpectrogram,
         withShortcuts: false,
+        strict: true,
         fixedAspectRatio: false,
         toggleFixedAspectRatio: () => { },
     });
-
 
     const { draw } = spectrogram;
 
