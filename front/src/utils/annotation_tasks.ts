@@ -1,5 +1,4 @@
 import type { AnnotationTask } from "@/types";
-import { WHOMBATDETECT_USERS } from "@/constants";
 
 export function computeAnnotationTasksProgress(
   annotationTasks: AnnotationTask[],
@@ -22,9 +21,6 @@ export function computeAnnotationTasksProgress(
           isVerified = true;
           break;
         case "rejected":
-          if (!user || WHOMBATDETECT_USERS.includes(user.username)) {
-            break
-          }
           needsReview = true;
           break;
         case "completed":

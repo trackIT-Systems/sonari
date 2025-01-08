@@ -13,7 +13,6 @@ from soundevent.io.aoef import to_aeof
 
 from whombat import api, models, schemas
 from whombat.api.io import aoef
-from whombat.api.users import detector_users
 from whombat.filters.annotation_projects import AnnotationProjectFilter
 from whombat.routes.dependencies import Session, WhombatSettings
 from whombat.routes.types import Limit, Offset
@@ -255,11 +254,7 @@ async def export_annotation_project_territory(
                     # Collect status badges for this task
                     status_badges = []
                     for s in task.status_badges:
-                        username: str = s.user.name if s.user and s.user.name else ""
-                        state: str = s.state.name
-                        if state == "rejected" and username in detector_users:
-                            continue
-                        status_badges.append(f"{state}")
+                        status_badges.append(f"{s.state.name}")
 
                     species_data[species][station][date].extend(status_badges)
 
@@ -397,8 +392,6 @@ async def export_annotation_project_multibase(
                     for s in task.status_badges:
                         username: str = s.user.name if s.user and s.user.name else ""
                         state: str = s.state.name
-                        if username in detector_users:
-                            continue
                         if state == "rejected" and username == "":
                             continue
 

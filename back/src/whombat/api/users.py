@@ -11,19 +11,7 @@ from whombat.api import common
 from whombat.api.common import BaseAPI
 from whombat.system.users import UserDatabase, UserManager
 
-__all__ = [
-    "detector_users",
-]
-
-# This list solelly exists to filter out automatically
-# generated users generated with whombatdetect to cleanup the export.
-detector_users: list[str] = [
-    "batdetect2",
-    "yolobat",
-    "soundscapepipe",
-    "birdedge",
-    "batectron",
-]
+__all__ = []
 
 
 class UserAPI(
@@ -62,9 +50,7 @@ class UserAPI(
         ------
         whombat.exceptions.NotFoundError
         """
-        obj = await common.get_object(
-            session, models.User, models.User.username == username
-        )
+        obj = await common.get_object(session, models.User, models.User.username == username)
         return schemas.SimpleUser.model_validate(obj)
 
     async def get_by_email(
@@ -89,9 +75,7 @@ class UserAPI(
         ------
         whombat.exceptions.NotFoundError
         """
-        obj = await common.get_object(
-            session, models.User, models.User.email == email
-        )
+        obj = await common.get_object(session, models.User, models.User.email == email)
         return schemas.SimpleUser.model_validate(obj)
 
     async def create(

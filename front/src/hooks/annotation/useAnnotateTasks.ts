@@ -17,8 +17,6 @@ import useAnnotateTasksKeyShortcuts from "@/hooks/annotation/useAnnotateTasksKey
 import useAnnotationTasks from "@/hooks/api/useAnnotationTasks";
 import { type Filter } from "@/hooks/utils/useFilter";
 
-import { WHOMBATDETECT_USERS } from "@/constants";
-
 import type { AnnotationStatus, AnnotationStatusBadge, AnnotationTask, ClipAnnotation } from "@/types";
 
 type AnnotationState = {
@@ -235,24 +233,6 @@ export default function useAnnotateTasks({
     [client, queryKey],
   );
 
-  // Add this helper function at the top level
-  function shouldRemoveBadge(badge: AnnotationStatusBadge) {
-    return (
-      badge.state === "rejected" &&
-      badge.user?.username != null &&
-      WHOMBATDETECT_USERS.includes(badge.user.username)
-    );
-  }
-
-  async function removeDetectorBadge(task: AnnotationTask) {
-    if (task.status_badges) {
-      const badgesToRemove = task.status_badges.filter(shouldRemoveBadge);
-      for (const badge of badgesToRemove) {
-        await api.annotationTasks.removeBadge(task, badge.state, badge.user?.id);
-      }
-    }
-  }
-
   const markCompletedFn = useCallback(async () => {
     if (currentTask == null) {
       throw new Error("No selected task");
@@ -264,7 +244,6 @@ export default function useAnnotateTasks({
     mutationFn: markCompletedFn,
     onSuccess: (task) => {
       let updatedTask = task;
-      removeDetectorBadge(task);
       onCompleteTask?.(updatedTask);
       updateTaskData(updatedTask);
       const nextTaskIndex = index + 1;
@@ -286,7 +265,6 @@ export default function useAnnotateTasks({
     mutationFn: markUnsureFn,
     onSuccess: (task) => {
       let updatedTask = task;
-      removeDetectorBadge(task);
       onUnsureTask?.(updatedTask);
       updateTaskData(updatedTask);
       const nextTaskIndex = index + 1;
@@ -308,7 +286,6 @@ export default function useAnnotateTasks({
     mutationFn: markRejectedFn,
     onSuccess: (task) => {
       let updatedTask = task;
-      removeDetectorBadge(task);
       onRejectTask?.(updatedTask);
       updateTaskData(updatedTask);
       const nextTaskIndex = index + 1;
@@ -330,7 +307,6 @@ export default function useAnnotateTasks({
     mutationFn: markVerifiedFn,
     onSuccess: (task) => {
       let updatedTask = task;
-      removeDetectorBadge(task);
       onVerifyTask?.(updatedTask);
       updateTaskData(updatedTask);
       const nextTaskIndex = index + 1;

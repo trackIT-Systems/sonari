@@ -7,7 +7,6 @@ from soundevent import data
 from sqlalchemy import Select, and_, exists, func, not_, select
 
 from whombat import models
-from whombat.api.users import detector_users
 from whombat.filters import base
 
 __all__ = [
@@ -89,7 +88,6 @@ class PendingFilter(base.Filter):
                                 data.AnnotationState.verified,
                             ]
                         ),
-                        not_(models.AnnotationStatusBadge.user.has(models.User.username.in_(detector_users))),
                     )
                 )
             )
