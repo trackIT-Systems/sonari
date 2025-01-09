@@ -105,7 +105,6 @@ export const MOVE_DOWN_SHORTCUT = "ArrowDown";
 
 export const PLAY_SHORTCUT = " ";
 
-export const PENDING_SHORTCUT = "p";
 export const FILTER_SHORTCUT = "f";
 export const DISABLE_SPECTROGRAM_SHORTCUT = "h";
 export const GEOMETRY_TYPE_SHORTCUT = "e";
@@ -168,11 +167,6 @@ export const MISC_SHORTCUTS: KeyShortcut[] = [
         label: "Play",
         shortcut: PLAY_SHORTCUT,
         description: "Start and stop audio playback",
-    },
-    {
-        label: "Pending",
-        shortcut: PENDING_SHORTCUT,
-        description: "Show only pending tasks",
     },
     {
         label: "Filter",

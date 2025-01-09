@@ -5,7 +5,6 @@ import FilterBar from "@/components/filters/FilterBar";
 import FilterMenu from "@/components/filters/FilterMenu";
 import taskFilterDefs from "@/components/filters/tasks";
 import { FilterIcon, NextIcon, PreviousIcon } from "@/components/icons";
-import Toggle from "@/components/inputs/Toggle";
 import Tooltip from "@/components/Tooltip";
 import Dialog from "@/components/Dialog";
 import KeyboardKey from "@/components/KeyboardKey";
@@ -19,7 +18,6 @@ import type { AnnotationTask } from "@/types";
 import {
   NEXT_TASK_SHORTCUT,
   PREV_TASK_SHORTCUT,
-  PENDING_SHORTCUT,
   FILTER_SHORTCUT,
   getSpecialKeyLabel,
   ROOT_NAVIGATION_SHORTCUTS,
@@ -67,7 +65,6 @@ export default function AnnotationProgress({
   } = useMemo(() => computeAnnotationTasksProgress(tasks), [tasks]);
 
 
-  const pendingButtonRef = useRef<HTMLButtonElement>(null);
   const filterButtonRef = useRef<HTMLButtonElement>(null);
 
   const filterBtn = <Button
@@ -82,16 +79,6 @@ export default function AnnotationProgress({
       Filters
     </span>
   </Button>
-
-  useKeyPressEvent(PENDING_SHORTCUT, (event: KeyboardEvent) => {
-    if (event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement) {
-      return;
-    }
-    const button = pendingButtonRef.current;
-    if (button instanceof HTMLButtonElement) {
-      button.click();
-    }
-  });
 
   useKeyPressEvent(FILTER_SHORTCUT, (event) => {
     if (event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement) {
@@ -121,54 +108,19 @@ export default function AnnotationProgress({
         </Button>
       </Tooltip>
       <div className="inline-flex gap-4 items-center px-2 h-full rounded-lg border grow dark:border-stone-800">
-        <div className="inline-flex gap-3 items-center">
-          <ShortcutHelper shortcuts={SHORTCUTS} />
-          <Dialog
-            mode="text"
-            variant="info"
-            title="Annotation Instructions"
-            label="Instructions"
-          >
-            {() => <p>{instructions}</p>}
-          </Dialog>
-          <span className="inline-flex gap-1 items-center text-sm whitespace-nowrap">
-            <span className="text-stone-500">#:</span>
-            <span className="font-bold text-blue-500">{current ? current + 1 : 0}</span>
-          </span>
-        </div>
+        <ShortcutHelper shortcuts={SHORTCUTS} />
         <span className="text-sm inline-flex gap-1 items-center whitespace-nowrap text-stone-500">
-          <span>Remaining:</span>
-          <span className="font-medium text-blue-500">{pending}</span>/{total}
+          <span className="text-stone-500">Current task:</span>
+          <span className="font-bold text-blue-500">{current ? current + 1 : 0}</span>
         </span>
-        <div className="inline-flex gap-1 items-center">
-          <span className="text-sm text-stone-500">Pending:</span>
-
-          <Tooltip
-            tooltip={
-              <div className="inline-flex gap-2 items-center">
-                Show only pending tasks
-                <div className="text-xs">
-                  <KeyboardKey code="p" />
-                </div>
-              </div>
-            }
-            placement="bottom"
-          >
-            <Toggle
-              label="Only Pending"
-              isSelected={filter.get("pending") ?? false}
-              onChange={(checked) => {
-                if (checked) {
-                  filter.set("pending", checked, true);
-                } else {
-                  filter.clear("pending", true);
-                }
-              }}
-              buttonRef={pendingButtonRef}
-            />
-          </Tooltip>
-
-        </div>
+        <span className="text-sm inline-flex gap-1 items-center whitespace-nowrap text-stone-500">
+          <span>Remaining tasks:</span>
+          <span className="font-medium text-blue-500">{pending}</span>
+        </span>
+        <span className="text-sm inline-flex gap-1 items-center whitespace-nowrap text-stone-500">
+          <span>Total tasks:</span>
+          <span className="font-medium text-blue-500">{total}</span>
+        </span>
         <FilterMenu
           filter={filter}
           filterDef={taskFilterDefs}
@@ -179,13 +131,11 @@ export default function AnnotationProgress({
           })}
           button={filterBtn}
         />
-        <div className="overflow-x-auto">
           <FilterBar
             withLabel={false}
             filter={filter}
             filterDef={taskFilterDefs}
           />
-        </div>
       </div>
       <Tooltip
         tooltip={
