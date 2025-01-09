@@ -64,8 +64,26 @@ export default function useAnnotateClipKeyShortcuts(props: {
   });
   useKeyPressEvent(useKeyFilter({ enabled, key: RESET_ZOOM_SHORTCUT }), onResetZoom)
   useKeyPressEvent(useKeyFilter({ enabled, key: LOCK_ASPECT_RATIO_SHORTCUT }), onToggleAspectRatio);
-  useKeyPressEvent(useKeyFilter({ enabled, key: MOVE_LEFT_SHORTCUT }), onMoveLeft);
-  useKeyPressEvent(useKeyFilter({ enabled, key: MOVE_RIGHT_SHORTCUT }), onMoveRight);
-  useKeyPressEvent(useKeyFilter({ enabled, key: MOVE_UP_SHORTCUT }), onMoveUp);
-  useKeyPressEvent(useKeyFilter({ enabled, key: MOVE_DOWN_SHORTCUT }), onMoveDown);
+
+
+  useKeyPressEvent(useKeyFilter({ enabled, key: MOVE_LEFT_SHORTCUT }), (event: KeyboardEvent) => {
+    event.preventDefault();
+    event.stopPropagation();
+    onMoveLeft();
+  });
+  useKeyPressEvent(useKeyFilter({ enabled, key: MOVE_RIGHT_SHORTCUT }), (event: KeyboardEvent) => {
+    event.preventDefault();
+    event.stopPropagation();
+    onMoveRight();
+  });
+  useKeyPressEvent(useKeyFilter({ enabled, key: MOVE_UP_SHORTCUT }), (event: KeyboardEvent) => {
+    event.preventDefault();
+    event.stopPropagation();
+    onMoveUp();
+  });
+  useKeyPressEvent(useKeyFilter({ enabled, key: MOVE_DOWN_SHORTCUT }), (event: KeyboardEvent) => {
+    event.preventDefault();
+    event.stopPropagation();
+    onMoveDown();
+  });
 }
