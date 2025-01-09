@@ -91,7 +91,7 @@ export default function AnnotationProgress({
   });
 
   return (
-    <div className="inline-flex gap-1 items-center h-full w-full">
+    <div className="inline-flex gap-4 items-center h-full w-[63rem]">
       <Tooltip
         tooltip={
           <div className="inline-flex gap-2 items-center">
@@ -107,35 +107,37 @@ export default function AnnotationProgress({
           <PreviousIcon className="inline-block w-8 h-8" />
         </Button>
       </Tooltip>
-      <div className="inline-flex gap-4 items-center px-2 h-full rounded-lg border grow dark:border-stone-800">
-        <ShortcutHelper shortcuts={SHORTCUTS} />
-        <span className="text-sm inline-flex gap-1 items-center whitespace-nowrap text-stone-500">
-          <span className="text-stone-500">Current task:</span>
-          <span className="font-bold text-blue-500">{current ? current + 1 : 0}</span>
-        </span>
-        <span className="text-sm inline-flex gap-1 items-center whitespace-nowrap text-stone-500">
-          <span>Remaining tasks:</span>
-          <span className="font-medium text-blue-500">{pending}</span>
-        </span>
-        <span className="text-sm inline-flex gap-1 items-center whitespace-nowrap text-stone-500">
-          <span>Total tasks:</span>
-          <span className="font-medium text-blue-500">{total}</span>
-        </span>
-        <FilterMenu
-          filter={filter}
-          filterDef={taskFilterDefs}
-          className={getButtonClassName({
-            variant: "info",
-            mode: "text",
-            padding: "p-1",
-          })}
-          button={filterBtn}
-        />
+      <div className="flex flex-col px-2 py-2 rounded-lg border grow dark:border-stone-800">
+        <div className="flex flex-wrap gap-4 items-center">
+          <ShortcutHelper shortcuts={SHORTCUTS} />
+          <span className="text-sm inline-flex gap-1 items-center whitespace-nowrap text-stone-500">
+            <span className="text-stone-500">Current task:</span>
+            <span className="font-bold text-blue-500">{current ? current + 1 : 0}</span>
+          </span>
+          <span className="text-sm inline-flex gap-1 items-center whitespace-nowrap text-stone-500">
+            <span>Remaining tasks:</span>
+            <span className="font-medium text-blue-500">{pending}</span>
+          </span>
+          <span className="text-sm inline-flex gap-1 items-center whitespace-nowrap text-stone-500">
+            <span>Total tasks:</span>
+            <span className="font-medium text-blue-500">{total}</span>
+          </span>
+          <FilterMenu
+            filter={filter}
+            filterDef={taskFilterDefs}
+            className={getButtonClassName({
+              variant: "info",
+              mode: "text",
+              padding: "p-1",
+            })}
+            button={filterBtn}
+          />
           <FilterBar
             withLabel={false}
             filter={filter}
             filterDef={taskFilterDefs}
           />
+        </div>
       </div>
       <Tooltip
         tooltip={

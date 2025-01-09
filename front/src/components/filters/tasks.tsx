@@ -45,7 +45,7 @@ const tasksFilterDefs: FilterDef<AnnotationTaskFilter>[] = [
     name: "Accepted",
     render: ({ value, clear }) => (
       <FilterBadge
-        field="accepted"
+        field="Accepted"
         value={value ? "Yes" : "No"}
         onRemove={clear}
       />
