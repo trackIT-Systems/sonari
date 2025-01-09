@@ -110,7 +110,7 @@ export default function AnnotationProgress({
           <div className="inline-flex gap-2 items-center">
             Previous Task
             <div className="text-xs">
-              <KeyboardKey code="ctrl" /><KeyboardKey code={`${getSpecialKeyLabel(PREV_TASK_SHORTCUT)}`} />
+              <KeyboardKey code={`${getSpecialKeyLabel("Shift")}`} /><KeyboardKey code={`${getSpecialKeyLabel(PREV_TASK_SHORTCUT)}`} />
             </div>
           </div>
         }
@@ -192,7 +192,7 @@ export default function AnnotationProgress({
           <div className="inline-flex gap-2 items-center">
             Next Task
             <div className="text-xs">
-              <KeyboardKey code="ctrl" /><KeyboardKey code={`${getSpecialKeyLabel(NEXT_TASK_SHORTCUT)}`} />
+              <KeyboardKey code={`${getSpecialKeyLabel("Shift")}`} /><KeyboardKey code={`${getSpecialKeyLabel(NEXT_TASK_SHORTCUT)}`} />
             </div>
           </div>
         }

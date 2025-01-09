@@ -36,11 +36,11 @@ export default function useAnnotateTaskKeyShortcuts(props: {
   } = props;
 
   useKeyPressEvent(useKeyFilter({ enabled, key: NEXT_TASK_SHORTCUT }), (event: KeyboardEvent) => {
-    if (!event.ctrlKey) return;
+    if (!event.shiftKey) return;
     if (onGoNext) onGoNext();
   });
   useKeyPressEvent(useKeyFilter({ enabled, key: PREV_TASK_SHORTCUT }), (event: KeyboardEvent) => {
-    if (!event.ctrlKey) return;
+    if (!event.shiftKey) return;
     if (onGoPrevious) onGoPrevious();
   });
   useKeyPressEvent(useKeyFilter({ enabled, key: ACCEPT_TASK_SHORTCUT }), onMarkCompleted);

@@ -224,12 +224,12 @@ export const TASK_STATE_SHORTCUTS: KeyShortcut[] = [
     },
     {
         label: "Next",
-        shortcut: `${getSpecialKeyLabel("Ctrl")} ${getSpecialKeyLabel(NEXT_TASK_SHORTCUT)}`,
+        shortcut: `${getSpecialKeyLabel("Shift")} ${getSpecialKeyLabel(NEXT_TASK_SHORTCUT)}`,
         description: "Go to next task",
     },
     {
         label: "Previous",
-        shortcut: `${getSpecialKeyLabel("Ctrl")} ${getSpecialKeyLabel(PREV_TASK_SHORTCUT)}`,
+        shortcut: `${getSpecialKeyLabel("Shift")} ${getSpecialKeyLabel(PREV_TASK_SHORTCUT)}`,
         description: "Go to previous task",
     },
 ]
