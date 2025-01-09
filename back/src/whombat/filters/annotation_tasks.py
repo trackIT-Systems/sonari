@@ -411,7 +411,7 @@ class NightFilter(base.Filter):
     """Filter for tasks by night time recordings."""
 
     eq: bool | None = None
-    tz: str | None = None  # Using a dict to hold location info
+    tz: str | None = None
 
     def filter(self, query: Select) -> Select:
         """Filter the query."""
@@ -422,7 +422,17 @@ class DayFilter(base.Filter):
     """Filter for tasks by night time recordings."""
 
     eq: bool | None = None
-    tz: str | None = None  # Using a dict to hold location info
+    tz: str | None = None
+
+    def filter(self, query: Select) -> Select:
+        """Filter the query."""
+        return query
+
+
+class SampleFilter(base.Filter):
+    """Filter for tasks by night time recordings."""
+
+    eq: float | None = None
 
     def filter(self, query: Select) -> Select:
         """Filter the query."""
@@ -444,4 +454,5 @@ AnnotationTaskFilter = base.combine(
     date=DateRangeFilter,
     night=NightFilter,
     day=DayFilter,
+    sample=SampleFilter,
 )

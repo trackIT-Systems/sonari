@@ -7,7 +7,7 @@ import Checkbox from "@/components/tables/TableCheckbox";
 import TagSearchBar from "@/components/tags/TagSearchBar";
 import { ACCEPT_SHORTCUT } from "@/utils/keyboard";
 
-import type { Dataset, NumberFilter, Tag } from "@/types";
+import type { Dataset, FloatEqFilter, NumberFilter, Tag } from "@/types";
 
 export type SetFilter<T extends Object> = <K extends keyof T>(
   key: K,
@@ -71,6 +71,53 @@ function FloatField({
           className="inline-block absolute inset-y-0 right-0 px-2 text-emerald-700 bg-emerald-300 rounded-r-md dark:text-emerald-300 dark:bg-emerald-700 dark:hover:bg-emerald-800 dark:hover:text-emerald-400"
         >
           set
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function FloatEqField({
+  value,
+  name,
+  onChangeValue,
+  onSubmit,
+}: {
+  name: string;
+  value: number;
+  onChangeValue: (value: number) => void;
+  onSubmit: () => void;
+}) {
+  return (
+    <div>
+      <label
+        htmlFor={name}
+        className="block mb-2 text-sm font-medium leading-6 text-gray-700 dark:text-stone-300"
+      >
+        {name}
+      </label>
+      <div className="relative rounded-md">
+        <input
+          type="number"
+          step={0.01}
+          min={0}
+          max={1.0}
+          id={name}
+          name={name}
+          className="block py-1 pr-4 pl-4 w-full rounded-md border-0 ring-1 ring-inset outline-none sm:text-sm sm:leading-6 focus:ring-2 focus:ring-inset focus:ring-emerald-600 bg-stone-50 text-stone-900 ring-stone-300 placeholder:text-stone-400 dark:bg-stone-900 dark:text-stone-300 dark:ring-stone-800"
+          value={value}
+          onKeyDown={(e) => {
+            if (e.key === ACCEPT_SHORTCUT) {
+              onSubmit();
+            }
+          }}
+          onChange={(e) => onChangeValue(parseFloat(e.target.value))}
+        />
+        <button
+          onClick={onSubmit}
+          className="inline-block absolute inset-y-0 right-0 px-2 text-emerald-700 bg-emerald-300 rounded-r-md dark:text-emerald-300 dark:bg-emerald-700 dark:hover:bg-emerald-800 dark:hover:text-emerald-400"
+        >
+          Set
         </button>
       </div>
     </div>
@@ -149,6 +196,33 @@ export function FloatFilter({
         onChangeValue={setValue}
         operation={operation}
         onChangeOperation={setOperation}
+        onSubmit={handleSubmit}
+      />
+    </div>
+  );
+}
+
+export function FloatEqFilterFn({
+  name,
+  onChange,
+}: {
+  name: string;
+  onChange: (filter: FloatEqFilter) => void;
+}) {
+  const [value, setValue] = useState(0);
+
+  const handleSubmit = useCallback(() => {
+    onChange({
+      "eq": value,
+    });
+  }, [onChange, value]);
+
+  return (
+    <div className="flex flex-col gap-2 w-full">
+      <FloatEqField
+        name={name}
+        value={value}
+        onChangeValue={setValue}
         onSubmit={handleSubmit}
       />
     </div>

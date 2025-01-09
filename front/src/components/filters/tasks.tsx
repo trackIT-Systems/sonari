@@ -1,9 +1,10 @@
-import FilterBadge from "@/components/filters/FilterBadge";
+import FilterBadge, { NumberEqFilterBadge } from "@/components/filters/FilterBadge";
 import { type FilterDef } from "@/components/filters/FilterMenu";
 import {
   BooleanFilter,
   DatasetFilter,
   TagFilter,
+  FloatEqFilterFn,
 } from "@/components/filters/Filters";
 import {
   DatasetIcon,
@@ -16,11 +17,11 @@ import {
   HelpIcon,
   SunIcon,
   MoonIcon,
+  FilterIcon,
 } from "@/components/icons";
 
 import type { AnnotationTaskFilter } from "@/api/annotation_tasks";
 import { DateRangeFilter, formatDate, formatTime } from "./DateRangeFilter";
-import { Tag } from "@/types";
 
 const tasksFilterDefs: FilterDef<AnnotationTaskFilter>[] = [
   {
@@ -285,6 +286,20 @@ const tasksFilterDefs: FilterDef<AnnotationTaskFilter>[] = [
     description: "Only show tasks during day time.",
     icon: (
       <SunIcon className="h-5 w-5 inline-block text-stone-500 mr-1 align-middle" />
+    ),
+  },
+  {
+    field: "sample",
+    name: "Sample",
+    render: ({ value, clear }) => (
+      <NumberEqFilterBadge field="Sample" value={value} onRemove={clear} />
+    ),
+    selector: ({ setFilter }) => (
+      <FloatEqFilterFn name="Sample as fraction" onChange={(val) => setFilter("sample", val)} />
+    ),
+    description: "Subsample the task in this project. Subsampling always happens after all other filters.",
+    icon: (
+      <FilterIcon className="h-5 w-5 inline-block text-stone-500 mr-1 align-middle" />
     ),
   },
 ];

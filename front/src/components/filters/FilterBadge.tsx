@@ -1,6 +1,6 @@
 import { CloseIcon } from "@/components/icons";
 
-import type { NumberFilter } from "@/types";
+import type { NumberFilter, FloatEqFilter } from "@/types";
 
 export default function FilterBadge({
   field,
@@ -51,6 +51,23 @@ export function NumberFilterBadge(props: {
       field={field}
       operation={operation}
       value={val}
+      onRemove={onRemove}
+    />
+  );
+}
+
+export function NumberEqFilterBadge(props: {
+  field: string;
+  value: FloatEqFilter;
+  onRemove: () => void;
+}) {
+  const { field, value, onRemove } = props;
+
+  return (
+    <FilterBadge
+      field={field}
+      operation={"="}
+      value={value.eq.toString()}
       onRemove={onRemove}
     />
   );

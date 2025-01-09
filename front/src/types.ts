@@ -17,6 +17,7 @@ import {
   EvaluationSetSchema,
   FeatureSchema,
   FileStateSchema,
+  FloatEqFilterSchema,
   GeometrySchema,
   GeometryTypeSchema,
   IntegerFilterSchema,
@@ -167,3 +168,5 @@ export type StringFilter = z.input<typeof StringFilterSchema>;
 export type PredictedTagFilter = z.input<typeof PredictedTagFilterSchema>;
 
 export type IntegerFilter = z.input<typeof IntegerFilterSchema>;
+
+export type FloatEqFilter = z.input<typeof FloatEqFilterSchema>;

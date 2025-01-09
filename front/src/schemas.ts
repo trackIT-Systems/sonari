@@ -381,6 +381,10 @@ export const IntegerFilterSchema = z.object({
   is_null: z.boolean().optional(),
 });
 
+export const FloatEqFilterSchema = z.object({
+  eq: z.number(),
+});
+
 export const PredictedTagFilterSchema = z.object({
   tag: TagSchema,
   gt: z.number().optional(),

@@ -1,5 +1,7 @@
 """REST API routes for annotation tasks."""
 
+import math
+import random
 from datetime import datetime, timedelta, timezone
 from typing import Annotated, Any, Dict, Sequence
 from uuid import UUID
@@ -137,6 +139,7 @@ def get_annotation_tasks_router(settings: WhombatSettings) -> APIRouter:
         """Get a page of annotation tasks."""
         nigh_filter = next((f for f in filter if f[0] == "night__tz" and f[1] is not None), None)
         day_filter = next((f for f in filter if f[0] == "day__tz" and f[1] is not None), None)
+        sample_filter = next((f for f in filter if f[0] == "sample__eq" and f[1] is not None), None)
 
         if limit == -1:
             noloads: list[InstrumentedAttribute[Any]] | None = [models.AnnotationTask.clip]
@@ -160,6 +163,11 @@ def get_annotation_tasks_router(settings: WhombatSettings) -> APIRouter:
             tasks, total = _get_night_day_tasks(tasks, nigh_filter[1], True)
         if day_filter is not None:
             tasks, total = _get_night_day_tasks(tasks, day_filter[1], False)
+
+        if sample_filter is not None:
+            random.seed(35039)
+            total = math.ceil(total * float(sample_filter[1]))
+            tasks = random.sample(tasks, total)
 
         return schemas.Page(
             items=tasks,

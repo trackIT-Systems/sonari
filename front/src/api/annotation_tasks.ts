@@ -19,6 +19,8 @@ import type {
   ClipAnnotation,
 } from "@/types";
 
+import { FloatEqFilterSchema } from "@/schemas";
+
 import { formatDateForAPI } from "@/components/filters/DateRangeFilter";
 
 export const AnnotationTaskPageSchema = Page(AnnotationTaskSchema);
@@ -67,6 +69,7 @@ export const AnnotationTaskFilterSchema = z.object({
     eq: z.boolean(),
     timezone: z.string(),
   }).optional(),
+  sample: FloatEqFilterSchema.optional(),
 });
 
 export type AnnotationTaskFilter = z.input<typeof AnnotationTaskFilterSchema>;
@@ -169,6 +172,7 @@ export function registerAnnotationTasksAPI(
         night__tz: params.night?.timezone,
         day__eq: params.day?.eq,
         day__tz: params.day?.timezone,
+        sample__eq: params.sample?.eq,
       },
     });
     return AnnotationTaskPageSchema.parse(response.data);
