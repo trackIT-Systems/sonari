@@ -202,11 +202,11 @@ export function BooleanFilter({
     <div className="flex flex-row gap-2 justify-center w-full">
       <Button mode="text" variant="primary" onClick={() => onChange(true)}>
         <CheckIcon className="mr-1 w-5 h-5 group-hover:stroke-3" />
-        Yes
+        Include
       </Button>
       <Button mode="text" variant="danger" onClick={() => onChange(false)}>
         <CloseIcon className="mr-1 w-5 h-5 group-hover:stroke-3" />
-        No
+        Exclude
       </Button>
     </div>
   );

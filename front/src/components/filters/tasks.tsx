@@ -35,7 +35,7 @@ const tasksFilterDefs: FilterDef<AnnotationTaskFilter>[] = [
     selector: ({ setFilter }) => (
       <BooleanFilter onChange={(val) => setFilter("pending", val)} />
     ),
-    description: "Select only tasks that are pending",
+    description: "Include or exclude pending tasks?",
     icon: (
       <EditIcon className="h-5 w-5 inline-block text-stone-500 mr-1 align-middle" />
     ),
@@ -53,7 +53,7 @@ const tasksFilterDefs: FilterDef<AnnotationTaskFilter>[] = [
     selector: ({ setFilter }) => (
       <BooleanFilter onChange={(val) => setFilter("completed", val)} />
     ),
-    description: "Select only accepted tasks",
+    description: "Include or exclude accepted tasks?",
     icon: (
       <CompleteIcon className="h-5 w-5 inline-block text-stone-500 mr-1 align-middle" />
     ),
@@ -71,7 +71,7 @@ const tasksFilterDefs: FilterDef<AnnotationTaskFilter>[] = [
     selector: ({ setFilter }) => (
       <BooleanFilter onChange={(val) => setFilter("verified", val)} />
     ),
-    description: "Select only verified tasks",
+    description: "Include or exclude verified tasks?",
     icon: (
       <VerifiedIcon className="h-5 w-5 inline-block text-stone-500 mr-1 align-middle" />
     ),
@@ -89,7 +89,7 @@ const tasksFilterDefs: FilterDef<AnnotationTaskFilter>[] = [
     selector: ({ setFilter }) => (
       <BooleanFilter onChange={(val) => setFilter("rejected", val)} />
     ),
-    description: "Select only rejected tasks",
+    description: "Include or exclude rejected tasks?",
     icon: (
       <NeedsReviewIcon className="h-5 w-5 inline-block text-stone-500 mr-1 align-middle" />
     ),
@@ -98,9 +98,7 @@ const tasksFilterDefs: FilterDef<AnnotationTaskFilter>[] = [
     name: "Unsure",
     field: "assigned",
     selector: ({ setFilter }) => (
-      <BooleanFilter
-        onChange={(val) => setFilter("assigned", val)}
-      />
+      <BooleanFilter onChange={(val) => setFilter("assigned", val)} />
     ),
     render: ({ value, clear }) => (
       <FilterBadge
@@ -108,7 +106,7 @@ const tasksFilterDefs: FilterDef<AnnotationTaskFilter>[] = [
           value={value ? "Yes" : "No"}
           onRemove={clear} />
     ),
-    description: "Select only unsure annotation tasks.",
+    description: "Include or exclude tasks marked as unsure?",
     icon: (
       <HelpIcon className="h-5 w-5 inline-block text-stone-500 mr-1 align-middle" />
     ),
@@ -126,7 +124,7 @@ const tasksFilterDefs: FilterDef<AnnotationTaskFilter>[] = [
     selector: ({ setFilter }) => (
       <TagFilter onChange={(val) => setFilter("sound_event_annotation_tag", val)} />
     ),
-    description: "Select task that contain a sound event with a specific tag",
+    description: "Only show tasks containing sound events with a specific tag.",
     icon: (
       <TagIcon className="h-5 w-5 inline-block text-stone-500 mr-1 align-middle" />
     ),
@@ -140,7 +138,7 @@ const tasksFilterDefs: FilterDef<AnnotationTaskFilter>[] = [
     selector: ({ setFilter }) => (
       <DatasetFilter onChange={(val) => setFilter("dataset", val)} />
     ),
-    description: "Select tasks that come from a specific dataset",
+    description: "Only show tasks from a specific dataset.",
     icon: (
       <DatasetIcon className="h-5 w-5 inline-block text-stone-500 mr-1 align-middle" />
     ),
@@ -158,7 +156,7 @@ const tasksFilterDefs: FilterDef<AnnotationTaskFilter>[] = [
     selector: ({ setFilter }) => (
       <DateRangeFilter onChange={(val) => setFilter("date_range", val)} />
     ),
-    description: "Select tasks within a specific date and time range",
+    description: "Only show tasks within a specific date and time range.",
     icon: (
       <DateIcon className="h-5 w-5 inline-block text-stone-500 mr-1 align-middle" />
     ),
@@ -168,20 +166,16 @@ const tasksFilterDefs: FilterDef<AnnotationTaskFilter>[] = [
     name: "Night",
     render: ({ value, clear }) => (
       <FilterBadge
-        field="night only"
-        value={value ? "Yes" : "No"}
+      field="Night Filter"
+      value={""}
         onRemove={clear}
       />
     ),
-    selector: ({ setFilter }) => (
-      <BooleanFilter 
-        onChange={(val) => setFilter("night", {
-          eq: val,
-          timezone: Intl.DateTimeFormat().resolvedOptions().timeZone
-        })} 
-      />
-    ),
-    description: "Select tasks for a given night",
+    selector: ({ setFilter }) => {
+      setFilter("night", {eq: true, timezone: Intl.DateTimeFormat().resolvedOptions().timeZone});
+      return null;
+    },
+    description: "Only show tasks during night time.",
     icon: (
       <MoonIcon className="h-5 w-5 inline-block text-stone-500 mr-1 align-middle" />
     ),
@@ -191,20 +185,16 @@ const tasksFilterDefs: FilterDef<AnnotationTaskFilter>[] = [
     name: "Day",
     render: ({ value, clear }) => (
       <FilterBadge
-        field="day only"
-        value={value ? "Yes" : "No"}
+        field="Day Filter"
+        value={""}
         onRemove={clear}
       />
     ),
-    selector: ({ setFilter }) => (
-      <BooleanFilter 
-        onChange={(val) => setFilter("day", {
-          eq: val,
-          timezone: Intl.DateTimeFormat().resolvedOptions().timeZone
-        })} 
-      />
-    ),
-    description: "Select tasks during day time",
+    selector: ({ setFilter }) => {
+      setFilter("day", {eq: true, timezone: Intl.DateTimeFormat().resolvedOptions().timeZone});
+      return null;
+    },
+    description: "Only show tasks during day time.",
     icon: (
       <SunIcon className="h-5 w-5 inline-block text-stone-500 mr-1 align-middle" />
     ),

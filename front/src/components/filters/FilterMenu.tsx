@@ -1,6 +1,6 @@
 import { Popover } from "@headlessui/react";
 import { Float } from "@headlessui-float/react";
-import { type ReactNode, useState } from "react";
+import { type ReactNode, useState, useRef } from "react";
 
 import Button, { getButtonClassName } from "@/components/Button";
 import { BackIcon, FilterIcon } from "@/components/icons";
@@ -8,6 +8,9 @@ import SearchMenu from "@/components/search/SearchMenu";
 
 import type { SetFilter } from "@/components/filters/Filters";
 import type { Filter } from "@/hooks/utils/useFilter";
+import { ABORT_SHORTCUT } from "@/utils/keyboard";
+import { useKeyPressEvent } from "react-use";
+import useKeyFilter from "@/hooks/utils/useKeyFilter";
 
 export type FilterDef<T extends Object> = {
   field: keyof T;
@@ -61,9 +64,19 @@ function FilterPanel<T extends Object>({
   filter: Filter<T>;
   filterDefs: FilterDef<T>[];
 }) {
-  const [selectedFilter, setSelectedFilter] = useState<FilterDef<T> | null>(
-    null,
-  );
+  const [selectedFilter, setSelectedFilter] = useState<FilterDef<T> | null>(null);
+
+  const cancelButtonRef = useRef<HTMLButtonElement>(null);
+  
+  useKeyPressEvent(useKeyFilter({ key: ABORT_SHORTCUT }), (event: KeyboardEvent) => {
+    if (event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement) {
+      return;
+    }
+    const button = cancelButtonRef.current;
+    if (button instanceof HTMLButtonElement) {
+      button.click();
+    }
+  });
 
   if (selectedFilter == null) {
     return (
@@ -84,6 +97,7 @@ function FilterPanel<T extends Object>({
           </span>
         </div>
         <Button
+          ref={cancelButtonRef}
           mode="text"
           variant="warning"
           onClick={() => setSelectedFilter(null)}

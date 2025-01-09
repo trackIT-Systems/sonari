@@ -1,6 +1,6 @@
 import React, { useState, useCallback } from "react";
 import Card from "@/components/Card";
-import { CloseIcon } from "@/components/icons";
+import { CloseIcon, CheckIcon } from "@/components/icons";
 import Button from "@/components/Button";
 
 interface DateRangeFilterProps {
@@ -34,14 +34,6 @@ export function DateRangeFilter({ onChange }: DateRangeFilterProps) {
   const handleApply = useCallback(() => {
     onChange({ start_date: startDate, end_date: endDate, start_time: startTime, end_time: endTime });
   }, [startDate, endDate, startTime, endTime, onChange]);
-
-  const handleClear = useCallback(() => {
-    setStartDate(null);
-    setEndDate(null);
-    setStartTime(null);
-    setEndTime(null);
-    onChange({ start_date: null, end_date: null, start_time: null, end_time: null });
-  }, [onChange]);
 
   const handleStartDateChange = useCallback((value: { date?: Date | null | undefined }) => {
     setStartDate(value.date || null);
@@ -88,11 +80,8 @@ export function DateRangeFilter({ onChange }: DateRangeFilterProps) {
         </div>
         <div className="flex justify-between">
           <Button mode="text" variant="primary" onClick={handleApply}>
+            <CheckIcon className="mr-1 w-5 h-5 group-hover:stroke-3" />
             Apply
-          </Button>
-          <Button mode="text" variant="danger" onClick={handleClear}>
-            <CloseIcon className="inline-block mr-1 w-5 h-5" />
-            Clear
           </Button>
         </div>
       </div>
