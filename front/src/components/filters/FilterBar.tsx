@@ -56,6 +56,7 @@ export default function FilterBar<T extends Object>({
                 {filterDef.render({
                   value,
                   clear: () => filter.clear(key as keyof T),
+                  setFilter: filter.set  // Pass setFilter to render
                 })}
               </div>
             );

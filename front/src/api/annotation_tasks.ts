@@ -19,15 +19,23 @@ import type {
   ClipAnnotation,
 } from "@/types";
 
+import { formatDateForAPI } from "@/components/filters/DateRangeFilter";
+
 export const AnnotationTaskPageSchema = Page(AnnotationTaskSchema);
 
 export type AnnotationTaskPage = z.infer<typeof AnnotationTaskPageSchema>;
 
 export const AnnotationTaskFilterSchema = z.object({
-  dataset: DatasetSchema.optional(),
+  dataset: z.union([
+    DatasetSchema,
+    z.array(DatasetSchema)
+  ]).optional(),
   annotation_project: AnnotationProjectSchema.optional(),
   recording_tag: TagSchema.optional(),
-  sound_event_annotation_tag: TagSchema.optional(),
+  sound_event_annotation_tag: z.union([
+    TagSchema,
+    z.array(TagSchema)
+  ]).optional(),
   pending: z.boolean().optional(),
   assigned: z.boolean().optional(),
   verified: z.boolean().optional(),
@@ -35,12 +43,22 @@ export const AnnotationTaskFilterSchema = z.object({
   completed: z.boolean().optional(),
   assigned_to: UserSchema.optional(),
   search_recordings: z.string().optional(),
-  date_range: z.object({
-    start_date: z.date().nullish(),
-    end_date: z.date().nullish(),
-    start_time: z.date().nullish(),
-    end_time: z.date().nullish(),
-  }).optional(),
+  date_range: z.union([
+    z.object({
+      start_date: z.date().nullish(),
+      end_date: z.date().nullish(),
+      start_time: z.date().nullish(),
+      end_time: z.date().nullish(),
+    }),
+    z.array(
+      z.object({
+        start_date: z.date().nullish(),
+        end_date: z.date().nullish(),
+        start_time: z.date().nullish(),
+        end_time: z.date().nullish(),
+      })
+    )
+  ]).optional(),
   night: z.object({
     eq: z.boolean(),
     timezone: z.string(),
@@ -102,12 +120,24 @@ export function registerAnnotationTasksAPI(
         limit: params.limit,
         offset: params.offset,
         sort_by: params.sort_by,
-        dataset__eq: params.dataset?.uuid,
+        dataset__lst: params.dataset
+          ? (Array.isArray(params.dataset)
+            ? params.dataset.map(d => d.uuid).join(',')
+            : params.dataset.uuid)
+          : undefined,
         annotation_project__eq: params.annotation_project?.uuid,
         recording_tag__key: params.recording_tag?.key,
         recording_tag__value: params.recording_tag?.value,
-        sound_event_annotation_tag__key: params.sound_event_annotation_tag?.key,
-        sound_event_annotation_tag__value: params.sound_event_annotation_tag?.value,
+        sound_event_annotation_tag__keys: params.sound_event_annotation_tag
+          ? (Array.isArray(params.sound_event_annotation_tag)
+            ? params.sound_event_annotation_tag.map(t => t.key).join(',')
+            : params.sound_event_annotation_tag.key)
+          : undefined,
+        sound_event_annotation_tag__values: params.sound_event_annotation_tag
+          ? (Array.isArray(params.sound_event_annotation_tag)
+            ? params.sound_event_annotation_tag.map(t => t.value).join(',')
+            : params.sound_event_annotation_tag.value)
+          : undefined,
         pending__eq: params.pending,
         assigned__eq: params.assigned,
         verified__eq: params.verified,
@@ -115,10 +145,26 @@ export function registerAnnotationTasksAPI(
         completed__eq: params.completed,
         assigned_to__eq: params.assigned_to?.id,
         search_recordings: params.search_recordings,
-        date__start_date: params.date_range?.start_date,
-        date__end_date: params.date_range?.end_date,
-        date__start_time: params.date_range?.start_time,
-        date__end_time: params.date_range?.end_time,
+        date__start_dates: params.date_range
+          ? (Array.isArray(params.date_range)
+            ? params.date_range.map(d => formatDateForAPI(d.start_date)).join(',')
+            : formatDateForAPI(params.date_range.start_date))
+          : undefined,
+        date__end_dates: params.date_range
+          ? (Array.isArray(params.date_range)
+            ? params.date_range.map(d => formatDateForAPI(d.end_date)).join(',')
+            : formatDateForAPI(params.date_range.end_date))
+          : undefined,
+        date__start_times: params.date_range
+          ? (Array.isArray(params.date_range)
+            ? params.date_range.map(d => formatDateForAPI(d.start_time)).join(',')
+            : formatDateForAPI(params.date_range.start_time))
+          : undefined,
+        date__end_times: params.date_range
+          ? (Array.isArray(params.date_range)
+            ? params.date_range.map(d => formatDateForAPI(d.end_time)).join(',')
+            : formatDateForAPI(params.date_range.end_time))
+          : undefined,
         night__eq: params.night?.eq,
         night__tz: params.night?.timezone,
         day__eq: params.day?.eq,

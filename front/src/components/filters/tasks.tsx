@@ -20,6 +20,7 @@ import {
 
 import type { AnnotationTaskFilter } from "@/api/annotation_tasks";
 import { DateRangeFilter, formatDate, formatTime } from "./DateRangeFilter";
+import { Tag } from "@/types";
 
 const tasksFilterDefs: FilterDef<AnnotationTaskFilter>[] = [
   {
@@ -114,17 +115,46 @@ const tasksFilterDefs: FilterDef<AnnotationTaskFilter>[] = [
   {
     field: "sound_event_annotation_tag",
     name: "Sound Event Tag",
-    render: ({ value, clear }) => (
-      <FilterBadge
-        field="Sound Event Tag"
-        value={`${value.key}: ${value.value}`}
-        onRemove={clear}
+    render: ({ value, clear, setFilter }) => {
+      const tags = Array.isArray(value) ? value : [value];
+      return tags.map(tag => (
+        <FilterBadge
+          key={`${tag.key}:${tag.value}`}
+          field="Sound Event Tag"
+          value={`${tag.key}: ${tag.value}`}
+          onRemove={() => {
+            if (Array.isArray(value)) {
+              const newValue = value.filter(t => 
+                !(t.key === tag.key && t.value === tag.value)
+              );
+              if (newValue.length === 0) {
+                clear();
+              } else {
+                setFilter("sound_event_annotation_tag", newValue);
+              }
+            } else {
+              clear();
+            }
+          }}
+        />
+      ));
+    },
+    selector: ({ setFilter, filter }) => (
+      <TagFilter 
+        onChange={(tag) => {
+          const currentValue = filter.get("sound_event_annotation_tag");
+          if (currentValue === undefined) {
+            setFilter("sound_event_annotation_tag", [tag]);
+          } else {
+            const newValue = Array.isArray(currentValue)
+              ? [...currentValue, tag]
+              : [currentValue, tag];
+            setFilter("sound_event_annotation_tag", newValue);
+          }
+        }} 
       />
     ),
-    selector: ({ setFilter }) => (
-      <TagFilter onChange={(val) => setFilter("sound_event_annotation_tag", val)} />
-    ),
-    description: "Only show tasks containing sound events with a specific tag.",
+    description: "Only show tasks containing sound events with specific tags. You can filter for multiple tags. A task containing either of the tags will be shown.",
     icon: (
       <TagIcon className="h-5 w-5 inline-block text-stone-500 mr-1 align-middle" />
     ),
@@ -132,13 +162,44 @@ const tasksFilterDefs: FilterDef<AnnotationTaskFilter>[] = [
   {
     field: "dataset",
     name: "Dataset",
-    render: ({ value, clear }) => (
-      <FilterBadge field="Dataset" value={value.name} onRemove={clear} />
+    render: ({ value, clear, setFilter }) => {
+      const datasets = Array.isArray(value) ? value : [value];
+      return datasets.map(dataset => (
+        <FilterBadge 
+          key={dataset.uuid}
+          field="Dataset" 
+          value={dataset.name} 
+          onRemove={() => {
+            if (Array.isArray(value)) {
+              const newValue = value.filter(d => d.uuid !== dataset.uuid);
+              if (newValue.length === 0) {
+                clear();
+              } else {
+                setFilter("dataset", newValue);
+              }
+            } else {
+              clear();
+            }
+          }} 
+        />
+      ));
+    },
+    selector: ({ setFilter, filter }) => (  // Add filter to selector props
+      <DatasetFilter 
+        onChange={(dataset) => {
+          const currentValue = filter.get("dataset");
+          if (currentValue === undefined) {
+            setFilter("dataset", [dataset]);
+          } else {
+            const newValue = Array.isArray(currentValue) 
+              ? [...currentValue, dataset]
+              : [currentValue, dataset];
+            setFilter("dataset", newValue);
+          }
+        }} 
+      />
     ),
-    selector: ({ setFilter }) => (
-      <DatasetFilter onChange={(val) => setFilter("dataset", val)} />
-    ),
-    description: "Only show tasks from a specific dataset.",
+    description: "Only show tasks from a specific dataset. You can filter for multiple datasets. A task from either of the datasets will be shown.",
     icon: (
       <DatasetIcon className="h-5 w-5 inline-block text-stone-500 mr-1 align-middle" />
     ),
@@ -146,17 +207,44 @@ const tasksFilterDefs: FilterDef<AnnotationTaskFilter>[] = [
   {
     field: "date_range",
     name: "Date and Time",
-    render: ({ value, clear }) => (
-      <FilterBadge
-        field="Date and Time Range"
-        value={`${formatDate(value.start_date)} ${formatTime(value.start_time)} - ${formatDate(value.end_date)} ${formatTime(value.end_time)}`}
-        onRemove={clear}
+    render: ({ value, clear, setFilter }) => {
+      const dateRanges = Array.isArray(value) ? value : [value];
+      return dateRanges.map((dateRange, index) => (
+        <FilterBadge
+          key={index}
+          field="Date and Time Range"
+          value={`${formatDate(dateRange.start_date)} ${formatTime(dateRange.start_time)} - ${formatDate(dateRange.end_date)} ${formatTime(dateRange.end_time)}`}
+          onRemove={() => {
+            if (Array.isArray(value)) {
+              const newValue = value.filter((_, i) => i !== index);
+              if (newValue.length === 0) {
+                clear();
+              } else {
+                setFilter("date_range", newValue);
+              }
+            } else {
+              clear();
+            }
+          }}
+        />
+      ));
+    },
+    selector: ({ setFilter, filter }) => (
+      <DateRangeFilter
+        onChange={(dateRange) => {
+          const currentValue = filter.get("date_range");
+          if (currentValue === undefined) {
+            setFilter("date_range", [dateRange]);
+          } else {
+            const newValue = Array.isArray(currentValue)
+              ? [...currentValue, dateRange]
+              : [currentValue, dateRange];
+            setFilter("date_range", newValue);
+          }
+        }}
       />
     ),
-    selector: ({ setFilter }) => (
-      <DateRangeFilter onChange={(val) => setFilter("date_range", val)} />
-    ),
-    description: "Only show tasks within a specific date and time range.",
+    description: "Only show tasks within specific date and time ranges. You can filter for multiple date and time ranges. A task containing either of the ranges will be shown.",
     icon: (
       <DateIcon className="h-5 w-5 inline-block text-stone-500 mr-1 align-middle" />
     ),

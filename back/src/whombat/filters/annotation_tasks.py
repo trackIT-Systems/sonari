@@ -4,7 +4,7 @@ from datetime import datetime, time
 from uuid import UUID
 
 from soundevent import data
-from sqlalchemy import Select, and_, exists, func, not_, select
+from sqlalchemy import Select, and_, exists, func, not_, or_, select
 
 from whombat import models
 from whombat.filters import base
@@ -206,13 +206,14 @@ class AnnotationProjectFilter(base.Filter):
 class DatasetFilter(base.Filter):
     """Filter for tasks by dataset."""
 
-    eq: UUID | None = None
+    lst: str | None = None
 
     def filter(self, query: Select) -> Select:
-        if not self.eq:
+        if not self.lst:
             return query
 
-        # Should use aliases
+        uuids: list[str] = self.lst.split(",")
+
         Recording = models.Recording.__table__.alias("dataset_recording")
         Clip = models.Clip.__table__.alias("dataset_clip")
 
@@ -233,7 +234,7 @@ class DatasetFilter(base.Filter):
                 models.Dataset,
                 models.Dataset.id == models.DatasetRecording.dataset_id,
             )
-            .where(models.Dataset.uuid == self.eq)
+            .where(models.Dataset.uuid.in_(uuids))
         )
 
 
@@ -273,43 +274,66 @@ class SearchRecordingsFilter(base.Filter):
 class SoundEventAnnotationTagFilter(base.Filter):
     """Filter for tasks by sound event annotation tag."""
 
-    key: str | None = None
-    value: str | None = None
+    keys: str | None = None
+    values: str | None = None
 
     def filter(self, query: Select) -> Select:
         """Filter the query."""
-        if self.key is None or self.value is None:
+        if self.keys is None or self.values is None:
             return query
 
-        subquery = (
-            select(models.SoundEventAnnotationTag.sound_event_annotation_id)
-            .join(models.Tag, models.Tag.id == models.SoundEventAnnotationTag.tag_id)
-            .where(
-                models.Tag.key == self.key,
-                models.Tag.value == self.value,
+        # Split the comma-separated strings into lists
+        keys = self.keys.split(",")
+        values = self.values.split(",")
+
+        # Create subqueries for each key-value pair
+        subqueries = []
+        for k, v in zip(keys, values, strict=True):
+            subquery = (
+                select(models.SoundEventAnnotationTag.sound_event_annotation_id)
+                .join(models.Tag, models.Tag.id == models.SoundEventAnnotationTag.tag_id)
+                .where(
+                    models.Tag.key == k,
+                    models.Tag.value == v,
+                )
+            )
+            subqueries.append(subquery)
+
+        # Combine all subqueries with OR conditions
+        combined_condition = or_(
+            *(
+                exists(
+                    select(1).where(
+                        models.SoundEventAnnotation.clip_annotation_id == models.AnnotationTask.clip_annotation_id,
+                        models.SoundEventAnnotation.id.in_(subquery),
+                    )
+                )
+                for subquery in subqueries
             )
         )
 
-        return query.where(
-            exists(
-                select(1).where(
-                    models.SoundEventAnnotation.clip_annotation_id == models.AnnotationTask.clip_annotation_id,
-                    models.SoundEventAnnotation.id.in_(subquery),
-                )
-            )
-        )
+        return query.where(combined_condition)
 
 
 class DateRangeFilter(base.Filter):
     """Filter for tasks by date range."""
 
-    start_date: str | None = None
-    end_date: str | None = None
-    start_time: str | None = None
-    end_time: str | None = None
+    start_dates: str | None = None
+    end_dates: str | None = None
+    start_times: str | None = None
+    end_times: str | None = None
+
+    def _parse_datetime(self, dt_str: str | None) -> datetime | None:
+        """Parse datetime string in ISO format."""
+        if not dt_str:
+            return None
+        try:
+            return datetime.fromisoformat(dt_str.replace("Z", "+00:00"))
+        except ValueError:
+            return None
 
     def filter(self, query: Select) -> Select:
-        if self.start_date is None and self.end_date is None and self.start_time is None and self.end_time is None:
+        if not any([self.start_dates, self.end_dates, self.start_times, self.end_times]):
             return query
 
         # Should use aliases
@@ -331,41 +355,56 @@ class DateRangeFilter(base.Filter):
             )
         )
 
-        conditions = []
-        start_date = None
-        end_date = None
+        # Split the comma-separated strings into lists
+        start_dates = self.start_dates.split(",") if self.start_dates else []
+        end_dates = self.end_dates.split(",") if self.end_dates else []
+        start_times = self.start_times.split(",") if self.start_times else []
+        end_times = self.end_times.split(",") if self.end_times else []
 
-        # Update conditions to use aliased tables
-        if self.start_date:
-            start_date = datetime.strptime(self.start_date[:-1], "%Y-%m-%dT%H:%M:%S.%f").date()
-            conditions.append(Recording.c.date >= start_date)
-        if self.end_date:
-            end_date = datetime.strptime(self.end_date[:-1], "%Y-%m-%dT%H:%M:%S.%f").date()
-            conditions.append(Recording.c.date <= end_date)
+        # Create conditions for each date range
+        range_conditions = []
+        for i in range(max(len(start_dates), len(end_dates), len(start_times), len(end_times))):
+            conditions = []
 
-        if self.start_time or self.end_time:
-            start_time = (
-                datetime.strptime(self.start_time[:-1], "%Y-%m-%dT%H:%M:%S.%f").time() if self.start_time else time.min
-            )
-            end_time = (
-                datetime.strptime(self.end_time[:-1], "%Y-%m-%dT%H:%M:%S.%f").time() if self.end_time else time.max
-            )
+            if i < len(start_dates) and start_dates[i]:
+                start_dt = self._parse_datetime(start_dates[i])
+                if start_dt:
+                    conditions.append(Recording.c.date >= start_dt.date())
 
-            virtual_datetime = func.datetime(Recording.c.date, Recording.c.time)
+            if i < len(end_dates) and end_dates[i]:
+                end_dt = self._parse_datetime(end_dates[i])
+                if end_dt:
+                    conditions.append(Recording.c.date <= end_dt.date())
 
-            if start_date and self.start_time:
-                start_datetime = datetime.combine(start_date, start_time)
-                conditions.append(virtual_datetime >= start_datetime)
-            elif self.start_time:
-                conditions.append(Recording.c.time >= start_time)
+            if (i < len(start_times) and start_times[i]) or (i < len(end_times) and end_times[i]):
+                start_dt = self._parse_datetime(start_times[i]) if i < len(start_times) and start_times[i] else None
+                end_dt = self._parse_datetime(end_times[i]) if i < len(end_times) and end_times[i] else None
 
-            if end_date and self.end_time:
-                end_datetime = datetime.combine(end_date, end_time)
-                conditions.append(virtual_datetime <= end_datetime)
-            elif self.end_time:
-                conditions.append(Recording.c.time <= end_time)
+                start_time = start_dt.time() if start_dt else time.min
+                end_time = end_dt.time() if end_dt else time.max
 
-        return query.where(and_(*conditions))
+                virtual_datetime = func.datetime(Recording.c.date, Recording.c.time)
+
+                if i < len(start_dates) and start_dates[i] and start_dt:
+                    start_date_dt = self._parse_datetime(start_dates[i])
+                    if start_date_dt:
+                        start_datetime = datetime.combine(start_date_dt.date(), start_time)
+                        conditions.append(virtual_datetime >= start_datetime)
+                elif start_dt:
+                    conditions.append(Recording.c.time >= start_time)
+
+                if i < len(end_dates) and end_dates[i] and end_dt:
+                    end_date_dt = self._parse_datetime(end_dates[i])
+                    if end_date_dt:
+                        end_datetime = datetime.combine(end_date_dt.date(), end_time)
+                        conditions.append(virtual_datetime <= end_datetime)
+                elif end_dt:
+                    conditions.append(Recording.c.time <= end_time)
+
+            if conditions:
+                range_conditions.append(and_(*conditions))
+
+        return query.where(or_(*range_conditions)) if range_conditions else query
 
 
 class NightFilter(base.Filter):

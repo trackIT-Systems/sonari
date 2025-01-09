@@ -25,6 +25,11 @@ export function formatTime(date: Date | null | undefined): string {
   return `${date.toLocaleTimeString()}`;
 }
 
+export function formatDateForAPI(date: Date | null | undefined): string | undefined {
+  if (!date) return undefined;
+  return date.toISOString(); // This will format as "2023-12-25T12:00:00.000Z"
+}
+
 export function DateRangeFilter({ onChange }: DateRangeFilterProps) {
   const [startDate, setStartDate] = useState<Date | null>(null);
   const [endDate, setEndDate] = useState<Date | null>(null);

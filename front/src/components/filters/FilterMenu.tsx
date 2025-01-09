@@ -17,8 +17,18 @@ export type FilterDef<T extends Object> = {
   name: string;
   description?: string;
   icon?: ReactNode;
-  selector: ({ setFilter }: { setFilter: SetFilter<T> }) => ReactNode;
-  render: (renderProps: { value: any; clear: () => void }) => ReactNode;
+  selector: ({
+    setFilter,
+    filter
+  }: {
+    setFilter: SetFilter<T>;
+    filter: Filter<T>;
+  }) => ReactNode;
+  render: (renderProps: {
+    value: any;
+    clear: () => void;
+    setFilter: SetFilter<T>;
+  }) => ReactNode;
 };
 
 function FilterCombobox<T extends Object>({
@@ -67,7 +77,7 @@ function FilterPanel<T extends Object>({
   const [selectedFilter, setSelectedFilter] = useState<FilterDef<T> | null>(null);
 
   const cancelButtonRef = useRef<HTMLButtonElement>(null);
-  
+
   useKeyPressEvent(useKeyFilter({ key: ABORT_SHORTCUT }), (event: KeyboardEvent) => {
     if (event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement) {
       return;
@@ -118,6 +128,7 @@ function FilterPanel<T extends Object>({
             filter.set(name, value);
             setSelectedFilter(null);
           },
+          filter  // Pass the filter prop
         })}
       </div>
     </>
