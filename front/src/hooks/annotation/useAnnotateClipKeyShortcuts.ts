@@ -17,11 +17,32 @@ export default function useAnnotateClipKeyShortcuts(props: {
   onGoNext: () => void;
   onGoPrev: () => void;
   enabled?: boolean;
+  selectedAnnotation?: { uuid: string } | null;
+  onDeleteSelectedAnnotation?: () => void;
 }) {
-  const { onGoCreate, onGoSelect, onGoDelete, onGoNext, onGoPrev, enabled = true } = props;
+  const { 
+    onGoCreate, 
+    onGoSelect, 
+    onGoDelete, 
+    onGoNext, 
+    onGoPrev, 
+    enabled = true,
+    selectedAnnotation,
+    onDeleteSelectedAnnotation,
+  } = props;
+
+  // Handler for delete key that checks if there's a selected annotation
+  const handleDelete = () => {
+    if (selectedAnnotation && onDeleteSelectedAnnotation) {
+      onDeleteSelectedAnnotation();
+    } else {
+      onGoDelete();
+    }
+  };
+
   useKeyPressEvent(useKeyFilter({ enabled, key: CREATE_SOUND_EVENT_SHORTCUT }), onGoCreate);
   useKeyPressEvent(useKeyFilter({ enabled, key: SELECT_SOUND_EVENT_SHORTCUT }), onGoSelect);
-  useKeyPressEvent(useKeyFilter({ enabled, key: DELETE_SOUND_EVENT_SHORTCUT }), onGoDelete);
+  useKeyPressEvent(useKeyFilter({ enabled, key: DELETE_SOUND_EVENT_SHORTCUT }), handleDelete);
   useKeyPressEvent(useKeyFilter({ enabled, key: NEXT_SOUND_EVENT_SHORTCUT }), onGoNext);
   useKeyPressEvent(useKeyFilter({ enabled, key: PREVIOUS_SOUND_EVENT_SHORTCUT }), onGoPrev);
 }

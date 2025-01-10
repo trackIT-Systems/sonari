@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo, useState, useEffect } from "react";
 
 import useAnnotationCreate from "@/hooks/annotation/useAnnotationCreate";
 import useAnnotationDelete from "@/hooks/annotation/useAnnotationDelete";
@@ -8,6 +8,8 @@ import useAnnotationSelect from "@/hooks/annotation/useAnnotationSelect";
 import useClipAnnotation from "@/hooks/api/useClipAnnotation";
 import useSpectrogramTags from "@/hooks/spectrogram/useSpectrogramTags";
 import useAnnotateClipKeyShortcuts from "@/hooks/annotation/useAnnotateClipKeyShortcuts";
+
+import { ABORT_SHORTCUT } from "@/utils/keyboard";
 
 import type {
   ClipAnnotation,
@@ -210,6 +212,20 @@ export default function useAnnotateClip(props: {
     onDeselect,
     enabled: active && mode === "select",
   });
+
+    useEffect(() => {
+      const handleKeyPress = (event: KeyboardEvent) => {
+        if (event.key === ABORT_SHORTCUT) {
+          onSelectAnnotation?.(null);
+          onDeselect?.()
+          setMode("idle")
+          return;
+        }
+      };
+  
+      document.addEventListener('keydown', handleKeyPress);
+      return () => document.removeEventListener('keydown', handleKeyPress);
+    }, [onDeselect]);
 
   const handleDelete = useCallback(
     (annotation: SoundEventAnnotation) => {
@@ -448,6 +464,12 @@ export default function useAnnotateClip(props: {
     setMode("idle");
   }, [setMode]);
 
+  const handleDeleteSelected = useCallback(() => {
+    if (selectedAnnotation && !disabled) {
+      handleDelete(selectedAnnotation);
+    }
+  }, [selectedAnnotation, handleDelete, disabled]);
+
   useAnnotateClipKeyShortcuts({
     onGoCreate: enableDraw,
     onGoDelete: enableDelete,
@@ -455,6 +477,8 @@ export default function useAnnotateClip(props: {
     onGoNext: selectNextAnnotation,
     onGoPrev: selectPrevAnnotation,
     enabled: !disabled,
+    selectedAnnotation,
+    onDeleteSelectedAnnotation: handleDeleteSelected,
   });
 
   return {

@@ -42,18 +42,6 @@ export default function useAnnotationSelect({
       enabled,
     });
 
-  useEffect(() => {
-    const handleKeyPress = (event: KeyboardEvent) => {
-      if (event.key === ABORT_SHORTCUT) {
-        onDeselect?.();
-        return;
-      }
-    };
-
-    document.addEventListener('keydown', handleKeyPress);
-    return () => document.removeEventListener('keydown', handleKeyPress);
-  }, [onDeselect]);
-
   const handleClick = useCallback(() => {
     if (!enabled) return;
     if (hovered == null) {

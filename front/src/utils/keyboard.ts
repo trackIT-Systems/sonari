@@ -184,7 +184,7 @@ export const MISC_SHORTCUTS: KeyShortcut[] = [
         description: "Add a new note to clips",
     },
     {
-        label: "Sbumit Clip Note",
+        label: "Submit Clip Note",
         shortcut: `${getSpecialKeyLabel("Shift")} ${SUBMIT_CLIP_NOTE_SHORTCUT}`,
         description: "Submit a new note when done writing",
     },
@@ -326,7 +326,7 @@ export const ANNOTATION_KEY_SHORTCUTS: KeyShortcut[] = [
     {
         label: "Delete Annotation",
         shortcut: DELETE_SOUND_EVENT_SHORTCUT,
-        description: "Delete an annotation",
+        description: "Delete an annotation. If annotation is selected it will be deleted.",
     },
     {
         label: "Select Geometry",
@@ -347,16 +347,29 @@ export const NAVIGATION_KEY_SHORTCUTS: KeyShortcut[] = [
         description: "Select previous sound event annotation",
     },
     {
-        label: "Delete tags",
-        shortcut: DELETE_TAG_SHORTCUT,
-        description: "Delete a tag from all sound events",
-    },
-    {
         label: "Cycle filter",
         shortcut: SOUND_EVENT_CYCLE_FILTER_SHORTCUT,
         description: "Set or remove tag that will be used for selecting next or previous sound event",
     },
 ];
+
+export const TAG_HANDLING_SHORTCUTS: KeyShortcut[] = [
+    {
+        label: "Delete tag(s)",
+        shortcut: DELETE_TAG_SHORTCUT,
+        description: "Delete a tag from all or the selected sound events",
+    },
+    {
+        label: "Replace tag(s)",
+        shortcut: REPLACE_TAG_SHORTCUT,
+        description: "Replace a tag in all or the selected sound events",
+    },
+    {
+        label: "ADD tag(s)",
+        shortcut: ADD_TAG_SHORTCUT,
+        description: "Add a tag to all or the selected sound events",
+    },
+]
 
 export const AUDIO_KEY_SHORTCUTS: KeyShortcut[] = [
     {
