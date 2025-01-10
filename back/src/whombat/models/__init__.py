@@ -33,6 +33,7 @@ from whombat.models.evaluation_set import (
     EvaluationSetTag,
     EvaluationSetUserRun,
 )
+from whombat.models.event_handlers import setup_model_events
 from whombat.models.feature import FeatureName
 from whombat.models.model_run import (
     ModelRun,
@@ -69,6 +70,8 @@ from whombat.models.user_run import (
     UserRunEvaluation,
     UserRunPrediction,
 )
+
+setup_model_events()
 
 __all__ = [
     "AccessToken",
