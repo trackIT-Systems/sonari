@@ -419,7 +419,7 @@ class NightFilter(base.Filter):
 
 
 class DayFilter(base.Filter):
-    """Filter for tasks by night time recordings."""
+    """Filter for tasks by day time recordings."""
 
     eq: bool | None = None
     tz: str | None = None
@@ -430,12 +430,138 @@ class DayFilter(base.Filter):
 
 
 class SampleFilter(base.Filter):
-    """Filter for tasks by night time recordings."""
+    """Subsample tasks."""
 
     eq: float | None = None
 
     def filter(self, query: Select) -> Select:
         """Filter the query."""
+        return query
+
+
+class DetectionConfidenceFilter(base.Filter):
+    """Filter by detection confidence.
+
+    This filter returns all tasks where a sound event exists that has the feature
+    "detection_confidence" set and whose value is greater or lower than the values given.
+    """
+
+    gt: float | None = None
+    lt: float | None = None
+
+    def filter(self, query: Select) -> Select:
+        """Filter the query."""
+        if self.gt is None and self.lt is None:
+            return query
+
+        # Create aliases for needed tables
+        Recording = models.Recording.__table__.alias("detection_confidence_recording")
+        Clip = models.Clip.__table__.alias("detection_confidence_clip")
+
+        # Create subquery to find sound events with detection confidence
+        subquery = (
+            select(1)
+            .select_from(models.SoundEvent)  # Explicitly set the left side
+            .join(
+                models.SoundEventFeature,
+                models.SoundEvent.id == models.SoundEventFeature.sound_event_id,
+            )
+            .join(
+                models.FeatureName,
+                models.SoundEventFeature.feature_name_id == models.FeatureName.id,
+            )
+            .where(
+                models.FeatureName.name == "detection_confidence",
+                models.SoundEvent.recording_id == Recording.c.id,
+            )
+        )
+
+        # Add confidence value conditions
+        if self.gt is not None:
+            subquery = subquery.where(models.SoundEventFeature.value > self.gt)
+        if self.lt is not None:
+            subquery = subquery.where(models.SoundEventFeature.value < self.lt)
+
+        # Join with main query
+        query = (
+            query.join(
+                models.ClipAnnotation,
+                models.AnnotationTask.clip_annotation_id == models.ClipAnnotation.id,
+            )
+            .join(
+                Clip,
+                models.ClipAnnotation.clip_id == Clip.c.id,
+            )
+            .join(
+                Recording,
+                Recording.c.id == Clip.c.recording_id,
+            )
+            .where(exists(subquery))
+        )
+
+        return query
+
+
+class SpeciesConfidenceFilter(base.Filter):
+    """Filter by species confidence.
+
+    This filter returns all tasks where a sound event exists that has the feature
+    "species_confidence" set and whose value is greater or lower than the values given.
+    """
+
+    gt: float | None = None
+    lt: float | None = None
+
+    def filter(self, query: Select) -> Select:
+        """Filter the query."""
+        if self.gt is None and self.lt is None:
+            return query
+
+        # Create aliases for needed tables
+        Recording = models.Recording.__table__.alias("species_confidence_recording")
+        Clip = models.Clip.__table__.alias("species_confidence_clip")
+
+        # Create subquery to find sound events with detection confidence
+        subquery = (
+            select(1)
+            .select_from(models.SoundEvent)  # Explicitly set the left side
+            .join(
+                models.SoundEventFeature,
+                models.SoundEvent.id == models.SoundEventFeature.sound_event_id,
+            )
+            .join(
+                models.FeatureName,
+                models.SoundEventFeature.feature_name_id == models.FeatureName.id,
+            )
+            .where(
+                models.FeatureName.name == "species_confidence",
+                models.SoundEvent.recording_id == Recording.c.id,
+            )
+        )
+
+        # Add confidence value conditions
+        if self.gt is not None:
+            subquery = subquery.where(models.SoundEventFeature.value > self.gt)
+        if self.lt is not None:
+            subquery = subquery.where(models.SoundEventFeature.value < self.lt)
+
+        # Join with main query
+        query = (
+            query.join(
+                models.ClipAnnotation,
+                models.AnnotationTask.clip_annotation_id == models.ClipAnnotation.id,
+            )
+            .join(
+                Clip,
+                models.ClipAnnotation.clip_id == Clip.c.id,
+            )
+            .join(
+                Recording,
+                Recording.c.id == Clip.c.recording_id,
+            )
+            .where(exists(subquery))
+        )
+
         return query
 
 
@@ -455,4 +581,6 @@ AnnotationTaskFilter = base.combine(
     night=NightFilter,
     day=DayFilter,
     sample=SampleFilter,
+    detection_confidence=DetectionConfidenceFilter,
+    species_confidence=SpeciesConfidenceFilter,
 )

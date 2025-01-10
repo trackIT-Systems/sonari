@@ -70,6 +70,14 @@ export const AnnotationTaskFilterSchema = z.object({
     timezone: z.string(),
   }).optional(),
   sample: FloatEqFilterSchema.optional(),
+  detection_confidence: z.object({
+    gt: z.number().optional(),
+    lt: z.number().optional(),
+  }).optional(),
+  species_confidence: z.object({
+    gt: z.number().optional(),
+    lt: z.number().optional(),
+  }).optional(),
 });
 
 export type AnnotationTaskFilter = z.input<typeof AnnotationTaskFilterSchema>;
@@ -168,6 +176,10 @@ export function registerAnnotationTasksAPI(
             ? params.date_range.map(d => formatDateForAPI(d.end_time)).join(',')
             : formatDateForAPI(params.date_range.end_time))
           : undefined,
+        detection_confidence__gt: params.detection_confidence?.gt,
+        detection_confidence__lt: params.detection_confidence?.lt,
+        species_confidence__gt: params.species_confidence?.gt,
+        species_confidence__lt: params.species_confidence?.lt,
         night__eq: params.night?.eq,
         night__tz: params.night?.timezone,
         day__eq: params.day?.eq,
