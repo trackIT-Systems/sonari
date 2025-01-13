@@ -102,7 +102,7 @@ export function AddTagButton({
         leaveTo="scale-95 opacity-0"
         portal={true}
       >
-        <Popover.Button className="rounded hover:text-emerald-500 focus:ring-4 focus:outline-none group focus:ring-emerald-500/50 z-20">
+        <Popover.Button className="whitespace-nowrap rounded hover:text-emerald-500 focus:ring-4 focus:outline-none group focus:ring-emerald-500/50 z-20">
           +<TagIcon className="inline-block ml-1 w-4 h-4 stroke-2" />
           <span className="hidden absolute ml-1 whitespace-nowrap opacity-0 transition-all duration-200 group-hover:inline-block group-hover:opacity-100">
             Add tag

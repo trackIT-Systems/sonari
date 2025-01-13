@@ -188,8 +188,8 @@ export function getLabelPosition(
   );
 
   const tooLeft = left < 50;
-  const tooBottom = bottom > dimensions.height - 50;
-  const tooRight = right > dimensions.width - 50;
+  const tooBottom = bottom > dimensions.height;
+  const tooRight = right > dimensions.width;
   const tooTop = top < 50;
 
   switch (true) {
