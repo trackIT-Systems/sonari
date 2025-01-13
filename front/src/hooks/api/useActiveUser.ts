@@ -24,6 +24,7 @@ export default function useActiveUser({
     queryFn: api.user.me,
     initialData: initial,
     staleTime: 30_000,
+    gcTime: 60 * 60 * 1000, // when the gcTime expires, react will re-fetch the data. This might lead to the problem that set filters in annotation task are lost. Therefore, we set a hopefully large enough time.
     retry: false,
     enabled,
     refetchOnWindowFocus: false,

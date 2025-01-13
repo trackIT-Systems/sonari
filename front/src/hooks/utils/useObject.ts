@@ -150,6 +150,9 @@ export function useObjectQuery<T, K>({
     queryFn: trueQueryFn,
     queryKey: [name, uuid, secondaryName],
     enabled: status !== "pending" && status !== "error" && enabled,
+    staleTime: Infinity,
+    refetchOnWindowFocus: false,
+    gcTime: 60 * 60 * 1000, // when the gcTime expires, react will re-fetch the data. This might lead to the problem that set filters in annotation task are lost. Therefore, we set a hopefully large enough time.
   });
 }
 
@@ -201,7 +204,9 @@ export default function useObject<T>({
       return failureCount < 3;
     },
     initialData: initial,
-    staleTime: 1000 * 60 * 5,
+    staleTime: Infinity,
+    refetchOnWindowFocus: false,
+    gcTime: 60 * 60 * 1000, // when the gcTime expires, react will re-fetch the data. This might lead to the problem that set filters in annotation task are lost. Therefore, we set a hopefully large enough time.
     enabled: enabled && uuid != null,
   });
 

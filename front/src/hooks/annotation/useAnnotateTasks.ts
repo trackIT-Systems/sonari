@@ -211,6 +211,9 @@ export default function useAnnotateTasks({
     queryKey: ["annotation_task", currentTask?.uuid, "annotations"],
     queryFn,
     enabled: currentTask != null,
+    refetchOnWindowFocus: false,
+    staleTime: Infinity,
+    gcTime: 60 * 60 * 1000, // when the gcTime expires, react will re-fetch the data. This might lead to the problem that set filters in annotation task are lost. Therefore, we set a hopefully large enough time.
   });
 
   const updateTaskData = useCallback(
