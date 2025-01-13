@@ -50,20 +50,10 @@ const ALL_SPEED_OPTIONS: SpeedOption[] = [
   { label: "3x", value: 3 },
 ];
 
-function getSpeedOptions(recording: Recording): SpeedOption[] {
-  return ALL_SPEED_OPTIONS.filter((option) => {
-    const sampleRate = recording.samplerate;
-    const speed = option.value;
-    const newSampleRate = sampleRate * speed;
-    return (
-      newSampleRate >= LOWEST_SAMPLE_RATE &&
-      newSampleRate <= HIGHTEST_SAMPLE_RATE
-    );
-  });
-}
-
-function getDefaultSpeedOption(options: SpeedOption[]): SpeedOption {
-  return options.find((option) => option.value === 1) || options[0];
+function getDefaultSpeedOption(recording: Recording): SpeedOption {
+  // If sample rate is above 96000, default to 0.1x, otherwise use 1x
+  const defaultSpeed = recording.samplerate > HIGHTEST_SAMPLE_RATE ? 0.1 : 1;
+  return ALL_SPEED_OPTIONS.find((option) => option.value === defaultSpeed) || ALL_SPEED_OPTIONS[0];
 }
 
 export default function useAudio({
@@ -82,10 +72,10 @@ export default function useAudio({
 } & Partial<PlayerState>): PlayerState & PlayerControls {
   const audio = useRef<HTMLAudioElement>(new Audio());
 
-  const speedOptions = useMemo(() => getSpeedOptions(recording), [recording]);
+  const speedOptions = useMemo(() => ALL_SPEED_OPTIONS, []);
   const defaultSpeedOption = useMemo(
-    () => getDefaultSpeedOption(speedOptions),
-    [speedOptions],
+    () => getDefaultSpeedOption(recording),
+    [recording],
   );
 
   // Store internal player state
