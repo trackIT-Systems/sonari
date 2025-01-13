@@ -21,7 +21,6 @@ import ResamplingSettings from "./settings/ResamplingSettings";
 import STFTSettings from "./settings/STFTSettings";
 
 import type { SpectrogramParameters } from "@/types";
-import ConfigPresets from "./settings/ConfigPresets";
 import KeyboardKey from "../KeyboardKey";
 import { SETTINGS_SHORTCUT } from "@/utils/keyboard";
 import useKeyFilter from "@/hooks/utils/useKeyFilter";
@@ -85,11 +84,10 @@ export function SpectrogramSettingForm({
 
   return (
     <div className="flex flex-col gap-2">
-      <ConfigPresets control={control} />
-      <ResamplingSettings control={control} />
       <STFTSettings constraints={constraints} control={control} />
       <FilteringSettings constraints={constraints} control={control} />
       <AmplitudeSettings control={control} />
+      <ResamplingSettings control={control} />
       <DeNoiseSettings control={control} />
       <ColorSettings constraints={constraints} control={control} />
     </div>

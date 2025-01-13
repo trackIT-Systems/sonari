@@ -164,6 +164,7 @@ export default function useSpectrogram({
   props: React.HTMLAttributes<HTMLCanvasElement>;
 } & SpectrogramState &
   SpectrogramControls {
+
   const initialBounds = useMemo<SpectrogramWindow>(() => {
     return (
       bounds ?? {
@@ -190,8 +191,6 @@ export default function useSpectrogram({
   const [viewport, setViewport] = useState<SpectrogramWindow>(
     initialViewport,
   );
-
-  const lastConfPresetRef = useRef<string>(initialParameters.conf_preset);
 
   const zoom = useCallback(
     (oldViewport: SpectrogramWindow, in_out: string): SpectrogramWindow => {
@@ -338,21 +337,6 @@ export default function useSpectrogram({
 
   const handleSetParameters = useCallback(
     (parameters: SpectrogramParameters) => {
-      if (parameters.conf_preset != lastConfPresetRef.current) {
-        lastConfPresetRef.current = parameters.conf_preset
-        switch (parameters.conf_preset) {
-          case "hsr":
-            parameters.window_size = 0.00319;
-            parameters.gamma = 1;
-            parameters.min_dB = -140;
-            break;
-          case "lsr":
-            parameters.window_size = 0.03;
-            parameters.gamma = 1;
-            parameters.min_dB = -140;
-            break;
-        }
-      }
       const validated = validateParameters(parameters, recording);
       onParameterChange?.(validated);
       setParameters(validated);
@@ -361,7 +345,6 @@ export default function useSpectrogram({
   );
 
   const handleResetParameters = useCallback(() => {
-    lastConfPresetRef.current = initialParameters.conf_preset;
     setParameters(validateParameters(initialParameters, recording));
   }, [initialParameters, recording]);
 

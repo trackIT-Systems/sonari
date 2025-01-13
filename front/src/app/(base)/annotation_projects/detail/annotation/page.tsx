@@ -39,7 +39,6 @@ export default function Page() {
 
   const onParameterSave = useCallback(
     (parameters: SpectrogramParameters) => {
-      toast.success("Spectrogram settings saved.");
       setParameters(parameters);
     },
     [setParameters],

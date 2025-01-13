@@ -97,6 +97,31 @@ export default function ClipAnnotationSpectrogram({
   const { clip } = clipAnnotation;
   const { recording } = clip;
 
+  const initialParameters = useMemo(() => {
+    const shouldBeHSR = recording.samplerate >= 96000;
+    const currentPreset = parameters.conf_preset;
+    
+
+    var params = parameters;
+    if (shouldBeHSR && currentPreset !== 'hsr') {
+      params = {
+        ...parameters,
+        conf_preset: 'hsr',
+        window_size: 0.00319,
+      };
+    } else if (!shouldBeHSR && currentPreset !== 'lsr') {
+      params = {
+        ...parameters,
+        conf_preset: 'lsr',
+        window_size: 0.03,
+      };
+    }
+
+    onParameterSave?.(params)
+    
+    return params;
+  }, [recording.samplerate, parameters]);
+
   const bounds = useMemo(
     () => ({
       time: { min: clip.start_time, max: clip.end_time },
@@ -156,7 +181,7 @@ export default function ClipAnnotationSpectrogram({
     recording,
     bounds,
     initial,
-    parameters,
+    parameters: initialParameters,
     onDoubleClick: handleDoubleClick,
     onModeChange: handleSpectrogramModeChange,
     enabled: !isAnnotating && !audio.isPlaying,
