@@ -442,8 +442,8 @@ class SampleFilter(base.Filter):
 class DetectionConfidenceFilter(base.Filter):
     """Filter by detection confidence.
 
-    This filter returns all tasks where a sound event exists that has the feature
-    "detection_confidence" set and whose value is greater or lower than the values given.
+    This filter returns all tasks where all sound events that have the feature
+    "detection_confidence" have values that are greater or lower than the values given.
     """
 
     gt: float | None = None
@@ -458,10 +458,10 @@ class DetectionConfidenceFilter(base.Filter):
         Recording = models.Recording.__table__.alias("detection_confidence_recording")
         Clip = models.Clip.__table__.alias("detection_confidence_clip")
 
-        # Create subquery to find sound events with detection confidence
+        # Create subquery to find sound events with detection confidence that violate conditions
         subquery = (
             select(1)
-            .select_from(models.SoundEvent)  # Explicitly set the left side
+            .select_from(models.SoundEvent)
             .join(
                 models.SoundEventFeature,
                 models.SoundEvent.id == models.SoundEventFeature.sound_event_id,
@@ -476,13 +476,13 @@ class DetectionConfidenceFilter(base.Filter):
             )
         )
 
-        # Add confidence value conditions
+        # Add inverted confidence value conditions - looking for violations
         if self.gt is not None:
-            subquery = subquery.where(models.SoundEventFeature.value > self.gt)
+            subquery = subquery.where(models.SoundEventFeature.value <= self.gt)
         if self.lt is not None:
-            subquery = subquery.where(models.SoundEventFeature.value < self.lt)
+            subquery = subquery.where(models.SoundEventFeature.value >= self.lt)
 
-        # Join with main query
+        # Join with main query and use not exists to ensure no violations exist
         query = (
             query.join(
                 models.ClipAnnotation,
@@ -496,7 +496,7 @@ class DetectionConfidenceFilter(base.Filter):
                 Recording,
                 Recording.c.id == Clip.c.recording_id,
             )
-            .where(exists(subquery))
+            .where(~exists(subquery))
         )
 
         return query
@@ -505,8 +505,8 @@ class DetectionConfidenceFilter(base.Filter):
 class SpeciesConfidenceFilter(base.Filter):
     """Filter by species confidence.
 
-    This filter returns all tasks where a sound event exists that has the feature
-    "species_confidence" set and whose value is greater or lower than the values given.
+    This filter returns all tasks where all sound events that have the feature
+    "species_confidence" have values that are greater or lower than the values given.
     """
 
     gt: float | None = None
@@ -521,10 +521,10 @@ class SpeciesConfidenceFilter(base.Filter):
         Recording = models.Recording.__table__.alias("species_confidence_recording")
         Clip = models.Clip.__table__.alias("species_confidence_clip")
 
-        # Create subquery to find sound events with detection confidence
+        # Create subquery to find sound events with species confidence that violate conditions
         subquery = (
             select(1)
-            .select_from(models.SoundEvent)  # Explicitly set the left side
+            .select_from(models.SoundEvent)
             .join(
                 models.SoundEventFeature,
                 models.SoundEvent.id == models.SoundEventFeature.sound_event_id,
@@ -539,13 +539,13 @@ class SpeciesConfidenceFilter(base.Filter):
             )
         )
 
-        # Add confidence value conditions
+        # Add inverted confidence value conditions - looking for violations
         if self.gt is not None:
-            subquery = subquery.where(models.SoundEventFeature.value > self.gt)
+            subquery = subquery.where(models.SoundEventFeature.value <= self.gt)
         if self.lt is not None:
-            subquery = subquery.where(models.SoundEventFeature.value < self.lt)
+            subquery = subquery.where(models.SoundEventFeature.value >= self.lt)
 
-        # Join with main query
+        # Join with main query and use not exists to ensure no violations exist
         query = (
             query.join(
                 models.ClipAnnotation,
@@ -559,7 +559,7 @@ class SpeciesConfidenceFilter(base.Filter):
                 Recording,
                 Recording.c.id == Clip.c.recording_id,
             )
-            .where(exists(subquery))
+            .where(~exists(subquery))
         )
 
         return query
