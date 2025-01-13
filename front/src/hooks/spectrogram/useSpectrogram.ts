@@ -103,9 +103,8 @@ function drawPosition(ctx: CanvasRenderingContext2D, viewport: SpectrogramWindow
   popover.style.position = 'absolute';
   popover.style.background = 'rgba(28, 25, 23, 0.7)';
   popover.style.color = 'rgb(245, 245, 244)';
-  popover.style.fontSize = '0.5em';
-  popover.style.padding = '3px';
-  popover.style.borderRadius = '5px';
+  popover.style.fontSize = '0.75rem';
+  popover.style.borderRadius = '6px';
   popover.style.pointerEvents = 'none';
   popover.style.display = 'none';
   document.body.appendChild(popover);
