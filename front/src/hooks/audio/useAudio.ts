@@ -12,6 +12,7 @@ export type PlayerControls = {
   seek: (time: number) => void;
   setVolume: (volume: number) => void;
   setSpeed: (speed: number) => void;
+  setTime: (time: number) => void;
   toggleLoop: () => void;
   togglePlay: () => void;
   toggleAutoplay: () => void;
@@ -241,5 +242,6 @@ export default function useAudio({
     toggleLoop: handleToggleLoop,
     seek: handleSeek,
     setSpeed,
+    setTime,
   };
 }

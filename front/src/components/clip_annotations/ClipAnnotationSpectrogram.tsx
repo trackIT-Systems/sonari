@@ -45,6 +45,7 @@ export default function ClipAnnotationSpectrogram({
   defaultTags,
   selectedTag,
   fixedAspectRatio,
+  selectedAnnotation,
   onClearSelectedTag,
   toggleFixedAspectRatio,
   onWithSpectrogramChange,
@@ -74,6 +75,7 @@ export default function ClipAnnotationSpectrogram({
   withSpectrogram: boolean;
   withAutoplay: boolean;
   fixedAspectRatio: boolean;
+  selectedAnnotation?: SoundEventAnnotation | null;
   onClearSelectedTag: (tag: { tag: Tag; count: number } | null) => void;
   toggleFixedAspectRatio: () => void;
   onWithSpectrogramChange: () => void;
@@ -149,10 +151,55 @@ export default function ClipAnnotationSpectrogram({
     [recording.samplerate, clip.start_time, clip.end_time, parameters, withSpectrogram],
   );
 
+  const getPlaybackBounds = useCallback(() => {
+    if (!selectedAnnotation) {
+      console.log("is not set")
+      return {
+        startTime: clip.start_time,
+        endTime: clip.end_time
+      };
+    }
+    console.log("is set")
+
+
+    const { geometry, geometry_type } = selectedAnnotation.sound_event;
+    
+    var start: number
+    var end: number
+    var geom: number[]
+    switch (geometry_type) {
+      case "TimeInterval":
+        geom = geometry.coordinates as [number, number];
+        start = geom[0]
+        end = geom[1]
+        return {
+          startTime: start,
+          endTime: end
+        };
+      
+      case "BoundingBox":
+        geom = geometry.coordinates as [number, number, number, number];
+        start = geom[0]
+        end = geom[2]
+        return {
+          startTime: start,
+          endTime: end
+        };
+      
+      default:
+        return {
+          startTime: clip.start_time,
+          endTime: clip.end_time
+        };
+    }
+  }, [selectedAnnotation, clip.start_time, clip.end_time]);
+
+  const { startTime, endTime } = useMemo(() => getPlaybackBounds(), [getPlaybackBounds]);
+
   const audio = useAudio({
     recording,
-    endTime: bounds.time.max,
-    startTime: bounds.time.min,
+    endTime: endTime,
+    startTime: startTime,
     withShortcuts: withAudioShortcuts,
     withAutoplay: withAutoplay,
     onWithAutoplayChange: onWithAutoplayChange,
@@ -172,6 +219,7 @@ export default function ClipAnnotationSpectrogram({
   const handleDoubleClick = useCallback(
     ({ position }: { position: Position }) => {
       seek(position.time);
+      audio.setTime(position.time)
     },
     [seek],
   );
@@ -198,13 +246,16 @@ export default function ClipAnnotationSpectrogram({
     [centerOn],
   );
 
-  const { draw: drawTrackAudio, enabled: trackingAudio } =
-    useSpectrogramTrackAudio({
-      viewport: spectrogram.viewport,
-      currentTime: audio.currentTime,
-      isPlaying: audio.isPlaying,
-      onTimeChange: handleTimeChange,
-    });
+  const {
+    draw: drawTrackAudio,
+    enabled: trackingAudio,
+    drawOnsetAt
+  } = useSpectrogramTrackAudio({
+    viewport: spectrogram.viewport,
+    currentTime: audio.currentTime,
+    isPlaying: audio.isPlaying,
+    onTimeChange: handleTimeChange,
+  });
 
   const handleAnnotationModeChange = useCallback(
     (mode: AnnotateMode) => setIsAnnotating(mode !== "idle"),
@@ -257,14 +308,18 @@ export default function ClipAnnotationSpectrogram({
     }
     return (ctx: CanvasRenderingContext2D) => {
       drawSpectrogram(ctx);
+      // Draw the onset line even when not playing
+      drawOnsetAt?.(ctx, audio.currentTime);
       drawAnnotations(ctx);
     };
   }, [
     drawSpectrogram,
     drawTrackAudio,
+    drawOnsetAt,
     drawAnnotations,
     spectrogramIsLoading,
     trackingAudio,
+    audio.currentTime,
   ]);
 
   useCanvas({ ref: canvasRef, draw });

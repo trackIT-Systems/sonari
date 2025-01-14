@@ -9,20 +9,6 @@ import { ExplorationIcon } from "../icons";
 function getWindowFromGeometry(annotation: SoundEventAnnotation, recording: Recording) {
     const { geometry, geometry_type } = annotation.sound_event;
     switch (geometry_type) {
-        case "TimeStamp":
-            const ts_coordinates = geometry.coordinates as number
-            var duration_margin = recording.duration * 0.1
-            return {
-                time: {
-                    min: Math.max(0, ts_coordinates - duration_margin),
-                    max: Math.min(ts_coordinates + duration_margin, recording.duration),
-                },
-                freq: {
-                    min: 0,
-                    max: recording.samplerate / 2,
-                },
-            };
-
         case "TimeInterval":
             const ti_coordinates = geometry.coordinates as [number, number];
             var duration_margin = (ti_coordinates[1] - ti_coordinates[0]) * 0.1

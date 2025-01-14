@@ -382,6 +382,7 @@ export default function AnnotateTasks({
                     selectedTag={selectedTag}
                     onClearSelectedTag={setSelectedTag}
                     onParameterSave={onParameterSave}
+                    selectedAnnotation={selectedAnnotation}
                     onSelectAnnotation={setSelectedAnnotation}
                     tagFilter={tagFilter}
                     withSpectrogram={withSpectrogram}

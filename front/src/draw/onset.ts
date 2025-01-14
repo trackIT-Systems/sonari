@@ -22,9 +22,8 @@ export default function drawOnset(
     ctx.globalAlpha = style.borderAlpha ?? DEFAULT_BORDER_ALPHA;
     ctx.strokeStyle = style.borderColor ?? DEFAULT_BORDER_COLOR;
     ctx.lineWidth = style.borderWidth ?? DEFAULT_BORDER_WIDTH;
-    if (style.borderDash) {
-      ctx.setLineDash(style.borderDash);
-    }
+
+    ctx.setLineDash([]);
 
     ctx.beginPath();
     ctx.moveTo(onset, 0);
