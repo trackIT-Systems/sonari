@@ -4,7 +4,7 @@ import type { Recording, SpectrogramWindow } from "@/types";
 
 // Sizes of the segments
 const DURATIONS = [0.125, 0.25, 0.5, 1, 2, 4, 8, 16, 32, 64, 128, 256];
-const OVERLAP = 0.4;
+export const OVERLAP = 0.4;
 
 /**
  * The `useRecordingSegments` hook provides functionality to compute and manage
@@ -75,11 +75,12 @@ export default function useRecordingSegments({
     selected,
     prev,
     next,
+    allSegments: segments
   };
 }
 
 /** Compute the minimum segment duration that covers the given window. */
-function getCoveringSegmentDuration(window: SpectrogramWindow, strict?: boolean) {
+export function getCoveringSegmentDuration(window: SpectrogramWindow, strict?: boolean) {
   const duration = window.time.max - window.time.min;
   if (strict) {
     return duration
@@ -90,7 +91,7 @@ function getCoveringSegmentDuration(window: SpectrogramWindow, strict?: boolean)
 }
 
 /** Segment a window into overlapping segments of a given duration. */
-function getSegments(
+export function getSegments(
   window: SpectrogramWindow,
   duration: number,
   overlap: number,

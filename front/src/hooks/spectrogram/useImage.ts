@@ -31,6 +31,7 @@ export default function useImage({
   onError,
   onTimeout,
   withSpectrogram,
+  cachedImage,
 }: {
   url: string;
   timeout?: number;
@@ -38,11 +39,16 @@ export default function useImage({
   onError?: () => void;
   onTimeout?: () => void;
   withSpectrogram: boolean;
+  cachedImage: HTMLImageElement | null
 }): ImageStatus {
   const ref = useRef<HTMLImageElement>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
 
+  if (cachedImage) {
+    // @ts-ignore
+    ref.current = cachedImage;
+  }
   if (ref.current === null) {
     // @ts-ignore
     ref.current = new Image();
