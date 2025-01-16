@@ -128,7 +128,6 @@ export default function useAnnotateTasks({
 
   const preloadSpectrogramSegments = useCallback(
     async (recording: Recording) => {
-      console.log("Preloading next task");
       if (!recording) return;
 
       // Calculate initial window to get segment size
@@ -215,18 +214,13 @@ export default function useAnnotateTasks({
   }, [index, items, hasPrevTask, goToTask]);
 
   useEffect(() => {
-    console.log("Starting effect.")
     if (!items || index === -1 || index >= items.length - 1) return;
 
-    // Get next task
-    console.log("index ok.")
     if (!hasNextTask) return;
 
-    console.log("has next.")
     const nextTask = items[index + 1];
     api.annotationTasks.get(nextTask.uuid).then((completeData: AnnotationTask) => {
       if (!completeData.clip?.recording) return;
-      console.log("Shas recording.")
 
       // Get recording from next task
       const recording = completeData.clip.recording;

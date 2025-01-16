@@ -144,7 +144,7 @@ def get_annotation_tasks_router(settings: WhombatSettings) -> APIRouter:
         if limit == -1:
             noloads: list[InstrumentedAttribute[Any]] | None = [models.AnnotationTask.clip]
 
-            if nigh_filter is not None and day_filter is not None:
+            if nigh_filter is None and day_filter is None:
                 noloads.append(models.AnnotationTask.clip_annotation)
 
         else:
