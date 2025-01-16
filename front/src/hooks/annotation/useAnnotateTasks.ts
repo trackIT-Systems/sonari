@@ -7,6 +7,7 @@ import {
 } from "@tanstack/react-query";
 import { type AxiosError } from "axios";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import useStore from "@/store";
 
 import {
   AnnotationTaskFilter,
@@ -17,7 +18,10 @@ import useAnnotateTasksKeyShortcuts from "@/hooks/annotation/useAnnotateTasksKey
 import useAnnotationTasks from "@/hooks/api/useAnnotationTasks";
 import { type Filter } from "@/hooks/utils/useFilter";
 
-import type { AnnotationStatus, AnnotationStatusBadge, AnnotationTask, ClipAnnotation } from "@/types";
+import type { AnnotationStatus, Recording, AnnotationTask, ClipAnnotation } from "@/types";
+import { spectrogramCache } from "@/utils/spectrogram_cache";
+import { getInitialViewingWindow } from "@/utils/windows";
+import { getCoveringSegmentDuration, getSegments } from "../spectrogram/useRecordingSegments";
 
 type AnnotationState = {
   /** Currently selected annotation task index */
@@ -69,35 +73,6 @@ type AnnotationControls = {
 
 const empty = {};
 
-function sortAnnotationTasks(a: AnnotationTask, b: AnnotationTask): number {
-
-  // Helper function to get a comparable date-time value
-  const getDateTime = (task: AnnotationTask): number => {
-    if (task.clip && task.clip.recording.date && task.clip.recording.time) {
-      const date = task.clip.recording.date;
-      const time = new Date(`1970-01-01T${task.clip.recording.time}`);
-      return date.getTime() + time.getTime();
-    }
-    return -1; // Indicates that date/time is not available
-  };
-
-  const dateTimeA = getDateTime(a);
-  const dateTimeB = getDateTime(b);
-
-  // If both tasks have valid date-time, compare them
-  if (dateTimeA !== -1 && dateTimeB !== -1) {
-    return dateTimeA - dateTimeB;
-  }
-
-  // If one task has a valid date-time and the other doesn't, prioritize the one with date-time
-  if (dateTimeA !== -1) return -1;
-  if (dateTimeB !== -1) return 1;
-
-  // If neither task has a valid date-time, compare UUIDs
-  return a.uuid.localeCompare(b.uuid);
-
-}
-
 export default function useAnnotateTasks({
   filter: initialFilter = empty,
   annotationTask: initialTask,
@@ -148,6 +123,56 @@ export default function useAnnotateTasks({
     return items.findIndex((item) => item.uuid === currentTask.uuid);
   }, [currentTask, items]);
 
+
+  const parameters = useStore((state) => state.spectrogramSettings);
+
+  const preloadSpectrogramSegments = useCallback(
+    async (recording: Recording) => {
+      console.log("Preloading next task");
+      if (!recording) return;
+
+      // Calculate initial window to get segment size
+      const initial = getInitialViewingWindow({
+        startTime: 0,
+        endTime: recording.duration,
+        samplerate: recording.samplerate,
+        parameters,
+      });
+
+      // Calculate bounds
+      const bounds = {
+        time: { min: 0, max: recording.duration },
+        freq: { min: 0, max: recording.samplerate / 2 },
+      };
+
+      // Get segment duration
+      const duration = getCoveringSegmentDuration(initial, false);
+      
+      // Get all segments
+      const segments = getSegments(bounds, duration, 0.4); // 0.4 is the OVERLAP constant
+
+      // Load all segments
+      segments.forEach(segment => {
+        // Skip if already cached
+        if (spectrogramCache.get(recording.uuid, segment, parameters)) {
+          return;
+        }
+
+        const img = new Image();
+        img.onload = () => {
+          spectrogramCache.set(recording.uuid, segment, parameters, img);
+        };
+        
+        img.src = api.spectrograms.getUrl({
+          recording,
+          segment: { min: segment.time.min, max: segment.time.max },
+          parameters
+        });
+      });
+    },
+    [parameters]
+  );
+
   const goToTask = useCallback(
     (task: AnnotationTask) => {
       client.setQueryData(["annotation_task", task.uuid], task);
@@ -188,6 +213,28 @@ export default function useAnnotateTasks({
       goToTask(items[index - 1]);
     }
   }, [index, items, hasPrevTask, goToTask]);
+
+  useEffect(() => {
+    console.log("Starting effect.")
+    if (!items || index === -1 || index >= items.length - 1) return;
+
+    // Get next task
+    console.log("index ok.")
+    if (!hasNextTask) return;
+
+    console.log("has next.")
+    const nextTask = items[index + 1];
+    api.annotationTasks.get(nextTask.uuid).then((completeData: AnnotationTask) => {
+      if (!completeData.clip?.recording) return;
+      console.log("Shas recording.")
+
+      // Get recording from next task
+      const recording = completeData.clip.recording;
+
+      // Preload segments for next task
+      preloadSpectrogramSegments(recording);
+    })
+  }, [items, index, preloadSpectrogramSegments, hasNextTask]);
 
   const { set: setFilterKeyValue } = filter;
   const setFilter = useCallback(
@@ -249,11 +296,7 @@ export default function useAnnotateTasks({
       let updatedTask = task;
       onCompleteTask?.(updatedTask);
       updateTaskData(updatedTask);
-      const nextTaskIndex = index + 1;
-      const nextTaskToLoad = items[nextTaskIndex];
-      if (nextTaskToLoad) {
-        goToTask(nextTaskToLoad);
-      }
+      nextTask();
     },
   });
 
@@ -270,11 +313,7 @@ export default function useAnnotateTasks({
       let updatedTask = task;
       onUnsureTask?.(updatedTask);
       updateTaskData(updatedTask);
-      const nextTaskIndex = index + 1;
-      const nextTaskToLoad = items[nextTaskIndex];
-      if (nextTaskToLoad) {
-        goToTask(nextTaskToLoad);
-      }
+      nextTask();
     },
   });
 
@@ -291,11 +330,7 @@ export default function useAnnotateTasks({
       let updatedTask = task;
       onRejectTask?.(updatedTask);
       updateTaskData(updatedTask);
-      const nextTaskIndex = index + 1;
-      const nextTaskToLoad = items[nextTaskIndex];
-      if (nextTaskToLoad) {
-        goToTask(nextTaskToLoad);
-      }
+      nextTask();
     },
   });
 
@@ -312,11 +347,7 @@ export default function useAnnotateTasks({
       let updatedTask = task;
       onVerifyTask?.(updatedTask);
       updateTaskData(updatedTask);
-      const nextTaskIndex = index + 1;
-      const nextTaskToLoad = items[nextTaskIndex];
-      if (nextTaskToLoad) {
-        goToTask(nextTaskToLoad);
-      }
+      nextTask();
     },
   });
 

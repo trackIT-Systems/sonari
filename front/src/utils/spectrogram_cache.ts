@@ -38,9 +38,8 @@ class SpectrogramCache {
         parameters: SpectrogramParameters
     ): HTMLImageElement | null {
         const key = SpectrogramCache.generateKey(recordingId, window, parameters);
-        console.log(`Requesting ${key}`)
         const entry = this.cache.get(key);
-
+        
         if (entry) {
             return entry;
         }
@@ -58,7 +57,6 @@ class SpectrogramCache {
         image: HTMLImageElement
     ): void {
         const key = SpectrogramCache.generateKey(recordingId, window, parameters);
-
         this.cache.set(key, image);
     }
 
