@@ -41,12 +41,17 @@ export default function useSpectrogramImage({
     withSpectrogram,
   });
 
+  const segmentKey = spectrogramCache.generateKey(recording.uuid, selected, parameters);
+
   // Preload all segments
   useEffect(() => {
     if (!withSpectrogram) return;
 
+    const currentLoadingSegments = new Set<string>();
+
     // Load segments sequentially to avoid overwhelming the browser
     const loadSegments = async () => {
+      // const relSegments = allSegments.filter((segment) => segment.time.min !== selected.time.min)
       for (const segment of allSegments) {
 
         const segmentKey = spectrogramCache.generateKey(recording.uuid, segment, parameters);
@@ -54,12 +59,13 @@ export default function useSpectrogramImage({
         // Skip if already cached or already being loaded
         if (
           spectrogramCache.get(recording.uuid, segment, parameters) ||
-          loadingSegments.current.has(segmentKey)
+          currentLoadingSegments.has(segmentKey)
         ) {
           continue;
         }
 
         loadingSegments.current.add(segmentKey);
+        currentLoadingSegments.add(segmentKey);
 
         try {
           // Create and load image
@@ -75,10 +81,12 @@ export default function useSpectrogramImage({
               } finally {
                 // Always remove from loading set, whether successful or not
                 loadingSegments.current.delete(segmentKey);
+                currentLoadingSegments.delete(segmentKey);
               }
             };
             img.onerror = () => {
               loadingSegments.current.delete(segmentKey);
+              currentLoadingSegments.delete(segmentKey);
               reject();
             };
             img.src = api.spectrograms.getUrl({
@@ -96,9 +104,12 @@ export default function useSpectrogramImage({
     loadSegments();
 
     return () => {
-      loadingSegments.current.clear();
+      currentLoadingSegments.forEach(segmentKey => {
+        loadingSegments.current.delete(segmentKey);
+      });
+      currentLoadingSegments.clear();
     };
-  }, [recording.uuid, parameters, allSegments, withSpectrogram]);
+  }, [recording, parameters, allSegments, selected, withSpectrogram, loadingSegments]);
 
   return image;
 }

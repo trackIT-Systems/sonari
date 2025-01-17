@@ -98,11 +98,13 @@ export function useSpectrogramCache({
     window,
     parameters,
     withSpectrogram,
+    url,
 }: {
     recording: Recording;
     window: SpectrogramWindow;
     parameters: SpectrogramParameters;
     withSpectrogram: boolean;
+    url: string;
 }) {
     const [error, setError] = useState<string | null>(null);
     const [loading, setLoading] = useState<boolean>(true);
@@ -148,17 +150,12 @@ export function useSpectrogramCache({
             setError("Failed to load spectrogram");
         };
 
-        img.src = api.spectrograms.getUrl({
-            recording,
-            segment: window.time,
-            parameters
-        });
+        img.src = url;
 
         return () => {
-            img.src = '';
             imageRef.current = null; // Clear ref on cleanup
         };
-    }, [recording.uuid, window, parameters, withSpectrogram]);
+    }, [recording.uuid, window, parameters, withSpectrogram, recording]);
 
     // Don't create new Image() on every render
     return {

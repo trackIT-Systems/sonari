@@ -122,7 +122,7 @@ export default function ClipAnnotationSpectrogram({
     onParameterSave?.(params)
     
     return params;
-  }, [recording.samplerate, parameters]);
+  }, [recording.samplerate, parameters, onParameterSave]);
 
   const bounds = useMemo(
     () => ({
@@ -219,7 +219,7 @@ export default function ClipAnnotationSpectrogram({
       seek(position.time);
       audio.setTime(position.time)
     },
-    [seek],
+    [seek, audio],
   );
 
   const spectrogram = useSpectrogram({

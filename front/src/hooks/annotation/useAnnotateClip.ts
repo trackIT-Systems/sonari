@@ -225,7 +225,7 @@ export default function useAnnotateClip(props: {
   
       document.addEventListener('keydown', handleKeyPress);
       return () => document.removeEventListener('keydown', handleKeyPress);
-    }, [onDeselect]);
+    }, [onDeselect, onSelectAnnotation, setMode]);
 
   const handleDelete = useCallback(
     (annotation: SoundEventAnnotation) => {

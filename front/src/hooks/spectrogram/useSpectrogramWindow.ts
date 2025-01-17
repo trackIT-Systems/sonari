@@ -47,15 +47,13 @@ export default function useSpectrogramWindow({
     });
   }, [recording, spectrogramWindow.time, parameters, lowRes, getSpectrogramImageUrl]);
 
-  // Instead of destructuring isLoading and isError here, we should handle them separately
-  const imageStatus = lowRes 
-    ? useImage({url, withSpectrogram}) 
-    : useSpectrogramCache({
-        recording,
-        window: spectrogramWindow,
-        parameters,
-        withSpectrogram,
-      });
+  const imageStatus = useSpectrogramCache({
+    recording,
+    window: spectrogramWindow,
+    parameters,
+    withSpectrogram,
+    url
+  });
 
   const [isImageReady, setIsImageReady] = useState(false);
 

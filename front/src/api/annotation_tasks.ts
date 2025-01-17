@@ -9,6 +9,7 @@ import {
   DatasetSchema,
   TagSchema,
   UserSchema,
+  FloatEqFilterSchema,
 } from "@/schemas";
 
 import type {
@@ -18,8 +19,6 @@ import type {
   Clip,
   ClipAnnotation,
 } from "@/types";
-
-import { FloatEqFilterSchema } from "@/schemas";
 
 import { formatDateForAPI } from "@/components/filters/DateRangeFilter";
 
