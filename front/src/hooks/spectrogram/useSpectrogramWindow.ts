@@ -1,9 +1,9 @@
-import { useCallback, useMemo, useEffect } from "react";
+import { useCallback, useMemo, useEffect, useState } from "react";
 import { DEFAULT_SPECTROGRAM_PARAMETERS } from "@/api/spectrograms";
 import api from "@/app/api";
 import drawImage from "@/draw/image";
 import useImage from "@/hooks/spectrogram/useImage";
-import { spectrogramCache } from "@/utils/spectrogram_cache";
+import { useSpectrogramCache } from "@/utils/spectrogram_cache";
 
 import type {
   Interval,
@@ -23,7 +23,6 @@ type GetUrlFn = ({
   parameters: SpectrogramParameters;
   lowRes?: boolean;
 }) => string;
-
 export default function useSpectrogramWindow({
   recording,
   window: spectrogramWindow,
@@ -39,7 +38,6 @@ export default function useSpectrogramWindow({
   withSpectrogram: boolean;
   lowRes?: boolean;
 }) {
-  // Get the url of the image to load
   const url = useMemo(() => {
     return getSpectrogramImageUrl({
       recording,
@@ -49,42 +47,40 @@ export default function useSpectrogramWindow({
     });
   }, [recording, spectrogramWindow.time, parameters, lowRes, getSpectrogramImageUrl]);
 
-  // Check cache first
-  const cachedImage = useMemo(() => 
-    withSpectrogram ? spectrogramCache.get(recording.uuid, spectrogramWindow, parameters) : null
-  , [withSpectrogram, recording.uuid, spectrogramWindow, parameters]);
+  // Instead of destructuring isLoading and isError here, we should handle them separately
+  const imageStatus = lowRes 
+    ? useImage({url, withSpectrogram}) 
+    : useSpectrogramCache({
+        recording,
+        window: spectrogramWindow,
+        parameters,
+        withSpectrogram,
+      });
 
-  // Load image if not in cache
-  const { isLoading, isError, image } = useImage({ 
-    url, 
-    withSpectrogram: withSpectrogram,
-    cachedImage,
-  });
+  const [isImageReady, setIsImageReady] = useState(false);
 
-  // Cache the image once it's loaded successfully
   useEffect(() => {
-    if (
-      withSpectrogram && 
-      !isLoading && 
-      !isError && 
-      image instanceof HTMLImageElement &&
-      image.complete &&
-      image.src === url
-    ) {
-      spectrogramCache.set(recording.uuid, spectrogramWindow, parameters, image);
+    if (!imageStatus.image || imageStatus.isError) {
+      setIsImageReady(false);
+      return;
     }
-  }, [
-    withSpectrogram,
-    isLoading,
-    isError,
-    image,
-    url,
-    recording.uuid,
-    spectrogramWindow,
-    parameters
-  ]);
 
-  // Create a callback to draw the image
+    // For cached images that are already loaded
+    if (imageStatus.image.complete && imageStatus.image.naturalWidth !== 0) {
+      setIsImageReady(true);
+      return;
+    }
+
+    const handleLoad = () => setIsImageReady(true);
+    imageStatus.image.addEventListener('load', handleLoad);
+    
+    return () => {
+      if (imageStatus.image) {
+        imageStatus.image.removeEventListener('load', handleLoad);
+      }
+    };
+  }, [imageStatus.image, imageStatus.isError]);
+
   const draw = useCallback(
     (ctx: CanvasRenderingContext2D, view: SpectrogramWindow) => {
       if (!withSpectrogram) {
@@ -94,31 +90,28 @@ export default function useSpectrogramWindow({
         return;
       }
 
-      // Use cached image or loaded image
-      const imageToUse = cachedImage || image;
-
-      // Only draw if we have a valid image
-      if (imageToUse && imageToUse.complete && !isError) {
+      if (imageStatus.image) {  // Remove isImageReady check here
         drawImage({
           ctx,
-          image: imageToUse,
+          image: imageStatus.image,
           window: view,
           bounds: spectrogramWindow,
         });
+      } else {
+        // Loading indicator
+        ctx.fillStyle = "rgb(200 200 200)";
+        ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
       }
     },
-    [image, cachedImage, spectrogramWindow, isError, withSpectrogram],
+    [imageStatus.image, spectrogramWindow, withSpectrogram],  // Remove isImageReady from deps
   );
 
-  const effectiveImage = cachedImage || image;
-  const effectiveIsLoading = !cachedImage && isLoading;
-  const effectiveIsError = !cachedImage && isError;
 
   return {
-    image: effectiveImage,
+    image: imageStatus.image,
     viewport: spectrogramWindow,
-    isLoading: effectiveIsLoading,
-    isError: effectiveIsError,
+    isLoading: imageStatus.isLoading || !isImageReady,
+    isError: imageStatus.isError,
     draw,
   } as const;
 }

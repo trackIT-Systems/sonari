@@ -153,13 +153,11 @@ export default function ClipAnnotationSpectrogram({
 
   const getPlaybackBounds = useCallback(() => {
     if (!selectedAnnotation) {
-      console.log("is not set")
       return {
         startTime: clip.start_time,
         endTime: clip.end_time
       };
     }
-    console.log("is set")
 
 
     const { geometry, geometry_type } = selectedAnnotation.sound_event;

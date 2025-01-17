@@ -31,7 +31,6 @@ export default function useImage({
   onError,
   onTimeout,
   withSpectrogram,
-  cachedImage,
 }: {
   url: string;
   timeout?: number;
@@ -39,16 +38,11 @@ export default function useImage({
   onError?: () => void;
   onTimeout?: () => void;
   withSpectrogram: boolean;
-  cachedImage: HTMLImageElement | null
 }): ImageStatus {
   const ref = useRef<HTMLImageElement>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
 
-  if (cachedImage) {
-    // @ts-ignore
-    ref.current = cachedImage;
-  }
   if (ref.current === null) {
     // @ts-ignore
     ref.current = new Image();
@@ -56,11 +50,17 @@ export default function useImage({
 
   // Update the image when the url changes
   useEffect(() => {
-    if (ref.current != null) {
-      ref.current.src = withSpectrogram ? url : "";
-      setLoading(true);
-      setError(null);
+    if (!ref.current) return;
+
+    if (!withSpectrogram) {
+      ref.current.src = "";
+      setLoading(false);
+      return;
     }
+
+    setLoading(true);
+    setError(null);
+    ref.current.src = url;
   }, [url, withSpectrogram]);
 
   // Timeout loading after a given time
@@ -72,15 +72,6 @@ export default function useImage({
 
   const [_, cancel] = useTimeoutFn(handleOnTimeout, timeout);
 
-  // Handle loading events
-  const handleOnLoad = useCallback(() => {
-    setLoading(false);
-    setError(null);
-    cancel();
-    onLoad?.();
-  }, [cancel, onLoad]);
-  useEvent("load", withSpectrogram ? handleOnLoad : () => {}, withSpectrogram ? ref.current : null);
-
   // Handle error events
   const handleOnError = useCallback(() => {
     setLoading(false);
@@ -88,7 +79,23 @@ export default function useImage({
     cancel();
     onError?.();
   }, [cancel, onError]);
-  useEvent("error", withSpectrogram ? handleOnError : () => {}, withSpectrogram ? ref.current : null);
+  useEvent("error", withSpectrogram ? handleOnError : () => { }, withSpectrogram ? ref.current : null);
+
+  // Handle loading events
+  const handleOnLoad = useCallback(async () => {
+    try {
+      if (ref.current) {
+        await ref.current.decode(); // Wait for image to be fully decoded
+      }
+      setLoading(false);
+      setError(null);
+      cancel();
+      onLoad?.();
+    } catch (err) {
+      handleOnError();
+    }
+  }, [cancel, onLoad, handleOnError]);
+  useEvent("load", withSpectrogram ? handleOnLoad : () => { }, withSpectrogram ? ref.current : null);
 
   // Cancel loading on unmount
   useUnmount(() => {
@@ -101,7 +108,7 @@ export default function useImage({
   return {
     url,
     image: withSpectrogram ? ref.current : new Image(),
-    isLoading: withSpectrogram ?  loading : false,
+    isLoading: withSpectrogram ? loading : false,
     isError: withSpectrogram ? false : error != null,
     error,
   };
