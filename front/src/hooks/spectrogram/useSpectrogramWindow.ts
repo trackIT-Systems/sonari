@@ -2,8 +2,7 @@ import { useCallback, useMemo, useEffect, useState } from "react";
 import { DEFAULT_SPECTROGRAM_PARAMETERS } from "@/api/spectrograms";
 import api from "@/app/api";
 import drawImage from "@/draw/image";
-import useImage from "@/hooks/spectrogram/useImage";
-import { useSpectrogramCache } from "@/utils/spectrogram_cache";
+import { useSpectrogramCache, spectrogramCache } from "@/utils/spectrogram_cache";
 
 import type {
   Interval,
@@ -55,30 +54,6 @@ export default function useSpectrogramWindow({
     url
   });
 
-  const [isImageReady, setIsImageReady] = useState(false);
-
-  useEffect(() => {
-    if (!imageStatus.image || imageStatus.isError) {
-      setIsImageReady(false);
-      return;
-    }
-
-    // For cached images that are already loaded
-    if (imageStatus.image.complete && imageStatus.image.naturalWidth !== 0) {
-      setIsImageReady(true);
-      return;
-    }
-
-    const handleLoad = () => setIsImageReady(true);
-    imageStatus.image.addEventListener('load', handleLoad);
-    
-    return () => {
-      if (imageStatus.image) {
-        imageStatus.image.removeEventListener('load', handleLoad);
-      }
-    };
-  }, [imageStatus.image, imageStatus.isError]);
-
   const draw = useCallback(
     (ctx: CanvasRenderingContext2D, view: SpectrogramWindow) => {
       if (!withSpectrogram) {
@@ -88,7 +63,7 @@ export default function useSpectrogramWindow({
         return;
       }
 
-      if (imageStatus.image) {  // Remove isImageReady check here
+      if (imageStatus.image) {
         drawImage({
           ctx,
           image: imageStatus.image,
@@ -101,14 +76,13 @@ export default function useSpectrogramWindow({
         ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
       }
     },
-    [imageStatus.image, spectrogramWindow, withSpectrogram],  // Remove isImageReady from deps
+    [imageStatus.image, spectrogramWindow, withSpectrogram]
   );
-
 
   return {
     image: imageStatus.image,
     viewport: spectrogramWindow,
-    isLoading: imageStatus.isLoading || !isImageReady,
+    isLoading: imageStatus.isLoading || !imageStatus.image?.complete,
     isError: imageStatus.isError,
     draw,
   } as const;
