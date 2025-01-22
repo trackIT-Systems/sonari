@@ -9,13 +9,9 @@ type SpectrogramSegmentKey = string;
  */
 class SpectrogramCache {
     private cache: Map<SpectrogramSegmentKey, HTMLImageElement>;
-    private loadingQueue: Map<SpectrogramSegmentKey, Promise<void>>;
-    private loadLock: Promise<void>;
 
     constructor() {
         this.cache = new Map();
-        this.loadingQueue = new Map();
-        this.loadLock = Promise.resolve();
     }
 
     /**
@@ -89,93 +85,7 @@ class SpectrogramCache {
     size(): number {
         return this.cache.size;
     }
-
-    /**
-     * Check if a segment is currently being loaded
-     */
-    isLoading(
-        recordingId: string,
-        window: SpectrogramWindow,
-        parameters: SpectrogramParameters
-    ): boolean {
-        const key = this.generateKey(recordingId, window, parameters);
-        return this.loadingQueue.has(key);
-    }
-
-    /**
-     * Load a segment into the cache
-     */
-    async loadSegment(
-        recordingId: string,
-        window: SpectrogramWindow,
-        parameters: SpectrogramParameters,
-        url: string
-    ): Promise<void> {
-        const key = this.generateKey(recordingId, window, parameters);
-
-        // Return existing load promise if already loading
-        if (this.loadingQueue.has(key)) {
-            return this.loadingQueue.get(key);
-        }
-
-        // Skip if already cached
-        if (this.cache.has(key)) {
-            return;
-        }
-
-        // Create a promise that will wait for the previous load to complete
-        const loadPromise = new Promise<void>((resolve, reject) => {
-            // Wait for the previous load to complete
-            this.loadLock = this.loadLock.then(async () => {
-                try {
-                    const img = new Image();
-                    await new Promise((imgResolve, imgReject) => {
-                        img.onload = imgResolve;
-                        img.onerror = imgReject;
-                        img.src = url;
-                    });
-                    await img.decode();
-                    await this.set(recordingId, window, parameters, img);
-                    this.loadingQueue.delete(key);
-                    resolve();
-                } catch (err) {
-                    this.loadingQueue.delete(key);
-                    reject(err);
-                }
-            });
-        });
-
-        this.loadingQueue.set(key, loadPromise);
-        return loadPromise;
-    }
-
-    /**
-     * Load segments sequentially
-     */
-    async loadSegmentsSequentially(
-        segments: { 
-            recordingId: string, 
-            window: SpectrogramWindow, 
-            parameters: SpectrogramParameters,
-            url: string,
-        }[]
-    ): Promise<void> {
-        for (const segment of segments) {
-            try {
-                await this.loadSegment(
-                    segment.recordingId,
-                    segment.window,
-                    segment.parameters,
-                    segment.url
-                );
-            } catch (error) {
-                console.error('Failed to load segment:', error);
-                // Continue loading other segments even if one fails
-            }
-        }
-    }
 }
-
 
 // Create a singleton instance
 export const spectrogramCache = new SpectrogramCache();

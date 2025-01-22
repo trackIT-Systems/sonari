@@ -127,46 +127,50 @@ export default function useAnnotateTasks({
   const parameters = useStore((state) => state.spectrogramSettings);
 
   const preloadSpectrogramSegments = useCallback(
-    async (recording: Recording, isCurrentTask: boolean = false) => {
-        if (!recording) return;
+    async (recording: Recording) => {
+      if (!recording) return;
 
-        // Calculate initial window to get segment size
-        const initial = getInitialViewingWindow({
-            startTime: 0,
-            endTime: recording.duration,
-            samplerate: recording.samplerate,
-            parameters,
-        });
+      // Calculate initial window to get segment size
+      const initial = getInitialViewingWindow({
+        startTime: 0,
+        endTime: recording.duration,
+        samplerate: recording.samplerate,
+        parameters,
+      });
 
-        // Calculate bounds
-        const bounds = {
-            time: { min: 0, max: recording.duration },
-            freq: { min: 0, max: recording.samplerate / 2 },
+      // Calculate bounds
+      const bounds = {
+        time: { min: 0, max: recording.duration },
+        freq: { min: 0, max: recording.samplerate / 2 },
+      };
+
+      // Get segment duration
+      const duration = getCoveringSegmentDuration(initial, false);
+      
+      // Get all segments
+      const segments = getSegments(bounds, duration, 0.4); // 0.4 is the OVERLAP constant
+
+      // Load all segments
+      segments.forEach(segment => {
+        // Skip if already cached
+        if (spectrogramCache.get(recording.uuid, segment, parameters)) {
+          return;
+        }
+
+        const img = new Image();
+        img.onload = () => {
+          spectrogramCache.set(recording.uuid, segment, parameters, img);
         };
-
-        // Get segment duration
-        const duration = getCoveringSegmentDuration(initial, false);
         
-        // Get all segments
-        const segments = getSegments(bounds, duration, 0.4);
-
-        const segmentsToLoad = segments.map((segment, index) => ({
-            recordingId: recording.uuid,
-            window: segment,
-            parameters,
-            url: api.spectrograms.getUrl({
-                recording,
-                segment: { min: segment.time.min, max: segment.time.max },
-                parameters
-            }),
-        }));
-
-        // Load segments sequentially
-        await spectrogramCache.loadSegmentsSequentially(segmentsToLoad);
+        img.src = api.spectrograms.getUrl({
+          recording,
+          segment: { min: segment.time.min, max: segment.time.max },
+          parameters
+        });
+      });
     },
     [parameters]
-);
-
+  );
 
   const goToTask = useCallback(
     (task: AnnotationTask) => {

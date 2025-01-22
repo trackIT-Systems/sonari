@@ -30,6 +30,9 @@ export default function useSpectrogramImage({
     strict,
   });
 
+  // Keep track of which segments are currently loading
+  const loadingSegments = useRef<Set<string>>(new Set());
+
   // Load the current segment
   const image = useSpectrogramWindow({
     recording,
@@ -38,52 +41,75 @@ export default function useSpectrogramImage({
     withSpectrogram,
   });
 
+  const segmentKey = spectrogramCache.generateKey(recording.uuid, selected, parameters);
+
+  // Preload all segments
   useEffect(() => {
     if (!withSpectrogram) return;
 
-    let isMounted = true;  // For cleanup
+    const currentLoadingSegments = new Set<string>();
 
+    // Load segments sequentially to avoid overwhelming the browser
     const loadSegments = async () => {
-      // Filter out segments that are already cached
-      const segmentsToLoad = allSegments.filter(
-        segment => !spectrogramCache.get(recording.uuid, segment, parameters) &&
-                  !spectrogramCache.isLoading(recording.uuid, segment, parameters)
-      );
+      // const relSegments = allSegments.filter((segment) => segment.time.min !== selected.time.min)
+      for (const segment of allSegments) {
 
-      if (segmentsToLoad.length === 0) return;
+        const segmentKey = spectrogramCache.generateKey(recording.uuid, segment, parameters);
 
-      // Prepare segments for loading with priorities
-      const segmentsWithPriority = segmentsToLoad.map(segment => {
-        return {
-          recordingId: recording.uuid,
-          window: segment,
-          parameters,
-          url: api.spectrograms.getUrl({
-            recording,
-            segment: { min: segment.time.min, max: segment.time.max },
-            parameters,
-          }),
-        };
-      });
-
-      try {
-        // Only proceed if component is still mounted
-        if (isMounted) {
-          await spectrogramCache.loadSegmentsSequentially(segmentsWithPriority);
+        // Skip if already cached or already being loaded
+        if (
+          spectrogramCache.get(recording.uuid, segment, parameters) ||
+          currentLoadingSegments.has(segmentKey)
+        ) {
+          continue;
         }
-      } catch (error) {
-        console.error('Failed to load segments:', error);
+
+        loadingSegments.current.add(segmentKey);
+        currentLoadingSegments.add(segmentKey);
+
+        try {
+          // Create and load image
+          const img = new Image();
+          await new Promise((resolve, reject) => {
+            img.onload = async () => {
+              try {
+                await img.decode();
+                spectrogramCache.set(recording.uuid, segment, parameters, img);
+                resolve(undefined);
+              } catch (err) {
+                reject(err);
+              } finally {
+                // Always remove from loading set, whether successful or not
+                loadingSegments.current.delete(segmentKey);
+                currentLoadingSegments.delete(segmentKey);
+              }
+            };
+            img.onerror = () => {
+              loadingSegments.current.delete(segmentKey);
+              currentLoadingSegments.delete(segmentKey);
+              reject();
+            };
+            img.src = api.spectrograms.getUrl({
+              recording,
+              segment: { min: segment.time.min, max: segment.time.max },
+              parameters,
+            });
+          });
+        } catch (error) {
+          console.error('Failed to load segment:', error);
+        }
       }
     };
 
     loadSegments();
 
-    // Cleanup function
     return () => {
-      isMounted = false;
+      currentLoadingSegments.forEach(segmentKey => {
+        loadingSegments.current.delete(segmentKey);
+      });
+      currentLoadingSegments.clear();
     };
-
-}, [recording, parameters, allSegments, selected, withSpectrogram]);
+  }, [recording, parameters, allSegments, selected, withSpectrogram, loadingSegments]);
 
   return image;
 }
