@@ -60,8 +60,7 @@ def array_to_image(array: np.ndarray, cmap: str, gamma: float) -> Image:
 def image_to_buffer(image: Image, fmt="webp") -> tuple[BytesIO, str]:
     """Convert a PIL image to a BytesIO buffer."""
     # Preallocate a buffer with an estimated size to reduce resizing
-    estimated_size = image.width * image.height * 4  # rough estimate for RGBA
-    buffer = BytesIO(bytearray(estimated_size))
+    buffer = BytesIO()
 
     if image.width > max_webp_size:
         fmt = "jpeg"
