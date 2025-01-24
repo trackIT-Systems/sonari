@@ -1,5 +1,8 @@
 import classNames from "classnames";
 
+import Tooltip from "./Tooltip";
+import { CompleteIcon, HelpIcon, NeedsReviewIcon, VerifiedIcon } from "./icons";
+
 type ProgressStats = {
   done: {
     count: number;
@@ -39,15 +42,25 @@ export default function ProgressBar({
   console.log(progress.pending.count, progress.pending.assigned)
 
   return (
-    <div className={classNames(className, "w-full flex flex-row gap-4 items-center")}>
+    <div className={classNames(className, "w-full flex flex-row gap-20 items-center")}>
       {/* Pending Bar */}
       <div className="flex flex-row items-center gap-2">
-        <div className="w-24 h-2 bg-stone-200 dark:bg-stone-700 rounded-full overflow-hidden">
-          <div
-            className="h-full bg-gray-400 dark:bg-gray-600"
-            style={{ width: `${pendingBasePerc}%` }}
-          />
-        </div>
+        <Tooltip
+          tooltip={
+            <div className="inline-flex items-center gap-1 text-gray-600 dark:text-gray-400">
+              No state
+            </div>
+          }
+          placement="top"
+          autoPlacement={false}
+        >
+          <div className="w-24 h-3 bg-stone-200 dark:bg-stone-700 rounded-full overflow-hidden">
+            <div
+              className="h-full bg-gray-400 dark:bg-gray-600"
+              style={{ width: `${pendingBasePerc}%` }}
+            />
+          </div>
+        </Tooltip>
         <div className="text-sm text-stone-600 dark:text-stone-400 whitespace-nowrap">
           {progress.pending.count} / {progress.total}
         </div>
@@ -55,12 +68,23 @@ export default function ProgressBar({
 
       {/* Completed Bar */}
       <div className="flex flex-row items-center gap-2">
-        <div className="w-24 h-2 bg-stone-200 dark:bg-stone-700 rounded-full overflow-hidden">
-          <div
-            className="h-full bg-emerald-600 dark:bg-emerald-400"
-            style={{ width: `${completedPerc}%` }}
-          />
-        </div>
+        <Tooltip
+          tooltip={
+            <div className="inline-flex items-center gap-1 text-emerald-600 dark:text-emerald-400">
+              <CompleteIcon className="w-5 h-5" />
+              Done
+            </div>
+          }
+          placement="top"
+          autoPlacement={false}
+        >
+          <div className="w-24 h-3 bg-stone-200 dark:bg-stone-700 rounded-full overflow-hidden">
+            <div
+              className="h-full bg-emerald-600 dark:bg-emerald-400"
+              style={{ width: `${completedPerc}%` }}
+            />
+          </div>
+        </Tooltip>
         <div className="text-sm text-stone-600 dark:text-stone-400 whitespace-nowrap">
           {progress.done.completed} / {progress.total}
         </div>
@@ -68,12 +92,23 @@ export default function ProgressBar({
 
       {/* Assigned Bar */}
       <div className="flex flex-row items-center gap-2">
-        <div className="w-24 h-2 bg-stone-200 dark:bg-stone-700 rounded-full overflow-hidden">
-          <div
-            className="h-full bg-amber-500 dark:bg-amber-400"
-            style={{ width: `${assignedPerc}%` }}
-          />
-        </div>
+        <Tooltip
+          tooltip={
+            <div className="inline-flex items-center gap-1 text-amber-500 dark:text-amber-400">
+              <HelpIcon className="w-5 h-5" />
+              Unsure
+            </div>
+          }
+          placement="top"
+          autoPlacement={false}
+        >
+          <div className="w-24 h-3 bg-stone-200 dark:bg-stone-700 rounded-full overflow-hidden">
+            <div
+              className="h-full bg-amber-500 dark:bg-amber-400"
+              style={{ width: `${assignedPerc}%` }}
+            />
+          </div>
+        </Tooltip>
         <div className="text-sm text-stone-600 dark:text-stone-400 whitespace-nowrap">
           {progress.pending.assigned} / {progress.total}
         </div>
@@ -81,12 +116,23 @@ export default function ProgressBar({
 
       {/* Rejected Bar */}
       <div className="flex flex-row items-center gap-2">
-        <div className="w-24 h-2 bg-stone-200 dark:bg-stone-700 rounded-full overflow-hidden">
-          <div
-            className="h-full bg-red-600 dark:bg-red-400"
-            style={{ width: `${rejectedPerc}%` }}
-          />
-        </div>
+        <Tooltip
+          tooltip={
+            <div className="inline-flex items-center gap-1 text-red-600 dark:text-red-400">
+              <NeedsReviewIcon className="w-5 h-5" />
+              Rejected
+            </div>
+          }
+          placement="top"
+          autoPlacement={false}
+        >
+          <div className="w-24 h-3 bg-stone-200 dark:bg-stone-700 rounded-full overflow-hidden">
+            <div
+              className="h-full bg-red-600 dark:bg-red-400"
+              style={{ width: `${rejectedPerc}%` }}
+            />
+          </div>
+        </Tooltip>
         <div className="text-sm text-stone-600 dark:text-stone-400 whitespace-nowrap">
           {progress.done.rejected} / {progress.total}
         </div>
@@ -94,12 +140,23 @@ export default function ProgressBar({
 
       {/* Verified Bar */}
       <div className="flex flex-row items-center gap-2">
-        <div className="w-24 h-2 bg-stone-200 dark:bg-stone-700 rounded-full overflow-hidden">
-          <div
-            className="h-full bg-blue-600 dark:bg-blue-400"
-            style={{ width: `${verifiedPerc}%` }}
-          />
-        </div>
+        <Tooltip
+          tooltip={
+            <div className="inline-flex items-center gap-1 text-blue-600 dark:text-blue-400">
+              <VerifiedIcon className="w-5 h-5" />
+              Verified
+            </div>
+          }
+          placement="top"
+          autoPlacement={false}
+        >
+          <div className="w-24 h-3 bg-stone-200 dark:bg-stone-700 rounded-full overflow-hidden">
+            <div
+              className="h-full bg-blue-600 dark:bg-blue-400"
+              style={{ width: `${verifiedPerc}%` }}
+            />
+          </div>
+        </Tooltip>
         <div className="text-sm text-stone-600 dark:text-stone-400 whitespace-nowrap">
           {progress.done.verified} / {progress.total}
         </div>
