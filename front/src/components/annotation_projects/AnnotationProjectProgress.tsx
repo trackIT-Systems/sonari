@@ -37,15 +37,20 @@ export default function ProjectProgress({
     pageSize: -1,
   });
 
-  const { missing, needReview, completed, verified, unsure, total } = useMemo(() => {
+  const progress = useMemo(() => {
     if (isLoading || annotationTasks == null) {
       return {
-        missing: 0,
-        needReview: 0,
-        completed: 0,
-        verified: 0,
-        unsure: 0,
-        total: 0
+        total: 0,
+        done: {
+          count: 0,
+          verified: 0,
+          completed: 0,
+          rejected: 0,
+        },
+        pending: {
+          count: 0,
+          assigned: 0,
+        },
       };
     }
     return computeAnnotationTasksProgress(annotationTasks);
@@ -69,14 +74,13 @@ export default function ProjectProgress({
         <NoTasks />
       ) : (
         <ProgressReport
-          annotationTasks={annotationTasks}
           isLoading={isLoading}
-          missing={missing}
-          needReview={needReview}
-          completed={completed}
-          verified={verified}
-          unsure={unsure}
-          total={total}
+          missing={progress.pending.count}
+          needReview={progress.done.rejected}
+          completed={progress.done.completed}
+          verified={progress.done.verified}
+          unsure={progress.pending.assigned}
+          total={progress.total}
         />
       )}
     </Card>
@@ -96,7 +100,6 @@ function NoTasks() {
 }
 
 function ProgressReport({
-  annotationTasks,
   isLoading,
   missing,
   needReview,
@@ -105,7 +108,6 @@ function ProgressReport({
   unsure,
   total,
 }: {
-  annotationTasks: any;
   isLoading: boolean;
   missing: number;
   needReview: number;
@@ -162,17 +164,6 @@ function ProgressReport({
           isLoading={isLoading}
         />
       </div>
-      {/* <div className="mt-4">
-        <div className="mb-2 text-stone-500">
-          Total tasks: {annotationTasks.length}
-        </div>
-        <ProgressBar
-          total={annotationTasks.length}
-          complete={completed}
-          verified={verified}
-          error={needReview}
-        />
-      </div> */}
     </>
   );
 }

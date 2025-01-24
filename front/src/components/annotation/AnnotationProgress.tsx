@@ -6,7 +6,6 @@ import FilterMenu from "@/components/filters/FilterMenu";
 import taskFilterDefs from "@/components/filters/tasks";
 import { FilterIcon, NextIcon, PreviousIcon } from "@/components/icons";
 import Tooltip from "@/components/Tooltip";
-import Dialog from "@/components/Dialog";
 import KeyboardKey from "@/components/KeyboardKey";
 import ShortcutHelper from "@/components/ShortcutHelper";
 import { computeAnnotationTasksProgress } from "@/utils/annotation_tasks";
@@ -58,13 +57,7 @@ export default function AnnotationProgress({
   onNext?: () => void;
   onPrevious?: () => void;
 }) {
-  const {
-    missing: pending,
-    completed: complete,
-    verified,
-    needReview,
-    total,
-  } = useMemo(() => computeAnnotationTasksProgress(tasks), [tasks]);
+  const progress = useMemo(() => computeAnnotationTasksProgress(tasks), [tasks]);
 
 
   const filterButtonRef = useRef<HTMLButtonElement>(null);
@@ -118,11 +111,11 @@ export default function AnnotationProgress({
           </span>
           <span className="text-sm inline-flex gap-1 items-center whitespace-nowrap text-stone-500">
             <span>Remaining tasks:</span>
-            <span className="font-medium text-blue-500">{pending}</span>
+            <span className="font-medium text-blue-500">{progress.pending.count}</span>
           </span>
           <span className="text-sm inline-flex gap-1 items-center whitespace-nowrap text-stone-500">
             <span>Total tasks:</span>
-            <span className="font-medium text-blue-500">{total}</span>
+            <span className="font-medium text-blue-500">{progress.total}</span>
           </span>
           <FilterMenu
             filter={filter}

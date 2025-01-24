@@ -1,5 +1,11 @@
 import Link from "next/link";
-import { type ReactNode } from "react";
+import { type ReactNode, useMemo } from "react";
+
+import useAnnotationTasks from "@/hooks/api/useAnnotationTasks";
+
+import ProgressBar from "../ProgressBar";
+
+import { computeAnnotationTasksProgress } from "@/utils/annotation_tasks";
 
 import type { AnnotationProject as AnnotationProjectType } from "@/types";
 
@@ -17,6 +23,35 @@ export default function AnnotationProject({
 }: {
   annotationProject: AnnotationProjectType;
 }) {
+  const filter = useMemo(
+    () => ({ annotation_project: annotationProject }),
+    [annotationProject]
+  );
+
+  const { items: annotationTasks, isLoading } = useAnnotationTasks({
+    filter,
+    pageSize: -1,
+  });
+
+  const progress = useMemo(() => {
+    if (isLoading || annotationTasks == null) {
+      return {
+        total: 0,
+        done: {
+          count: 0,
+          verified: 0,
+          completed: 0,
+          rejected: 0,
+        },
+        pending: {
+          count: 0,
+          assigned: 0,
+        },
+      };
+    }
+    return computeAnnotationTasksProgress(annotationTasks);
+  }, [annotationTasks, isLoading]);
+
   return (
     <div className="w-full">
       <div className="px-4 sm:px-0">
@@ -32,7 +67,10 @@ export default function AnnotationProject({
           </Link>
         </h3>
       </div>
-      <div className="py-2 flex flex-row">
+      <div className="py-2 flex flex-row items-center gap-12">
+        <div>
+          <ProgressBar progress={progress} className="h-2" />
+        </div>
         <Atom
           label="Created on:"
           value={annotationProject.created_on.toDateString()}
