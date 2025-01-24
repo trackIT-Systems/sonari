@@ -35,10 +35,12 @@ export default function SoundEventAnnotationTags({
 
   return (
     <div className="flex flex-col gap-2">
-      <H4 className="text-center">
-        <TagsIcon className="inline-block mr-1 w-5 h-5" />
-        Sound Event Tags
-      </H4>
+      <div className="flex justify-between items-center gap-2 mb-2">
+        <H4 className="text-center whitespace-nowrap">
+          <TagsIcon className="inline-block mr-1 w-5 h-5" />
+          Sound Event Tags
+        </H4>
+      </div>
       <div className="flex flex-row items-center flex-wrap gap-1">
         {tags.map((tag) => (
           <TagComponent

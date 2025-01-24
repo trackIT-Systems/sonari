@@ -365,7 +365,7 @@ export const TAG_HANDLING_SHORTCUTS: KeyShortcut[] = [
         description: "Replace a tag in all or the selected sound events",
     },
     {
-        label: "ADD tag(s)",
+        label: "Add sound event tag(s)",
         shortcut: ADD_TAG_SHORTCUT,
         description: "Add a tag to all or the selected sound events",
     },

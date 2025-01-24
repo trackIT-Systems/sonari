@@ -103,7 +103,7 @@ export default function SoundEventSpectrogramView({
         () => getWindowFromGeometry(soundEventAnnotation, recording),
         [soundEventAnnotation, recording]
     );
-    
+
     const dimensions = useMemo(
         () => calculateSpectrogramDimensions(window, parameters, recording.samplerate),
         [window, parameters, recording.samplerate]
@@ -132,10 +132,12 @@ export default function SoundEventSpectrogramView({
 
     return (
         <div className="flex flex-col gap-2">
-            <H4 className="text-center">
-                <ExplorationIcon className="inline-block mr-1 w-5 h-5" />
-                Sound Event Spectrogram
-            </H4>
+            <div className="flex justify-between items-center gap-2 mb-2">
+                <H4 className="text-center whitespace-nowrap">
+                    <ExplorationIcon className="inline-block mr-1 w-5 h-5" />
+                    Sound Event Spectrogram
+                </H4>
+            </div>
             <div className="flex">
                 <div className="flex flex-col justify-between pr-2 text-right w-16">
                     <span className="text-xs text-stone-600">{(window.freq.max / 1000).toFixed(2)} kHz</span>
