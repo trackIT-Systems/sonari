@@ -3,10 +3,8 @@ import Link from "@/components/Link";
 import RecordingDate from "@/components/recordings/RecordingDate";
 import {
   getBaseName,
-  removeExtension,
 } from "@/components/recordings/RecordingHeader";
 import RecordingLocation from "@/components/recordings/RecordingLocation";
-import RecordingTagBar from "@/components/recordings/RecordingTagBar";
 import RecordingTime from "@/components/recordings/RecordingTime";
 import useRecording from "@/hooks/api/useRecording";
 
@@ -14,10 +12,8 @@ import type { Recording, Tag } from "@/types";
 
 export default function RecordingAnnotationContext({
   recording,
-  onTagClick,
 }: {
   recording: Recording;
-  onTagClick?: (tag: Tag) => void;
 }) {
   const { path } = recording;
   const baseName = getBaseName(path) ?? "";

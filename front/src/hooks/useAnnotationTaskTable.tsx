@@ -90,7 +90,9 @@ export default function useAnnotationTaskTable({
         header: () => <TableHeader>Tags</TableHeader>,
         accessorFn: (row) => {
           // Get all sound event tags and count their occurrences
-          const tags = row.clip_annotation?.sound_events?.flatMap(event => event.tags || []) || [];
+          const soundEventtags = row.clip_annotation?.sound_events?.flatMap(event => event.tags || []) || [];
+          const recordingtags = row.clip_annotation?.clip?.recording.tags || [];
+          const tags = soundEventtags.concat(recordingtags);
           const tagCounts = new Map<string, TagCount>();
 
           tags.forEach(tag => {

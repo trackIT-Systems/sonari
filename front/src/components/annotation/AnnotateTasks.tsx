@@ -12,6 +12,7 @@ import Empty from "@/components/Empty";
 import Loading from "@/components/Loading";
 import useAnnotationTasks from "@/hooks/annotation/useAnnotateTasks";
 import useClipAnnotation from "@/hooks/api/useClipAnnotation";
+import RecordingTagBar from "../recordings/RecordingTagBar";
 
 import { Popover } from "@headlessui/react";
 import SearchMenu from "@/components/search/SearchMenu";
@@ -372,7 +373,6 @@ export default function AnnotateTasks({
               <div className="flex flex-col gap-2">
                 <RecordingAnnotationContext
                   recording={data.clip.recording}
-                  onTagClick={handleAddTagToPalette}
                 />
                 <div className="min-w-0 grow-0">
                   <ClipAnnotationSpectrogram
@@ -429,7 +429,10 @@ export default function AnnotateTasks({
 
         {data && (
           <div className="flex flex-row gap-4 w-full">
-            <div className="min-w-[63rem]">
+            <div className="min-w-[63rem] flex flex-col gap-4">
+              <RecordingTagBar
+                recording={data.clip.recording}
+              />
               <ClipAnnotationNotes
                 onCreateNote={addNote.mutate}
                 onDeleteNote={removeNote.mutate}

@@ -203,7 +203,7 @@ export default function ClipAnnotationTags({
         }
       }
 
-      if (event.key === ADD_TAG_SHORTCUT && !event.metaKey) {
+      if (event.key === ADD_TAG_SHORTCUT && !event.metaKey && !event.shiftKey) {
         const button = addButtonRef.current;
         if (button instanceof HTMLButtonElement) {
           button.click();
@@ -275,7 +275,7 @@ export default function ClipAnnotationTags({
       <div className="flex justify-between items-center gap-2 mb-2">
         <H4 className="text-center whitespace-nowrap">
           <TagsIcon className="inline-block mr-1 w-5 h-5" />
-          Clip Tags
+          All Sound Event Tags
         </H4>
         <div className="flex items-center">
           <Popover as="div" className="relative inline-block text-left">

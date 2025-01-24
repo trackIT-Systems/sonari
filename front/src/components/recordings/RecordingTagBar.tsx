@@ -1,22 +1,22 @@
 import { useMemo } from "react";
 
-import { TagIcon } from "@/components/icons";
+import { TagsIcon } from "@/components/icons";
 import AddTagButton from "@/components/tags/AddTagButton";
 import TagComponent, { getTagKey } from "@/components/tags/Tag";
 import useRecording from "@/hooks/api/useRecording";
+import { H4 } from "../Headings";
 
 import type { Recording, Tag } from "@/types";
+import Card from "../Card";
 
 export default function RecordingTagBar({
   recording: data,
-  label = "Tags",
   onAddTag,
   onTagClick,
   onRemoveTag,
   disabled = false,
 }: {
   recording: Recording;
-  label?: string;
   onTagClick?: (tag: Tag) => void;
   onAddTag?: (data: Recording) => void;
   onRemoveTag?: (data: Recording) => void;
@@ -44,12 +44,15 @@ export default function RecordingTagBar({
   }, [addTag, disabled, removeTag]);
 
   return (
-    <div className="flex flex-row gap-2 items-center">
-      <div className="inline-flex">
-        <TagIcon className="inline-block mr-1 w-5 h-5 text-stone-400 dark:text-stone-600" />
-        <span className="text-sm text-stone-500 font-medium">{label}</span>
+    <Card>
+      <div className="flex justify-between items-center gap-2 mb-2">
+        <H4 className="text-center whitespace-nowrap pt-3">
+          <TagsIcon className="inline-block mr-1 w-5 h-5" />
+          Clip Tags
+        </H4>
       </div>
-      <div className="flex flex-row flex-wrap gap-2">
+
+      <div className="flex flex-row items-center flex-wrap gap-1">
         {tags?.map((tag: Tag) => (
           <TagComponent
             key={getTagKey(tag)}
@@ -66,6 +69,6 @@ export default function RecordingTagBar({
         )}
         {!disabled && <AddTagButton variant="primary" onAdd={handleAddTag} />}
       </div>
-    </div>
+    </Card>
   );
 }
