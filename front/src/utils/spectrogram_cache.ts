@@ -155,7 +155,7 @@ export function useSpectrogramCache({
         return () => {
             imageRef.current = null; // Clear ref on cleanup
         };
-    }, [recording.uuid, window, parameters, withSpectrogram, recording]);
+    }, [recording.uuid, window, parameters, withSpectrogram, recording, url]);
 
     // Don't create new Image() on every render
     return {

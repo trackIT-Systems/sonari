@@ -48,12 +48,11 @@ export default function useSpectrogramImage({
     if (!withSpectrogram) return;
 
     const currentLoadingSegments = new Set<string>();
+    const currentRef = loadingSegments.current; // Store ref value locally
 
     // Load segments sequentially to avoid overwhelming the browser
     const loadSegments = async () => {
-      // const relSegments = allSegments.filter((segment) => segment.time.min !== selected.time.min)
       for (const segment of allSegments) {
-
         const segmentKey = spectrogramCache.generateKey(recording.uuid, segment, parameters);
 
         // Skip if already cached or already being loaded
@@ -64,11 +63,10 @@ export default function useSpectrogramImage({
           continue;
         }
 
-        loadingSegments.current.add(segmentKey);
+        currentRef.add(segmentKey);
         currentLoadingSegments.add(segmentKey);
 
         try {
-          // Create and load image
           const img = new Image();
           await new Promise((resolve, reject) => {
             img.onload = async () => {
@@ -79,13 +77,12 @@ export default function useSpectrogramImage({
               } catch (err) {
                 reject(err);
               } finally {
-                // Always remove from loading set, whether successful or not
-                loadingSegments.current.delete(segmentKey);
+                currentRef.delete(segmentKey);
                 currentLoadingSegments.delete(segmentKey);
               }
             };
             img.onerror = () => {
-              loadingSegments.current.delete(segmentKey);
+              currentRef.delete(segmentKey);
               currentLoadingSegments.delete(segmentKey);
               reject();
             };
@@ -105,11 +102,11 @@ export default function useSpectrogramImage({
 
     return () => {
       currentLoadingSegments.forEach(segmentKey => {
-        loadingSegments.current.delete(segmentKey);
+        currentRef.delete(segmentKey);
       });
       currentLoadingSegments.clear();
     };
-  }, [recording, parameters, allSegments, selected, withSpectrogram, loadingSegments]);
+  }, [recording, parameters, allSegments, selected, withSpectrogram]);
 
   return image;
 }
