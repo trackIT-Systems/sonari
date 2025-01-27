@@ -2,7 +2,7 @@
 import { Popover } from "@headlessui/react";
 import { Float } from "@headlessui-float/react";
 import classNames from "classnames";
-import { type HTMLProps, type ReactNode } from "react";
+import { type HTMLProps, type ReactNode, useEffect } from "react";
 import { useMemo } from "react";
 
 import { CloseIcon, TagIcon } from "@/components/icons";
@@ -12,7 +12,9 @@ import { getTagKey, getTagColor } from "../tags/Tag";
 import type { TagFilter } from "@/api/tags";
 import type { TagElement, TagGroup } from "@/utils/tags";
 import type { Tag as TagType } from "@/types";
-import { ABORT_SHORTCUT, ACCEPT_SHORTCUT } from "@/utils/keyboard";
+import { ABORT_SHORTCUT, ACCEPT_SHORTCUT, DISABLE_SPECTROGRAM_SHORTCUT } from "@/utils/keyboard";
+import { useKeyPressEvent } from "react-use";
+import useKeyFilter from "@/hooks/utils/useKeyFilter";
 
 function TagBarPopover({
   onClose,
@@ -185,13 +187,30 @@ export default function SpectrogramTags({
   filter,
   onCreate,
   disabled = false,
+  withSoundEvent = true,
+  onWithSoundEventChange,
 }: {
   tags: TagGroup[];
   children: ReactNode;
   filter?: TagFilter;
   onCreate?: (tag: TagType) => void;
   disabled?: boolean;
+  withSoundEvent?: boolean;
+  onWithSoundEventChange?: () => void;
 }) {
+
+  useKeyPressEvent(useKeyFilter({ key: DISABLE_SPECTROGRAM_SHORTCUT.toUpperCase()}), (event: KeyboardEvent) => {
+    if (!event.shiftKey || !onWithSoundEventChange) {
+      return;
+    }
+    onWithSoundEventChange();
+  });
+
+  if (!withSoundEvent) {
+    return (<div className="relative w-full h-full rounded">
+      {children}
+    </div>)
+  }
   return (
     <div className="relative w-full h-full rounded">
       {children}

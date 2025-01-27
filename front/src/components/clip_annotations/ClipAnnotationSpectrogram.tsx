@@ -41,6 +41,7 @@ export default function ClipAnnotationSpectrogram({
   withAudioShortcuts = true,
   withSpectrogramShortcuts = true,
   withSpectrogram,
+  withSoundEvent = true,
   withAutoplay,
   defaultTags,
   selectedTag,
@@ -49,6 +50,7 @@ export default function ClipAnnotationSpectrogram({
   onClearSelectedTag,
   toggleFixedAspectRatio,
   onWithSpectrogramChange,
+  onWithSoundEventChange,
   onWithAutoplayChange,
   onAddSoundEventTag,
   onRemoveSoundEventTag,
@@ -73,12 +75,14 @@ export default function ClipAnnotationSpectrogram({
   withAudioShortcuts?: boolean;
   withSpectrogramShortcuts?: boolean;
   withSpectrogram: boolean;
+  withSoundEvent?: boolean;
   withAutoplay: boolean;
   fixedAspectRatio: boolean;
   selectedAnnotation?: SoundEventAnnotation | null;
   onClearSelectedTag: (tag: { tag: Tag; count: number } | null) => void;
   toggleFixedAspectRatio: () => void;
   onWithSpectrogramChange: () => void;
+  onWithSoundEventChange: () => void;
   onWithAutoplayChange: () => void;
   onParameterSave?: (params: SpectrogramParameters) => void;
   onSelectAnnotation?: (annotation: SoundEventAnnotation | null) => void;
@@ -277,6 +281,7 @@ export default function ClipAnnotationSpectrogram({
     active: isAnnotating && !audio.isPlaying,
     onSelectAnnotation,
     disabled,
+    withSoundEvent,
     onAddAnnotationTag: onAddSoundEventTag,
     onRemoveAnnotationTag: onRemoveSoundEventTag,
     onCreateAnnotation: onCreateSoundEventAnnotation,
@@ -343,7 +348,7 @@ export default function ClipAnnotationSpectrogram({
             onToggleAspectRatio={toggleFixedAspectRatio}
           />
         )}
-        {!disabled && withControls && withSpectrogram && (
+        {!disabled && withControls && withSpectrogram && withSoundEvent && (
           <AnnotationControls
             disabled={disabled}
             isDrawing={annotate.isDrawing}
@@ -357,7 +362,7 @@ export default function ClipAnnotationSpectrogram({
             onSelectGeometryType={annotate.setGeometryType}
           />
         )}
-        {withSettings && withSpectrogram && (
+        {withSettings && withSpectrogram && withSoundEvent && (
           <SpectrogramSettings
             samplerate={recording.samplerate}
             settings={spectrogram.parameters}
@@ -374,6 +379,8 @@ export default function ClipAnnotationSpectrogram({
           tags={annotate.tags}
           filter={tagFilter}
           onCreate={onCreateTag}
+          withSoundEvent={withSoundEvent}
+          onWithSoundEventChange={onWithSoundEventChange}
         >
           <canvas
             ref={canvasRef}

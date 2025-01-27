@@ -103,6 +103,8 @@ export default function useAnnotateClip(props: {
   /** Whether annotation (create, edit, delete) actions are permanently
    * disabled or not */
   disabled?: boolean;
+  /** Whether to show sound events or not */
+  withSoundEvent?: boolean;
   /** Callback when the selected annotation changes */
   onSelectAnnotation?: (annotation: SoundEventAnnotation | null) => void;
   /** Callback when a new annotation is created */
@@ -131,6 +133,7 @@ export default function useAnnotateClip(props: {
     mode: initialMode = "select",
     active = true,
     disabled = false,
+    withSoundEvent = true,
     onModeChange,
     onSelectAnnotation,
     onCreateAnnotation,
@@ -174,8 +177,14 @@ export default function useAnnotateClip(props: {
   });
 
   const soundEvents = useMemo(
-    () => clipAnnotation?.sound_events || [],
-    [clipAnnotation],
+    () => {
+      if (withSoundEvent) {
+        return clipAnnotation?.sound_events || []
+      } else {
+        return []
+      }
+    },
+    [clipAnnotation, withSoundEvent],
   );
 
   const handleCreate = useCallback(

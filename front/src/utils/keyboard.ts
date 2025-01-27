@@ -235,6 +235,11 @@ export const SPECTROGRAM_KEY_SHORTCUTS: KeyShortcut[] = [
         description: "Do not show spectrograms",
     },
     {
+        label: "Disable sound events",
+        shortcut: `${getSpecialKeyLabel("Shift")} ${getSpecialKeyLabel(DISABLE_SPECTROGRAM_SHORTCUT)}`,
+        description: "Do not show sound events (bounding boxes, etc.)",
+    },
+    {
         label: "Fix aspect ratio",
         shortcut: LOCK_ASPECT_RATIO_SHORTCUT,
         description: "Toggle fixed aspect ratio for zoom",
@@ -244,8 +249,6 @@ export const SPECTROGRAM_KEY_SHORTCUTS: KeyShortcut[] = [
         shortcut: ZOOM_SHORTCUT,
         description: "Zoom into a selection of the spectrogram",
     },
-
-
     {
         label: "Zoom in time",
         shortcut: ZOOM_IN_SHORTCUT,

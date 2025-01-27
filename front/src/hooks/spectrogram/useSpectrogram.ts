@@ -140,7 +140,6 @@ export default function useSpectrogram({
   onDoubleClick,
   enabled = true,
   withShortcuts = true,
-  strict = false,
   withSpectrogram,
   fixedAspectRatio,
   toggleFixedAspectRatio,
@@ -155,7 +154,6 @@ export default function useSpectrogram({
   onDoubleClick?: (dblClickProps: { position: Position }) => void;
   enabled?: boolean;
   withShortcuts?: boolean;
-  strict?: boolean;
   withSpectrogram: boolean;
   fixedAspectRatio: boolean,
   toggleFixedAspectRatio: () => void;

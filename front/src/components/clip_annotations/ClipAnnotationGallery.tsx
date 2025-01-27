@@ -73,6 +73,8 @@ function Spectrogram(props: {
   return (
     <ClipAnnotationSpectrogram
       withSpectrogram={true}
+      withSoundEvent={true}
+      onWithSoundEventChange={() => {}}
       onWithSpectrogramChange={() => {}}
       withAutoplay={false}
       onWithAutoplayChange={() => {}}

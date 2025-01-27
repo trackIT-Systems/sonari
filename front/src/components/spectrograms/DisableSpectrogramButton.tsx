@@ -14,7 +14,12 @@ export default function DisableSpectrogramButton({
   onWithSpectrogramChange?: () => void;
 }) {
 
-  useKeyPressEvent(useKeyFilter({ key: DISABLE_SPECTROGRAM_SHORTCUT }), onWithSpectrogramChange);
+  useKeyPressEvent(useKeyFilter({ key: DISABLE_SPECTROGRAM_SHORTCUT }), (event: KeyboardEvent) => {
+    if (event.shiftKey || !onWithSpectrogramChange) {
+      return;
+    }
+    onWithSpectrogramChange();
+  });
 
   return (
     <div className="flex space-x-2">
