@@ -4,7 +4,6 @@ from io import BytesIO
 
 import numpy as np
 from matplotlib import colormaps
-from matplotlib.colors import PowerNorm
 from PIL import Image as img
 from PIL.Image import Image
 
@@ -57,7 +56,7 @@ def array_to_image(array: np.ndarray, cmap: str, gamma: float) -> Image:
     return img.fromarray(color_array)
 
 
-def image_to_buffer(image: Image, fmt="webp") -> tuple[BytesIO, str]:
+def image_to_buffer(image: Image, fmt="webp") -> tuple[BytesIO, int, str]:
     """Convert a PIL image to a BytesIO buffer."""
     # Preallocate a buffer with an estimated size to reduce resizing
     buffer = BytesIO()
@@ -80,5 +79,6 @@ def image_to_buffer(image: Image, fmt="webp") -> tuple[BytesIO, str]:
             minimize_size=False,  # Skip extra compression steps
         )
 
+    buffer_size: int = buffer.tell()
     buffer.seek(0)
-    return buffer, fmt
+    return buffer, buffer_size, fmt

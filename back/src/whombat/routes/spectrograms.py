@@ -82,12 +82,13 @@ async def get_spectrogram(
     if low_res:
         image.thumbnail((10000, 50))
 
-    buffer, fmt = images.image_to_buffer(image)
+    buffer, buffer_size, fmt = images.image_to_buffer(image)
 
     return Response(
         content=buffer.read(),
         media_type=f"image/{fmt}",
         headers={
+            "content-length": str(buffer_size),
             "Cache-Control": "no-store, no-cache, must-revalidate, max-age=0",
             "Pragma": "no-cache",
             "Expires": "0",

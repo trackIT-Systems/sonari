@@ -146,27 +146,47 @@ export default function useAnnotateTasks({
 
       // Get segment duration
       const duration = getCoveringSegmentDuration(initial, false);
-      
+
       // Get all segments
       const segments = getSegments(bounds, duration, 0.4); // 0.4 is the OVERLAP constant
 
       // Load all segments
-      segments.forEach(segment => {
+      segments.forEach(async segment => {
         // Skip if already cached
         if (spectrogramCache.get(recording.uuid, segment, parameters)) {
           return;
         }
 
-        const img = new Image();
-        img.onload = () => {
-          spectrogramCache.set(recording.uuid, segment, parameters, img);
-        };
-        
-        img.src = api.spectrograms.getUrl({
+        const url = api.spectrograms.getUrl({
           recording,
           segment: { min: segment.time.min, max: segment.time.max },
           parameters
         });
+
+        try {
+          const response = await fetch(url);
+          const size = parseInt(response.headers.get('content-length') || '0', 10);
+          const blob = await response.blob();
+          const objectUrl = URL.createObjectURL(blob);
+
+          const img = new Image();
+          img.onload = async () => {
+            try {
+              await img.decode();
+              await spectrogramCache.set(recording.uuid, segment, parameters, img, size);
+            } finally {
+              URL.revokeObjectURL(objectUrl);
+            }
+          };
+
+          img.onerror = () => {
+            URL.revokeObjectURL(objectUrl);
+          };
+
+          img.src = objectUrl;
+        } catch (error) {
+          console.error('Failed to preload segment:', error);
+        }
       });
     },
     [parameters]

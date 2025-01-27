@@ -1,7 +1,7 @@
 import { useEffect, useRef } from "react";
 import useRecordingSegments from "@/hooks/spectrogram/useRecordingSegments";
 import useSpectrogramWindow from "./useSpectrogramWindow";
-import { spectrogramCache, useSpectrogramCache } from "@/utils/spectrogram_cache";
+import { spectrogramCache } from "@/utils/spectrogram_cache";
 
 import type {
   Recording,
@@ -41,8 +41,6 @@ export default function useSpectrogramImage({
     withSpectrogram,
   });
 
-  const segmentKey = spectrogramCache.generateKey(recording.uuid, selected, parameters);
-
   // Preload all segments
   useEffect(() => {
     if (!withSpectrogram) return;
@@ -67,33 +65,44 @@ export default function useSpectrogramImage({
         currentLoadingSegments.add(segmentKey);
 
         try {
+          const url = api.spectrograms.getUrl({
+            recording,
+            segment: { min: segment.time.min, max: segment.time.max },
+            parameters,
+          });
+
+          const response = await fetch(url);
+          const size = parseInt(response.headers.get('content-length') || '0', 10);
+          const blob = await response.blob();
+          const objectUrl = URL.createObjectURL(blob);
+
           const img = new Image();
           await new Promise((resolve, reject) => {
             img.onload = async () => {
               try {
                 await img.decode();
-                spectrogramCache.set(recording.uuid, segment, parameters, img);
+                await spectrogramCache.set(recording.uuid, segment, parameters, img, size);
                 resolve(undefined);
               } catch (err) {
                 reject(err);
               } finally {
                 currentRef.delete(segmentKey);
                 currentLoadingSegments.delete(segmentKey);
+                URL.revokeObjectURL(objectUrl);
               }
             };
             img.onerror = () => {
               currentRef.delete(segmentKey);
               currentLoadingSegments.delete(segmentKey);
+              URL.revokeObjectURL(objectUrl);
               reject();
             };
-            img.src = api.spectrograms.getUrl({
-              recording,
-              segment: { min: segment.time.min, max: segment.time.max },
-              parameters,
-            });
+            img.src = objectUrl;
           });
         } catch (error) {
           console.error('Failed to load segment:', error);
+          currentRef.delete(segmentKey);
+          currentLoadingSegments.delete(segmentKey);
         }
       }
     };

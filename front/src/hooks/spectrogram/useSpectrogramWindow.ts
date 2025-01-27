@@ -2,7 +2,6 @@ import { useCallback, useMemo, useEffect, useState } from "react";
 import { DEFAULT_SPECTROGRAM_PARAMETERS } from "@/api/spectrograms";
 import api from "@/app/api";
 import drawImage from "@/draw/image";
-import useImage from "@/hooks/spectrogram/useImage";
 import { useSpectrogramCache } from "@/utils/spectrogram_cache";
 
 import type {
