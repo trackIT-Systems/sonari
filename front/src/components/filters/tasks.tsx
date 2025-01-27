@@ -117,13 +117,13 @@ const tasksFilterDefs: FilterDef<AnnotationTaskFilter>[] = [
   },
   {
     field: "sound_event_annotation_tag",
-    name: "Sound Event Tag",
+    name: "Tag",
     render: ({ value, clear, setFilter }) => {
       const tags = Array.isArray(value) ? value : [value];
       return tags.map(tag => (
         <FilterBadge
           key={`${tag.key}:${tag.value}`}
-          field="Sound Event Tag"
+          field="Tag"
           value={`${tag.key}: ${tag.value}`}
           onRemove={() => {
             if (Array.isArray(value)) {

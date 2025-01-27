@@ -11,7 +11,6 @@ __all__ = [
     "IssuesFilter",
     "RecordingFilter",
     "DatasetFilter",
-    "RecordingTagFilter",
 ]
 
 # NOTE: The base query for recording tags already joins the recording
