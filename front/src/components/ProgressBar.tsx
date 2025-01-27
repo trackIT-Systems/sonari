@@ -33,7 +33,7 @@ export default function ProgressBar({
   }
 
   // Calculate percentage for each state relative to total tasks
-  const pendingBasePerc = Math.max(((progress.pending.count) / progress.total) * 100, 0);
+  const pendingBasePerc = 100 - Math.max(((progress.pending.count) / progress.total) * 100, 0);
   const assignedPerc = (progress.pending.assigned / progress.total) * 100;
   const verifiedPerc = (progress.done.verified / progress.total) * 100;
   const completedPerc = (progress.done.completed / progress.total) * 100;
@@ -48,7 +48,7 @@ export default function ProgressBar({
         <Tooltip
           tooltip={
             <div className="inline-flex items-center gap-1 text-gray-600 dark:text-gray-400">
-              No state
+              Any state
             </div>
           }
           placement="top"
@@ -62,7 +62,7 @@ export default function ProgressBar({
           </div>
         </Tooltip>
         <div className="text-sm text-stone-600 dark:text-stone-400 whitespace-nowrap">
-          {progress.pending.count} / {progress.total}
+          {progress.total - progress.pending.count} / {progress.total}
         </div>
       </div>
 
