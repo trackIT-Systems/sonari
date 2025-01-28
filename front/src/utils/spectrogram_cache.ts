@@ -163,7 +163,7 @@ class SpectrogramCache {
 }
 
 // Create a singleton instance
-export const spectrogramCache = new SpectrogramCache(10);
+export const spectrogramCache = new SpectrogramCache(1024);
 
 /**
  * Hook to use the spectrogram cache
