@@ -3,7 +3,7 @@ from io import BytesIO
 import pytest
 import soundfile as sf
 
-from whombat.api.audio import HEADER_SIZE, load_clip_bytes
+from sonari.api.audio import HEADER_SIZE, load_clip_bytes
 
 
 def test_load_clip_bytes(random_wav_factory):
@@ -105,9 +105,7 @@ def test_stream_a_whole_audio_file(fmt: str, random_wav_factory):
 
 
 @pytest.mark.parametrize("fmt", ["wav", "flac", "mp3"])
-def test_stream_a_whole_audio_file_with_non_1_speed(
-    fmt: str, random_wav_factory
-):
+def test_stream_a_whole_audio_file_with_non_1_speed(fmt: str, random_wav_factory):
     path = random_wav_factory(
         duration=1,
         samplerate=8_000,

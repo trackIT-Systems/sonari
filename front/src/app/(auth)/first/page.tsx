@@ -2,7 +2,7 @@
 import { useCallback } from "react";
 import toast from "react-hot-toast";
 import { useRouter } from "next/navigation";
-import { WhombatIcon } from "@/components/icons";
+import { SonariIcon } from "@/components/icons";
 import UserCreateForm from "@/components/users/UserCreateForm";
 import Info from "@/components/Info";
 
@@ -40,9 +40,9 @@ export default function Page() {
     <div className="flex flex-col items-center justify-center min-h-screen">
       <div className="flex flex-col max-w-prose gap-4">
         <div className="mb-4 flex flex-col items-center gap-4 text-center text-7xl">
-          <WhombatIcon width={128} height={128} />
+          <SonariIcon width={128} height={128} />
           <span className="font-sans font-bold text-emerald-500 underline decoration-8">
-            Whombat
+            Sonari
           </span>
         </div>
         <h1 className="text-3xl font-bold text-center">Welcome!</h1>

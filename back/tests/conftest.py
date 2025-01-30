@@ -1,4 +1,4 @@
-"""Common fixtures for Whombat tests.""" ""
+"""Common fixtures for Sonari tests.""" ""
 import logging
 import os
 import random
@@ -15,9 +15,9 @@ import soundfile as sf
 from sqlalchemy.engine import URL
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from whombat import api, cache, schemas
-from whombat.system import get_database_url, init_database
-from whombat.system.settings import Settings
+from sonari import api, cache, schemas
+from sonari.system import get_database_url, init_database
+from sonari.system.settings import Settings
 
 # Avoid noisy logging during tests.
 logging.getLogger("aiosqlite").setLevel(logging.WARNING)
@@ -193,7 +193,7 @@ async def user(session: AsyncSession) -> schemas.SimpleUser:
         session,
         username="test",
         password="password",
-        email="test@whombat.com",
+        email="test@sonari.com",
         is_active=True,
     )
     await session.commit()

@@ -22,8 +22,8 @@ WORKDIR /front/
 
 COPY front/ /front/
 
-ARG WHOMBAT_FOLDER
-RUN echo NEXT_PUBLIC_WHOMBAT_FOLDER=$WHOMBAT_FOLDER > /front/.env.local
+ARG SONARI_FOLDER
+RUN echo NEXT_PUBLIC_SONARI_FOLDER=$SONARI_FOLDER > /front/.env.local
 RUN echo NEXT_TELEMETRY_DISABLED=1 >> /front/.env.local
 
 RUN npm install
@@ -49,16 +49,16 @@ WORKDIR /code
 # Copy the current directory contents into the container at /code
 
 # Copy the guide
-COPY --from=guide_builder /guide/ /code/src/whombat/user_guide/
+COPY --from=guide_builder /guide/ /code/src/sonari/user_guide/
 
 # Copy the statics
-COPY --from=web_builder /front/out/ /code/src/whombat/statics/
+COPY --from=web_builder /front/out/ /code/src/sonari/statics/
 
-# Install the Python dependencies for whombat
+# Install the Python dependencies for sonari
 COPY back/requirements.txt /code/requirements.txt
 RUN pip install -r requirements.txt
 
-# Copy the whombat source code
+# Copy the sonari source code
 COPY back/src /code/src
 COPY back/app.py /code/app.py
 COPY back/pyproject.toml /code/pyproject.toml
@@ -66,7 +66,7 @@ COPY back/alembic.ini /code/alembic.ini
 COPY back/README.md /code/README.md
 COPY back/LICENSE /code/LICENSE
     
-# Install Whombat
+# Install Sonari
 RUN pip install --no-deps .
 
 # Create a directory for audio files
@@ -76,16 +76,16 @@ RUN mkdir /data
 VOLUME ["/data"]
 
 # Set the environment variables for the audio directory and the database URL
-ENV WHOMBAT_AUDIO_DIR /audio
-ENV WHOMBAT_DB_URL "sqlite+aiosqlite:////data/whombat.db"
-ENV WHOMBAT_DEV "false"
-ENV WHOMBAT_HOST "0.0.0.0"
-ENV WHOMBAT_PORT "5000"
-ENV WHOMBAT_LOG_LEVEL "info"
-ENV WHOMBAT_LOG_TO_STDOUT "true"
-ENV WHOMBAT_LOG_TO_FILE "false"
-ENV WHOMBAT_OPEN_ON_STARTUP "false"
-ENV WHOMBAT_DOMAIN "localhost"
+ENV SONARI_AUDIO_DIR /audio
+ENV SONARI_DB_URL "sqlite+aiosqlite:////data/sonari.db"
+ENV SONARI_DEV "false"
+ENV SONARI_HOST "0.0.0.0"
+ENV SONARI_PORT "5000"
+ENV SONARI_LOG_LEVEL "info"
+ENV SONARI_LOG_TO_STDOUT "true"
+ENV SONARI_LOG_TO_FILE "false"
+ENV SONARI_OPEN_ON_STARTUP "false"
+ENV SONARI_DOMAIN "localhost"
 
 # Expose the port for the web server
 EXPOSE 5000

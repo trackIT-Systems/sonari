@@ -1,6 +1,6 @@
 # Managing Datasets and Recordings
 
-In Whombat, you have the flexibility to efficiently manage multiple recording
+In Sonari, you have the flexibility to efficiently manage multiple recording
 datasets.
 
 !!! info "What is a dataset?"
@@ -25,12 +25,12 @@ explore its details and the recordings it contains.
 
 To create a new dataset, click the **+Create** button. You'll be prompted to
 provide a name and a description for your dataset. Additionally, paste the full
-path of the folder containing the recordings you want to add. Whombat will scan
+path of the folder containing the recordings you want to add. Sonari will scan
 the folder and automatically include all available audio files it can find.
 
 ??? info "Supported Audio Formats"
 
-    Currently, Whombat exclusively supports WAV files. However, we're actively
+    Currently, Sonari exclusively supports WAV files. However, we're actively
     exploring the possibility of adding support for FLAC files.
 
 !!! tip "Audio file preparation"
@@ -40,22 +40,22 @@ the folder and automatically include all available audio files it can find.
     from making any other modifications. Editing files may unintentionally erase
     crucial metadata associated with the recording.
 
-??? info "Whombat Audio Folder"
+??? info "Sonari Audio Folder"
 
-    Whombat can only detect files located in your home folder. If you're using
+    Sonari can only detect files located in your home folder. If you're using
     an external hard drive, copy the recordings you wish to annotate into your home
     folder. If you wish to modify this configuration, feel free to reach out.
 
-Whombat automatically extracts fundamental information from each discovered
+Sonari automatically extracts fundamental information from each discovered
 file, such as recording **duration**, **sampling rate**, and the number of
-**audio channels**. While Whombat can store additional details like date, time,
+**audio channels**. While Sonari can store additional details like date, time,
 and location of the recording, automatic extraction is not applied due to the
 diverse formats in which this information can be stored. Manual input is
 required for these specific details.
 
 ## Import a dataset
 
-Whombat offers a convenient option to import all dataset information from a
+Sonari offers a convenient option to import all dataset information from a
 file. Currently, we support datasets in a JSON-based format known as AOEF. Refer
 to this [link](https://mbsantiago.github.io/soundevent/) for comprehensive
 information about the AOEF format.
@@ -104,7 +104,7 @@ for easy editing.
     to obtain metadata for all recordings. You can choose between a CSV or JSON
     format. If you plan to share the dataset with others, we recommend using the
     JSON format. This file enables your partner to effortlessly import all
-    information into Whombat, assuming they also possess the corresponding audio
+    information into Sonari, assuming they also possess the corresponding audio
     files.
 
 ## Manage the Recordings Metadata
@@ -119,8 +119,8 @@ most importantly, adding any number of tags to your recordings.
 
 !!! tip "Tag your recordings"
 
-    Whombat leverages tags throughout the system to improve data organization
-    and provide additional context to associated objects. In Whombat, tags consist
+    Sonari leverages tags throughout the system to improve data organization
+    and provide additional context to associated objects. In Sonari, tags consist
     of a pair of text values referred to as **key** and **value**, giving each tag
     a unique meaning. The key specifies the category to which it belongs, while the
     value provides a specific meaning. For example, a tag's key could be "species"
@@ -169,7 +169,7 @@ this page.
 
 ## Navigating the Spectrogram
 
-Navigating a spectrogram might seem intricate, but Whombat simplifies the
+Navigating a spectrogram might seem intricate, but Sonari simplifies the
 process with various tools tailored to customize the visualization according to
 your preferences.
 

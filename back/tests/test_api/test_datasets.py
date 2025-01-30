@@ -8,7 +8,7 @@ import pytest
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from whombat import api, exceptions, models, schemas
+from sonari import api, exceptions, models, schemas
 
 
 async def test_created_dataset_is_stored_in_the_database(
@@ -113,9 +113,7 @@ async def test_create_dataset_fails_if_audio_dir_is_not_unique(
         )
 
 
-async def test_get_dataset_by_uuid(
-    session: AsyncSession, dataset: schemas.Dataset
-):
+async def test_get_dataset_by_uuid(session: AsyncSession, dataset: schemas.Dataset):
     """Test getting a dataset by UUID."""
     retrieved_dataset = await api.datasets.get(session, dataset.uuid)
     assert isinstance(retrieved_dataset, schemas.Dataset)
@@ -130,9 +128,7 @@ async def test_get_dataset_by_uuid_fails_when_uuid_does_not_exist(
         await api.datasets.get(session, uuid.uuid4())
 
 
-async def test_get_dataset_by_name(
-    session: AsyncSession, dataset: schemas.Dataset
-):
+async def test_get_dataset_by_name(session: AsyncSession, dataset: schemas.Dataset):
     """Test getting a dataset by name."""
     retrieved_dataset = await api.datasets.get_by_name(session, dataset.name)
     assert isinstance(retrieved_dataset, schemas.Dataset)
@@ -150,13 +146,9 @@ async def test_get_dataset_by_name_fails_when_name_does_not_exist(
         )
 
 
-async def test_get_dataset_by_audio_dir(
-    session: AsyncSession, dataset: schemas.Dataset
-):
+async def test_get_dataset_by_audio_dir(session: AsyncSession, dataset: schemas.Dataset):
     """Test getting a dataset by audio directory."""
-    retrieved_dataset = await api.datasets.get_by_audio_dir(
-        session, dataset.audio_dir
-    )
+    retrieved_dataset = await api.datasets.get_by_audio_dir(session, dataset.audio_dir)
     assert isinstance(retrieved_dataset, schemas.Dataset)
     assert retrieved_dataset.id == dataset.id
 
@@ -221,9 +213,7 @@ async def test_get_datasets(session: AsyncSession, audio_dir: Path):
     assert dataset1 in retrieved_datasets
 
 
-async def test_update_dataset_name(
-    session: AsyncSession, dataset: schemas.Dataset
-):
+async def test_update_dataset_name(session: AsyncSession, dataset: schemas.Dataset):
     """Test updating a dataset's name."""
     assert dataset.name != "updated_dataset"
     updated_dataset = await api.datasets.update(
@@ -243,17 +233,13 @@ async def test_update_dataset_description(
     updated_dataset = await api.datasets.update(
         session,
         dataset,
-        data=schemas.DatasetUpdate(
-            description="This is an updated test dataset."
-        ),
+        data=schemas.DatasetUpdate(description="This is an updated test dataset."),
     )
     assert isinstance(updated_dataset, schemas.Dataset)
     assert updated_dataset.description == "This is an updated test dataset."
 
 
-async def test_update_dataset_audio_dir(
-    session: AsyncSession, audio_dir: Path, dataset: schemas.Dataset
-):
+async def test_update_dataset_audio_dir(session: AsyncSession, audio_dir: Path, dataset: schemas.Dataset):
     """Test updating a dataset's audio directory."""
     audio_dir_2 = audio_dir / "audio_2"
     audio_dir_2.mkdir()
@@ -443,9 +429,7 @@ async def test_get_dataset_recordings(
     await api.datasets.add_recording(session, dataset, recording_2)
 
     # Act
-    retrieved_recordings, _ = await api.datasets.get_recordings(
-        session, dataset
-    )
+    retrieved_recordings, _ = await api.datasets.get_recordings(session, dataset)
 
     # Assert
     assert isinstance(retrieved_recordings, list)
@@ -749,9 +733,7 @@ async def test_create_dataset_registers_all_recordings(
         dataset_audio_dir.rmdir()
 
     dataset_audio_dir.mkdir()
-    audio_file_1 = random_wav_factory(
-        path=dataset_audio_dir / "audio_file_1.wav"
-    )
+    audio_file_1 = random_wav_factory(path=dataset_audio_dir / "audio_file_1.wav")
 
     subdirectory = dataset_audio_dir / "subdirectory"
     subdirectory.mkdir()

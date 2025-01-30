@@ -4,8 +4,8 @@ import pytest
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from whombat import exceptions, models, schemas
-from whombat.api import features
+from sonari import exceptions, models, schemas
+from sonari.api import features
 
 
 async def test_create_feature_name(
@@ -28,9 +28,7 @@ async def test_create_feature_name(
     assert feature_name.id is not None
 
     # Check that the feature exists.
-    query = select(models.FeatureName.name).where(
-        models.FeatureName.name == name
-    )
+    query = select(models.FeatureName.name).where(models.FeatureName.name == name)
     result = await session.execute(query)
     assert result.scalar_one_or_none() == name
 
@@ -72,9 +70,7 @@ async def test_delete_feature_name(
 
     # Assert.
     # Check that the feature does not exist.
-    query = select(models.FeatureName.name).where(
-        models.FeatureName.name == name
-    )
+    query = select(models.FeatureName.name).where(models.FeatureName.name == name)
     result = await session.execute(query)
     assert result.scalar_one_or_none() is None
 
@@ -103,16 +99,12 @@ async def test_change_feature_name(
 
     # Assert.
     # Check that the feature does not exist.
-    query = select(models.FeatureName.name).where(
-        models.FeatureName.name == name
-    )
+    query = select(models.FeatureName.name).where(models.FeatureName.name == name)
     result = await session.execute(query)
     assert result.scalar_one_or_none() is None
 
     # Check that the new feature exists.
-    query = select(models.FeatureName.name).where(
-        models.FeatureName.name == new_name
-    )
+    query = select(models.FeatureName.name).where(models.FeatureName.name == new_name)
     result = await session.execute(query)
     assert result.scalar_one_or_none() == new_name
 

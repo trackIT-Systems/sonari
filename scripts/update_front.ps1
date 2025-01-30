@@ -4,8 +4,8 @@
 cd back
 
 # Delete the old static files
-if (Test-Path src/whombat/statics/*) {
-    Remove-Item -Path src/whombat/statics/* -Recurse -Force
+if (Test-Path src/sonari/statics/*) {
+    Remove-Item -Path src/sonari/statics/* -Recurse -Force
 }
 
 # Go to the root directory of the frontend
@@ -18,10 +18,10 @@ npm install
 npm run build
 
 # Make sure the statics folder exists
-if (-not (Test-Path "../back/src/whombat/statics")) {
-    New-Item -Path "../back/src/whombat/statics" -ItemType Directory | Out-Null
+if (-not (Test-Path "../back/src/sonari/statics")) {
+    New-Item -Path "../back/src/sonari/statics" -ItemType Directory | Out-Null
 }
 
 # Move the static files to the backend
-Move-Item -Path out/* -Destination ../back/src/whombat/statics/ -Force
+Move-Item -Path out/* -Destination ../back/src/sonari/statics/ -Force
 

@@ -1,6 +1,6 @@
 # Data Exploration
 
-Whombat provides diverse tools for exploring the data you've meticulously worked
+Sonari provides diverse tools for exploring the data you've meticulously worked
 on. Below, we'll introduce three key exploration avenues:
 
 1. Recordings
@@ -13,7 +13,7 @@ exploration section, choose your preferred exploration type.
 
 ## Recordings
 
-Explore and search through all the recordings registered in Whombat. Utilize the
+Explore and search through all the recordings registered in Sonari. Utilize the
 search bar or filters to narrow down the displayed recordings. A list of
 recording spectrograms is presented for swift browsing.
 

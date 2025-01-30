@@ -18,7 +18,7 @@ import {
   DatasetsIcon,
   LogOutIcon,
   UserIcon,
-  WhombatIcon,
+  SonariIcon,
 } from "@/components/icons";
 import Button from "@/components/Button";
 import Link from "@/components/Link";
@@ -226,7 +226,7 @@ export function SideMenu({
       <div className="flex flex-grow flex-col justify-between overflow-y-auto overflow-x-hidden bg-stone-50 dark:bg-stone-800">
         <div className="flex flex-col items-center">
           <Link href="/" className="px-2 py-4" mode="text">
-            <WhombatIcon width={46} height={46} />
+            <SonariIcon width={46} height={46} />
           </Link>
           <MainNavigation pathname={pathname} />
         </div>

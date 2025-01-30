@@ -1,8 +1,8 @@
 /**
- * Whombat Javascript API
+ * Sonari Javascript API
  *
- * This file is the entry point for the Whombat Javascript API.
- * Use the API to interact with the Whombat backend.
+ * This file is the entry point for the Sonari Javascript API.
+ * Use the API to interact with the Sonari backend.
  */
 import axios from "axios";
 
@@ -36,7 +36,7 @@ type APIConfig = {
 };
 
 /**
- * Create an instance of the Whombat API.
+ * Create an instance of the Sonari API.
  */
 export default function createAPI(config: APIConfig) {
   let instance = axios.create(config);

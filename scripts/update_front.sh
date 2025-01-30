@@ -2,8 +2,8 @@
 # This script is used to update the front end of the website
 
 # Delete the old static files
-if [ -d "back/src/whombat/statics" ]; then
-	rm -rf back/src/whombat/statics
+if [ -d "back/src/sonari/statics" ]; then
+	rm -rf back/src/sonari/statics
 fi
 
 # Go to the root directory of the frontend
@@ -16,9 +16,9 @@ npm install
 npm run build
 
 # Make sure the statics folder exists
-if [ ! -d "../back/src/whombat/statics" ]; then
-	mkdir ../back/src/whombat/statics
+if [ ! -d "../back/src/sonari/statics" ]; then
+	mkdir ../back/src/sonari/statics
 fi
 
 # Move the static files to the backend
-mv out/* ../back/src/whombat/statics/
+mv out/* ../back/src/sonari/statics/

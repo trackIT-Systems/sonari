@@ -6,7 +6,7 @@ import pytest
 from sqlalchemy import select, tuple_
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from whombat import api, exceptions, models, schemas
+from sonari import api, exceptions, models, schemas
 
 
 async def test_created_clip_annotation_is_stored_in_the_database(
@@ -20,9 +20,7 @@ async def test_created_clip_annotation_is_stored_in_the_database(
     )
     assert clip_annotation.id is not None
 
-    stmt = select(models.ClipAnnotation).where(
-        models.ClipAnnotation.id == clip_annotation.id
-    )
+    stmt = select(models.ClipAnnotation).where(models.ClipAnnotation.id == clip_annotation.id)
     result = await session.execute(stmt)
     db_clip_annotation = result.unique().scalars().one_or_none()
     assert db_clip_annotation is not None
@@ -156,13 +154,8 @@ async def test_added_note_is_in_the_notes_list(
     note: schemas.Note,
 ):
     """Test that an added note is returned."""
-    clip_annotation = await api.clip_annotations.add_note(
-        session, clip_annotation, note
-    )
-    assert any(
-        clip_annotation_note.id == note.id
-        for clip_annotation_note in clip_annotation.notes
-    )
+    clip_annotation = await api.clip_annotations.add_note(session, clip_annotation, note)
+    assert any(clip_annotation_note.id == note.id for clip_annotation_note in clip_annotation.notes)
 
 
 async def test_cannot_add_duplicate_note_to_clip_annotation(
@@ -182,12 +175,8 @@ async def test_can_remove_note_from_clip_annotation(
     note: schemas.Note,
 ):
     """Test that a note can be removed from a clip_annotation."""
-    clip_annotation = await api.clip_annotations.add_note(
-        session, clip_annotation, note
-    )
-    clip_annotation = await api.clip_annotations.remove_note(
-        session, clip_annotation, note
-    )
+    clip_annotation = await api.clip_annotations.add_note(session, clip_annotation, note)
+    clip_annotation = await api.clip_annotations.remove_note(session, clip_annotation, note)
     assert len(clip_annotation.notes) == 0
 
 
@@ -197,9 +186,7 @@ async def test_removed_note_is_deleted_in_the_database(
     note: schemas.Note,
 ):
     """Test that a removed note is deleted in the database."""
-    clip_annotation = await api.clip_annotations.add_note(
-        session, clip_annotation, note
-    )
+    clip_annotation = await api.clip_annotations.add_note(session, clip_annotation, note)
     await api.clip_annotations.remove_note(session, clip_annotation, note)
 
     stmt = select(models.ClipAnnotationNote).where(

@@ -1,6 +1,6 @@
 # Sponsors
 
-Whombat has been developed with the generous support of the Mexican Council of
+Sonari has been developed with the generous support of the Mexican Council of
 the Humanities, Science and Technology (**CONAHCyT**; Award Number
 2020-000017-02EXTF-00334) and University College London (**UCL**).
 

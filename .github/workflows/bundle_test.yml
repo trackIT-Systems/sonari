@@ -8,10 +8,10 @@ on:
 
 jobs:
   build-user-guide:
-    uses: mbsantiago/whombat/.github/workflows/build_user_guide.yml@dev
+    uses: mbsantiago/sonari/.github/workflows/build_user_guide.yml@dev
 
   build-frontend:
-    uses: mbsantiago/whombat/.github/workflows/build_frontend.yml@dev
+    uses: mbsantiago/sonari/.github/workflows/build_frontend.yml@dev
 
   build-windows-test:
     runs-on: windows-latest
@@ -24,20 +24,20 @@ jobs:
       - uses: actions/download-artifact@v4
         with:
           name: frontend
-          path: back/src/whombat/statics/
+          path: back/src/sonari/statics/
       - uses: actions/download-artifact@v4
         with:
           name: user_guide
-          path: back/src/whombat/user_guide/
+          path: back/src/sonari/user_guide/
       - shell: pwsh
         run: scripts/bundle_windows.ps1
       - run: |
           mkdir dist/
-          mv "back/dist/whombat.zip" "dist/whombat-windows.zip"
+          mv "back/dist/sonari.zip" "dist/sonari-windows.zip"
       - uses: actions/upload-artifact@v4
         with:
           name: "windows-build"
-          path: "dist/whombat-windows.zip"
+          path: "dist/sonari-windows.zip"
 
   build-ubuntu-test:
     runs-on: ubuntu-20.04
@@ -50,19 +50,19 @@ jobs:
       - uses: actions/download-artifact@v4
         with:
           name: frontend
-          path: back/src/whombat/statics/
+          path: back/src/sonari/statics/
       - uses: actions/download-artifact@v4
         with:
           name: user_guide
-          path: back/src/whombat/user_guide/
+          path: back/src/sonari/user_guide/
       - run: bash scripts/bundle_linux.sh
       - run: |
           mkdir dist/
-          mv back/dist/whombat.zip "dist/whombat-ubuntu.zip"
+          mv back/dist/sonari.zip "dist/sonari-ubuntu.zip"
       - uses: actions/upload-artifact@v4
         with:
           name: "ubuntu-build"
-          path: "dist/whombat-ubuntu.zip"
+          path: "dist/sonari-ubuntu.zip"
 
   build-macos-test:
     runs-on: macos-11
@@ -75,16 +75,16 @@ jobs:
       - uses: actions/download-artifact@v4
         with:
           name: frontend
-          path: back/src/whombat/statics/
+          path: back/src/sonari/statics/
       - uses: actions/download-artifact@v4
         with:
           name: user_guide
-          path: back/src/whombat/user_guide/
+          path: back/src/sonari/user_guide/
       - run: bash scripts/bundle_macos.sh
       - run: |
           mkdir dist/
-          mv back/dist/whombat.zip "dist/whombat-macos.zip"
+          mv back/dist/sonari.zip "dist/sonari-macos.zip"
       - uses: actions/upload-artifact@v4
         with:
           name: "macos-build"
-          path: "dist/whombat-macos.zip"
+          path: "dist/sonari-macos.zip"

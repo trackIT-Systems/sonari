@@ -1,5 +1,5 @@
 #!/bin/bash
-# Description: Install whombat python dependencies as an editable package
+# Description: Install sonari python dependencies as an editable package
 
 # Make sure you have python 3.11 installed
 if [[ ! $(python --version) =~ "3.11" ]]; then
@@ -13,7 +13,7 @@ cd back
 # Update pip and setuptools
 pip install -U pip setuptools wheel
 
-# Install the dependencies and whombat as an editable package
+# Install the dependencies and sonari as an editable package
 pip install -U -e .
 
-echo "Installation complete. You can now run whombat with the command 'python -m whombat'"
+echo "Installation complete. You can now run sonari with the command 'python -m sonari'"

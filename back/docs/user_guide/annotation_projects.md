@@ -1,6 +1,6 @@
 # Audio Annotation
 
-Welcome to the heart of Whombat, the hub where all annotation work takes center
+Welcome to the heart of Sonari, the hub where all annotation work takes center
 stage: the annotation projects. Here, one or many annotators delve into the
 audio material, showcasing their audio expertise by highlighting crucial sound
 events and adding meaningful annotations.
@@ -10,7 +10,7 @@ In this section, we will guide you through various topics:
 1. [**Understanding Annotation**](#understanding-annotation): Delve into the
    fundamentals of annotation.
 2. [**Getting Started with Annotation**](#getting-started-with-annotation):
-   Learn how to initiate your annotation work in Whombat.
+   Learn how to initiate your annotation work in Sonari.
 3. [**Creating or Importing an Annotation Project**](#creating-or-importing-an-annotation-project):
    Explore the steps to set up a new project or import an existing one.
 4. [**Selecting Annotation Tags**](#selecting-annotation-tags): Understand the
@@ -28,10 +28,10 @@ In this section, we will guide you through various topics:
 
 Annotation in audio is about adding human-interpretable meaning to raw audio
 data, and it can take various forms. For instance, attaching a tag to a
-recording constitutes a form of annotation. However, Whombat primarily centers
+recording constitutes a form of annotation. However, Sonari primarily centers
 on two types of annotation.
 
-The first type is annotating **sound events**. In Whombat, a sound event
+The first type is annotating **sound events**. In Sonari, a sound event
 encompasses any distinguishable sound of interest to the annotator. To annotate
 a sound event, the annotator marks the RoI in the spectrogram where the sound
 occurs and attaches tags or notes to it.
@@ -39,35 +39,35 @@ occurs and attaches tags or notes to it.
 !!! info "Defining the RoI"
 
     The method an annotator uses to mark the RoI for each sound event can vary,
-    depending on the type of sound being annotated. Whombat provides multiple
+    depending on the type of sound being annotated. Sonari provides multiple
     approaches for this. For instance, annotators can use a bounding box to
     encompass the starting and ending time of the sound event, along with its
     lowest and highest frequency. Alternatively, annotators may choose to mark only
     the exact moment in time when the sound occurs, particularly for short pulses.
 
 The second type is annotating an audio **clip**. Annotations for a clip in
-Whombat involve attaching tags or creating notes for the entire clip, not for a
+Sonari involve attaching tags or creating notes for the entire clip, not for a
 specific sound within it. However, when annotating a clip, the annotator can, of
 course, create annotations for the sound events within the clip.
 
 !!! info "What is a Clip?"
 
-    In Whombat, an audio clip is a portion of a complete recording, like the
+    In Sonari, an audio clip is a portion of a complete recording, like the
     first second of a soundscape. Surprisingly, the entire recording can also be
     seen as a clip, and even a clip extending beyond the recording's end is valid.
-    Whombat leans on clips for annotation because they offer a standardized and
+    Sonari leans on clips for annotation because they offer a standardized and
     more manageable way of annotating. Imagine annotating a full 1-hour
     recording—clips make this task more feasible. Additionally, using clips of
     consistent duration within a project enhances comparability.
 
-With these two ways of annotation, Whombat lets you describe audio details
+With these two ways of annotation, Sonari lets you describe audio details
 exactly as you need.
 
 Annotation serves a specific purpose, whether it's reviewing all recordings from
 a dataset or gathering material for ML development. To streamline this process,
-Whombat neatly organizes all annotation work into **annotation projects**.
+Sonari neatly organizes all annotation work into **annotation projects**.
 
-An annotation project in Whombat comprises **annotation tasks**, a collection of
+An annotation project in Sonari comprises **annotation tasks**, a collection of
 audio clips awaiting annotation. Each project should establish a clear criterion
 for what constitutes a successfully annotated clip. Therefore, we encourage each
 project to provide explicit instructions on how to annotate. As a best practice,
@@ -100,7 +100,7 @@ clicking the **Import** button and selecting your file.
 
 ??? tip "Crafting Effective Annotation Instructions"
 
-    Whombat provides tools for annotation without prescribing specific
+    Sonari provides tools for annotation without prescribing specific
     annotation instructions. This can make the definition of completing an
     annotation task somewhat open-ended. When drafting annotation instructions,
     consider your project goals and align the instructions accordingly. For
@@ -232,7 +232,7 @@ annotations, and marking the task as done, in need of review, or verified.
 ??? info "Verified status"
 
     It's common to conduct a second review of the annotations for accuracy.
-    Whombat facilitates this by offering a "verified" status. This status indicates
+    Sonari facilitates this by offering a "verified" status. This status indicates
     that the annotations were initially completed and subsequently verified
     independently.
 
@@ -348,7 +348,7 @@ purposes:
 
 ### Keyboard Shortcuts
 
-To enhance the speed of the annotation process, Whombat provides a set of
+To enhance the speed of the annotation process, Sonari provides a set of
 convenient keyboard shortcuts for common actions. Refer to the table below for
 an overview of these shortcuts:
 
@@ -376,7 +376,7 @@ the annotations from your project for various purposes. Follow these steps:
 This action will generate a single JSON file containing all the annotations in
 the AOEF format. For more details on the format, refer to this
 [website](https://mbsantiago.github.io/soundevent/). The exported file can be
-easily shared with others, allowing them to import it directly into Whombat and
+easily shared with others, allowing them to import it directly into Sonari and
 view your annotations (assuming they have the recordings pre-registered, check
 [Sharing Datasets](datasets.md#dataset-home-page) for more information). Sharing
 your annotations becomes a seamless process, enabling collaborative efforts and
@@ -385,7 +385,7 @@ knowledge exchange.
 ## Conclusion
 
 Congratulations! You are now well-equipped to successfully manage and execute
-your annotation projects in Whombat. Whether you're diving into the
+your annotation projects in Sonari. Whether you're diving into the
 [Evaluation section](evaluation.md) to gain insights into the performance of ML
 models and user annotators, or exploring the data further using the tools in the
 [Exploration section](exploration.md), you have a solid foundation to make the

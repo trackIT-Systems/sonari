@@ -5,7 +5,7 @@ bash scripts/update_front.sh
 # Update user-guide
 bash scripts/update_guide.sh
 
-# Install the dependencies and whombat as an editable package
+# Install the dependencies and sonari as an editable package
 cd back/
 
 # Activate virtual environment

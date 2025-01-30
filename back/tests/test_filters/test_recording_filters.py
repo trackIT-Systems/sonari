@@ -5,10 +5,10 @@ from pathlib import Path
 from typing import Callable
 
 import pytest
+from sonarifilters import recordings as recording_filters
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from whombat import api, schemas
-from whombat.filters import recordings as recording_filters
+from sonari import api, schemas
 
 
 @pytest.fixture
@@ -237,9 +237,7 @@ async def test_date_filter(
     # Act
     results, _ = await api.recordings.get_many(
         session=session,
-        filters=[
-            recording_filters.DateFilter(before=datetime.date(2020, 1, 2))
-        ],
+        filters=[recording_filters.DateFilter(before=datetime.date(2020, 1, 2))],
     )
 
     # Assert
@@ -249,9 +247,7 @@ async def test_date_filter(
     # Act
     results, _ = await api.recordings.get_many(
         session=session,
-        filters=[
-            recording_filters.DateFilter(after=datetime.date(2020, 1, 2))
-        ],
+        filters=[recording_filters.DateFilter(after=datetime.date(2020, 1, 2))],
     )
 
     # Assert

@@ -13,7 +13,7 @@ function Brand() {
   return (
     <a href="/" className="flex items-center">
       <span className="self-center whitespace-nowrap text-2xl font-bold text-emerald-500 underline decoration-4">
-        Whombat
+        Sonari
       </span>
     </a>
   );

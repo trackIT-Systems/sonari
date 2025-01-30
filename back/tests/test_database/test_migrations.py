@@ -3,10 +3,10 @@
 from pathlib import Path
 
 import pytest
+from sonarisystem.settings import Settings
 from sqlalchemy.engine import URL
 
-from whombat.system import database
-from whombat.system.settings import Settings
+from sonari.system import database
 
 
 @pytest.fixture
@@ -30,10 +30,7 @@ def test_can_detect_database_that_needs_creation(db_path: Path, db_url: URL):
     engine = database.create_sync_db_engine(db_url)
 
     with engine.connect() as conn:
-        assert (
-            database.get_db_state(conn, cfg)
-            == database.DatabaseState.NEEDS_CREATION
-        )
+        assert database.get_db_state(conn, cfg) == database.DatabaseState.NEEDS_CREATION
 
 
 def test_can_detect_database_is_ok(db_path: Path, db_url: URL):

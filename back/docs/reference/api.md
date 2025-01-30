@@ -1,12 +1,12 @@
-# Whombat Python API
+# Sonari Python API
 
-Welcome to the Whombat Python API reference page. This section provides a
-comprehensive guide to all the functions available through the `whombat.api`
-module, designed to simplify the use of Whombat objects without the need to
+Welcome to the Sonari Python API reference page. This section provides a
+comprehensive guide to all the functions available through the `sonari.api`
+module, designed to simplify the use of Sonari objects without the need to
 handle the intricacies of SQLAlchemy internals.
 
 The API is organized into distinct submodules, each corresponding to a crucial
-data object within Whombat. Each sub-API contains functions tailored for
+data object within Sonari. Each sub-API contains functions tailored for
 interactions with that specific type of object.
 
 ## Getting Started
@@ -14,7 +14,7 @@ interactions with that specific type of object.
 To get started, follow the example below, which demonstrates how to use these functions:
 
 ```python
-from whombat import api
+from sonari import api
 
 async def main():
     # Create a session
@@ -31,7 +31,7 @@ async def main():
 
 !!! info "Async functions"
 
-    Most functions in the Whombat API are asynchronous. This design choice enhances
+    Most functions in the Sonari API are asynchronous. This design choice enhances
     code efficiency, particularly since many operations involve database
     transactions that can potentially slow down the program if executed
     synchronously.
@@ -41,86 +41,86 @@ they provide. It's worth noting that each submodule is an instance of a BaseAPI
 class, which manages an internal cache to minimize unnecessary database
 queries. To access the reference for a specific submodule, such as
 `api.sound_events`, please consult the corresponding class, in this case,
-[`SoundEventAPI`][whombat.api.sound_events.SoundEventAPI], to discover all the available functions.
+[`SoundEventAPI`][sonari.api.sound_events.SoundEventAPI], to discover all the available functions.
 
-::: whombat.api
+::: sonari.api
 
-::: whombat.api.users.UserAPI
+::: sonari.api.users.UserAPI
     options:
         inherited_members: true
 
-::: whombat.api.tags.TagAPI
+::: sonari.api.tags.TagAPI
     options:
         inherited_members: true
 
-::: whombat.api.features.FeatureNameAPI
+::: sonari.api.features.FeatureNameAPI
     options:
         inherited_members: true
 
-::: whombat.api.notes.NoteAPI
+::: sonari.api.notes.NoteAPI
     options:
         inherited_members: true
 
-::: whombat.api.recordings.RecordingAPI
+::: sonari.api.recordings.RecordingAPI
     options:
         inherited_members: true
 
-::: whombat.api.datasets.DatasetAPI
+::: sonari.api.datasets.DatasetAPI
     options:
         inherited_members: true
 
-::: whombat.api.sound_events.SoundEventAPI
+::: sonari.api.sound_events.SoundEventAPI
     options:
         inherited_members: true
 
-::: whombat.api.clips.ClipAPI
+::: sonari.api.clips.ClipAPI
     options:
         inherited_members: true
 
-::: whombat.api.sound_event_annotations.SoundEventAnnotationAPI
+::: sonari.api.sound_event_annotations.SoundEventAnnotationAPI
     options:
         inherited_members: true
 
-::: whombat.api.clip_annotations.ClipAnnotationAPI
+::: sonari.api.clip_annotations.ClipAnnotationAPI
     options:
         inherited_members: true
 
-::: whombat.api.annotation_tasks.AnnotationTaskAPI
+::: sonari.api.annotation_tasks.AnnotationTaskAPI
     options:
         inherited_members: true
 
-::: whombat.api.annotation_projects.AnnotationProjectAPI
+::: sonari.api.annotation_projects.AnnotationProjectAPI
     options:
         inherited_members: true
 
-::: whombat.api.sound_event_predictions.SoundEventPredictionAPI
+::: sonari.api.sound_event_predictions.SoundEventPredictionAPI
     options:
         inherited_members: true
 
-::: whombat.api.clip_predictions.ClipPredictionAPI
+::: sonari.api.clip_predictions.ClipPredictionAPI
     options:
         inherited_members: true
 
-::: whombat.api.model_runs.ModelRunAPI
+::: sonari.api.model_runs.ModelRunAPI
     options:
         inherited_members: true
 
-::: whombat.api.user_runs.UserRunAPI
+::: sonari.api.user_runs.UserRunAPI
     options:
         inherited_members: true
 
-::: whombat.api.sound_event_evaluations.SoundEventEvaluationAPI
+::: sonari.api.sound_event_evaluations.SoundEventEvaluationAPI
     options:
         inherited_members: true
 
-::: whombat.api.clip_evaluations.ClipEvaluationAPI
+::: sonari.api.clip_evaluations.ClipEvaluationAPI
     options:
         inherited_members: true
 
-::: whombat.api.evaluations.EvaluationAPI
+::: sonari.api.evaluations.EvaluationAPI
     options:
         inherited_members: true
 
-::: whombat.api.evaluation_sets.EvaluationSetAPI
+::: sonari.api.evaluation_sets.EvaluationSetAPI
     options:
         inherited_members: true

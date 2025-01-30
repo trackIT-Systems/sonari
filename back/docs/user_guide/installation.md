@@ -1,57 +1,57 @@
 # Installation
 
-Getting Whombat up and running is a breeze! We offer two straightforward methods
+Getting Sonari up and running is a breeze! We offer two straightforward methods
 to suit your preferences and needs.
 
-??? note "Whombat on the cloud"
+??? note "Sonari on the cloud"
 
     Interested in hosting a publicly accessible and collaborative instance of
-    Whombat? Let us know, and we'll be more than happy to guide you through the
+    Sonari? Let us know, and we'll be more than happy to guide you through the
     process.
 
 ## Installation Methods
 
 ### Standalone Executable
 
-The simplest way to dive into Whombat is by downloading our pre-packaged
+The simplest way to dive into Sonari is by downloading our pre-packaged
 executable file. We've tailored versions for Windows, Mac OS, and Ubuntu. Head
 over to our GitHub repository's
-[releases](https://github.com/mbsantiago/whombat/releases) section to get the
+[releases](https://github.com/mbsantiago/sonari/releases) section to get the
 latest version.
 
 ### Python Package
 
-If you're comfortable with Python, installing Whombat as a Python package is
+If you're comfortable with Python, installing Sonari as a Python package is
 easy. Just run the following command:
 
 ```bash
-pip install whombat
+pip install sonari
 ```
 
 This should get you up and running in no time. Should you encounter any hiccups,
 check out the FAQ section for troubleshooting tips.
 
-## Running Whombat
+## Running Sonari
 
-Once you've downloaded the file, kick off Whombat by double-clicking on the
+Once you've downloaded the file, kick off Sonari by double-clicking on the
 executable. This action spawns a new window that should resemble the following:
 
 ![boot](../assets/img/boot.png)
 
 After the window displays the "ready" message a browser will be opened on
-Whombat, or open your preferred browser and navigate to:
+Sonari, or open your preferred browser and navigate to:
 
     http://localhost:5000
 
 ??? info "Start with Python"
 
-    To start whombat using the Python installation, run the command
+    To start sonari using the Python installation, run the command
 
-        python -m whombat
+        python -m sonari
 
 ## First User
 
-If this is your initial encounter with Whombat, you'll be greeted with a screen
+If this is your initial encounter with Sonari, you'll be greeted with a screen
 to create your user profile. Please enter your details and set up your user
 account.
 
@@ -67,15 +67,15 @@ account.
 
 ## Login
 
-For returning users, Whombat welcomes you with a login form. Enter your username
-and password to access the home page. Whombat's user system supports multiple
+For returning users, Sonari welcomes you with a login form. Enter your username
+and password to access the home page. Sonari's user system supports multiple
 users, allowing for individual work tracking.
 
 ![login](../assets/img/login.png)
 
 ## Home Screen
 
-Welcome to the Whombat Home screen! After logging in, your view should resemble
+Welcome to the Sonari Home screen! After logging in, your view should resemble
 the image below:
 
 ![login page](../assets/img/homepage.png)

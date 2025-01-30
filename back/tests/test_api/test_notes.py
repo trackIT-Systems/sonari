@@ -6,8 +6,8 @@ import pytest
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from whombat import exceptions, models, schemas
-from whombat.api import notes
+from sonari import exceptions, models, schemas
+from sonari.api import notes
 
 
 async def test_create_note(session: AsyncSession, user: schemas.SimpleUser):
@@ -28,9 +28,7 @@ async def test_create_note(session: AsyncSession, user: schemas.SimpleUser):
     assert note.is_issue is False
 
     # Make sure it is in the database
-    results = await session.execute(
-        select(models.Note).where(models.Note.uuid == note.uuid)
-    )
+    results = await session.execute(select(models.Note).where(models.Note.uuid == note.uuid))
     assert results.scalar_one_or_none() is not None
 
     db_note = await notes.get(session, note.uuid)
@@ -60,9 +58,7 @@ async def test_delete_note(session: AsyncSession, user: schemas.SimpleUser):
     await notes.delete(session, note)
 
     # Assert
-    results = await session.execute(
-        select(models.Note).where(models.Note.uuid == note.uuid)
-    )
+    results = await session.execute(select(models.Note).where(models.Note.uuid == note.uuid))
     assert results.scalar_one_or_none() is None
 
 
@@ -93,9 +89,7 @@ async def test_get_notes(session: AsyncSession, user: schemas.SimpleUser):
     assert db_notes[1].uuid == note1.uuid
 
 
-async def test_get_notes_with_limit(
-    session: AsyncSession, user: schemas.SimpleUser
-):
+async def test_get_notes_with_limit(session: AsyncSession, user: schemas.SimpleUser):
     """Test getting all notes with a limit."""
     # Arrange
     await notes.create(

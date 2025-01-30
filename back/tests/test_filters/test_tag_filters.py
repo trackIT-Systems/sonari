@@ -1,10 +1,10 @@
 """Test suite for tag filters."""
 
 import pytest
+from sonarifilters import tags as tag_filters
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from whombat import api
-from whombat.filters import tags as tag_filters
+from sonari import api
 
 
 @pytest.fixture(autouse=True)
@@ -31,9 +31,7 @@ async def setup_test(session: AsyncSession):
 async def test_filter_by_exact_key(session: AsyncSession):
     """Test filtering by exact key."""
     # Act
-    tags, _ = await api.tags.get_many(
-        session, filters=[tag_filters.KeyFilter(eq="a")]
-    )
+    tags, _ = await api.tags.get_many(session, filters=[tag_filters.KeyFilter(eq="a")])
 
     # Assert.
     assert len(tags) == 2
@@ -43,9 +41,7 @@ async def test_filter_by_exact_key(session: AsyncSession):
 async def test_filter_by_has_key(session: AsyncSession):
     """Test filtering by has key."""
     # Act
-    tags, _ = await api.tags.get_many(
-        session, filters=[tag_filters.KeyFilter(has="a")]
-    )
+    tags, _ = await api.tags.get_many(session, filters=[tag_filters.KeyFilter(has="a")])
 
     # Assert.
     assert len(tags) == 6
@@ -55,9 +51,7 @@ async def test_filter_by_has_key(session: AsyncSession):
 async def test_filter_by_exact_value(session: AsyncSession):
     """Test filtering by exact value."""
     # Act
-    tags, _ = await api.tags.get_many(
-        session, filters=[tag_filters.ValueFilter(eq="a1")]
-    )
+    tags, _ = await api.tags.get_many(session, filters=[tag_filters.ValueFilter(eq="a1")])
 
     # Assert.
     assert len(tags) == 1
@@ -67,9 +61,7 @@ async def test_filter_by_exact_value(session: AsyncSession):
 async def test_filter_by_has_value(session: AsyncSession):
     """Test filtering by has value."""
     # Act
-    tags, _ = await api.tags.get_many(
-        session, filters=[tag_filters.ValueFilter(has="a")]
-    )
+    tags, _ = await api.tags.get_many(session, filters=[tag_filters.ValueFilter(has="a")])
 
     # Assert.
     assert len(tags) == 6
@@ -79,9 +71,7 @@ async def test_filter_by_has_value(session: AsyncSession):
 async def test_filter_by_search(session: AsyncSession):
     """Test filtering by search."""
     # Act
-    tags, _ = await api.tags.get_many(
-        session, filters=[tag_filters.SearchFilter(search="a")]
-    )
+    tags, _ = await api.tags.get_many(session, filters=[tag_filters.SearchFilter(search="a")])
 
     # Assert.
     assert len(tags) == 10

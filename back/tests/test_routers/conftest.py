@@ -1,9 +1,9 @@
 import pytest
 from fastapi.testclient import TestClient
+from sonarisystem import create_app
+from sonarisystem.settings import Settings, get_settings
 
-from whombat import schemas
-from whombat.system import create_app
-from whombat.system.settings import Settings, get_settings
+from sonari import schemas
 
 
 @pytest.fixture

@@ -7,7 +7,7 @@ from pydantic import ValidationError
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from whombat import api, exceptions, models, schemas
+from sonari import api, exceptions, models, schemas
 
 
 async def test_create_clip(
@@ -293,9 +293,7 @@ async def test_create_clips_ignores_existing_clips(
         start_time=0.0,
         end_time=0.5,
     )
-    created_clips = await api.clips.create_many_without_duplicates(
-        session, data=[data]
-    )
+    created_clips = await api.clips.create_many_without_duplicates(session, data=[data])
 
     # Assert
     assert created_clips is not None
@@ -318,9 +316,7 @@ async def test_create_clips_add_duration_feature(
     )
 
     # Act
-    created_clips = await api.clips.create_many_without_duplicates(
-        session, data=[data]
-    )
+    created_clips = await api.clips.create_many_without_duplicates(session, data=[data])
 
     # Assert
     assert created_clips is not None
@@ -431,9 +427,7 @@ async def test_delete_clip_deletes_associated_features(
     await api.clips.delete(session, clip)
 
     # Clip feature was deleted
-    query = select(models.ClipFeature).where(
-        models.ClipFeature.clip_id == clip.id
-    )
+    query = select(models.ClipFeature).where(models.ClipFeature.clip_id == clip.id)
     result = await session.execute(query)
     assert result.scalars().first() is None
 

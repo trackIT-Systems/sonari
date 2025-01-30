@@ -13,9 +13,9 @@
 affine==2.4.0
     # via rasterio
 aiosqlite==0.20.0
-    # via whombat
+    # via sonari
 alembic==1.13.1
-    # via whombat
+    # via sonari
 annotated-types==0.6.0
     # via pydantic
 anyio==4.3.0
@@ -25,11 +25,11 @@ anyio==4.3.0
 appdirs==1.4.4
     # via crowsetta
 astral==3.2
-    # via whombat
+    # via sonari
 asttokens==2.4.1
     # via icecream
 asyncache==0.3.1
-    # via whombat
+    # via sonari
 attrs==23.2.0
     # via crowsetta
     # via rasterio
@@ -37,14 +37,14 @@ babel==2.15.0
     # via mkdocs-material
 bcrypt==4.0.1
     # via passlib
-    # via whombat
+    # via sonari
 birdsong-recognition-dataset==0.3.2.post1
     # via crowsetta
 black==24.4.2
 cachetools==5.3.3
     # via asyncache
+    # via sonari
     # via tox
-    # via whombat
 certifi==2024.2.2
     # via httpcore
     # via httpx
@@ -74,8 +74,8 @@ colorama==0.4.6
     # via griffe
     # via icecream
     # via mkdocs-material
+    # via sonari
     # via tox
-    # via whombat
 contourpy==1.2.1
     # via matplotlib
 coverage==7.5.1
@@ -106,14 +106,14 @@ fastapi==0.111.0
     # via fastapi-cli
     # via fastapi-pagination
     # via fastapi-users
-    # via whombat
+    # via sonari
 fastapi-cli==0.0.3
     # via fastapi
 fastapi-pagination==0.12.24
-    # via whombat
+    # via sonari
 fastapi-users==12.1.3
     # via fastapi-users-db-sqlalchemy
-    # via whombat
+    # via sonari
 fastapi-users-db-sqlalchemy==6.0.1
     # via fastapi-users
 filelock==3.14.0
@@ -219,7 +219,7 @@ numpy==1.26.4
     # via snuggs
     # via xarray
 openpyxl==3.1.5
-    # via whombat
+    # via sonari
 orjson==3.10.3
     # via fastapi
 packaging==24.0
@@ -241,7 +241,7 @@ pandera==0.19.3
     # via crowsetta
 passlib==1.7.4
     # via fastapi-users
-    # via whombat
+    # via sonari
 pathspec==0.12.1
     # via black
     # via mkdocs
@@ -269,7 +269,7 @@ pydantic==2.7.1
 pydantic-core==2.18.2
     # via pydantic
 pydantic-settings==2.2.1
-    # via whombat
+    # via sonari
 pyflakes==3.2.0
     # via flake8
 pygments==2.18.0
@@ -378,7 +378,7 @@ urllib3==2.2.1
 uvicorn==0.29.0
     # via fastapi
     # via fastapi-cli
-    # via whombat
+    # via sonari
 uvloop==0.19.0
     # via uvicorn
 virtualenv==20.26.2

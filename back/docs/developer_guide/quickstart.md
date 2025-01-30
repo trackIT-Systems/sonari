@@ -2,19 +2,19 @@
 
 ## Pre-requisites
 
-Before setting up your Whombat development environment, ensure you have the
+Before setting up your Sonari development environment, ensure you have the
 following tools installed:
 
-1. **Python 3.11**: We developed Whombat using this version, but any newer
+1. **Python 3.11**: We developed Sonari using this version, but any newer
    version should be compatible. Download Python 3.11
    [here](https://www.python.org/downloads/release/python-3117/).
 
 2. **rye**: Rye is a Python package dependency manager that we use to manage
-   dependencies for the Python part of Whombat. Download rye
+   dependencies for the Python part of Sonari. Download rye
    [here](https://rye-up.com/).
 
 3. **Node.js**: We use Node.js to develop and bundle the final JavaScript code
-   for the Whombat frontend. Download the latest version
+   for the Sonari frontend. Download the latest version
    [here](https://nodejs.org/dist/v20.11.0/node-v20.11.0-linux-x64.tar.xz).
 
 ## Set Up a Development Environment
@@ -25,13 +25,13 @@ to set up a development environment on your machine.
 1. Clone the repository:
 
 ```bash
-git clone https://github.com/mbsantiago/whombat.git
+git clone https://github.com/mbsantiago/sonari.git
 ```
 
 2. Navigate to the backend directory and install dependencies:
 
 ```bash
-cd whombat/back
+cd sonari/back
 rye sync
 ```
 
@@ -43,7 +43,7 @@ npm install
 ```
 
 These instructions ensure you have the necessary tools and dependencies to
-kickstart Whombat development on your local machine.
+kickstart Sonari development on your local machine.
 
 ## Running the Development Server
 
@@ -62,12 +62,12 @@ npm run dev
 ```
 
 These commands initiate the development servers for both the backend and
-frontend components of Whombat. Navigate to [localhost:3000](localhost:3000) to
+frontend components of Sonari. Navigate to [localhost:3000](localhost:3000) to
 access the development front end.
 
 ## Our Standards
 
-At Whombat, we emphasize code quality and employ various tools to streamline
+At Sonari, we emphasize code quality and employ various tools to streamline
 development.
 
 ### Code Formatting

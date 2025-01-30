@@ -2,8 +2,8 @@
 
 ## Development Lead
 
-* Santiago Martinez Balvanera <santiago.balvanera.20@ucl.ac.uk>
+* Artur Sterz <sterz@trackit.systems>
 
 ## Contributors
 
-None yet. Why not be the first?
+* Santiago Martinez Balvanera <santiago.balvanera.20@ucl.ac.uk>

@@ -1,11 +1,11 @@
-"""Test suite of Whombat core function to manage files."""
+"""Test suite of Sonari core function to manage files."""
 
 from collections.abc import Callable
 from pathlib import Path
 
 import pytest
 
-from whombat.core import files
+from sonari.core import files
 
 
 @pytest.mark.parametrize(

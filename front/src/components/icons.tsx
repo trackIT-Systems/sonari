@@ -93,9 +93,9 @@ import Image from "next/image";
 import { type ComponentProps, type HTMLProps } from "react";
 import { HOST } from "@/api/common";
 
-function WhombatIcon(props: Omit<ComponentProps<typeof Image>, "src" | "alt">) {
-  const whombat_svg_path = HOST + "/whombat.svg"
-  return <Image alt="Whombat Logo" src={whombat_svg_path} {...props} />;
+function SonariIcon(props: Omit<ComponentProps<typeof Image>, "src" | "alt">) {
+  const sonari_svg_path = HOST + "/sonari.svg"
+  return <Image alt="Sonari Logo" src={sonari_svg_path} {...props} />;
 }
 
 function BoundingBoxIcon(props: HTMLProps<SVGSVGElement>) {
@@ -323,7 +323,7 @@ export {
   TimeStampIcon,
   TrashIcon as DeleteIcon,
   UserIcon,
-  WhombatIcon,
+  SonariIcon,
   WrenchIcon as MissingIcon,
   XMarkIcon as CloseIcon,
   CpuChipIcon as ModelIcon,

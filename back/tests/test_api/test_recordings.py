@@ -11,7 +11,7 @@ from soundevent.audio import compute_md5_checksum
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from whombat import api, exceptions, models, schemas
+from sonari import api, exceptions, models, schemas
 
 
 async def test_create_recording(
@@ -649,9 +649,7 @@ async def test_remove_feature_from_recording(
     )
 
     # Act
-    recording = await api.recordings.remove_feature(
-        session, recording, feature
-    )
+    recording = await api.recordings.remove_feature(session, recording, feature)
 
     # Assert
     assert isinstance(recording, schemas.Recording)
@@ -814,9 +812,7 @@ async def test_get_recording_by_path(
 ):
     """Test getting a recording by path."""
     # Act
-    retrieved_recording = await api.recordings.get_by_path(
-        session, recording.path
-    )
+    retrieved_recording = await api.recordings.get_by_path(session, recording.path)
 
     # Assert
     assert isinstance(retrieved_recording, schemas.Recording)

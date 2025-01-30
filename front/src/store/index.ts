@@ -17,7 +17,7 @@ const useStore = create<Store>()(
       ...createSpectrogramSlice(...a),
     }),
     {
-      name: "whombat-storage",
+      name: "sonari-storage",
       storage: createJSONStorage(() => localStorage),
     },
   ),

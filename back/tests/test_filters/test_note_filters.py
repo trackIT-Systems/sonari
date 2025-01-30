@@ -3,10 +3,10 @@
 import datetime
 
 import pytest
+from sonarifilters import notes as note_filters
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from whombat import api, schemas
-from whombat.filters import notes as note_filters
+from sonari import api, schemas
 
 
 @pytest.fixture
@@ -16,7 +16,7 @@ async def user1(session: AsyncSession):
         session,
         username="user1",
         password="password",
-        email="user1@whombat.com",
+        email="user1@sonaricom",
     )
 
 
@@ -27,7 +27,7 @@ async def user2(session: AsyncSession):
         session,
         username="user2",
         password="password",
-        email="user2@whombat.com",
+        email="user2@sonaricom",
     )
 
 
@@ -38,7 +38,7 @@ async def user3(session: AsyncSession):
         session,
         username="user3",
         password="password",
-        email="user3@whombat.com",
+        email="user3@sonaricom",
     )
 
 
@@ -80,9 +80,7 @@ async def notes(
     return [note1, note2, note3, note4]
 
 
-async def test_get_notes_that_are_issues(
-    session: AsyncSession, notes: list[schemas.Note]
-):
+async def test_get_notes_that_are_issues(session: AsyncSession, notes: list[schemas.Note]):
     """Test getting all notes that are issues."""
     # Act
     db_notes, _ = await api.notes.get_many(
@@ -119,9 +117,7 @@ async def test_get_notes_that_are_not_issues(
     assert db_notes[2] == notes[0]
 
 
-async def test_get_notes_from_user(
-    session: AsyncSession, notes: list[schemas.Note], user1: schemas.User
-):
+async def test_get_notes_from_user(session: AsyncSession, notes: list[schemas.Note], user1: schemas.User):
     """Test getting all notes from a user."""
     # Act
     db_notes, _ = await api.notes.get_many(

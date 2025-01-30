@@ -5,10 +5,10 @@ on:
 
 jobs:
   build-user-guide:
-    uses: mbsantiago/whombat/.github/workflows/build_user_guide.yml@dev
+    uses: mbsantiago/sonari/.github/workflows/build_user_guide.yml@dev
 
   build-frontend:
-    uses: mbsantiago/whombat/.github/workflows/build_frontend.yml@dev
+    uses: mbsantiago/sonari/.github/workflows/build_frontend.yml@dev
 
   build-windows:
     runs-on: windows-latest
@@ -21,20 +21,20 @@ jobs:
       - uses: actions/download-artifact@v4
         with:
           name: frontend
-          path: back/src/whombat/statics/
+          path: back/src/sonari/statics/
       - uses: actions/download-artifact@v4
         with:
           name: user_guide
-          path: back/src/whombat/user_guide/
+          path: back/src/sonari/user_guide/
       - shell: pwsh
         run: scripts/bundle_windows.ps1
       - run: |
           mkdir dist/
-          mv "back/dist/whombat.zip" "dist/whombat-windows-${{ github.ref_name }}.zip"
+          mv "back/dist/sonari.zip" "dist/sonari-windows-${{ github.ref_name }}.zip"
       - uses: shogo82148/actions-upload-release-asset@v1
         with:
           upload_url: ${{ github.event.release.upload_url }}
-          asset_path: "dist/whombat-windows-${{ github.ref_name }}.zip"
+          asset_path: "dist/sonari-windows-${{ github.ref_name }}.zip"
 
   build-ubuntu:
     runs-on: ubuntu-20.04
@@ -47,19 +47,19 @@ jobs:
       - uses: actions/download-artifact@v4
         with:
           name: frontend
-          path: back/src/whombat/statics/
+          path: back/src/sonari/statics/
       - uses: actions/download-artifact@v4
         with:
           name: user_guide
-          path: back/src/whombat/user_guide/
+          path: back/src/sonari/user_guide/
       - run: bash scripts/bundle_linux.sh
       - run: |
           mkdir dist/
-          mv back/dist/whombat.zip "dist/whombat-ubuntu-${{ github.ref_name }}.zip"
+          mv back/dist/sonari.zip "dist/sonari-ubuntu-${{ github.ref_name }}.zip"
       - uses: shogo82148/actions-upload-release-asset@v1
         with:
           upload_url: ${{ github.event.release.upload_url }}
-          asset_path: "dist/whombat-ubuntu-${{ github.ref_name }}.zip"
+          asset_path: "dist/sonari-ubuntu-${{ github.ref_name }}.zip"
 
   build-macos:
     runs-on: macos-11
@@ -75,16 +75,16 @@ jobs:
       - uses: actions/download-artifact@v4
         with:
           name: frontend
-          path: back/src/whombat/statics/
+          path: back/src/sonari/statics/
       - uses: actions/download-artifact@v4
         with:
           name: user_guide
-          path: back/src/whombat/user_guide/
+          path: back/src/sonari/user_guide/
       - run: bash scripts/bundle_macos.sh
       - run: |
           mkdir dist/
-          mv back/dist/whombat.zip "dist/whombat-macos-${{ github.ref_name }}.zip"
+          mv back/dist/sonari.zip "dist/sonari-macos-${{ github.ref_name }}.zip"
       - uses: shogo82148/actions-upload-release-asset@v1
         with:
           upload_url: ${{ github.event.release.upload_url }}
-          asset_path: "dist/whombat-macos-${{ github.ref_name }}.zip"
+          asset_path: "dist/sonari-macos-${{ github.ref_name }}.zip"

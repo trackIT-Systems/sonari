@@ -4,7 +4,7 @@ import { type ReactNode, useContext, useCallback } from "react";
 import toast from "react-hot-toast";
 
 import Loading from "@/app/loading";
-import { WhombatIcon } from "@/components/icons";
+import { SonariIcon } from "@/components/icons";
 import { SideMenu } from "@/components/navigation/SideMenu";
 import useActiveUser from "@/hooks/api/useActiveUser";
 
@@ -33,7 +33,7 @@ function WithLogIn({ children }: { children: React.ReactNode }) {
       <div className="flex justify-center items-center w-screen h-screen">
         <div className="flex flex-col items-center">
           <div>
-            <WhombatIcon width={128} height={128} className="w-32 h-32" />
+            <SonariIcon width={128} height={128} className="w-32 h-32" />
           </div>
           <div>
             <Loading />

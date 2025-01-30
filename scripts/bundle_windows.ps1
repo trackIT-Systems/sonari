@@ -21,10 +21,10 @@ build\.venv\Scripts\pip install -U pip setuptools wheel
 
 build\.venv\Scripts\pip install pyinstaller
 
-# Install whombat
+# Install sonari
 build\.venv\Scripts\pip install .
 
-# Run pyinstaller to bundle whombat into an executable file
+# Run pyinstaller to bundle sonari into an executable file
 build\.venv\Scripts\pyinstaller `
     --hidden-import "app" `
     --hidden-import "aiosqlite" `
@@ -38,16 +38,16 @@ build\.venv\Scripts\pyinstaller `
     --hidden-import "rasterio.crs" `
     --hidden-import "rasterio.vrt" `
     --hidden-import "rasterio._features" `
-    --add-data "src\whombat\migrations;whombat\migrations" `
-    --add-data "src\whombat\statics;whombat\statics" `
-    --add-data "src\whombat\user_guide;whombat\user_guide" `
+    --add-data "src\sonari\migrations;sonari\migrations" `
+    --add-data "src\sonari\statics;sonari\statics" `
+    --add-data "src\sonari\user_guide;sonari\user_guide" `
     --add-data "alembic.ini;." `
     --recursive-copy-metadata "numpy" `
-    --name whombat `
+    --name sonari `
     --onefile `
     --console `
     app.py
 
 
 # Zip the executable file 
-Compress-Archive -Path "dist\whombat.exe" -DestinationPath "dist\whombat.zip"
+Compress-Archive -Path "dist\sonari.exe" -DestinationPath "dist\sonari.zip"

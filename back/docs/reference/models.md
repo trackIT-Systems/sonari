@@ -1,11 +1,11 @@
 # Database Models
 
-Welcome to the comprehensive database models reference for **Whombat**! Here, you'll
+Welcome to the comprehensive database models reference for **Sonari**! Here, you'll
 discover an organized collection of all the database models defined within the
-Whombat framework. Our categorization mirrors the structure outlined in
+Sonari framework. Our categorization mirrors the structure outlined in
 [`soundevent`](https://mbsantiago.github.io/soundevent/data_schemas/).
 
-The models within **Whombat** share an analogical relationship with those in
+The models within **Sonari** share an analogical relationship with those in
 `soundevent` and are essentially a **SQLAlchemy** port. While the core concepts remain
 consistent, it's essential to note that some minor differences do exist.
 
@@ -13,28 +13,28 @@ consistent, it's essential to note that some minor differences do exist.
 
 ### Users
 
-::: whombat.models.User
+::: sonari.models.User
     options:
         heading_level: 4
         members: None
 
 ### Tags
 
-::: whombat.models.Tag
+::: sonari.models.Tag
     options:
         heading_level: 4
         members: None
 
 ### Features
 
-::: whombat.models.FeatureName
+::: sonari.models.FeatureName
     options:
         members: None
         heading_level: 4
 
 ### Notes
 
-::: whombat.models.Note
+::: sonari.models.Note
     options:
         heading_level: 4
         members: None
@@ -43,39 +43,39 @@ consistent, it's essential to note that some minor differences do exist.
 
 ### Recordings
 
-::: whombat.models.Recording
+::: sonari.models.Recording
     options:
         heading_level: 4
         members: None
 
-::: whombat.models.RecordingTag
+::: sonari.models.RecordingTag
     options:
         heading_level: 4
         members: None
 
-::: whombat.models.RecordingNote
+::: sonari.models.RecordingNote
     options:
         heading_level: 4
         members: None
 
-::: whombat.models.RecordingFeature
+::: sonari.models.RecordingFeature
     options:
         heading_level: 4
         members: None
 
-::: whombat.models.RecordingOwner
+::: sonari.models.RecordingOwner
     options:
         heading_level: 4
         members: None
 
 ### Datasets
 
-::: whombat.models.Dataset
+::: sonari.models.Dataset
     options:
         heading_level: 4
         members: None
 
-::: whombat.models.DatasetRecording
+::: sonari.models.DatasetRecording
     options:
         heading_level: 4
         members: None
@@ -84,24 +84,24 @@ consistent, it's essential to note that some minor differences do exist.
 
 ### Sound Events
 
-::: whombat.models.SoundEvent
+::: sonari.models.SoundEvent
     options:
         heading_level: 4
         members: None
 
-::: whombat.models.SoundEventFeature
+::: sonari.models.SoundEventFeature
     options:
         heading_level: 4
         members: None
 
 ### Clips
 
-::: whombat.models.Clip
+::: sonari.models.Clip
     options:
         heading_level: 4
         members: None
 
-::: whombat.models.ClipFeature
+::: sonari.models.ClipFeature
     options:
         heading_level: 4
         members: None
@@ -110,58 +110,58 @@ consistent, it's essential to note that some minor differences do exist.
 
 ### Sound Event Annotation
 
-::: whombat.models.SoundEventAnnotation
+::: sonari.models.SoundEventAnnotation
     options:
         heading_level: 4
         members: None
 
-::: whombat.models.SoundEventAnnotationTag
+::: sonari.models.SoundEventAnnotationTag
     options:
         heading_level: 4
         members: None
 
-::: whombat.models.SoundEventAnnotationNote
+::: sonari.models.SoundEventAnnotationNote
     options:
         heading_level: 4
         members: None
 
 ### Clip Annotation
 
-::: whombat.models.ClipAnnotation
+::: sonari.models.ClipAnnotation
     options:
         heading_level: 4
         members: None
 
-::: whombat.models.ClipAnnotationTag
+::: sonari.models.ClipAnnotationTag
     options:
         heading_level: 4
         members: None
 
-::: whombat.models.ClipAnnotationNote
+::: sonari.models.ClipAnnotationNote
     options:
         heading_level: 4
         members: None
 
 ### Annotation Task
 
-::: whombat.models.AnnotationTask
+::: sonari.models.AnnotationTask
     options:
         heading_level: 4
         members: None
 
-::: whombat.models.AnnotationStatusBadge
+::: sonari.models.AnnotationStatusBadge
     options:
         heading_level: 4
         members: None
 
 ### Annotation Project
 
-::: whombat.models.AnnotationProject
+::: sonari.models.AnnotationProject
     options:
         heading_level: 4
         members: None
 
-::: whombat.models.AnnotationProjectTag
+::: sonari.models.AnnotationProjectTag
     options:
         heading_level: 4
         members: None
@@ -170,38 +170,38 @@ consistent, it's essential to note that some minor differences do exist.
 
 ### Sound Event Prediction
 
-::: whombat.models.SoundEventPrediction
+::: sonari.models.SoundEventPrediction
     options:
         heading_level: 4
         members: None
 
-::: whombat.models.SoundEventPredictionTag
+::: sonari.models.SoundEventPredictionTag
     options:
         heading_level: 4
         members: None
 
 ### Clip Prediction
 
-::: whombat.models.ClipPrediction
+::: sonari.models.ClipPrediction
     options:
         heading_level: 4
         members: None
 
-::: whombat.models.ClipPredictionTag
+::: sonari.models.ClipPredictionTag
     options:
         heading_level: 4
         members: None
 
 ### Model Run
 
-::: whombat.models.ModelRun
+::: sonari.models.ModelRun
     options:
         heading_level: 4
         members: None
 
 ### User Run
 
-::: whombat.models.UserRun
+::: sonari.models.UserRun
     options:
         heading_level: 4
         members: None
@@ -210,53 +210,53 @@ consistent, it's essential to note that some minor differences do exist.
 
 ### Sound Event Evaluation
 
-::: whombat.models.SoundEventEvaluation
+::: sonari.models.SoundEventEvaluation
     options:
         heading_level: 4
         members: None
 
-::: whombat.models.SoundEventEvaluationMetric
+::: sonari.models.SoundEventEvaluationMetric
     options:
         heading_level: 4
         members: None
 
 ### Clip Evaluation
 
-::: whombat.models.ClipEvaluation
+::: sonari.models.ClipEvaluation
     options:
         heading_level: 4
         members: None
 
-::: whombat.models.ClipEvaluationMetric
+::: sonari.models.ClipEvaluationMetric
     options:
         heading_level: 4
         members: None
 
 ### Evaluation
 
-::: whombat.models.Evaluation
+::: sonari.models.Evaluation
     options:
         heading_level: 4
         members: None
 
-::: whombat.models.EvaluationMetric
+::: sonari.models.EvaluationMetric
     options:
         heading_level: 4
         members: None
 
 ### Evaluation Set
 
-::: whombat.models.EvaluationSet
+::: sonari.models.EvaluationSet
     options:
         heading_level: 4
         members: None
 
-::: whombat.models.EvaluationSetTag
+::: sonari.models.EvaluationSetTag
     options:
         heading_level: 4
         members: None
 
-::: whombat.models.EvaluationSetAnnotation
+::: sonari.models.EvaluationSetAnnotation
     options:
         heading_level: 4
         members: None

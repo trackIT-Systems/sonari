@@ -1,3 +1,3 @@
 # Schemas
 
-::: whombat.schemas
+::: sonari.schemas

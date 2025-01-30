@@ -1,3 +1,3 @@
-# Whombat Python API
+# Sonari Python API
 
-::: whombat.api
+::: sonari.api

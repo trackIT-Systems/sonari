@@ -11,9 +11,9 @@
 
 -e file:.
 aiosqlite==0.20.0
-    # via whombat
+    # via sonari
 alembic==1.13.1
-    # via whombat
+    # via sonari
 annotated-types==0.6.0
     # via pydantic
 anyio==4.3.0
@@ -21,15 +21,15 @@ anyio==4.3.0
     # via starlette
     # via watchfiles
 astral==3.2
-    # via whombat
+    # via sonari
 asyncache==0.3.1
-    # via whombat
+    # via sonari
 bcrypt==4.0.1
     # via passlib
-    # via whombat
+    # via sonari
 cachetools==5.3.3
     # via asyncache
-    # via whombat
+    # via sonari
 certifi==2024.2.2
     # via httpcore
     # via httpx
@@ -39,7 +39,7 @@ click==8.1.7
     # via typer
     # via uvicorn
 colorama==0.4.6
-    # via whombat
+    # via sonari
 cryptography==42.0.7
     # via pyjwt
 dnspython==2.6.1
@@ -53,14 +53,14 @@ fastapi==0.111.0
     # via fastapi-cli
     # via fastapi-pagination
     # via fastapi-users
-    # via whombat
+    # via sonari
 fastapi-cli==0.0.3
     # via fastapi
 fastapi-pagination==0.12.24
-    # via whombat
+    # via sonari
 fastapi-users==12.1.3
     # via fastapi-users-db-sqlalchemy
-    # via whombat
+    # via sonari
 fastapi-users-db-sqlalchemy==6.0.1
     # via fastapi-users
 greenlet==3.0.3
@@ -92,12 +92,12 @@ markupsafe==2.1.5
 mdurl==0.1.2
     # via markdown-it-py
 openpyxl==3.1.5
-    # via whombat
+    # via sonari
 orjson==3.10.3
     # via fastapi
 passlib==1.7.4
     # via fastapi-users
-    # via whombat
+    # via sonari
 pycparser==2.22
     # via cffi
 pydantic==2.7.1
@@ -107,7 +107,7 @@ pydantic==2.7.1
 pydantic-core==2.18.2
     # via pydantic
 pydantic-settings==2.2.1
-    # via whombat
+    # via sonari
 pygments==2.18.0
     # via rich
 pyjwt==2.8.0
@@ -148,7 +148,7 @@ ujson==5.10.0
 uvicorn==0.29.0
     # via fastapi
     # via fastapi-cli
-    # via whombat
+    # via sonari
 uvloop==0.19.0
     # via uvicorn
 watchfiles==0.21.0

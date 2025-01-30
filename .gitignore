@@ -168,9 +168,9 @@ old
 site
 back/user_guide
 
-whombat.db
+sonari.db
 .ruff_cache/
 .pdm-python
-back/src/whombat/statics/*
-back/src/whombat/user_guide/*
+back/src/sonari/statics/*
+back/src/sonari/user_guide/*
 back/.build_venv

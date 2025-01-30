@@ -8,7 +8,7 @@ import Notification from "@/components/Notification";
 const mulish = Mulish({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "Whombat",
+  title: "Sonari",
   description: "Audio annotation tool for machine learning",
 };
 

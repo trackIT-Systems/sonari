@@ -6,7 +6,7 @@ import pytest
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from whombat import api, exceptions, models, schemas
+from sonari import api, exceptions, models, schemas
 
 
 async def test_created_annotation_is_stored_in_the_database(
@@ -25,9 +25,7 @@ async def test_created_annotation_is_stored_in_the_database(
 
     assert annotation.id is not None
 
-    stmt = select(models.SoundEventAnnotation).where(
-        models.SoundEventAnnotation.id == annotation.id
-    )
+    stmt = select(models.SoundEventAnnotation).where(models.SoundEventAnnotation.id == annotation.id)
     result = await session.execute(stmt)
     annotation = result.unique().scalars().one_or_none()
     assert annotation is not None

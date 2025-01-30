@@ -6,7 +6,7 @@ import pytest
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from whombat import api, exceptions, models, schemas
+from sonari import api, exceptions, models, schemas
 
 
 async def test_created_annotation_is_stored_in_the_database(
@@ -20,9 +20,7 @@ async def test_created_annotation_is_stored_in_the_database(
     )
     assert annotation_project.id is not None
 
-    stmt = select(models.AnnotationProject).where(
-        models.AnnotationProject.id == annotation_project.id
-    )
+    stmt = select(models.AnnotationProject).where(models.AnnotationProject.id == annotation_project.id)
     result = await session.execute(stmt)
     db_annotation_project = result.scalars().first()
     assert db_annotation_project is not None
@@ -145,10 +143,7 @@ async def test_can_update_project_annotation_instructions(
             annotation_instructions=new_annotation_instructions,
         ),
     )
-    assert (
-        updated_annotation_project.annotation_instructions
-        == new_annotation_instructions
-    )
+    assert updated_annotation_project.annotation_instructions == new_annotation_instructions
 
 
 async def test_update_modifies_database_values(
@@ -168,19 +163,14 @@ async def test_update_modifies_database_values(
             annotation_instructions=new_annotation_instructions,
         ),
     )
-    stmt = select(models.AnnotationProject).where(
-        models.AnnotationProject.id == annotation_project.id
-    )
+    stmt = select(models.AnnotationProject).where(models.AnnotationProject.id == annotation_project.id)
     result = await session.execute(stmt)
     db_annotation_project = result.scalars().first()
     assert db_annotation_project is not None
     assert db_annotation_project.id == annotation_project.id
     assert db_annotation_project.name == new_name
     assert db_annotation_project.description == new_description
-    assert (
-        db_annotation_project.annotation_instructions
-        == new_annotation_instructions
-    )
+    assert db_annotation_project.annotation_instructions == new_annotation_instructions
 
 
 async def test_delete_removes_project_from_database(
@@ -192,9 +182,7 @@ async def test_delete_removes_project_from_database(
         session,
         annotation_project,
     )
-    stmt = select(models.AnnotationProject).where(
-        models.AnnotationProject.id == annotation_project.id
-    )
+    stmt = select(models.AnnotationProject).where(models.AnnotationProject.id == annotation_project.id)
     result = await session.execute(stmt)
     db_annotation_project = result.scalars().first()
     assert db_annotation_project is None
@@ -226,17 +214,13 @@ async def test_add_tag_to_project_modifies_database(
         tag,
     )
     stmt = select(models.AnnotationProjectTag).where(
-        models.AnnotationProjectTag.annotation_project_id
-        == annotation_project.id,
+        models.AnnotationProjectTag.annotation_project_id == annotation_project.id,
         models.AnnotationProjectTag.tag_id == tag.id,
     )
     result = await session.execute(stmt)
     db_annotation_project_tag = result.scalars().first()
     assert db_annotation_project_tag is not None
-    assert (
-        db_annotation_project_tag.annotation_project_id
-        == annotation_project.id
-    )
+    assert db_annotation_project_tag.annotation_project_id == annotation_project.id
     assert db_annotation_project_tag.tag_id == tag.id
 
 
@@ -291,8 +275,7 @@ async def test_remove_tag_from_project_modifies_database(
         tag,
     )
     stmt = select(models.AnnotationProjectTag).where(
-        models.AnnotationProjectTag.annotation_project_id
-        == annotation_project.id,
+        models.AnnotationProjectTag.annotation_project_id == annotation_project.id,
         models.AnnotationProjectTag.tag_id == tag.id,
     )
     result = await session.execute(stmt)
@@ -307,6 +290,4 @@ async def test_remove_tag_from_project_fails_if_tag_not_present(
 ):
     """Test that a tag can be removed from an annotation project."""
     with pytest.raises(exceptions.NotFoundError):
-        await api.annotation_projects.remove_tag(
-            session, annotation_project, tag
-        )
+        await api.annotation_projects.remove_tag(session, annotation_project, tag)

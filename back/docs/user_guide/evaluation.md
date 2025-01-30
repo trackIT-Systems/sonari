@@ -1,8 +1,8 @@
 # Evaluation
 
-While the primary focus of Whombat revolves around annotation work, we
+While the primary focus of Sonari revolves around annotation work, we
 acknowledge that annotation is just one facet of the ML development workflow.
-Whombat aims to enhance this workflow by not only providing tools for generating
+Sonari aims to enhance this workflow by not only providing tools for generating
 annotations but also offering features to comprehend the performance of ML
 models trained with these annotations.
 
@@ -21,7 +21,7 @@ topics we will cover include:
 
 ## Understanding Predictions
 
-In Whombat, predictions share similarities with
+In Sonari, predictions share similarities with
 [annotations](annotation_projects.md#understanding-annotation). Like
 annotations, predictions exist in two forms: **sound event** and **clip
 predictions**. Predicted sound events encompass a Region of Interest (RoI)
@@ -32,7 +32,7 @@ differences from regular annotations include a somewhat philosophical
 stance—predictions are generally considered less trustworthy than annotations.
 Additionally, predictions often come with a quantification of certainty.
 
-In Whombat, sound event predictions feature an accompanying **confidence
+In Sonari, sound event predictions feature an accompanying **confidence
 score**, aiming to quantify the level of certainty the ML model or user has
 regarding the presence of that sound event. Predicted tags also carry a
 confidence score. For instance, a predicted sound event could be associated with
@@ -49,7 +49,7 @@ can then be evaluated against the ground truth.
 ## Evaluation Sets
 
 In the evaluation process, it's common to assess a model or user by comparing
-their predictions against a set of known examples. To facilitate this, Whombat
+their predictions against a set of known examples. To facilitate this, Sonari
 has organized the entire evaluation module around the concept of **evaluation
 sets**.
 
@@ -67,7 +67,7 @@ evaluation criteria for assessing these predictions.
 
 !!! info "Supported Tasks"
 
-    In Whombat, we currently support four different types of computer audition tasks:
+    In Sonari, we currently support four different types of computer audition tasks:
 
     * **Clip Classification**: In this task, the user or model is expected to
     correctly predict the class to which an audio clip belongs. The true class is
@@ -111,7 +111,7 @@ appropriate file.
 
     For an efficient way to generate AOEF files with your own data, we
     recommend using the [`soundevent`](https://mbsantiago.github.io/soundevent/)
-    package. This package offers user-friendly functions aligned with Whombat's
+    package. This package offers user-friendly functions aligned with Sonari's
     data structure, facilitating a seamless integration process.
 
 Once created or imported, you will be redirected to the Evaluation Set Dashboard
@@ -203,7 +203,7 @@ next to the search bar and select the file containing the model run predictions.
     It's recommended to use the
     [`soundevent`](https://mbsantiago.github.io/soundevent) package to format your
     data. This package provides tools to structure your data in a way that closely
-    resembles Whombat data and has handy functions to export the data directly into
+    resembles Sonari data and has handy functions to export the data directly into
     AOEF format.
 
 ## Evaluating the Model Run

@@ -1,0 +1,138 @@
+"""Clip Prediction Model."""
+
+from uuid import UUID, uuid4
+
+import sqlalchemy.orm as orm
+from sqlalchemy import ForeignKey, UniqueConstraint
+
+from sonari.models.base import Base
+from sonari.models.clip import Clip
+from sonari.models.sound_event_prediction import SoundEventPrediction
+from sonari.models.tag import Tag
+
+__all__ = [
+    "ClipPrediction",
+    "ClipPredictionTag",
+]
+
+
+class ClipPrediction(Base):
+    """Prediction Clip model.
+
+    Attributes
+    ----------
+    id
+        The database id of the clip prediction.
+    uuid
+        The UUID of the clip prediction.
+    clip
+        The clip to which the prediction belongs.
+    tags
+        A list of predicted tags.
+    sound_events
+        A list of predicted sound events.
+    created_on
+        The date and time the clip prediction was created.
+
+    Parameters
+    ----------
+    clip_id : int
+        The database id of the clip to which the prediction belongs.
+    uuid : UUID, optional
+        The UUID of the clip prediction.
+    """
+
+    __tablename__ = "clip_prediction"
+
+    id: orm.Mapped[int] = orm.mapped_column(primary_key=True)
+    uuid: orm.Mapped[UUID] = orm.mapped_column(
+        default_factory=uuid4,
+        unique=True,
+        kw_only=True,
+    )
+    clip_id: orm.Mapped[int] = orm.mapped_column(
+        ForeignKey("clip.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+
+    # Relations
+    clip: orm.Mapped[Clip] = orm.relationship(
+        init=False,
+        repr=False,
+        lazy="joined",
+    )
+    tags: orm.Mapped[list["ClipPredictionTag"]] = orm.relationship(
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+        init=False,
+        repr=False,
+        default_factory=list,
+        lazy="selectin",
+    )
+    sound_events: orm.Mapped[list[SoundEventPrediction]] = orm.relationship(
+        back_populates="clip_prediction",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+        init=False,
+        repr=False,
+        default_factory=list,
+        lazy="selectin",
+    )
+
+
+class ClipPredictionTag(Base):
+    """Clip Prediction Tag model.
+
+    Attributes
+    ----------
+    id
+        The database id of the clip prediction tag.
+    tag
+        The predicted tag.
+    score
+        The confidence score of the prediction.
+
+    Parameters
+    ----------
+    clip_prediction_id : int
+        The database id of the clip prediction.
+    tag_id : int
+        The database id of the tag.
+    score : float
+        The confidence score of the prediction.
+    """
+
+    __tablename__ = "clip_prediction_tag"
+    __table_args__ = (
+        UniqueConstraint(
+            "clip_prediction_id",
+            "tag_id",
+        ),
+    )
+
+    id: orm.Mapped[int] = orm.mapped_column(primary_key=True)
+    clip_prediction_id: orm.Mapped[int] = orm.mapped_column(
+        ForeignKey("clip_prediction.id", ondelete="CASCADE"),
+        primary_key=True,
+        nullable=False,
+        index=True,
+    )
+    tag_id: orm.Mapped[int] = orm.mapped_column(
+        ForeignKey("tag.id", ondelete="CASCADE"),
+        primary_key=True,
+        nullable=False,
+        index=True,
+    )
+    score: orm.Mapped[float] = orm.mapped_column(
+        nullable=False,
+        default=1.0,
+    )
+
+    # Relations
+    tag: orm.Mapped[Tag] = orm.relationship(
+        back_populates="clip_prediction_tags",
+        init=False,
+        repr=False,
+        lazy="joined",
+    )

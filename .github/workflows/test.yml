@@ -18,7 +18,7 @@ jobs:
       - name: Run tests
         run: |
           cd back
-          rye run pytest --cov=src/whombat --cov-report=xml -n auto
+          rye run pytest --cov=src/sonari --cov-report=xml -n auto
       - name: Upload coverage reports to Codecov
         uses: codecov/codecov-action@v4
         env:

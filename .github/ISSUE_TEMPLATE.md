@@ -1,4 +1,4 @@
-* Whombat version:
+* Sonari version:
 * Python version:
 * Operating System:
 

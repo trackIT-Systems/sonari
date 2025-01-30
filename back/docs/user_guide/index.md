@@ -1,8 +1,8 @@
 # User Guide
 
-## Welcome to Whombat!
+## Welcome to Sonari!
 
-We're happy to have you on board with Whombat, the open-source tool for audio
+We're happy to have you on board with Sonari, the open-source tool for audio
 annotation with ML in mind. Whether you're just getting started or looking to
 refine your annotation process, this guide is here to make your work smooth and
 enjoyable.
