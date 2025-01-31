@@ -42,7 +42,6 @@ build/.venv/bin/pyinstaller \
     --hidden-import "rasterio.vrt" \
     --hidden-import "rasterio._features" \
 	--add-data "src/sonari/migrations:sonari/migrations" \
-	--add-data "src/sonari/statics:sonari/statics" \
 	--add-data "alembic.ini:." \
 	--name sonari \
 	--onefile \
