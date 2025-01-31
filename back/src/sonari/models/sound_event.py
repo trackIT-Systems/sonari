@@ -44,7 +44,6 @@ from sonari.models.recording import Recording
 
 if TYPE_CHECKING:
     from sonari.models.sound_event_annotation import SoundEventAnnotation
-    from sonari.models.sound_event_prediction import SoundEventPrediction
 
 __all__ = [
     "SoundEvent",
@@ -121,11 +120,6 @@ class SoundEvent(Base):
         repr=False,
         passive_deletes=True,
         cascade="all, delete-orphan",
-    )
-    sound_event_prediction: orm.Mapped[Optional["SoundEventPrediction"]] = orm.relationship(
-        back_populates="sound_event",
-        init=False,
-        repr=False,
     )
 
 

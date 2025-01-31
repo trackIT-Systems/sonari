@@ -32,17 +32,6 @@ from sonari.schemas.clip_annotations import (
     ClipAnnotationTag,
     ClipAnnotationUpdate,
 )
-from sonari.schemas.clip_evaluations import (
-    ClipEvaluation,
-    ClipEvaluationCreate,
-    ClipEvaluationUpdate,
-)
-from sonari.schemas.clip_predictions import (
-    ClipPrediction,
-    ClipPredictionCreate,
-    ClipPredictionTag,
-    ClipPredictionUpdate,
-)
 from sonari.schemas.clips import Clip, ClipCreate, ClipUpdate
 from sonari.schemas.datasets import (
     Dataset,
@@ -53,23 +42,12 @@ from sonari.schemas.datasets import (
     DatasetUpdate,
     FileState,
 )
-from sonari.schemas.evaluation_sets import (
-    EvaluationSet,
-    EvaluationSetCreate,
-    EvaluationSetUpdate,
-)
-from sonari.schemas.evaluations import (
-    Evaluation,
-    EvaluationCreate,
-    EvaluationUpdate,
-)
 from sonari.schemas.features import (
     Feature,
     FeatureName,
     FeatureNameCreate,
     FeatureNameUpdate,
 )
-from sonari.schemas.model_runs import ModelRun, ModelRunCreate, ModelRunUpdate
 from sonari.schemas.notes import Note, NoteCreate, NoteUpdate
 from sonari.schemas.plugin import PluginInfo
 from sonari.schemas.recordings import (
@@ -84,17 +62,6 @@ from sonari.schemas.sound_event_annotations import (
     SoundEventAnnotationTag,
     SoundEventAnnotationUpdate,
 )
-from sonari.schemas.sound_event_evaluations import (
-    SoundEventEvaluation,
-    SoundEventEvaluationCreate,
-    SoundEventEvaluationUpdate,
-)
-from sonari.schemas.sound_event_predictions import (
-    SoundEventPrediction,
-    SoundEventPredictionCreate,
-    SoundEventPredictionTag,
-    SoundEventPredictionUpdate,
-)
 from sonari.schemas.sound_events import (
     SoundEvent,
     SoundEventCreate,
@@ -107,8 +74,7 @@ from sonari.schemas.spectrograms import (
     STFTParameters,
     Window,
 )
-from sonari.schemas.tags import PredictedTag, Tag, TagCreate, TagUpdate
-from sonari.schemas.user_runs import UserRun, UserRunCreate, UserRunUpdate
+from sonari.schemas.tags import Tag, TagCreate, TagUpdate
 from sonari.schemas.users import SimpleUser, User, UserCreate, UserUpdate
 
 __all__ = [
@@ -128,13 +94,6 @@ __all__ = [
     "ClipAnnotationTag",
     "ClipAnnotationUpdate",
     "ClipCreate",
-    "ClipEvaluation",
-    "ClipEvaluationCreate",
-    "ClipEvaluationUpdate",
-    "ClipPrediction",
-    "ClipPredictionCreate",
-    "ClipPredictionTag",
-    "ClipPredictionUpdate",
     "ClipUpdate",
     "Dataset",
     "DatasetCreate",
@@ -142,26 +101,16 @@ __all__ = [
     "DatasetRecording",
     "DatasetRecordingCreate",
     "DatasetUpdate",
-    "Evaluation",
-    "EvaluationCreate",
-    "EvaluationSet",
-    "EvaluationSetCreate",
-    "EvaluationSetUpdate",
-    "EvaluationUpdate",
     "Feature",
     "FeatureName",
     "FeatureNameCreate",
     "FeatureNameUpdate",
     "FileState",
-    "ModelRun",
-    "ModelRunCreate",
-    "ModelRunUpdate",
     "Note",
     "NoteCreate",
     "NoteUpdate",
     "Page",
     "PluginInfo",
-    "PredictedTag",
     "Recording",
     "RecordingCreate",
     "RecordingTag",
@@ -175,13 +124,6 @@ __all__ = [
     "SoundEventAnnotationTag",
     "SoundEventAnnotationUpdate",
     "SoundEventCreate",
-    "SoundEventEvaluation",
-    "SoundEventEvaluationCreate",
-    "SoundEventEvaluationUpdate",
-    "SoundEventPrediction",
-    "SoundEventPredictionCreate",
-    "SoundEventPredictionTag",
-    "SoundEventPredictionUpdate",
     "SoundEventUpdate",
     "SpectrogramParameters",
     "Tag",
@@ -189,9 +131,6 @@ __all__ = [
     "TagUpdate",
     "User",
     "UserCreate",
-    "UserRun",
-    "UserRunCreate",
-    "UserRunUpdate",
     "UserUpdate",
     "Window",
 ]

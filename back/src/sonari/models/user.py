@@ -83,7 +83,6 @@ class User(Base):
         from sonari.models.sound_event_annotation import (
             SoundEventAnnotationTag,
         )
-        from sonari.models.user_run import UserRun
 
     notes: orm.Mapped[list["Note"]] = orm.relationship(
         back_populates="created_by",
@@ -106,12 +105,6 @@ class User(Base):
         init=False,
     )
     recording_owner: orm.Mapped[list["RecordingOwner"]] = orm.relationship(
-        back_populates="user",
-        default_factory=list,
-        repr=False,
-        init=False,
-    )
-    user_runs: orm.Mapped[list["UserRun"]] = orm.relationship(
         back_populates="user",
         default_factory=list,
         repr=False,

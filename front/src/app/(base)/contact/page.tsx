@@ -22,9 +22,9 @@ export default function Page() {
             <Link
               mode="text"
               padding="p-0"
-              href="mailto:santiago.balvanera.20@ucl.ac.uk"
+              href="mailto:sterz@trackit.systems"
             >
-              santiago.balvanera.20@ucl.ac.uk
+              sterz@trackit.systems
             </Link>
           </div>
           <div className="flex flex-col items-center gap-2">
@@ -35,9 +35,9 @@ export default function Page() {
             <Link
               mode="text"
               padding="p-0"
-              href="https://github.com/mbsantiago/sonari"
+              href="https://github.com/trackIT-Systems/sonari"
             >
-              https://github.com/mbsantiago/sonari
+              https://github.com/trackIT-Systems/sonari
             </Link>
           </div>
           <div className="flex flex-col items-center gap-2">

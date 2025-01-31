@@ -8,7 +8,6 @@ __all__ = [
     "Tag",
     "TagCreate",
     "TagUpdate",
-    "PredictedTag",
 ]
 
 
@@ -44,12 +43,3 @@ class TagUpdate(BaseModel):
     value: str | None = Field(default=None, min_length=1, max_length=255)
     """Value of the tag."""
 
-
-class PredictedTag(BaseSchema):
-    """Schema for PredictedTag objects returned to the user."""
-
-    tag: Tag
-    """The tag that was predicted."""
-
-    score: float
-    """The confidence score for the assignment of the tag."""

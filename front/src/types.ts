@@ -8,13 +8,9 @@ import {
   AnnotationTaskSchema,
   BoundingBoxSchema,
   ClipAnnotationSchema,
-  ClipEvaluationSchema,
-  ClipPredictionSchema,
   ClipSchema,
   DatasetSchema,
   DateFilterSchema,
-  EvaluationSchema,
-  EvaluationSetSchema,
   FeatureSchema,
   FileStateSchema,
   FloatEqFilterSchema,
@@ -23,7 +19,6 @@ import {
   IntegerFilterSchema,
   IntervalSchema,
   LineStringSchema,
-  ModelRunSchema,
   MultiLineStringSchema,
   MultiPointSchema,
   MultiPolygonSchema,
@@ -31,13 +26,9 @@ import {
   NumberFilterSchema,
   PointSchema,
   PolygonSchema,
-  PredictedTagFilterSchema,
-  PredictionTagSchema,
   RecordingSchema,
   RecordingStateSchema,
   SoundEventAnnotationSchema,
-  SoundEventEvaluationSchema,
-  SoundEventPredictionSchema,
   SoundEventSchema,
   SpectrogramParametersSchema,
   SpectrogramWindowSchema,
@@ -46,7 +37,6 @@ import {
   TimeFilterSchema,
   TimeIntervalSchema,
   TimeStampSchema,
-  UserRunSchema,
   UserSchema,
 } from "@/schemas";
 
@@ -106,24 +96,6 @@ export type AnnotationTask = z.infer<typeof AnnotationTaskSchema>;
 
 export type AnnotationProject = z.infer<typeof AnnotationProjectSchema>;
 
-export type PredictionTag = z.infer<typeof PredictionTagSchema>;
-
-export type SoundEventPrediction = z.infer<typeof SoundEventPredictionSchema>;
-
-export type ClipPrediction = z.infer<typeof ClipPredictionSchema>;
-
-export type ModelRun = z.infer<typeof ModelRunSchema>;
-
-export type UserRun = z.infer<typeof UserRunSchema>;
-
-export type SoundEventEvaluation = z.infer<typeof SoundEventEvaluationSchema>;
-
-export type ClipEvaluation = z.infer<typeof ClipEvaluationSchema>;
-
-export type Evaluation = z.infer<typeof EvaluationSchema>;
-
-export type EvaluationSet = z.infer<typeof EvaluationSetSchema>;
-
 export type Position = {
   time: number;
   freq: number;
@@ -164,8 +136,6 @@ export type TimeFilter = z.input<typeof TimeFilterSchema>;
 export type NumberFilter = z.input<typeof NumberFilterSchema>;
 
 export type StringFilter = z.input<typeof StringFilterSchema>;
-
-export type PredictedTagFilter = z.input<typeof PredictedTagFilterSchema>;
 
 export type IntegerFilter = z.input<typeof IntegerFilterSchema>;
 

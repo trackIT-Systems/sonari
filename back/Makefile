@@ -1,5 +1,5 @@
 SHELL := /bin/bash
-.PHONY: clean clean-build clean-pyc clean-test coverage dist docs help install lint lint/flake8 lint/black
+.PHONY: clean clean-build clean-pyc dist help install lint lint/flake8 lint/black
 
 .DEFAULT_GOAL := help
 
@@ -31,7 +31,7 @@ BROWSER := python -c "$$BROWSER_PYSCRIPT"
 help:  ## show this help message and exit
 	@python -c "$$PRINT_HELP_PYSCRIPT" < $(MAKEFILE_LIST)
 
-clean: clean-build clean-pyc clean-test clean-docs  ## remove all build, test, coverage and Python artifacts
+clean: clean-build clean-pyc ## remove all build and Python artifacts
 
 clean-build:
 	rm -fr build/
@@ -46,16 +46,8 @@ clean-pyc:
 	find . -name '*~' -exec rm -f {} +
 	find . -name '__pycache__' -exec rm -fr {} +
 
-clean-test:
-	rm -f .coverage
-	rm -fr htmlcov/
-	rm -fr .pytest_cache
-
-clean-docs:
-	rm -fr site/
-
 lint/ruff:
-	$(ENV_PREFIX)ruff check src tests
+	$(ENV_PREFIX)ruff check src
 
 lint/pyright:
 	$(ENV_PREFIX)pyright src
@@ -63,34 +55,11 @@ lint/pyright:
 lint: lint/ruff lint/pyright
 
 format:  ## format code
-	$(ENV_PREFIX)ruff format src tests
-
-test:  ## Run all tests
-	$(ENV_PREFIX)pytest -n auto
+	$(ENV_PREFIX)ruff format src
 
 install: clean  ## install the package to the active Python's site-packages
 	python -m venv .venv
 	$(ENV_PREFIX)pip install .
-
-coverage:  ## check code coverage
-	$(ENV_PREFIX)coverage run --source sonari -m pytest
-	$(ENV_PREFIX)coverage report -m
-	$(ENV_PREFIX)coverage html
-	$(BROWSER) htmlcov/index.html
-
-build-docs:  ## build documentation
-	$(ENV_PREFIX)mkdocs build
-
-build-guide:  ## build user guide
-	$(ENV_PREFIX)mkdocs build -f mkdocs-guide.yml -d src/sonari/user_guide
-
-serve-docs:  ## serve documentation
-	URL="http://localhost:8000/sonari/"; xdg-open $$URL || sensible-browser $$URL || x-www-browser $$URL || gnome-open $$URL
-	$(ENV_PREFIX)mkdocs serve
-
-serve-guide:  ## serve user guide
-	URL="http://localhost:8000/sonari/"; xdg-open $$URL || sensible-browser $$URL || x-www-browser $$URL || gnome-open $$URL
-	$(ENV_PREFIX)mkdocs serve -f mkdocs-guide.yml
 
 serve-dev:  ## serve development backend
 	SONARI_DEV=true $(ENV_PREFIX)python -m sonari

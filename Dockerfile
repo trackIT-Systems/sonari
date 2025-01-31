@@ -1,18 +1,3 @@
-# == Build User Guide
-FROM python:3.11 as guide_builder
-
-RUN mkdir /guide
-
-WORKDIR /back/
-
-COPY back/docs /back/docs
-COPY back/guide_requirements.txt /back/guide_requirements.txt
-COPY back/mkdocs-guide.yml /back/mkdocs-guide.yml
-
-RUN pip install -r guide_requirements.txt
-
-RUN mkdocs build -f mkdocs-guide.yml -d /guide
-
 # == Build Front End
 FROM node:latest as web_builder
 
@@ -47,9 +32,6 @@ RUN apt-get update && apt-get install -y \
 WORKDIR /code
 
 # Copy the current directory contents into the container at /code
-
-# Copy the guide
-COPY --from=guide_builder /guide/ /code/src/sonari/user_guide/
 
 # Copy the statics
 COPY --from=web_builder /front/out/ /code/src/sonari/statics/

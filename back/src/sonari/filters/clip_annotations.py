@@ -12,7 +12,6 @@ __all__ = [
     "ClipFilter",
     "TagFilter",
     "AnnotationProjectFilter",
-    "EvaluationSetFilter",
     "ClipAnnotationFilter",
 ]
 
@@ -78,33 +77,9 @@ class AnnotationProjectFilter(base.Filter):
         return query.filter(models.ClipAnnotation.id.in_(subquery))
 
 
-class EvaluationSetFilter(base.Filter):
-    """Filter clip annotations by evaluation set."""
-
-    eq: UUID | None = None
-
-    def filter(self, query: Select) -> Select:
-        """Filter clip annotations by evaluation set."""
-        if self.eq is None:
-            return query
-
-        return (
-            query.join(
-                models.EvaluationSetAnnotation,
-                models.EvaluationSetAnnotation.clip_annotation_id == models.ClipAnnotation.id,
-            )
-            .join(
-                models.EvaluationSet,
-                models.EvaluationSet.id == models.EvaluationSetAnnotation.evaluation_set_id,
-            )
-            .filter(models.EvaluationSet.uuid == self.eq)
-        )
-
-
 ClipAnnotationFilter = base.combine(
     uuid=UUIDFilter,
     clip=ClipFilter,
     tag=TagFilter,
     annotation_project=AnnotationProjectFilter,
-    evaluation_set=EvaluationSetFilter,
 )

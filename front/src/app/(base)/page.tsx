@@ -62,34 +62,6 @@ export default function Page() {
               Start Annotating
             </Link>
           </Card>
-          {/* <Card className="p-6 justify-between">
-            <h2 className="text-2xl font-bold mb-4">Evaluate your Models</h2>
-            <p className="text-sm mb-4">
-              Create evaluation sets, import model predictions, and test your
-              aural skills on the evaluation sets.
-            </p>
-            <Link
-              mode="text"
-              href="/evaluation/"
-              className="text-sm underline font-bold"
-            >
-              Explore Evaluations
-            </Link>
-          </Card>
-          <Card className="p-6 justify-between">
-            <h2 className="text-2xl font-bold mb-4">Explore the Data</h2>
-            <p className="text-sm mb-4">
-              Use our tools to explore annotated audio content across the entire
-              database.
-            </p>
-            <Link
-              mode="text"
-              href="/exploration/"
-              className="text-sm underline font-bold"
-            >
-              Start Exploring
-            </Link>
-          </Card> */}
         </div>
       </div>
     </div>

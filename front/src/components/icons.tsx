@@ -266,7 +266,6 @@ export {
   ChevronLeftIcon as FirstIcon,
   ChevronRightIcon as LastIcon,
   ChevronUpDownIcon as ExpandIcon,
-  ClipboardDocumentCheckIcon as EvaluationIcon,
   ClipboardDocumentListIcon as TasksIcon,
   ClockIcon as TimeIcon,
   Cog8ToothIcon as SettingsIcon,

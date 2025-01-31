@@ -7,30 +7,18 @@ from sonari.routes.annotation_tasks import get_annotation_tasks_router
 from sonari.routes.audio import audio_router
 from sonari.routes.auth import get_auth_router
 from sonari.routes.clip_annotations import get_clip_annotations_router
-from sonari.routes.clip_evaluations import clip_evaluations_router
-from sonari.routes.clip_predictions import clip_predictions_router
 from sonari.routes.clips import clips_router
 from sonari.routes.datasets import dataset_router
-from sonari.routes.evaluation_sets import evaluation_sets_router
-from sonari.routes.evaluations import evaluations_router
 from sonari.routes.features import features_router
-from sonari.routes.model_runs import model_runs_router
 from sonari.routes.notes import notes_router
 from sonari.routes.plugins import plugin_router
 from sonari.routes.recordings import get_recording_router
 from sonari.routes.sound_event_annotations import (
     get_sound_event_annotations_router,
 )
-from sonari.routes.sound_event_evaluations import (
-    sound_event_evaluations_router,
-)
-from sonari.routes.sound_event_predictions import (
-    sound_event_predictions_router,
-)
 from sonari.routes.sound_events import sound_events_router
 from sonari.routes.spectrograms import spectrograms_router
 from sonari.routes.tags import tags_router
-from sonari.routes.user_runs import get_user_runs_router
 from sonari.routes.users import get_users_router
 from sonari.system.settings import Settings
 
@@ -134,52 +122,6 @@ def get_main_router(settings: Settings):
         prefix="/annotation_projects",
         tags=["Annotation Projects"],
     )
-
-    # Predictions
-    main_router.include_router(
-        sound_event_predictions_router,
-        prefix="/sound_event_predictions",
-        tags=["Sound Event Predictions"],
-    )
-    main_router.include_router(
-        clip_predictions_router,
-        prefix="/clip_predictions",
-        tags=["Clip Predictions"],
-    )
-    main_router.include_router(
-        model_runs_router,
-        prefix="/model_runs",
-        tags=["Model Runs"],
-    )
-    user_runs_router = get_user_runs_router(settings)
-    main_router.include_router(
-        user_runs_router,
-        prefix="/user_runs",
-        tags=["User Runs"],
-    )
-
-    # Evaluation
-    main_router.include_router(
-        sound_event_evaluations_router,
-        prefix="/sound_event_evaluations",
-        tags=["Sound Event Evaluations"],
-    )
-    main_router.include_router(
-        clip_evaluations_router,
-        prefix="/clip_evaluations",
-        tags=["Clip Evaluations"],
-    )
-    main_router.include_router(
-        evaluation_sets_router,
-        prefix="/evaluation_sets",
-        tags=["Evaluation Sets"],
-    )
-    main_router.include_router(
-        evaluations_router,
-        prefix="/evaluations",
-        tags=["Evaluations"],
-    )
-
     # Extensions
     main_router.include_router(
         plugin_router,

@@ -7,7 +7,6 @@ import {
   AnnotationProjectSchema,
   ClipAnnotationSchema,
   ClipSchema,
-  EvaluationSetSchema,
   TagSchema,
 } from "@/schemas";
 
@@ -21,7 +20,6 @@ export const ClipAnnotationFilterSchema = z.object({
   clip: ClipSchema.optional(),
   tag: TagSchema.optional(),
   annotation_project: AnnotationProjectSchema.optional(),
-  evaluation_set: EvaluationSetSchema.optional(),
 });
 
 export type ClipAnnotationFilter = z.input<typeof ClipAnnotationFilterSchema>;
@@ -74,7 +72,6 @@ export function registerClipAnnotationsAPI(
         tag__key: params.tag?.key,
         tag__value: params.tag?.value,
         annotation_project__eq: params.annotation_project?.uuid,
-        evaluation_set__eq: params.evaluation_set?.uuid,
       },
     });
     return ClipAnnotationPageSchema.parse(response.data);

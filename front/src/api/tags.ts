@@ -5,12 +5,9 @@ import { GetManySchema, Page } from "@/api/common";
 import {
   AnnotationProjectSchema,
   ClipAnnotationSchema,
-  ClipPredictionSchema,
   DatasetSchema,
-  EvaluationSchema,
   RecordingSchema,
   SoundEventAnnotationSchema,
-  SoundEventPredictionSchema,
   StringFilterSchema,
   TagSchema,
 } from "@/schemas";
@@ -47,9 +44,6 @@ export const TagFilterSchema = z.object({
   recording: RecordingSchema.optional(),
   sound_event_annotation: SoundEventAnnotationSchema.optional(),
   clip_annotation: ClipAnnotationSchema.optional(),
-  sound_event_prediction: SoundEventPredictionSchema.optional(),
-  clip_prediction: ClipPredictionSchema.optional(),
-  evaluation_set: EvaluationSchema.optional(),
   dataset: DatasetSchema.optional(),
 });
 
@@ -103,9 +97,6 @@ export function registerTagAPI(
         recording__eq: params.recording?.uuid,
         sound_event_annotation__eq: params.sound_event_annotation?.uuid,
         clip_annotation__eq: params.clip_annotation?.uuid,
-        sound_event_prediction__eq: params.sound_event_prediction?.uuid,
-        clip_prediction__eq: params.clip_prediction?.uuid,
-        evaluation_set__eq: params.evaluation_set?.uuid,
         dataset__eq: params.dataset?.uuid,
       },
     });

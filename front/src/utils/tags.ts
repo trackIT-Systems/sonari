@@ -9,7 +9,6 @@ import type {
   Box,
   Dimensions,
   SoundEventAnnotation,
-  SoundEventPrediction,
   SpectrogramWindow,
   Tag,
   TimeInterval,
@@ -30,7 +29,7 @@ export type Position = {
 };
 
 export type TagGroup = {
-  annotation: SoundEventAnnotation | SoundEventPrediction;
+  annotation: SoundEventAnnotation;
   tags: TagElement[];
   position: Position;
   active?: boolean;
@@ -43,7 +42,7 @@ function getTimeIntervalLabelPosition({
   window,
   dimensions,
 }: {
-  annotation: SoundEventAnnotation | SoundEventPrediction;
+  annotation: SoundEventAnnotation;
   window: SpectrogramWindow;
   dimensions: Dimensions;
 }): Position {
@@ -106,7 +105,7 @@ function getTimeStampLabelPosition({
   window,
   dimensions,
 }: {
-  annotation: SoundEventAnnotation | SoundEventPrediction;
+  annotation: SoundEventAnnotation;
   window: SpectrogramWindow;
   dimensions: Dimensions;
 }): Position {
@@ -145,7 +144,7 @@ function getTimeStampLabelPosition({
 }
 
 export function getLabelPosition(
-  annotation: SoundEventAnnotation | SoundEventPrediction,
+  annotation: SoundEventAnnotation,
   window: SpectrogramWindow,
   dimensions: Dimensions,
 ): Position {

@@ -4,8 +4,6 @@ from uuid import UUID
 
 from soundevent.io.aoef import (
     AnnotationSetObject,
-    EvaluationObject,
-    PredictionSetObject,
 )
 from soundevent.io.aoef.recording import RecordingObject
 from sqlalchemy import select, tuple_
@@ -21,7 +19,7 @@ logger = logging.getLogger(__name__)
 
 async def get_recordings(
     session: AsyncSession,
-    obj: AnnotationSetObject | EvaluationObject | PredictionSetObject,
+    obj: AnnotationSetObject,
     tags: dict[int, int],
     users: dict[UUID, UUID],
     feature_names: dict[str, int],

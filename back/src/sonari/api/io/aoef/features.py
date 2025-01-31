@@ -3,8 +3,6 @@ import datetime
 from soundevent.geometry import GeometricFeature
 from soundevent.io.aoef import (
     AnnotationSetObject,
-    EvaluationObject,
-    PredictionSetObject,
     RecordingSetObject,
 )
 from sqlalchemy import insert, select
@@ -15,7 +13,7 @@ from sonari import models
 
 async def get_feature_names(
     session: AsyncSession,
-    obj: (AnnotationSetObject | EvaluationObject | PredictionSetObject | RecordingSetObject),
+    obj: (AnnotationSetObject | RecordingSetObject),
 ) -> dict[str, int]:
     names: set[str] = set(feat.value for feat in GeometricFeature)
 
@@ -27,7 +25,7 @@ async def get_feature_names(
         for name in recording.features:
             names.add(name)
 
-    if isinstance(obj, (EvaluationObject, PredictionSetObject, AnnotationSetObject)):
+    if isinstance(obj, AnnotationSetObject):
         clips = obj.clips or []
         for clip in clips:
             if not clip.features:

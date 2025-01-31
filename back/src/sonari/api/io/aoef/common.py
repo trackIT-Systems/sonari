@@ -2,8 +2,6 @@ from uuid import UUID
 
 from soundevent.io.aoef import (
     AnnotationSetObject,
-    EvaluationObject,
-    PredictionSetObject,
     RecordingSetObject,
 )
 from sqlalchemy import select
@@ -11,7 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from sonari import models
 
-AOEFObject = EvaluationObject | AnnotationSetObject | PredictionSetObject | RecordingSetObject
+AOEFObject = AnnotationSetObject | RecordingSetObject
 
 
 async def get_mapping(

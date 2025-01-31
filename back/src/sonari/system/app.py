@@ -54,25 +54,9 @@ def create_app(settings: Settings) -> FastAPI:
         add_plugin_routes(app, name, plugin)
         add_plugin_pages(app, name, plugin)
 
-    # Make sure the user guide directory exists.
-    # Otherwise app initialization will fail.
-    user_guide_dir = ROOT_DIR / "user_guide"
-    if not user_guide_dir.exists():
-        user_guide_dir.mkdir(parents=True, exist_ok=True)
-
     statics_dir = ROOT_DIR / "statics"
     if not statics_dir.exists():
         statics_dir.mkdir(parents=True, exist_ok=True)
-
-    app.mount(
-        "/guide/",
-        StaticFiles(
-            packages=[("sonari", "user_guide")],
-            html=True,
-            check_dir=False,
-        ),
-        name="guide",
-    )
 
     # NOTE: It is important that the static files are mounted after the
     # plugin routes, otherwise the plugin routes will not be found.

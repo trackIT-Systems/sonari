@@ -1,7 +1,7 @@
 import datetime
 from uuid import UUID, uuid4
 
-from soundevent.io.aoef import AnnotationSetObject, EvaluationObject
+from soundevent.io.aoef import AnnotationSetObject
 from soundevent.io.aoef.clip_annotations import ClipAnnotationsObject
 from soundevent.io.aoef.sound_event_annotation import (
     SoundEventAnnotationObject,
@@ -16,7 +16,7 @@ from sonari.api.io.aoef.notes import import_notes
 
 async def get_sound_event_annotations(
     session: AsyncSession,
-    obj: AnnotationSetObject | EvaluationObject,
+    obj: AnnotationSetObject,
     sound_events: dict[UUID, int],
     clip_annotations: dict[UUID, int],
     users: dict[UUID, UUID],
@@ -50,10 +50,6 @@ async def get_sound_event_annotations(
 
         for sound_event in clip_annotation.sound_events:
             uuids.add(sound_event)
-
-    if isinstance(obj, EvaluationObject):
-        for match in obj.matches or []:
-            uuids.add(match.target)
 
     if not uuids:
         return {}

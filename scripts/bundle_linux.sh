@@ -43,7 +43,6 @@ build/.venv/bin/pyinstaller \
     --hidden-import "rasterio._features" \
 	--add-data "src/sonari/migrations:sonari/migrations" \
 	--add-data "src/sonari/statics:sonari/statics" \
-	--add-data "src/sonari/user_guide:sonari/user_guide" \
 	--add-data "alembic.ini:." \
     --recursive-copy-metadata "numpy" \
 	--name sonari \

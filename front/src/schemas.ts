@@ -221,79 +221,6 @@ export const AnnotationProjectSchema = z.object({
   created_on: z.coerce.date(),
 });
 
-export const PredictionTagSchema = z.object({
-  tag: TagSchema,
-  score: z.number(),
-  created_on: z.coerce.date(),
-});
-
-export const SoundEventPredictionSchema = z.object({
-  uuid: z.string().uuid(),
-  sound_event: SoundEventSchema,
-  score: z.number(),
-  tags: z.array(PredictionTagSchema).nullish(),
-  created_on: z.coerce.date(),
-});
-
-export const ClipPredictionSchema = z.object({
-  uuid: z.string().uuid(),
-  clip: ClipSchema,
-  tags: z.array(PredictionTagSchema).nullish(),
-  sound_events: z.array(SoundEventPredictionSchema).nullish(),
-  created_on: z.coerce.date(),
-});
-
-export const ModelRunSchema = z.object({
-  uuid: z.string().uuid(),
-  name: z.string(),
-  version: z.string(),
-  description: z.string().nullish(),
-  created_on: z.coerce.date(),
-});
-
-export const UserRunSchema = z.object({
-  uuid: z.string().uuid(),
-  user: UserSchema,
-  created_on: z.coerce.date(),
-});
-
-export const SoundEventEvaluationSchema = z.object({
-  uuid: z.string().uuid(),
-  source: SoundEventPredictionSchema.nullish(),
-  target: SoundEventAnnotationSchema.nullish(),
-  affinity: z.number(),
-  score: z.number(),
-  metrics: z.array(FeatureSchema).nullish(),
-  created_on: z.coerce.date(),
-});
-
-export const ClipEvaluationSchema = z.object({
-  uuid: z.string().uuid(),
-  clip_annotation: ClipAnnotationSchema,
-  clip_prediction: ClipPredictionSchema,
-  sound_event_evaluations: z.array(SoundEventEvaluationSchema).nullish(),
-  score: z.number(),
-  metrics: z.array(FeatureSchema).nullish(),
-  created_on: z.coerce.date(),
-});
-
-export const EvaluationSchema = z.object({
-  uuid: z.string().uuid(),
-  task: z.string(),
-  score: z.number(),
-  metrics: z.array(FeatureSchema).nullish(),
-  created_on: z.coerce.date(),
-});
-
-export const EvaluationSetSchema = z.object({
-  uuid: z.string().uuid(),
-  name: z.string(),
-  description: z.string().nullish(),
-  task: z.string(),
-  tags: z.array(TagSchema).nullish(),
-  created_on: z.coerce.date(),
-});
-
 export const IntervalSchema = z.object({
   min: z.number(),
   max: z.number(),
@@ -383,12 +310,6 @@ export const IntegerFilterSchema = z.object({
 
 export const FloatEqFilterSchema = z.object({
   eq: z.number(),
-});
-
-export const PredictedTagFilterSchema = z.object({
-  tag: TagSchema,
-  gt: z.number().optional(),
-  lt: z.number().optional(),
 });
 
 export const StringFilterSchema = z.object({

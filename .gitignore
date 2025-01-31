@@ -36,21 +36,6 @@ MANIFEST
 pip-log.txt
 pip-delete-this-directory.txt
 
-# Unit test / coverage reports
-htmlcov/
-.tox/
-.nox/
-.coverage
-.coverage.*
-.cache
-nosetests.xml
-coverage.xml
-*.cover
-*.py,cover
-.hypothesis/
-.pytest_cache/
-cover/
-
 # Translations
 *.mo
 *.pot
@@ -67,9 +52,6 @@ instance/
 
 # Scrapy stuff:
 .scrapy
-
-# Sphinx documentation
-docs/_build/
 
 # PyBuilder
 .pybuilder/
@@ -135,9 +117,6 @@ venv.bak/
 # Rope project settings
 .ropeproject
 
-# mkdocs documentation
-/site
-
 # mypy
 .mypy_cache/
 .dmypy.json
@@ -166,11 +145,9 @@ front/src/old_hooks
 old
 
 site
-back/user_guide
 
 sonari.db
 .ruff_cache/
 .pdm-python
 back/src/sonari/statics/*
-back/src/sonari/user_guide/*
 back/.build_venv

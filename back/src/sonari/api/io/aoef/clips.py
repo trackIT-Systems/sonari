@@ -3,8 +3,6 @@ from uuid import UUID
 from soundevent.io.aoef import (
     AnnotationProjectObject,
     AnnotationSetObject,
-    EvaluationObject,
-    PredictionSetObject,
 )
 from soundevent.io.aoef.clip import ClipObject
 from sqlalchemy import tuple_
@@ -17,7 +15,7 @@ from sonari.api.io.aoef.common import get_mapping
 
 async def get_clips(
     session: AsyncSession,
-    obj: (AnnotationSetObject | EvaluationObject | PredictionSetObject | AnnotationProjectObject),
+    obj: (AnnotationSetObject | AnnotationProjectObject),
     recordings: dict[UUID, int],
     feature_names: dict[str, int],
     should_import: bool = True,
@@ -32,17 +30,13 @@ async def get_clips(
 
     clip_uuids = set()
 
-    if isinstance(obj, (AnnotationSetObject, EvaluationObject)):
+    if isinstance(obj, AnnotationSetObject):
         for clip_annotation in obj.clip_annotations or []:
             clip_uuids.add(clip_annotation.clip)
 
     if isinstance(obj, AnnotationProjectObject):
         for task in obj.tasks or []:
             clip_uuids.add(task.clip)
-
-    if isinstance(obj, (EvaluationObject, PredictionSetObject)):
-        for match in obj.clip_predictions or []:
-            clip_uuids.add(match.clip)
 
     if not clip_uuids:
         return {}

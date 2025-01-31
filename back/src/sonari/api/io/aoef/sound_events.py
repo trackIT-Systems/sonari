@@ -2,11 +2,7 @@ import datetime
 from uuid import UUID
 
 from soundevent.geometry import compute_geometric_features
-from soundevent.io.aoef import (
-    AnnotationSetObject,
-    EvaluationObject,
-    PredictionSetObject,
-)
+from soundevent.io.aoef import AnnotationSetObject
 from soundevent.io.aoef.sound_event import SoundEventObject
 from sqlalchemy import insert, select, tuple_
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -18,7 +14,7 @@ from sonari.api.io.aoef.common import get_mapping
 
 async def get_sound_events(
     session: AsyncSession,
-    obj: AnnotationSetObject | EvaluationObject | PredictionSetObject,
+    obj: AnnotationSetObject,
     recordings: dict[UUID, int],
     feature_names: dict[str, int],
 ) -> dict[UUID, int]:
@@ -33,13 +29,9 @@ async def get_sound_events(
 
     sound_event_uuids = set()
 
-    if isinstance(obj, (AnnotationSetObject, EvaluationObject)):
+    if isinstance(obj, AnnotationSetObject):
         for annotation in obj.sound_event_annotations or []:
             sound_event_uuids.add(annotation.sound_event)
-
-    if isinstance(obj, (EvaluationObject, PredictionSetObject)):
-        for prediction in obj.sound_event_predictions or []:
-            sound_event_uuids.add(prediction.sound_event)
 
     if not sound_event_uuids:
         return {}

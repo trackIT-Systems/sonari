@@ -22,24 +22,8 @@ from sonari.models.clip_annotation import (
     ClipAnnotationNote,
     ClipAnnotationTag,
 )
-from sonari.models.clip_evaluation import ClipEvaluation, ClipEvaluationMetric
-from sonari.models.clip_prediction import ClipPrediction, ClipPredictionTag
-from sonari.models.dataset import Dataset, DatasetRecording
-from sonari.models.evaluation import Evaluation, EvaluationMetric
-from sonari.models.evaluation_set import (
-    EvaluationSet,
-    EvaluationSetAnnotation,
-    EvaluationSetModelRun,
-    EvaluationSetTag,
-    EvaluationSetUserRun,
-)
 from sonari.models.event_handlers import setup_model_events
 from sonari.models.feature import FeatureName
-from sonari.models.model_run import (
-    ModelRun,
-    ModelRunEvaluation,
-    ModelRunPrediction,
-)
 from sonari.models.note import Note
 from sonari.models.recording import (
     Recording,
@@ -54,22 +38,9 @@ from sonari.models.sound_event_annotation import (
     SoundEventAnnotationNote,
     SoundEventAnnotationTag,
 )
-from sonari.models.sound_event_evaluation import (
-    SoundEventEvaluation,
-    SoundEventEvaluationMetric,
-)
-from sonari.models.sound_event_prediction import (
-    SoundEventPrediction,
-    SoundEventPredictionTag,
-)
 from sonari.models.tag import Tag
 from sonari.models.token import AccessToken
 from sonari.models.user import User
-from sonari.models.user_run import (
-    UserRun,
-    UserRunEvaluation,
-    UserRunPrediction,
-)
 
 setup_model_events()
 
@@ -84,24 +55,10 @@ __all__ = [
     "ClipAnnotation",
     "ClipAnnotationNote",
     "ClipAnnotationTag",
-    "ClipEvaluation",
-    "ClipEvaluationMetric",
     "ClipFeature",
-    "ClipPrediction",
-    "ClipPredictionTag",
     "Dataset",
     "DatasetRecording",
-    "Evaluation",
-    "EvaluationMetric",
-    "EvaluationSet",
-    "EvaluationSetAnnotation",
-    "EvaluationSetModelRun",
-    "EvaluationSetTag",
-    "EvaluationSetUserRun",
     "FeatureName",
-    "ModelRun",
-    "ModelRunEvaluation",
-    "ModelRunPrediction",
     "Note",
     "Recording",
     "RecordingFeature",
@@ -112,14 +69,7 @@ __all__ = [
     "SoundEventAnnotation",
     "SoundEventAnnotationNote",
     "SoundEventAnnotationTag",
-    "SoundEventEvaluation",
-    "SoundEventEvaluationMetric",
     "SoundEventFeature",
-    "SoundEventPrediction",
-    "SoundEventPredictionTag",
     "Tag",
     "User",
-    "UserRun",
-    "UserRunEvaluation",
-    "UserRunPrediction",
 ]

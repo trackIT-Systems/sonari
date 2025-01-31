@@ -117,76 +117,6 @@ class ClipAnnotationFilter(base.Filter):
             .where(models.ClipAnnotation.uuid == self.eq)
         )
 
-
-class SoundEventPredictionFilter(base.Filter):
-    """Get tags for a sound event prediction."""
-
-    eq: UUID | None = None
-
-    def filter(self, query: Select) -> Select:
-        """Filter tags by sound event prediction."""
-        if self.eq is None:
-            return query
-
-        return (
-            query.join(
-                models.SoundEventPredictionTag,
-                models.SoundEventPredictionTag.tag_id == models.Tag.id,
-            )
-            .join(
-                models.SoundEventPrediction,
-                models.SoundEventPrediction.id == models.SoundEventPredictionTag.sound_event_prediction_id,
-            )
-            .where(models.SoundEventPrediction.uuid == self.eq)
-        )
-
-
-class ClipPredictionFilter(base.Filter):
-    """Get tags for a clip prediction."""
-
-    eq: UUID | None = None
-
-    def filter(self, query: Select) -> Select:
-        """Filter tags by clip prediction."""
-        if self.eq is None:
-            return query
-
-        return (
-            query.join(
-                models.ClipPredictionTag,
-                models.ClipPredictionTag.tag_id == models.Tag.id,
-            )
-            .join(
-                models.ClipPrediction,
-                models.ClipPrediction.id == models.ClipPredictionTag.clip_prediction_id,
-            )
-            .where(models.ClipPrediction.uuid == self.eq)
-        )
-
-
-class EvaluationSetFilter(base.Filter):
-    """Get tags for an evaluation set."""
-
-    eq: UUID | None = None
-
-    def filter(self, query: Select) -> Select:
-        """Filter tags by evaluation set."""
-        if self.eq is None:
-            return query
-
-        return (
-            query.join(
-                models.EvaluationSetTag,
-                models.EvaluationSetTag.tag_id == models.Tag.id,
-            )
-            .join(
-                models.EvaluationSet,
-                models.EvaluationSet.id == models.EvaluationSetTag.evaluation_set_id,
-            )
-            .where(models.EvaluationSet.uuid == self.eq)
-        )
-
-
 class DatasetFilter(base.Filter):
     """Get tags of recordings in a dataset."""
 
@@ -226,8 +156,5 @@ TagFilter = base.combine(
     recording=RecordingFilter,
     sound_event_annotation=SoundEventAnnotationFilter,
     clip_annotation=ClipAnnotationFilter,
-    sound_event_prediction=SoundEventPredictionFilter,
-    clip_prediction=ClipPredictionFilter,
-    evaluation_set=EvaluationSetFilter,
     dataset=DatasetFilter,
 )

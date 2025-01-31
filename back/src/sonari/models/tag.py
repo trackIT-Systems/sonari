@@ -90,16 +90,11 @@ class Tag(Base):
             ClipAnnotation,
             ClipAnnotationTag,
         )
-        from sonari.models.clip_prediction import ClipPredictionTag
-        from sonari.models.evaluation_set import EvaluationSetTag
         from sonari.models.recording import Recording, RecordingTag
         from sonari.models.sound_event import SoundEvent
         from sonari.models.sound_event_annotation import (
             SoundEventAnnotation,
             SoundEventAnnotationTag,
-        )
-        from sonari.models.sound_event_prediction import (
-            SoundEventPredictionTag,
         )
 
     recordings: orm.Mapped[list["Recording"]] = orm.relationship(
@@ -149,14 +144,6 @@ class Tag(Base):
         repr=False,
         default_factory=list,
     )
-    evaluation_set_tags: orm.Mapped[list["EvaluationSetTag"]] = orm.relationship(
-        back_populates="tag",
-        init=False,
-        repr=False,
-        default_factory=list,
-        cascade="all, delete-orphan",
-        passive_deletes=True,
-    )
     annotation_projects: orm.Mapped[list["AnnotationProject"]] = orm.relationship(
         back_populates="tags",
         secondary="annotation_project_tag",
@@ -166,20 +153,6 @@ class Tag(Base):
         default_factory=list,
     )
     annotation_project_tags: orm.Mapped[list["AnnotationProjectTag"]] = orm.relationship(
-        back_populates="tag",
-        init=False,
-        repr=False,
-        default_factory=list,
-        cascade="all, delete-orphan",
-        passive_deletes=True,
-    )
-    sound_event_prediction_tags: orm.Mapped[list["SoundEventPredictionTag"]] = orm.relationship(
-        back_populates="tag",
-        init=False,
-        repr=False,
-        default_factory=list,
-    )
-    clip_prediction_tags: orm.Mapped[list["ClipPredictionTag"]] = orm.relationship(
         back_populates="tag",
         init=False,
         repr=False,

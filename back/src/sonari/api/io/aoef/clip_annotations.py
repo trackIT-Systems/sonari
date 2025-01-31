@@ -1,7 +1,7 @@
 import datetime
 from uuid import UUID
 
-from soundevent.io.aoef import AnnotationSetObject, EvaluationObject
+from soundevent.io.aoef import AnnotationSetObject
 from soundevent.io.aoef.clip_annotations import ClipAnnotationsObject
 from sqlalchemy import insert, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -13,7 +13,7 @@ from sonari.api.io.aoef.notes import import_notes
 
 async def get_clip_annotations(
     session: AsyncSession,
-    obj: AnnotationSetObject | EvaluationObject,
+    obj: AnnotationSetObject,
     clips: dict[UUID, int],
     users: dict[UUID, UUID],
     tags: dict[int, int],
@@ -32,10 +32,6 @@ async def get_clip_annotations(
         return {}
 
     clip_annotation_uuids = set()
-
-    clip_evaluations = obj.clip_evaluations or []
-    for evaluation in clip_evaluations:
-        clip_annotation_uuids.add(evaluation.annotations)
 
     if not clip_annotation_uuids:
         return {}

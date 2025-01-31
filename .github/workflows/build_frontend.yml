@@ -20,8 +20,3 @@ jobs:
         run: |
           cd front
           npm run build
-      - name: Upload build
-        uses: actions/upload-artifact@v4
-        with:
-          name: frontend
-          path: front/out

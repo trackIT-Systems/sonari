@@ -15,10 +15,6 @@ from sonari.models.user import User
 
 if TYPE_CHECKING:
     from sonari.models.annotation_task import AnnotationTask
-    from sonari.models.evaluation_set import (
-        EvaluationSet,
-        EvaluationSetAnnotation,
-    )
 
 
 class ClipAnnotation(Base):
@@ -121,22 +117,6 @@ class ClipAnnotation(Base):
         cascade="all, delete-orphan",
         passive_deletes=True,
         init=False,
-    )
-    evaluation_sets: orm.Mapped[list["EvaluationSet"]] = orm.relationship(
-        secondary="evaluation_set_annotation",
-        back_populates="clip_annotations",
-        init=False,
-        repr=False,
-        default_factory=list,
-        viewonly=True,
-    )
-    evaluation_set_annotations: orm.Mapped[list["EvaluationSetAnnotation"]] = orm.relationship(
-        back_populates="clip_annotation",
-        init=False,
-        repr=False,
-        default_factory=list,
-        cascade="all, delete-orphan",
-        passive_deletes=True,
     )
 
 
