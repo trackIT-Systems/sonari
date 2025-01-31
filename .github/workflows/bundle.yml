@@ -8,6 +8,7 @@ jobs:
   build-ubuntu:
     runs-on: ubuntu-20.04
     steps:
+      - uses: actions/checkout@v4
       - name: Create a Release in a GitHub Action
         id: create_release
         uses: comnoco/create-release-action@v2.0.5
@@ -19,7 +20,6 @@ jobs:
           body_path: changelog.md
           draft: false
           prerelease: false
-      - uses: actions/checkout@v4
       - uses: actions/setup-python@v4
         with:
           python-version: "3.11"
