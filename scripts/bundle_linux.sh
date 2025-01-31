@@ -44,7 +44,6 @@ build/.venv/bin/pyinstaller \
 	--add-data "src/sonari/migrations:sonari/migrations" \
 	--add-data "src/sonari/statics:sonari/statics" \
 	--add-data "alembic.ini:." \
-    --recursive-copy-metadata "numpy" \
 	--name sonari \
 	--onefile \
 	app.py
