@@ -42,7 +42,7 @@ export default function SelectedSoundEventAnnotation({
   // Force refetch when the data prop changes
   useEffect(() => {
     soundEventAnnotation.refetch();
-  }, [soundEventAnnotation]);
+  }, [data.uuid]);
 
   // Use the latest data by combining prop and hook data
   const currentAnnotation = useMemo(() => {

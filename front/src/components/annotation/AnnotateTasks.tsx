@@ -327,7 +327,7 @@ export default function AnnotateTasks({
 
       await Promise.all(promises);
     },
-    [data?.sound_events, removeTagFromSoundEvent, addTagToSoundEvent]
+    [data?.sound_events, removeTagFromSoundEvent, addTagToSoundEvent, selectedAnnotation]
   );
 
   const menuRef = useRef<HTMLDivElement>(null);
