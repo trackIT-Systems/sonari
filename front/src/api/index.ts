@@ -14,7 +14,6 @@ import { registerClipAnnotationsAPI } from "./clip_annotations";
 import { registerClipAPI } from "./clips";
 import { registerDatasetAPI } from "./datasets";
 import { registerNotesAPI } from "./notes";
-import { registerPluginsAPI } from "./plugins";
 import { registerRecordingAPI } from "./recordings";
 import { registerSoundEventAnnotationsAPI } from "./sound_event_annotations";
 import { registerSoundEventAPI } from "./sound_events";
@@ -47,6 +46,5 @@ export default function createAPI(config: APIConfig) {
     tags: registerTagAPI(instance),
     annotationTasks: registerAnnotationTasksAPI(instance),
     user: registerUserAPI(instance),
-    plugins: registerPluginsAPI(instance),
   } as const;
 }

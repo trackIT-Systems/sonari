@@ -22,6 +22,7 @@ from sonari.models.clip_annotation import (
     ClipAnnotationNote,
     ClipAnnotationTag,
 )
+from sonari.models.dataset import Dataset, DatasetRecording
 from sonari.models.event_handlers import setup_model_events
 from sonari.models.feature import FeatureName
 from sonari.models.note import Note
