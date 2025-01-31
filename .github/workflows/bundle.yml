@@ -9,6 +9,13 @@ jobs:
     runs-on: ubuntu-20.04
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-python@v4
+        with:
+          python-version: "3.11"
+      - run: bash scripts/bundle_linux.sh
+      - run: |
+          mkdir dist/
+          mv back/dist/sonari.zip "dist/sonari-${{ github.ref_name }}.zip"
       - name: Create a Release in a GitHub Action
         id: create_release
         uses: comnoco/create-release-action@v2.0.5
@@ -20,14 +27,7 @@ jobs:
           body_path: changelog.md
           draft: false
           prerelease: false
-      - uses: actions/setup-python@v4
-        with:
-          python-version: "3.11"
-      - run: bash scripts/bundle_linux.sh
-      - run: |
-          mkdir dist/
-          mv back/dist/sonari.zip "dist/sonari-${{ github.ref_name }}.zip"
-      - uses: shogo82148/actions-upload-release-asset@v1
+      - uses: shogo82148/actions-upload-release-asset@v1.7.8
         with:
           upload_url: ${{ github.event.release.upload_url }}
           asset_path: "dist/sonari-${{ github.ref_name }}.zip"
