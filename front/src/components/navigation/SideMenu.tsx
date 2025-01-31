@@ -130,7 +130,7 @@ function MainNavigation({ pathname }: { pathname?: string }) {
           href="/datasets"
           keyboardKeys={[`${getSpecialKeyLabel("Shift")}`, `${getMetaKeyLabel()}`, "1"]}
         >
-          <DatasetsIcon className="w-6 h-6" />
+          <DatasetsIcon className="w-6 h-6 text-stone-400" />
         </SideMenuLink>
       </li>
       <li className="px-3">
@@ -140,7 +140,7 @@ function MainNavigation({ pathname }: { pathname?: string }) {
           href="/annotation_projects"
           keyboardKeys={[`${getSpecialKeyLabel("Shift")}`, `${getMetaKeyLabel()}`, "2"]}
         >
-          <AnnotationProjectIcon className="w-6 h-6" />
+          <AnnotationProjectIcon className="w-6 h-6 text-stone-400" />
         </SideMenuLink>
       </li>
     </ul>
@@ -165,13 +165,13 @@ function SecondaryNavigation({
       <li className="px-3">
         <SideMenuLink href="/profile" tooltip={"User"}
           keyboardKeys={[`${getSpecialKeyLabel("Shift")}`, `${getMetaKeyLabel()}`, "9"]}>
-          <UserIcon className="w-6 h-6" />
+          <UserIcon className="w-6 h-6 text-stone-400" />
         </SideMenuLink>
       </li>
       <li className="px-3">
         <SideMenuButton tooltip={"Log Out"}
           keyboardKeys={[`${getSpecialKeyLabel("Shift")}`, `${getMetaKeyLabel()}`, "0"]}>
-          <LogOutIcon onClick={() => logout()} className="w-6 h-6" />
+          <LogOutIcon onClick={() => logout()} className="w-6 h-6 text-stone-400" />
         </SideMenuButton>
       </li>
     </ul>

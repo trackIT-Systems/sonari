@@ -7,7 +7,6 @@ import { HOST } from "@/api/common";
 export default function Page() {
   // For some reason, the SVG path is hardcoded, so we have to get
   // the folder name programmatically...
-  const sonari_svg_path = HOST + "/sonari.svg"
   return (
     <div className="container mx-auto p-16">
       <div className="flex flex-col gap-4">
@@ -15,15 +14,7 @@ export default function Page() {
           <span className="text-6xl font-thin">
             Welcome to
           </span>
-          <br />
-          <Image
-            src={sonari_svg_path}
-            alt="logo"
-            width={100}
-            height={100}
-            className="m-2 inline"
-          />
-          <span className="font-sans font-bold text-emerald-500 underline decoration-8">
+          <span className="pl-4 text-emerald-500 decoration-8">
             Sonari
           </span>
         </h1>
