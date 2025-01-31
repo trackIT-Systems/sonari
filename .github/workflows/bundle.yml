@@ -1,25 +1,27 @@
 name: Bundle App
 on:
-  release:
-    types: [published]
+  push:
+    tags:        
+      - '*'
 
 jobs:
   build-ubuntu:
     runs-on: ubuntu-20.04
-    needs: [build-user-guide, build-frontend]
     steps:
+      - name: Create Release
+        id: create_release
+        uses: actions/create-release@latest
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ github.ref }}
+          release_name: Release ${{ github.ref }}
+          draft: false
+          prerelease: false
       - uses: actions/checkout@v3
       - uses: actions/setup-python@v4
         with:
           python-version: "3.11"
-      - uses: actions/download-artifact@v4
-        with:
-          name: frontend
-          path: back/src/sonari/statics/
-      - uses: actions/download-artifact@v4
-        with:
-          name: user_guide
-          path: back/src/sonari/user_guide/
       - run: bash scripts/bundle_linux.sh
       - run: |
           mkdir dist/
