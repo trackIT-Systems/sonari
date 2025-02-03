@@ -18,7 +18,7 @@ import useAnnotateTasksKeyShortcuts from "@/hooks/annotation/useAnnotateTasksKey
 import useAnnotationTasks from "@/hooks/api/useAnnotationTasks";
 import { type Filter } from "@/hooks/utils/useFilter";
 
-import type { AnnotationStatus, Recording, AnnotationTask, ClipAnnotation } from "@/types";
+import type { AnnotationStatus, Recording, AnnotationTask, ClipAnnotation, SoundEventAnnotation } from "@/types";
 import { spectrogramCache } from "@/utils/spectrogram_cache";
 import { getInitialViewingWindow } from "@/utils/windows";
 import { getCoveringSegmentDuration, getSegments } from "../spectrogram/useRecordingSegments";
@@ -81,6 +81,7 @@ export default function useAnnotateTasks({
   onUnsureTask,
   onRejectTask,
   onVerifyTask,
+  onDeselectAnnotation,
 }: {
   /** Initial filter to select which annotation tasks to show */
   filter?: AnnotationTaskFilter;
@@ -96,6 +97,8 @@ export default function useAnnotateTasks({
   onRejectTask?: (task: AnnotationTask) => void;
   /** Callback when the current task is marked as verified */
   onVerifyTask?: (task: AnnotationTask) => void;
+  /** Set current annotation to null */
+  onDeselectAnnotation: () => void;
 }): AnnotationState & AnnotationControls {
   const [currentTask, setCurrentTask] = useState<AnnotationTask | null>(
     initialTask ?? null,
@@ -197,8 +200,9 @@ export default function useAnnotateTasks({
       client.setQueryData(["annotation_task", task.uuid], task);
       setCurrentTask(task);
       onChangeTask?.(task);
+      onDeselectAnnotation();
     },
-    [onChangeTask, client],
+    [onChangeTask, client, onDeselectAnnotation],
   );
 
   const hasNextTask = useMemo(() => {

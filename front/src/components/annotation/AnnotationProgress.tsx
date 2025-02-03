@@ -44,14 +44,12 @@ const SHORTCUTS = [
 
 export default function AnnotationProgress({
   current,
-  instructions,
   tasks,
   filter,
   onNext,
   onPrevious,
 }: {
   current?: number | null;
-  instructions: string;
   tasks: AnnotationTask[];
   filter: Filter<AnnotationTaskFilter>;
   onNext?: () => void;

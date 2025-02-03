@@ -84,10 +84,13 @@ export default function AnnotateTasks({
   onRejectTask?: () => void;
   onVerifyTask?: () => void;
 }) {
-  const [selectedAnnotation, setSelectedAnnotation] = useState<SoundEventAnnotation | null>(null);
   const [tagPalette, setTagPalette] = useState<Tag[]>([]);
   const [selectedTag, setSelectedTag] = useState<{ tag: Tag; count: number } | null>(null);
-
+  
+  const [selectedAnnotation, setSelectedAnnotation] = useState<SoundEventAnnotation | null>(null);
+  const onDeselectAnnotation = useCallback(() => {
+    setSelectedAnnotation(null);
+  }, [setSelectedAnnotation])
 
   const [withSpectrogram, setWithSpectrogram] = useState(true);
   const onWithSpectrogramChange = useCallback(
@@ -126,6 +129,7 @@ export default function AnnotateTasks({
     onUnsureTask,
     onRejectTask,
     onVerifyTask,
+    onDeselectAnnotation,
   });
 
   const { data: clipAnnotation, isLoading: isLoadingClipAnnotation } =
@@ -350,7 +354,6 @@ export default function AnnotateTasks({
         <div className="min-w-[63rem]">
           <AnnotationProgress
             current={tasks.current}
-            instructions={instructions}
             tasks={tasks.tasks}
             filter={tasks._filter}
             onNext={tasks.nextTask}
