@@ -94,12 +94,6 @@ def upgrade() -> None:
         batch_op.drop_index("ix_user_run_evaluation_user_run_id")
     op.drop_table("user_run_evaluation")
 
-    # Drop dataset and evaluation set relationships
-    with op.batch_alter_table("dataset_recording", schema=None) as batch_op:
-        batch_op.drop_index("ix_dataset_recording_dataset_id")
-        batch_op.drop_index("ix_dataset_recording_recording_id")
-    op.drop_table("dataset_recording")
-
     with op.batch_alter_table("evaluation_set_tag", schema=None) as batch_op:
         batch_op.drop_index("ix_evaluation_set_tag_evaluation_set_id")
         batch_op.drop_index("ix_evaluation_set_tag_tag_id")
@@ -124,7 +118,6 @@ def upgrade() -> None:
     op.drop_table("evaluation")
     op.drop_table("model_run")
     op.drop_table("user_run")
-    op.drop_table("dataset")
     op.drop_table("evaluation_set")
 
     # Update annotation_task foreign key
@@ -753,19 +746,6 @@ def downgrade() -> None:
         sa.UniqueConstraint("uuid", name="uq_evaluation_set_uuid"),
     )
     op.create_table(
-        "dataset",
-        sa.Column("id", sa.INTEGER(), nullable=False),
-        sa.Column("uuid", sa.CHAR(length=36), nullable=False),
-        sa.Column("name", sa.VARCHAR(), nullable=False),
-        sa.Column("description", sa.VARCHAR(), nullable=True),
-        sa.Column("audio_dir", sa.VARCHAR(), nullable=False),
-        sa.Column("created_on", sa.DATETIME(), nullable=False),
-        sa.PrimaryKeyConstraint("id", name="pk_dataset"),
-        sa.UniqueConstraint("audio_dir", name="uq_dataset_audio_dir"),
-        sa.UniqueConstraint("name", name="uq_dataset_name"),
-        sa.UniqueConstraint("uuid", name="uq_dataset_uuid"),
-    )
-    op.create_table(
         "evaluation",
         sa.Column("id", sa.INTEGER(), nullable=False),
         sa.Column("uuid", sa.CHAR(length=36), nullable=False),
@@ -775,36 +755,6 @@ def downgrade() -> None:
         sa.PrimaryKeyConstraint("id", name="pk_evaluation"),
         sa.UniqueConstraint("uuid", name="uq_evaluation_uuid"),
     )
-    op.create_table(
-        "dataset_recording",
-        sa.Column("dataset_id", sa.INTEGER(), nullable=False),
-        sa.Column("recording_id", sa.INTEGER(), nullable=False),
-        sa.Column("path", sa.VARCHAR(), nullable=False),
-        sa.Column("created_on", sa.DATETIME(), nullable=False),
-        sa.ForeignKeyConstraint(
-            ["dataset_id"],
-            ["dataset.id"],
-            name="fk_dataset_recording_dataset_id_dataset",
-            ondelete="CASCADE",
-        ),
-        sa.ForeignKeyConstraint(
-            ["recording_id"],
-            ["recording.id"],
-            name="fk_dataset_recording_recording_id_recording",
-            ondelete="CASCADE",
-        ),
-        sa.PrimaryKeyConstraint("dataset_id", "recording_id", name="pk_dataset_recording"),
-        sa.UniqueConstraint(
-            "dataset_id",
-            "recording_id",
-            "path",
-            name="uq_dataset_recording_dataset_id",
-        ),
-    )
-    with op.batch_alter_table("dataset_recording", schema=None) as batch_op:
-        batch_op.create_index("ix_dataset_recording_recording_id", ["recording_id"], unique=False)
-        batch_op.create_index("ix_dataset_recording_dataset_id", ["dataset_id"], unique=False)
-
     op.create_table(
         "evaluation_set_tag",
         sa.Column("evaluation_set_id", sa.INTEGER(), nullable=False),
