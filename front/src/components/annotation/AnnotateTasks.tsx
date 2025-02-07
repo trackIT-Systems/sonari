@@ -273,12 +273,12 @@ export default function AnnotateTasks({
   }, []);
 
   const handleReplaceTagInSoundEvents = useCallback(
-    async (oldTag: Tag | null, newTag: Tag | null, selectedAnnotation?: SoundEventAnnotation | null) => {
+    async (oldTag: Tag | null, newTag: Tag | null, currentAnnotation?: SoundEventAnnotation | null) => {
       if (!data?.sound_events) return;
 
       let soundEventsToUpdate: SoundEventAnnotation[] = [];
-      if (selectedAnnotation) {
-        soundEventsToUpdate = [selectedAnnotation];
+      if (currentAnnotation) {
+        soundEventsToUpdate = [currentAnnotation];
       } else {
         // If no specific annotation is selected, handle all sound events
         if (oldTag?.key === "all") {
@@ -331,7 +331,7 @@ export default function AnnotateTasks({
 
       await Promise.all(promises);
     },
-    [data?.sound_events, removeTagFromSoundEvent, addTagToSoundEvent, selectedAnnotation]
+    [data?.sound_events, removeTagFromSoundEvent, addTagToSoundEvent]
   );
 
   const menuRef = useRef<HTMLDivElement>(null);

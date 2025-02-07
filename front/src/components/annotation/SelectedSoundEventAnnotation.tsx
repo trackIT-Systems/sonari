@@ -39,11 +39,6 @@ export default function SelectedSoundEventAnnotation({
     onRemoveTag,
   });
 
-  // Force refetch when the data prop changes
-  useEffect(() => {
-    soundEventAnnotation.refetch();
-  }, [data.uuid]);
-
   // Use the latest data by combining prop and hook data
   const currentAnnotation = useMemo(() => {
     return soundEventAnnotation.data || data;
