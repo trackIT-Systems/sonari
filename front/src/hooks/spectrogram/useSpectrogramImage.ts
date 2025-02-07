@@ -17,12 +17,14 @@ export default function useSpectrogramImage({
   parameters,
   withSpectrogram,
   strict,
+  preload = false,
 }: {
   recording: Recording;
   window: SpectrogramWindow;
   parameters: SpectrogramParameters;
   withSpectrogram: boolean;
   strict?: boolean;
+  preload?: boolean;
 }) {
   const { selected, allSegments } = useRecordingSegments({
     recording,
@@ -43,7 +45,7 @@ export default function useSpectrogramImage({
 
   // Preload all segments
   useEffect(() => {
-    if (!withSpectrogram) return;
+    if (!withSpectrogram || !preload) return;
 
     const currentLoadingSegments = new Set<string>();
     const currentRef = loadingSegments.current; // Store ref value locally

@@ -119,6 +119,7 @@ export default function SoundEventSpectrogramView({
         withSpectrogram,
         withShortcuts: false,
         fixedAspectRatio: false,
+        preload: false,
         toggleFixedAspectRatio: () => { },
     });
 
