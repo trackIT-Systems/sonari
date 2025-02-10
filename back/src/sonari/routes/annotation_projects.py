@@ -338,33 +338,32 @@ async def export_annotation_project_multibase(
     ws.title = "Beobachtungen"
 
     # Append the header to the excel file
-    ws.append(
-        [
-            "Art",
-            "Datum",
-            "Tag",
-            "Monat",
-            "Jahr",
-            "Beobachter",
-            "Bestimmer",
-            "Fundort",
-            "X",
-            "Y",
-            "EPSG",
-            "Nachweistyp",
-            "Bemerkung_1",
-            "Bemerkung_2",
-        ]
-    )
+    ws.append([
+        "Art",
+        "Datum",
+        "Tag",
+        "Monat",
+        "Jahr",
+        "Beobachter",
+        "Bestimmer",
+        "Fundort",
+        "X",
+        "Y",
+        "EPSG",
+        "Nachweistyp",
+        "Bemerkung_1",
+        "Bemerkung_2",
+    ])
 
     for task in tasks[0]:
         if not task.clip_annotation:
             continue
 
         clip_annotation: schemas.ClipAnnotation = task.clip_annotation
-        clip_annotation_notes: str = ""
+        clip_annotation_notes: str = "|"
         for n in clip_annotation.notes:
-            clip_annotation_notes += f" | {n.message}"
+            clip_annotation_notes += f" {n.message} "
+            clip_annotation_notes += "|"
 
         for sound_event_annotation in clip_annotation.sound_events:
             tag_set: set[str] = {f"{tag.key}:{tag.value}" for tag in sound_event_annotation.tags}
@@ -377,27 +376,31 @@ async def export_annotation_project_multibase(
 
                     date = task.clip.recording.date
                     if date is None:
-                        continue
+                        date = ""
+                        day = ""
+                        month = ""
+                        year = ""
+                    else:
+                        day = date.day
+                        month = date.month
+                        year = date.year
 
                     station = task.clip.recording.path.stem.split("_")[0]
+                    latitude = task.clip.recording.latitude
+                    longitude = task.clip.recording.longitude
 
-                    sound_event_notes: str = ""
+                    sound_event_notes: str = "|"
                     for n in sound_event_annotation.notes:
                         msg: str = n.message
                         if msg.startswith(f"{species},"):
                             msg = msg.replace(f"{species},", "")
 
-                        sound_event_notes += f" | {msg}"
-
-                    for s in task.status_badges:
-                        username: str = s.user.name if s.user and s.user.name else ""
-                        state: str = s.state.name
-                        if state == "rejected" and username == "":
-                            continue
+                        sound_event_notes += f" {msg} "
+                        sound_event_notes += "|"
 
                     # Write the content to the worksheet
                     ws.append(
-                        f"{species};{date};{date.day};{date.month};{date.year};trackIT Systems/Bioplan Marburg;trackIT Systems/Bioplan Marburg;{station};{station}x;{station}y;4326;Akustik;{sound_event_notes};{clip_annotation_notes}".split(
+                        f"{species};{date};{day};{month};{year};;;{station};{latitude}x;{longitude}y;4326;Akustik;{sound_event_notes};{clip_annotation_notes}".split(
                             ";"
                         )
                     )
