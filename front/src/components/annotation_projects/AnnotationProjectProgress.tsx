@@ -58,7 +58,7 @@ export default function ProjectProgress({
 
   return (
     <Card>
-      <div className="flex flex-row justify-between items-center">
+      {/* <div className="flex flex-row justify-between items-center">
         <H3>Annotation Progress</H3>
         <Link
           mode="text"
@@ -67,7 +67,7 @@ export default function ProjectProgress({
         >
           <AddIcon className="inline-block mr-2 w-5 h-5" /> Add tasks
         </Link>
-      </div>
+      </div> */}
       {isLoading ? (
         <Loading />
       ) : annotationTasks.length === 0 ? (

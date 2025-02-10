@@ -55,10 +55,10 @@ export default function RecordingAnnotationContext({
           <span className="font-semibold">C</span>{" "}
           {recording.channels.toLocaleString()}
         </div>
-        <div className="text-stone-500 text-sm">
+        {/* <div className="text-stone-500 text-sm">
           <span className="font-semibold">TE</span>{" "}
           {recording.time_expansion.toLocaleString()}
-        </div>
+        </div> */}
       </div>
     </div>
   );

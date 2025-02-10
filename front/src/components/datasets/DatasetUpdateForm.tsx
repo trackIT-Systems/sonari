@@ -23,10 +23,10 @@ export default function DatasetUpdateForm({
 
   return (
     <div className="flex flex-col">
-      <DatasetActions
+      {/* <DatasetActions
         dataset={data}
         downloadLink={dataset.download.json || ""}
-      />
+      /> */}
       <Card>
         <div className="px-4 sm:px-0">
           <h3 className="text-base font-semibold leading-7 text-stone-900 dark:text-stone-200">

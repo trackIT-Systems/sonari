@@ -24,11 +24,11 @@ export default function AnnotationProjectDetail({
           <div className="col-span-2">
             <AnnotationProjectProgress annotationProject={annotationProject} />
           </div>
-          <AnnotationProjectTagsSummary project={annotationProject} />
-          <AnnotationProjectNotesSummary project={annotationProject} />
+          {/* <AnnotationProjectTagsSummary project={annotationProject} />
+          <AnnotationProjectNotesSummary project={annotationProject} /> */}
         </div>
       </div>
-      <div className="flex flex-col flex-none gap-4 max-w-sm">
+      {/* <div className="flex flex-col flex-none gap-4 max-w-sm">
         <AnnotationProjectActions
           annotationProject={annotationProject}
           onDelete={onDelete}
@@ -41,7 +41,7 @@ export default function AnnotationProjectDetail({
             />
           </Card>
         </div>
-      </div>
+      </div> */}
     </div>
   );
 }

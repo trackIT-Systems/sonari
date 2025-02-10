@@ -125,7 +125,7 @@ export default function DatasetList(props: {
             isHighlighted={focusedElement === 'search'}
           />
         </div>
-        <div className="h-full">
+        {/* <div className="h-full">
           <Dialog
             mode="text"
             title="Create Dataset"
@@ -151,7 +151,7 @@ export default function DatasetList(props: {
           >
             {() => <DatasetImport onCreate={onCreate} />}
           </Dialog>
-        </div>
+        </div> */}
       </div>
       {datasets.isLoading ? (
         <Loading />

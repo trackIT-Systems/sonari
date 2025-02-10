@@ -111,7 +111,7 @@ export default function AnnotationProjectList({
             isHighlighted={focusedElement === 'search'}
           />
         </div>
-        <div className="h-full">
+        {/* <div className="h-full">
           <Dialog
             mode="text"
             title="Create Annotation Project"
@@ -138,7 +138,7 @@ export default function AnnotationProjectList({
           >
             {() => <AnnotationProjectImport onCreate={onCreate} />}
           </Dialog>
-        </div>
+        </div> */}
       </div>
       {isLoading ? (
         <Empty>
