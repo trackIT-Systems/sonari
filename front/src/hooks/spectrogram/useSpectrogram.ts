@@ -139,7 +139,7 @@ export default function useSpectrogram({
   onModeChange,
   onDoubleClick,
   enabled = true,
-  preload = false,
+  preload = true,
   withShortcuts = true,
   withSpectrogram,
   fixedAspectRatio,
@@ -154,7 +154,7 @@ export default function useSpectrogram({
   onModeChange?: (mode: MotionMode) => void;
   onDoubleClick?: (dblClickProps: { position: Position }) => void;
   enabled?: boolean;
-  preload?: boolean;
+  preload: boolean;
   withShortcuts?: boolean;
   withSpectrogram: boolean;
   fixedAspectRatio: boolean,

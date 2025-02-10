@@ -17,14 +17,14 @@ export default function useSpectrogramImage({
   parameters,
   withSpectrogram,
   strict,
-  preload = false,
+  preload = true,
 }: {
   recording: Recording;
   window: SpectrogramWindow;
   parameters: SpectrogramParameters;
   withSpectrogram: boolean;
   strict?: boolean;
-  preload?: boolean;
+  preload: boolean;
 }) {
   const { selected, allSegments } = useRecordingSegments({
     recording,
