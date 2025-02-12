@@ -121,6 +121,7 @@ export default function SoundEventSpectrogramView({
         fixedAspectRatio: false,
         preload: false,
         toggleFixedAspectRatio: () => { },
+        onSegmentsLoaded: () => null,
     });
 
     const { draw } = spectrogram;

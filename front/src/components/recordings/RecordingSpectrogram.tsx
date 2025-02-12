@@ -74,6 +74,7 @@ export default function RecordingSpectrogram({
     withSpectrogram: true,
     fixedAspectRatio: false,
     toggleFixedAspectRatio: () => null,
+    onSegmentsLoaded: () => null,
   });
 
   const { centerOn } = spectrogram;

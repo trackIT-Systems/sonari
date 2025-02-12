@@ -410,6 +410,7 @@ export default function AnnotateTasks({
                     onCreateSoundEventAnnotation={onCreateSoundEventAnnotation}
                     onUpdateSoundEventAnnotation={onUpdateSoundEventAnnotation}
                     onDeleteSoundEventAnnotation={onDeleteSoundEventAnnotation}
+                    onSegmentsLoaded={tasks.handleCurrentSegmentsLoaded}
                   />
                 </div>
               </div>

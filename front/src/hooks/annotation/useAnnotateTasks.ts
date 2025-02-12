@@ -43,6 +43,7 @@ type AnnotationState = {
   /** Whether there is a previous annotation task */
   hasPrevTask: boolean;
   _filter: Filter<AnnotationTaskFilter>;
+  handleCurrentSegmentsLoaded: () => void;
 };
 
 type AnnotationControls = {
@@ -237,7 +238,7 @@ export default function useAnnotateTasks({
     }
   }, [index, items, hasPrevTask, goToTask]);
 
-  useEffect(() => {
+  const handleCurrentSegmentsLoaded = useCallback(() => {
     if (!items || index === -1 || index >= items.length - 1) return;
 
     if (!hasNextTask) return;
@@ -252,6 +253,7 @@ export default function useAnnotateTasks({
       // Preload segments for next task
       preloadSpectrogramSegments(recording);
     })
+
   }, [items, index, preloadSpectrogramSegments, hasNextTask]);
 
   const { set: setFilterKeyValue } = filter;
@@ -430,6 +432,7 @@ export default function useAnnotateTasks({
     markVerified,
     removeBadge,
     getFirstTask,
+    handleCurrentSegmentsLoaded,
     _filter: filter,
   };
 }

@@ -18,6 +18,7 @@ export default function useSpectrogramImage({
   withSpectrogram,
   strict,
   preload = true,
+  onAllSegmentsLoaded,
 }: {
   recording: Recording;
   window: SpectrogramWindow;
@@ -25,6 +26,7 @@ export default function useSpectrogramImage({
   withSpectrogram: boolean;
   strict?: boolean;
   preload: boolean;
+  onAllSegmentsLoaded?: () => void;
 }) {
   const { selected, allSegments } = useRecordingSegments({
     recording,
@@ -48,9 +50,11 @@ export default function useSpectrogramImage({
     if (!withSpectrogram || !preload) return;
 
     const currentLoadingSegments = new Set<string>();
-    const currentRef = loadingSegments.current; // Store ref value locally
+    const currentRef = loadingSegments.current;
 
-    // Load segments sequentially to avoid overwhelming the browser
+    let loadedCount = 0;
+    const totalSegments = allSegments.length;
+
     const loadSegments = async () => {
       for (const segment of allSegments) {
         const segmentKey = spectrogramCache.generateKey(recording.uuid, segment, parameters);
@@ -101,6 +105,10 @@ export default function useSpectrogramImage({
             };
             img.src = objectUrl;
           });
+          loadedCount++;
+          if (loadedCount === totalSegments) {
+            onAllSegmentsLoaded?.();
+          }
         } catch (error) {
           console.error('Failed to load segment:', error);
           currentRef.delete(segmentKey);
@@ -117,7 +125,7 @@ export default function useSpectrogramImage({
       });
       currentLoadingSegments.clear();
     };
-  }, [recording, parameters, allSegments, selected, withSpectrogram]);
+  }, [recording, parameters, allSegments, selected, withSpectrogram, onAllSegmentsLoaded]);
 
   return image;
 }

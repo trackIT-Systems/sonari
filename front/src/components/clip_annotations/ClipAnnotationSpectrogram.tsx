@@ -60,6 +60,7 @@ export default function ClipAnnotationSpectrogram({
   onParameterSave,
   onSelectAnnotation,
   onCreateTag,
+  onSegmentsLoaded,
 }: {
   clipAnnotation: ClipAnnotation;
   parameters?: SpectrogramParameters;
@@ -92,6 +93,7 @@ export default function ClipAnnotationSpectrogram({
   onAddSoundEventTag?: (annotation: SoundEventAnnotation) => void;
   onRemoveSoundEventTag?: (annotation: SoundEventAnnotation) => void;
   onCreateTag?: (tag: Tag) => void;
+  onSegmentsLoaded: () => void;
 }) {
   const [isAnnotating, setIsAnnotating] = useState(false);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -239,6 +241,7 @@ export default function ClipAnnotationSpectrogram({
     withSpectrogram: withSpectrogram,
     fixedAspectRatio: fixedAspectRatio,
     toggleFixedAspectRatio: toggleFixedAspectRatio,
+    onSegmentsLoaded,
   });
 
   const { centerOn } = spectrogram;

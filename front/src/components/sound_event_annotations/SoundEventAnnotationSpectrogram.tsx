@@ -108,6 +108,7 @@ export default function SoundEventAnnotationSpectrogram(props: {
     withSpectrogram: true,
     fixedAspectRatio: false,
     toggleFixedAspectRatio: () => null,
+    onSegmentsLoaded: () => null,
   });
 
   const { centerOn } = spectrogram;

@@ -144,6 +144,7 @@ export default function useSpectrogram({
   withSpectrogram,
   fixedAspectRatio,
   toggleFixedAspectRatio,
+  onSegmentsLoaded,
 }: {
   recording: Recording;
   dimensions: { width: number; height: number };
@@ -159,6 +160,7 @@ export default function useSpectrogram({
   withSpectrogram: boolean;
   fixedAspectRatio: boolean,
   toggleFixedAspectRatio: () => void;
+  onSegmentsLoaded: () => void;
 }): {
   draw: DrawFn;
   props: React.HTMLAttributes<HTMLCanvasElement>;
@@ -247,6 +249,7 @@ export default function useSpectrogram({
     parameters,
     withSpectrogram,
     preload,
+    onAllSegmentsLoaded: onSegmentsLoaded,
   });
 
   const handleZoomDrag = useCallback(
