@@ -130,71 +130,68 @@ export default function useAnnotateTasks({
 
   const parameters = useStore((state) => state.spectrogramSettings);
 
-  const preloadSpectrogramSegments = useCallback(
-    async (recording: Recording) => {
-      if (!recording) return;
+  function preloadSpectrogramSegments(recording: Recording) {
+    if (!recording) return;
 
-      // Calculate initial window to get segment size
-      const initial = getInitialViewingWindow({
-        startTime: 0,
-        endTime: recording.duration,
-        samplerate: recording.samplerate,
-        parameters,
+    // Calculate initial window to get segment size
+    const initial = getInitialViewingWindow({
+      startTime: 0,
+      endTime: recording.duration,
+      samplerate: recording.samplerate,
+      parameters,
+    });
+
+    // Calculate bounds
+    const bounds = {
+      time: { min: 0, max: recording.duration },
+      freq: { min: 0, max: recording.samplerate / 2 },
+    };
+
+    // Get segment duration
+    const duration = getCoveringSegmentDuration(initial, false);
+
+    // Get all segments
+    const segments = getSegments(bounds, duration, 0.4); // 0.4 is the OVERLAP constant
+
+    // Load all segments
+    segments.forEach(async segment => {
+      // Skip if already cached
+      if (spectrogramCache.get(recording.uuid, segment, parameters)) {
+        return;
+      }
+
+      const url = api.spectrograms.getUrl({
+        recording,
+        segment: { min: segment.time.min, max: segment.time.max },
+        parameters
       });
 
-      // Calculate bounds
-      const bounds = {
-        time: { min: 0, max: recording.duration },
-        freq: { min: 0, max: recording.samplerate / 2 },
-      };
+      try {
+        const response = await fetch(url);
+        const size = parseInt(response.headers.get('content-length') || '0', 10);
+        const blob = await response.blob();
+        const objectUrl = URL.createObjectURL(blob);
 
-      // Get segment duration
-      const duration = getCoveringSegmentDuration(initial, false);
-
-      // Get all segments
-      const segments = getSegments(bounds, duration, 0.4); // 0.4 is the OVERLAP constant
-
-      // Load all segments
-      segments.forEach(async segment => {
-        // Skip if already cached
-        if (spectrogramCache.get(recording.uuid, segment, parameters)) {
-          return;
-        }
-
-        const url = api.spectrograms.getUrl({
-          recording,
-          segment: { min: segment.time.min, max: segment.time.max },
-          parameters
-        });
-
-        try {
-          const response = await fetch(url);
-          const size = parseInt(response.headers.get('content-length') || '0', 10);
-          const blob = await response.blob();
-          const objectUrl = URL.createObjectURL(blob);
-
-          const img = new Image();
-          img.onload = async () => {
-            try {
-              await img.decode();
-              await spectrogramCache.set(recording.uuid, segment, parameters, img, size);
-            } finally {
-              URL.revokeObjectURL(objectUrl);
-            }
-          };
-
-          img.onerror = () => {
+        const img = new Image();
+        img.onload = async () => {
+          try {
+            await img.decode();
+            await spectrogramCache.set(recording.uuid, segment, parameters, img, size);
+          } finally {
             URL.revokeObjectURL(objectUrl);
-          };
+          }
+        };
 
-          img.src = objectUrl;
-        } catch (error) {
-          console.error('Failed to preload segment:', error);
-        }
-      });
-    },
-    [parameters]
-  );
+        img.onerror = () => {
+          URL.revokeObjectURL(objectUrl);
+        };
+
+        img.src = objectUrl;
+      } catch (error) {
+        console.error('Failed to preload segment:', error);
+      }
+    });
+  }
 
   const goToTask = useCallback(
     (task: AnnotationTask) => {

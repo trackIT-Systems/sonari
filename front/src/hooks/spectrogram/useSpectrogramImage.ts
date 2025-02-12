@@ -55,69 +55,69 @@ export default function useSpectrogramImage({
     let loadedCount = 0;
     const totalSegments = allSegments.length;
 
-    const loadSegments = async () => {
-      for (const segment of allSegments) {
-        const segmentKey = spectrogramCache.generateKey(recording.uuid, segment, parameters);
+    const loadSegment = async (segment: SpectrogramWindow) => {
+      const segmentKey = spectrogramCache.generateKey(recording.uuid, segment, parameters);
 
-        // Skip if already cached or already being loaded
-        if (
-          spectrogramCache.get(recording.uuid, segment, parameters) ||
-          currentLoadingSegments.has(segmentKey)
-        ) {
-          continue;
-        }
+      // Skip if already cached or already being loaded
+      if (
+        spectrogramCache.get(recording.uuid, segment, parameters) ||
+        currentLoadingSegments.has(segmentKey)
+      ) {
+        return;
+      }
 
-        currentRef.add(segmentKey);
-        currentLoadingSegments.add(segmentKey);
+      currentRef.add(segmentKey);
+      currentLoadingSegments.add(segmentKey);
 
-        try {
-          const url = api.spectrograms.getUrl({
-            recording,
-            segment: { min: segment.time.min, max: segment.time.max },
-            parameters,
-          });
+      try {
+        const url = api.spectrograms.getUrl({
+          recording,
+          segment: { min: segment.time.min, max: segment.time.max },
+          parameters,
+        });
 
-          const response = await fetch(url);
-          const size = parseInt(response.headers.get('content-length') || '0', 10);
-          const blob = await response.blob();
-          const objectUrl = URL.createObjectURL(blob);
+        const response = await fetch(url);
+        const size = parseInt(response.headers.get('content-length') || '0', 10);
+        const blob = await response.blob();
+        const objectUrl = URL.createObjectURL(blob);
 
-          const img = new Image();
-          await new Promise((resolve, reject) => {
-            img.onload = async () => {
-              try {
-                await img.decode();
-                await spectrogramCache.set(recording.uuid, segment, parameters, img, size);
-                resolve(undefined);
-              } catch (err) {
-                reject(err);
-              } finally {
-                currentRef.delete(segmentKey);
-                currentLoadingSegments.delete(segmentKey);
-                URL.revokeObjectURL(objectUrl);
-              }
-            };
-            img.onerror = () => {
+        const img = new Image();
+        await new Promise((resolve, reject) => {
+          img.onload = async () => {
+            try {
+              await img.decode();
+              await spectrogramCache.set(recording.uuid, segment, parameters, img, size);
+              resolve(undefined);
+            } catch (err) {
+              reject(err);
+            } finally {
               currentRef.delete(segmentKey);
               currentLoadingSegments.delete(segmentKey);
               URL.revokeObjectURL(objectUrl);
-              reject();
-            };
-            img.src = objectUrl;
-          });
-          loadedCount++;
-          if (loadedCount === totalSegments) {
-            onAllSegmentsLoaded?.();
-          }
-        } catch (error) {
-          console.error('Failed to load segment:', error);
-          currentRef.delete(segmentKey);
-          currentLoadingSegments.delete(segmentKey);
+            }
+          };
+          img.onerror = () => {
+            currentRef.delete(segmentKey);
+            currentLoadingSegments.delete(segmentKey);
+            URL.revokeObjectURL(objectUrl);
+            reject();
+          };
+          img.src = objectUrl;
+        });
+
+        loadedCount++;
+        if (loadedCount === totalSegments) {
+          onAllSegmentsLoaded?.();
         }
+      } catch (error) {
+        console.error('Failed to load segment:', error);
+        currentRef.delete(segmentKey);
+        currentLoadingSegments.delete(segmentKey);
       }
     };
 
-    loadSegments();
+    // Launch all segment loads in parallel
+    Promise.all(allSegments.map(segment => loadSegment(segment)));
 
     return () => {
       currentLoadingSegments.forEach(segmentKey => {
