@@ -59,10 +59,11 @@ export default function useSpectrogramImage({
       const segmentKey = spectrogramCache.generateKey(recording.uuid, segment, parameters);
 
       // Skip if already cached or already being loaded
-      if (
-        spectrogramCache.get(recording.uuid, segment, parameters) ||
-        currentLoadingSegments.has(segmentKey)
-      ) {
+      if (spectrogramCache.get(recording.uuid, segment, parameters) || currentLoadingSegments.has(segmentKey)) {
+        loadedCount++;
+        if (loadedCount === totalSegments) {
+          onAllSegmentsLoaded?.();
+        }
         return;
       }
 
@@ -113,6 +114,10 @@ export default function useSpectrogramImage({
         console.error('Failed to load segment:', error);
         currentRef.delete(segmentKey);
         currentLoadingSegments.delete(segmentKey);
+        loadedCount++;
+        if (loadedCount === totalSegments) {
+          onAllSegmentsLoaded?.();
+        }
       }
     };
 
