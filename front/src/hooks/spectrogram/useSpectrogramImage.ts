@@ -52,18 +52,11 @@ export default function useSpectrogramImage({
     const currentLoadingSegments = new Set<string>();
     const currentRef = loadingSegments.current;
 
-    let loadedCount = 0;
-    const totalSegments = allSegments.length;
-
     const loadSegment = async (segment: SpectrogramWindow) => {
       const segmentKey = spectrogramCache.generateKey(recording.uuid, segment, parameters);
 
       // Skip if already cached or already being loaded
       if (spectrogramCache.get(recording.uuid, segment, parameters) || currentLoadingSegments.has(segmentKey)) {
-        loadedCount++;
-        if (loadedCount === totalSegments) {
-          onAllSegmentsLoaded?.();
-        }
         return;
       }
 
@@ -105,24 +98,18 @@ export default function useSpectrogramImage({
           };
           img.src = objectUrl;
         });
-
-        loadedCount++;
-        if (loadedCount === totalSegments) {
-          onAllSegmentsLoaded?.();
-        }
       } catch (error) {
         console.error('Failed to load segment:', error);
         currentRef.delete(segmentKey);
         currentLoadingSegments.delete(segmentKey);
-        loadedCount++;
-        if (loadedCount === totalSegments) {
-          onAllSegmentsLoaded?.();
-        }
       }
     };
 
     // Launch all segment loads in parallel
-    Promise.all(allSegments.map(segment => loadSegment(segment)));
+    Promise.all(allSegments.map(segment => loadSegment(segment)))
+      .then(() => {
+        onAllSegmentsLoaded?.();
+      })
 
     return () => {
       currentLoadingSegments.forEach(segmentKey => {
