@@ -130,7 +130,7 @@ export default function useAnnotateTasks({
 
   const parameters = useStore((state) => state.spectrogramSettings);
 
-  function preloadSpectrogramSegments(recording: Recording) {
+  async function preloadSpectrogramSegments(recording: Recording) {
     if (!recording) return;
 
     // Calculate initial window to get segment size
@@ -236,7 +236,7 @@ export default function useAnnotateTasks({
   }, [index, items, hasPrevTask, goToTask]);
 
   const loadedTasksRef = useRef<Set<string>>(new Set());
-  const handleCurrentSegmentsLoaded = useCallback(() => {
+  const handleCurrentSegmentsLoaded = useCallback(async () => {
     if (!items || index === -1 || index >= items.length - 1) return;
     if (!hasNextTask) return;
 
@@ -244,15 +244,14 @@ export default function useAnnotateTasks({
     if (loadedTasksRef.current.has(nextTask.uuid)) return;
     loadedTasksRef.current.add(nextTask.uuid);
 
-    api.annotationTasks.get(nextTask.uuid).then((completeData: AnnotationTask) => {
+    try {
+      const completeData = await api.annotationTasks.get(nextTask.uuid);
       if (!completeData.clip?.recording) return;
-
-      // Get recording from next task
-      const recording = completeData.clip.recording;
-
-      // Preload segments for next task
-      preloadSpectrogramSegments(recording);
-    })
+  
+      await preloadSpectrogramSegments(completeData.clip.recording);
+    } catch (error) {
+      console.error('Failed to preload next task:', error);
+    }
 
   }, [items, index, preloadSpectrogramSegments, hasNextTask]);
 
