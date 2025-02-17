@@ -6,7 +6,7 @@ import {
   useQueryClient,
 } from "@tanstack/react-query";
 import { type AxiosError } from "axios";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState, useRef } from "react";
 import useStore from "@/store";
 
 import {
@@ -18,10 +18,10 @@ import useAnnotateTasksKeyShortcuts from "@/hooks/annotation/useAnnotateTasksKey
 import useAnnotationTasks from "@/hooks/api/useAnnotationTasks";
 import { type Filter } from "@/hooks/utils/useFilter";
 
-import type { AnnotationStatus, Recording, AnnotationTask, ClipAnnotation, SoundEventAnnotation } from "@/types";
+import type { AnnotationStatus, Recording, AnnotationTask, ClipAnnotation } from "@/types";
 import { spectrogramCache } from "@/utils/spectrogram_cache";
 import { getInitialViewingWindow } from "@/utils/windows";
-import { getCoveringSegmentDuration, getSegments } from "../spectrogram/useRecordingSegments";
+import { getCoveringSegmentDuration, getSegments, OVERLAP } from "../spectrogram/useRecordingSegments";
 
 type AnnotationState = {
   /** Currently selected annotation task index */
@@ -151,7 +151,7 @@ export default function useAnnotateTasks({
     const duration = getCoveringSegmentDuration(initial, false);
 
     // Get all segments
-    const segments = getSegments(bounds, duration, 0.4); // 0.4 is the OVERLAP constant
+    const segments = getSegments(bounds, duration, OVERLAP);
 
     // Load all segments
     segments.forEach(async segment => {
@@ -235,12 +235,15 @@ export default function useAnnotateTasks({
     }
   }, [index, items, hasPrevTask, goToTask]);
 
+  const loadedTasksRef = useRef<Set<string>>(new Set());
   const handleCurrentSegmentsLoaded = useCallback(() => {
     if (!items || index === -1 || index >= items.length - 1) return;
-
     if (!hasNextTask) return;
 
     const nextTask = items[index + 1];
+    if (loadedTasksRef.current.has(nextTask.uuid)) return;
+    loadedTasksRef.current.add(nextTask.uuid);
+
     api.annotationTasks.get(nextTask.uuid).then((completeData: AnnotationTask) => {
       if (!completeData.clip?.recording) return;
 
