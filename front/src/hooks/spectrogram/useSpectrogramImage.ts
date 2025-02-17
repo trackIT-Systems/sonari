@@ -11,6 +11,11 @@ import type {
 
 import api from "@/app/api";
 
+type LoadingPromise = {
+  segmentKey: string;
+  promise: Promise<void>;
+};
+
 export default function useSpectrogramImage({
   recording,
   window,
@@ -33,8 +38,7 @@ export default function useSpectrogramImage({
     window,
     strict,
   });
-  
-  // Load the current segment
+
   const image = useSpectrogramWindow({
     recording,
     window: selected,
@@ -42,65 +46,93 @@ export default function useSpectrogramImage({
     withSpectrogram,
   });
 
-  // Keep track of which segments are currently loading
+  // Track both loading state and promises
   const loadingSegments = useRef<Set<string>>(new Set());
+  const loadingPromises = useRef<LoadingPromise[]>([]);
 
-  // Preload all segments
   useEffect(() => {
     if (!withSpectrogram || !preload) return;
 
     const loadSegment = async (segment: SpectrogramWindow) => {
       const segmentKey = spectrogramCache.generateKey(recording.uuid, segment, parameters);
 
-      // Skip if already cached or already being loaded
-      if (spectrogramCache.get(recording.uuid, segment, parameters) || loadingSegments.current.has(segmentKey)) {
-        return;
+      // Skip if already cached
+      if (spectrogramCache.get(recording.uuid, segment, parameters)) {
+        return null;
+      }
+
+      // Skip if already loading, but return the existing promise
+      if (loadingSegments.current.has(segmentKey)) {
+        const existingPromise = loadingPromises.current.find(p => p.segmentKey === segmentKey);
+        return existingPromise?.promise;
       }
 
       loadingSegments.current.add(segmentKey);
 
-      try {
-        const url = api.spectrograms.getUrl({
-          recording,
-          segment: { min: segment.time.min, max: segment.time.max },
-          parameters,
-        });
+      const promise = (async () => {
+        try {
+          const url = api.spectrograms.getUrl({
+            recording,
+            segment: { min: segment.time.min, max: segment.time.max },
+            parameters,
+          });
 
-        const response = await fetch(url);
-        const size = parseInt(response.headers.get('content-length') || '0', 10);
-        const blob = await response.blob();
-        const objectUrl = URL.createObjectURL(blob);
+          const response = await fetch(url);
+          const size = parseInt(response.headers.get('content-length') || '0', 10);
+          const blob = await response.blob();
+          const objectUrl = URL.createObjectURL(blob);
 
-        const img = new Image();
-        await new Promise((resolve, reject) => {
-          img.onload = async () => {
-            try {
-              await img.decode();
-              await spectrogramCache.set(recording.uuid, segment, parameters, img, size);
-              resolve(undefined);
-            } catch (err) {
-              reject(err);
-            } finally {
-              loadingSegments.current.delete(segmentKey);
+          const img = new Image();
+          await new Promise((resolve, reject) => {
+            img.onload = async () => {
+              try {
+                await img.decode();
+                await spectrogramCache.set(recording.uuid, segment, parameters, img, size);
+                resolve(undefined);
+              } catch (err) {
+                reject(err);
+              } finally {
+                URL.revokeObjectURL(objectUrl);
+              }
+            };
+            img.onerror = () => {
               URL.revokeObjectURL(objectUrl);
-            }
-          };
-          img.onerror = () => {
-            loadingSegments.current.delete(segmentKey);
-            URL.revokeObjectURL(objectUrl);
-            reject();
-          };
-          img.src = objectUrl;
-        });
-      } catch (error) {
-        loadingSegments.current.delete(segmentKey);
-      }
+              reject();
+            };
+            img.src = objectUrl;
+          });
+        } finally {
+          // Clean up tracking state when done
+          loadingSegments.current.delete(segmentKey);
+          loadingPromises.current = loadingPromises.current.filter(p => p.segmentKey !== segmentKey);
+        }
+      })();
+
+      // Track the new promise
+      loadingPromises.current.push({ segmentKey, promise });
+
+      return promise;
     };
 
-    Promise.all(allSegments.map(segment => loadSegment(segment)))
-      .then(() => {
-          onAllSegmentsLoaded?.();
-      });
+    // Collect all actual loading promises (filtering out nulls from already cached segments)
+    const activePromises = allSegments
+      .map(segment => loadSegment(segment))
+      .filter((p): p is Promise<void> => p !== null);
+
+    if (activePromises.length > 0) {
+      Promise.all(activePromises)
+        .then(() => {
+          // Only call onAllSegmentsLoaded if there are no remaining loading promises
+          if (loadingPromises.current.length === 0) {
+            onAllSegmentsLoaded?.();
+          }
+        })
+        .catch(console.error); // Consider better error handling
+    } else if (loadingPromises.current.length === 0) {
+      // If no new promises and no existing ones, everything is loaded
+      onAllSegmentsLoaded?.();
+    }
+
   }, [recording, parameters, allSegments, withSpectrogram, onAllSegmentsLoaded]);
 
   return image;
