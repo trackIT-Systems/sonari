@@ -45,9 +45,14 @@ export default function useSpectrogramImage({
     withSpectrogram,
   });
 
+  const abortControllerRef = useRef<AbortController | null>(null);
+
   // Preload all segments
   useEffect(() => {
     if (!withSpectrogram || !preload) return;
+
+    abortControllerRef.current = new AbortController();
+    const { signal } = abortControllerRef.current;
 
     const currentLoadingSegments = new Set<string>();
     const currentRef = loadingSegments.current;
@@ -79,6 +84,9 @@ export default function useSpectrogramImage({
         await new Promise((resolve, reject) => {
           img.onload = async () => {
             try {
+              if (signal.aborted) {
+                throw new Error('Aborted');
+              }
               await img.decode();
               await spectrogramCache.set(recording.uuid, segment, parameters, img, size);
               resolve(undefined);
@@ -99,7 +107,9 @@ export default function useSpectrogramImage({
           img.src = objectUrl;
         });
       } catch (error) {
-        console.error('Failed to load segment:', error);
+        if (!signal.aborted) {
+          console.error('Failed to load segment:', error);
+        }
         currentRef.delete(segmentKey);
         currentLoadingSegments.delete(segmentKey);
       }
@@ -108,10 +118,14 @@ export default function useSpectrogramImage({
     // Launch all segment loads in parallel
     Promise.all(allSegments.map(segment => loadSegment(segment)))
       .then(() => {
+        if (!signal.aborted) {
+          onAllSegmentsLoaded?.();
+        }
         onAllSegmentsLoaded?.();
       })
 
     return () => {
+      abortControllerRef.current?.abort();
       currentLoadingSegments.forEach(segmentKey => {
         currentRef.delete(segmentKey);
       });
