@@ -1,6 +1,6 @@
 {
   "name": "sonari-front",
-  "version": "0.5.1",
+  "version": "2025.03.1",
   "private": true,
   "scripts": {
     "dev": "next dev",
