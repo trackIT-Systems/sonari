@@ -29,7 +29,7 @@ export default function RecordingAnnotationContext({
         <div className="inline-flex items-center text-stone-500">
           <RecordingIcon className="inline-block mr-1 w-5 h-5 text-stone-600" />
           <a
-            className="text-stone-500 hover:text-stone-700 max-w-xl whitespace-nowrap"
+            className="focus:ring-4 focus:ring-emerald-500/50 focus:outline-none text-stone-500 stroke-stone-500 hover:stroke-stone-800 dark:hover:stroke-stone-300 disabled:stroke-stone-500 dark:disabled:stroke-stone-500 p-0 font-medium bg-transparent hover:underline hover:decoration-solid hover:decoration-2 hover:underline-offset-2 hover:font-extrabold disabled:no-underline disabled:font-medium stroke-2 hover:stroke-4 disabled:stroke-1 group flex flex-row items-center rounded-lg text-center text-sm max-w-xl whitespace-nowrap"
             href={downloadURL || ""}
             target="_blank"
             download
