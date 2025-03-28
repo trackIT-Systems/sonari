@@ -118,20 +118,14 @@ async def download_recording_audio(
     """
     recording = await api.recordings.get(session, recording_uuid)
 
-    audio = api.load_audio(
-        recording,
-        start_time=start_time,
-        end_time=end_time,
-        audio_parameters=audio_parameters,
-        audio_dir=settings.audio_dir,
-    )
-
-    # Get the samplerate and recording ID.
-    samplerate = recording.samplerate
+    audio_file = sf.SoundFile(os.path.join(settings.audio_dir, recording.path))
+    format: str = audio_file.format
+    samplerate = audio_file.samplerate
+    audio = audio_file.read()
 
     # Write the audio to a buffer.
     buffer = BytesIO()
-    sf.write(buffer, audio.data, samplerate, format="WAV")
+    sf.write(buffer, audio, samplerate, format=format.lower())
     buffer.seek(0)
 
     filename = os.path.basename(recording.path)
@@ -139,6 +133,6 @@ async def download_recording_audio(
     # Return the audio.
     return StreamingResponse(
         content=buffer,
-        media_type="audio/wav",
+        media_type=f"audio/{format.lower()}",
         headers={"Content-Disposition": f"attachment; filename={filename}"},
     )
