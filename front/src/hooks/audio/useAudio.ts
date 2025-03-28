@@ -89,6 +89,10 @@ export default function useAudio({
   const [isPlaying, setIsPlaying] = useState<boolean>(false);
 
   const initialUrl = useMemo(() => {
+    if (audio.current) {
+      audio.current.src = '';
+      audio.current.load();
+    }
     return api.audio.getStreamUrl({
       recording,
       startTime,
@@ -100,6 +104,8 @@ export default function useAudio({
   const stopAudio = function(audio: HTMLAudioElement, startTime: number) {
       audio.pause();
       audio.currentTime = 0;
+      audio.src = '';
+      audio.load();
       setTime(startTime);
       setIsPlaying(false);
   }
