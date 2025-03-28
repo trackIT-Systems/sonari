@@ -28,17 +28,14 @@ export default function RecordingAnnotationContext({
       <div className="flex flex-row justify-start gap-8 items-center">
         <div className="inline-flex items-center text-stone-500">
           <RecordingIcon className="inline-block mr-1 w-5 h-5 text-stone-600" />
-          <Link
-            mode="text"
-            padding="p-0"
-            variant="secondary"
+          <a
+            className="text-stone-500 hover:text-stone-700 max-w-xl whitespace-nowrap"
             href={downloadURL || ""}
-            className="max-w-xl whitespace-nowrap"
             target="_blank"
             download
           >
             {baseName}
-          </Link>
+          </a>
         </div>
         <RecordingLocation
           latitude={recording.latitude}
