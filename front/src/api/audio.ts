@@ -111,8 +111,7 @@ export function registerAudioAPI(
       ),
     );
 
-    // Get url
-    return `${endpoints.download}?${params}`;
+    return `${instance.defaults.baseURL}${endpoints.download}?${params}`;
   }
 
   return {
