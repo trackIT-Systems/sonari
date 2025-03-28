@@ -5,6 +5,8 @@ import { ClientProvider } from "@/app/client";
 import type { Metadata } from "next";
 import Notification from "@/components/Notification";
 
+import { HOST } from "@/api/common";
+
 const mulish = Mulish({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
@@ -20,10 +22,10 @@ export default function RootLayout({
   return (
     <html lang="en">
       <head>
-      <link rel="icon" href="/favicon.ico" sizes="any" />
-      <link rel="icon" href="/icon.svg" type="image/svg+xml" />
-      <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
-      <link rel="manifest" href="/manifest.webmanifest" />
+      <link rel="icon" sizes="any" href={`${HOST}/favicon.ico`}/>
+      <link rel="icon" type="image/svg+xml" href={`${HOST}/icon.svg`} />
+      <link rel="apple-touch-icon" href={`${HOST}/apple-touch-icon.png`} />
+      <link rel="manifest" href={`${HOST}/manifest.webmanifest`} />
       </head>
       <body
         className={`${mulish.className} font-sans bg-stone-100 dark:bg-stone-900 text-stone-900 dark:text-stone-100 min-h-screen w-screen overflow-x-hidden`}
