@@ -51,6 +51,7 @@ export default function useSpectrogramWindow({
     window: spectrogramWindow,
     parameters,
     withSpectrogram,
+    lowRes,
     url
   });
 

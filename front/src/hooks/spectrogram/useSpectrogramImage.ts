@@ -54,6 +54,7 @@ export default function useSpectrogramImage({
             recording.uuid,
             segment,
             parameters,
+            false,
             async () => {
               const url = api.spectrograms.getUrl({
                 recording,

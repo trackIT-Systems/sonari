@@ -156,7 +156,7 @@ export default function useAnnotateTasks({
     // Load all segments
     segments.forEach(async segment => {
       // Skip if already cached
-      if (spectrogramCache.get(recording.uuid, segment, parameters)) {
+      if (spectrogramCache.get(recording.uuid, segment, parameters, false)) {
         return;
       }
 
@@ -176,7 +176,7 @@ export default function useAnnotateTasks({
         img.onload = async () => {
           try {
             await img.decode();
-            await spectrogramCache.set(recording.uuid, segment, parameters, img, size);
+            await spectrogramCache.set(recording.uuid, segment, parameters, false, img, size);
           } finally {
             URL.revokeObjectURL(objectUrl);
           }
