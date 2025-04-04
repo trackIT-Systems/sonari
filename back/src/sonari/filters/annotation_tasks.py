@@ -308,6 +308,39 @@ class SoundEventAnnotationTagFilter(base.Filter):
         return query.where(or_(sound_event_condition, recording_condition))
 
 
+class EmptyFilter(base.Filter):
+    """Filter for annotation tasks with no sound events."""
+
+    eq: bool | None = None
+
+    def filter(self, query: Select) -> Select:
+        if self.eq is None:
+            return query
+
+        sound_event_count = (
+            select(
+                models.SoundEventAnnotation.clip_annotation_id,
+                func.count(models.SoundEventAnnotation.id).label("count"),
+            )
+            .group_by(models.SoundEventAnnotation.clip_annotation_id)
+            .subquery()
+        )
+
+        # Join with our query
+        query = query.outerjoin(
+            sound_event_count,
+            models.AnnotationTask.clip_annotation_id == sound_event_count.c.clip_annotation_id,
+        )
+
+        # Filter based on eq parameter
+        if self.eq:
+            # When eq=True, return tasks where count is NULL or 0
+            return query.where(or_(sound_event_count.c.count.is_(None), sound_event_count.c.count == 0))
+        else:
+            # When eq=False, return tasks where count is greater than 0
+            return query.where(sound_event_count.c.count > 0)
+
+
 class DateRangeFilter(base.Filter):
     """Filter for tasks by date range."""
 
@@ -562,6 +595,7 @@ AnnotationTaskFilter = base.combine(
     SearchRecordingsFilter,
     assigned_to=AssignedToFilter,
     pending=PendingFilter,
+    empty=EmptyFilter,
     verified=IsVerifiedFilter,
     rejected=IsRejectedFilter,
     completed=IsCompletedFilter,

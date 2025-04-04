@@ -163,6 +163,24 @@ const tasksFilterDefs: FilterDef<AnnotationTaskFilter>[] = [
     ),
   },
   {
+    field: "empty",
+    name: "Empty",
+    render: ({ value, clear }) => (
+      <FilterBadge
+        field="Empty"
+        value={value ? "Yes" : "No"}
+        onRemove={clear}
+      />
+    ),
+    selector: ({ setFilter }) => (
+      <BooleanFilter onChange={(val) => setFilter("empty", val)} />
+    ),
+    description: "Include or exclude tasks without any sound events?",
+    icon: (
+      <EditIcon className="h-5 w-5 inline-block text-stone-500 mr-1 align-middle" />
+    ),
+  },
+  {
     field: "dataset",
     name: "Dataset",
     render: ({ value, clear, setFilter }) => {

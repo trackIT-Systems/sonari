@@ -37,6 +37,7 @@ export const AnnotationTaskFilterSchema = z.object({
     TagSchema,
     z.array(TagSchema)
   ]).optional(),
+  empty: z.boolean().optional(),
   pending: z.boolean().optional(),
   assigned: z.boolean().optional(),
   verified: z.boolean().optional(),
