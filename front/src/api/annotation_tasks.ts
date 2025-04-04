@@ -150,6 +150,7 @@ export function registerAnnotationTasksAPI(
             : params.sound_event_annotation_tag.value)
           : undefined,
         pending__eq: params.pending,
+        empty__eq: params.empty,
         assigned__eq: params.assigned,
         verified__eq: params.verified,
         rejected__eq: params.rejected,
