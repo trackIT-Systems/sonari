@@ -354,11 +354,13 @@ export default function ClipAnnotationSpectrogram({
         {!disabled && withControls && withSpectrogram && withSoundEvent && (
           <AnnotationControls
             disabled={disabled}
+            isMeasuring={annotate.isMeasuring}
             isDrawing={annotate.isDrawing}
             isDeleting={annotate.isDeleting}
             isSelecting={annotate.isSelecting}
             isEditing={annotate.isEditing}
             geometryType={annotate.geometryType}
+            onMeasure={annotate.enableMeasure}
             onDraw={annotate.enableDraw}
             onDelete={annotate.enableDelete}
             onSelect={annotate.enableSelect}
