@@ -30,6 +30,11 @@ export default function useCreateLineString({
   const [coordinates, setCoordinates] = useState<Coordinates[] | null>(null);
   const [vertex, setVertex] = useState<Position | null>(null);
 
+  const clear = useCallback(() => {
+    setCoordinates(null);
+    setVertex(null);
+  }, []);
+
   const handleMoveStart = useCallback(() => {
     // Remove the last vertex that was added at click since movement means
     // that the user wants to move the vertex
@@ -50,19 +55,12 @@ export default function useCreateLineString({
   const handleAddVertex = useCallback(
     ({
       point,
-      shiftKey = false,
-      ctrlKey = false,
     }: {
       point: Position;
-      shiftKey: boolean;
-      ctrlKey: boolean;
     }) => {
-      // If control key is pressed, abort adding vertex
-      if (ctrlKey) return;
+      if (coordinates != null && coordinates.length >= 2) return;
 
-      // If the linestring is too short or shift key is not pressed, add a
-      // vertex
-      if (coordinates == null || coordinates.length < 2 || !shiftKey) {
+      if (coordinates == null || coordinates.length < 2) {
         setCoordinates((prev) => {
           if (prev == null) return [[point.time, point.freq]];
           return [...prev, [point.time, point.freq]];
@@ -85,24 +83,28 @@ export default function useCreateLineString({
     ({
       position: point,
       shiftKey = false,
-      ctrlKey = false,
     }: {
       position: Position;
       shiftKey?: boolean;
-      ctrlKey?: boolean;
     }) => {
-      handleAddVertex({ point, shiftKey, ctrlKey });
+      if (shiftKey) {
+        clear();
+        return;
+      }
+
+      if (coordinates != null && coordinates.length >= 2) {
+        return;
+      }
+    
+      handleAddVertex({ point });
     },
-    [handleAddVertex],
+    [handleAddVertex, coordinates, clear],
   );
 
   const handleMoveEnd = useCallback(
-    ({
-      ctrlKey = false,
-      shiftKey = false,
-    }: { ctrlKey?: boolean; shiftKey?: boolean } = {}) => {
+    () => {
       if (vertex == null) return;
-      handleAddVertex({ point: vertex, ctrlKey, shiftKey });
+      handleAddVertex({ point: vertex });
       setVertex(null);
     },
     [vertex, handleAddVertex],
@@ -127,6 +129,43 @@ export default function useCreateLineString({
         const geometry: LineString = { type: "LineString", coordinates };
         const scaled = scaleGeometryToViewport(dimensions, geometry, viewport);
         drawGeometry(ctx, scaled, style);
+        
+        scaled.coordinates.forEach((coord, index) => {
+          const [x, y] = coord;
+          const markerSize = 5; 
+          
+          ctx.strokeStyle = 'white';
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          ctx.moveTo(x - markerSize, y - markerSize);
+          ctx.lineTo(x + markerSize, y + markerSize);
+          ctx.moveTo(x + markerSize, y - markerSize);
+          ctx.lineTo(x - markerSize, y + markerSize);
+          ctx.stroke();
+          
+          const originalCoord = coordinates[index];
+          ctx.font = '12px sans-serif';
+          ctx.textAlign = 'left';
+          ctx.textBaseline = 'bottom';
+          // Round to 2 decimal places for cleaner display
+          const timeValue = originalCoord[0].toFixed(2);
+          const freqValue = (originalCoord[1] / 1000).toFixed(2);
+          ctx.fillText(`${timeValue}s, ${freqValue}kHz`, x + 8, y - 3);
+          
+          // Draw delta between current and previous vertex
+          if (index > 0) {
+            const prevCoord = coordinates[index - 1];
+            const deltaTime = Math.abs(originalCoord[0] - prevCoord[0]).toFixed(2);
+            const deltaFreq = Math.abs((originalCoord[1] - prevCoord[1]) / 1000).toFixed(2);
+            
+            // Calculate midpoint for delta label
+            const midX = (scaled.coordinates[index-1][0] + x) / 2;
+            const midY = (scaled.coordinates[index-1][1] + y) / 2;
+            
+            // Show delta with a different color
+            ctx.fillText(`Δt: ${deltaTime}s, Δf: ${deltaFreq}kHz`, midX, midY - 5);
+          }
+        });
       }
 
       if (vertex != null) {
@@ -154,11 +193,6 @@ export default function useCreateLineString({
   useEffect(() => {
     if (!enabled && coordinates != null) setCoordinates(null);
   }, [enabled, coordinates]);
-
-  const clear = useCallback(() => {
-    setCoordinates(null);
-    setVertex(null);
-  }, []);
 
   return {
     props,

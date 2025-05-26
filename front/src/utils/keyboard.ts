@@ -75,6 +75,7 @@ export const UNSURE_TASK_SHORTCUT = "2";
 export const REJECT_TASK_SHORTCUT = "3";
 export const VERIFY_TASK_SHORTCUT = "4";
 
+export const MEASURE_SHORTCUT = "M";
 export const CREATE_SOUND_EVENT_SHORTCUT = "c";
 export const SELECT_SOUND_EVENT_SHORTCUT = "s";
 export const DELETE_SOUND_EVENT_SHORTCUT = "x";
@@ -316,6 +317,11 @@ export const SPECTRGRAM_NAVIGATION_SHORTCUTS: KeyShortcut[] = [
 ]
 
 export const ANNOTATION_KEY_SHORTCUTS: KeyShortcut[] = [
+    {
+        label: "Add measurement line",
+        shortcut: `${getSpecialKeyLabel("Shift")} ${MEASURE_SHORTCUT.toLowerCase()}`,
+        description: "Add temporary measurement line",
+    },
     {
         label: "Add Annotation",
         shortcut: CREATE_SOUND_EVENT_SHORTCUT,

@@ -8,11 +8,12 @@ import {
   EditIcon,
   SelectIcon,
   TimeIntervalIcon,
+  ArrowTrendingDownIcon,
 } from "@/components/icons";
 import KeyboardKey from "@/components/KeyboardKey";
 import Select from "@/components/inputs/Select";
 import Tooltip from "@/components/Tooltip";
-import { CREATE_SOUND_EVENT_SHORTCUT, DELETE_SOUND_EVENT_SHORTCUT, SELECT_SOUND_EVENT_SHORTCUT, GEOMETRY_TYPE_SHORTCUT } from "@/utils/keyboard";
+import { MEASURE_SHORTCUT, CREATE_SOUND_EVENT_SHORTCUT, DELETE_SOUND_EVENT_SHORTCUT, SELECT_SOUND_EVENT_SHORTCUT, GEOMETRY_TYPE_SHORTCUT, getSpecialKeyLabel } from "@/utils/keyboard";
 import useKeyFilter from "@/hooks/utils/useKeyFilter";
 import { useKeyPressEvent } from "react-use";
 
@@ -39,23 +40,27 @@ const geometryTypes: Record<GeometryType, Node> = {
 };
 
 export default function AnnotationControls({
+  isMeasuring,
   isDrawing,
   isDeleting,
   isSelecting,
   isEditing,
   geometryType,
   disabled = false,
+  onMeasure,
   onDraw,
   onDelete,
   onSelect,
   onSelectGeometryType,
 }: {
+  isMeasuring: boolean;
   isDrawing: boolean;
   isDeleting: boolean;
   isSelecting: boolean;
   isEditing: boolean;
   geometryType: GeometryType;
   disabled?: boolean;
+  onMeasure?: () => void;
   onDraw?: () => void;
   onDelete?: () => void;
   onSelect?: () => void;
@@ -98,6 +103,24 @@ export default function AnnotationControls({
       <Tooltip
         tooltip={
           <div className="inline-flex gap-1">
+            Measure
+            <span className="text-xs">
+              <KeyboardKey code={`${getSpecialKeyLabel("Shift")}`} /><KeyboardKey code={MEASURE_SHORTCUT.toLowerCase()} />
+            </span>
+          </div>
+        }
+        placement="bottom"
+        autoPlacement={false}
+      >
+        <Button variant={isMeasuring ? "primary" : "secondary"} onClick={onMeasure}>
+          <ArrowTrendingDownIcon className="w-5 h-5" />
+        </Button>
+      </Tooltip>
+
+      
+      <Tooltip
+        tooltip={
+          <div className="inline-flex gap-1">
             Create
             <span className="text-xs">
               <KeyboardKey code={CREATE_SOUND_EVENT_SHORTCUT} />
@@ -111,6 +134,8 @@ export default function AnnotationControls({
           <AddIcon className="w-5 h-5" />
         </Button>
       </Tooltip>
+
+
       {!isEditing ? (
         <Tooltip
           tooltip={

@@ -16,12 +16,13 @@ import type {
   Dimensions,
   Geometry,
   GeometryType,
+  LineString,
   SoundEventAnnotation,
   SpectrogramWindow,
   Tag,
 } from "@/types";
 
-export type AnnotateMode = "select" | "draw" | "edit" | "delete" | "idle";
+export type AnnotateMode = "select" | "measure" | "draw" | "edit" | "delete" | "idle";
 
 type DrawFunction = (ctx: CanvasRenderingContext2D) => void;
 
@@ -204,6 +205,14 @@ export default function useAnnotateClip(props: {
     },
     [defaultTags, addSoundEvent, disabled, setSelectedAnnotation],
   );
+
+  const { props: measureProps, draw: drawMeasure } = useAnnotationCreate({
+    viewport,
+    dimensions,
+    geometryType: "LineString",
+    enabled: active && mode === "measure" && !disabled,
+    onCreate: () => {},
+  });
 
   const { props: createProps, draw: drawCreate } = useAnnotationCreate({
     viewport,
@@ -417,6 +426,9 @@ export default function useAnnotateClip(props: {
       case "delete":
         annotateProps = deleteProps;
         break;
+      case "measure":
+        annotateProps = measureProps;
+        break;
       case "draw":
         annotateProps = createProps;
         break;
@@ -436,6 +448,7 @@ export default function useAnnotateClip(props: {
       delete: drawDelete,
       edit: drawEdit,
       draw: drawCreate,
+      measure: drawMeasure,
       idle: () => undefined,
     }[mode];
 
@@ -447,6 +460,7 @@ export default function useAnnotateClip(props: {
     active,
     mode,
     drawAnnotations,
+    drawMeasure,
     drawCreate,
     drawSelect,
     drawDelete,
@@ -459,6 +473,10 @@ export default function useAnnotateClip(props: {
 
   const enableSelect = useCallback(() => {
     setMode("select");
+  }, [setMode]);
+
+  const enableMeasure = useCallback(() => {
+    setMode("measure");
   }, [setMode]);
 
   const enableDraw = useCallback(() => {
@@ -480,6 +498,7 @@ export default function useAnnotateClip(props: {
   }, [selectedAnnotation, handleDelete, disabled]);
 
   useAnnotateClipKeyShortcuts({
+    onGoMeasure: enableMeasure,
     onGoCreate: enableDraw,
     onGoDelete: enableDelete,
     onGoSelect: enableSelect,
@@ -498,11 +517,13 @@ export default function useAnnotateClip(props: {
     selectedAnnotation,
     enabled: mode !== "idle" && active,
     isSelecting: mode === "select" && active,
+    isMeasuring: mode === "measure" && active,
     isDrawing: mode === "draw" && active,
     isEditing: mode === "edit" && active,
     isDeleting: mode === "delete" && active,
     enableDelete,
     enableSelect,
+    enableMeasure,
     enableDraw,
     enableEdit,
     disable,

@@ -8,9 +8,11 @@ import {
   PREVIOUS_SOUND_EVENT_SHORTCUT,
   NEXT_SOUND_EVENT_SHORTCUT,
   SELECT_SOUND_EVENT_SHORTCUT,
+  MEASURE_SHORTCUT,
 } from "@/utils/keyboard";
 
 export default function useAnnotateClipKeyShortcuts(props: {
+  onGoMeasure: () => void;
   onGoCreate: () => void;
   onGoSelect: () => void;
   onGoDelete: () => void;
@@ -21,6 +23,7 @@ export default function useAnnotateClipKeyShortcuts(props: {
   onDeleteSelectedAnnotation?: () => void;
 }) {
   const { 
+    onGoMeasure,
     onGoCreate, 
     onGoSelect, 
     onGoDelete, 
@@ -40,6 +43,7 @@ export default function useAnnotateClipKeyShortcuts(props: {
     }
   };
 
+  useKeyPressEvent(useKeyFilter({ enabled, key: MEASURE_SHORTCUT }), onGoMeasure);
   useKeyPressEvent(useKeyFilter({ enabled, key: CREATE_SOUND_EVENT_SHORTCUT }), onGoCreate);
   useKeyPressEvent(useKeyFilter({ enabled, key: SELECT_SOUND_EVENT_SHORTCUT }), onGoSelect);
   useKeyPressEvent(useKeyFilter({ enabled, key: DELETE_SOUND_EVENT_SHORTCUT }), handleDelete);
