@@ -195,13 +195,11 @@ async def export_annotation_project_soundevent(
 
 async def export_annotation_project_territory(
     session: Session,
-    annotation_project_uuids: list[UUID],
+    project_ids: list[int],
     tags: Annotated[list[str], Query()],
     statuses: Annotated[list[str], Query()],
 ) -> Response:
     """Export an annotation project."""
-    projects = await api.annotation_projects.get_many(session, limit=-1, filters=[models.AnnotationProject.uuid.in_(annotation_project_uuids)])
-    project_ids = [p.id for p in projects.items]
     tasks = await api.annotation_tasks.get_many(
         session,
         limit=-1,
@@ -318,13 +316,11 @@ async def export_annotation_project_territory(
 
 async def export_annotation_project_multibase(
     session: Session,
-    annotation_project_uuids: list[UUID],
+    project_ids: list[int],
     tags: Annotated[list[str], Query()],
     statuses: Annotated[list[str], Query()],
 ) -> Response:
     """Export an annotation project."""
-    projects = await api.annotation_projects.get_many(session, limit=-1, filters=[models.AnnotationProject.uuid.in_(annotation_project_uuids)])
-    project_ids = [p.id for p in projects[0]]
     tasks = await api.annotation_tasks.get_many(
         session,
         limit=-1,
@@ -404,7 +400,7 @@ async def export_annotation_project_multibase(
 
                     # Write the content to the worksheet
                     ws.append(
-                        f"{species};{date};{day};{month};{year};;;{station};{latitude}x;{longitude}y;4326;Akustik;{sound_event_notes};{clip_annotation_notes}".split(
+                        f"{species};{date};{day};{month};{year};;;{station};{latitude};{longitude};4326;Akustik;{sound_event_notes};{clip_annotation_notes}".split(
                             ";"
                         )
                     )
@@ -438,10 +434,12 @@ async def export_annotation_project(
     statuses: Annotated[list[str], Query()],
     format: str,
 ) -> Response:
+    projects = await api.annotation_projects.get_many(session, limit=-1, filters=[models.AnnotationProject.uuid.in_(annotation_project_uuids)])
+    project_ids = [p.id for p in projects[0]]
     if format == "MultiBase":
-        return await export_annotation_project_multibase(session, annotation_project_uuids, tags, statuses)
+        return await export_annotation_project_multibase(session,project_ids, tags, statuses)
     elif format == "Territory":
-        return await export_annotation_project_territory(session, annotation_project_uuids, tags, statuses)
+        return await export_annotation_project_territory(session,project_ids, tags, statuses)
     elif format == "SoundEvent":
         return await export_annotation_project_soundevent(session, annotation_project_uuids)
     else:
