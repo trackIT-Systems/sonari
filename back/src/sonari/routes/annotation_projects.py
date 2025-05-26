@@ -176,34 +176,37 @@ async def remove_tag_from_annotation_project(
 
 async def export_annotation_project_soundevent(
     session: Session,
-    annotation_project_uuid: UUID,
+    annotation_project_uuids: list[UUID],
 ):
     """Export an annotation project."""
-    sonari_project = await api.annotation_projects.get(session, annotation_project_uuid)
-    project = await api.annotation_projects.to_soundevent(session, sonari_project)
-    obj = to_aeof(project)
-    filename = f"{project.name}_{obj.created_on.isoformat()}.json"
+    all_objs = []
+    for uuid in annotation_project_uuids:
+        sonari_project = await api.annotation_projects.get(session, uuid)
+        soundevent_project = await api.annotation_projects.to_soundevent(session, sonari_project)
+        obj = to_aeof(soundevent_project)
+        all_objs.append(obj.model_dump())
+    filename = "soundevent_export.json"
     return Response(
-        obj.model_dump_json(),
+        all_objs,
         media_type="application/json",
-        status_code=200,
         headers={"Content-Disposition": f"attachment; filename={filename}"},
     )
 
 
 async def export_annotation_project_territory(
     session: Session,
-    annotation_project_uuid: UUID,
+    annotation_project_uuids: list[UUID],
     tags: Annotated[list[str], Query()],
     statuses: Annotated[list[str], Query()],
 ) -> Response:
     """Export an annotation project."""
-    project = await api.annotation_projects.get(session, annotation_project_uuid)
+    projects = await api.annotation_projects.get_many(session, limit=-1, filters=[models.AnnotationProject.uuid.in_(annotation_project_uuids)])
+    project_ids = [p.id for p in projects.items]
     tasks = await api.annotation_tasks.get_many(
         session,
         limit=-1,
         filters=[
-            models.AnnotationTask.annotation_project_id == project.id,
+            models.AnnotationTask.annotation_project_id.in_(project_ids),
             models.AnnotationTask.status_badges.any(models.AnnotationStatusBadge.state.in_(statuses)),
         ],
     )
@@ -300,7 +303,7 @@ async def export_annotation_project_territory(
     excel_file.seek(0)
 
     # Generate the filename
-    filename = f"{project.name}_{datetime.datetime.now().strftime('%d.%m.%Y_%H_%M')}_territory.xlsx"
+    filename = f"{datetime.datetime.now().strftime('%d.%m.%Y_%H_%M')}_territory.xlsx"
 
     return Response(
         excel_file.getvalue(),
@@ -315,17 +318,18 @@ async def export_annotation_project_territory(
 
 async def export_annotation_project_multibase(
     session: Session,
-    annotation_project_uuid: UUID,
+    annotation_project_uuids: list[UUID],
     tags: Annotated[list[str], Query()],
     statuses: Annotated[list[str], Query()],
 ) -> Response:
     """Export an annotation project."""
-    project = await api.annotation_projects.get(session, annotation_project_uuid)
+    projects = await api.annotation_projects.get_many(session, limit=-1, filters=[models.AnnotationProject.uuid.in_(annotation_project_uuids)])
+    project_ids = [p.id for p in projects[0]]
     tasks = await api.annotation_tasks.get_many(
         session,
         limit=-1,
         filters=[
-            models.AnnotationTask.annotation_project_id == project.id,
+            models.AnnotationTask.annotation_project_id.in_(project_ids),
             models.AnnotationTask.status_badges.any(models.AnnotationStatusBadge.state.in_(statuses)),
         ],
     )
@@ -411,7 +415,7 @@ async def export_annotation_project_multibase(
     excel_file.seek(0)
 
     # Generate the filename
-    filename = f"{project.name}_{datetime.datetime.now().strftime('%d.%m.%Y_%H_%M')}_multibase.xlsx"
+    filename = f"{datetime.datetime.now().strftime('%d.%m.%Y_%H_%M')}_multibase.xlsx"
 
     return Response(
         excel_file.getvalue(),
@@ -429,17 +433,17 @@ async def export_annotation_project_multibase(
 )
 async def export_annotation_project(
     session: Session,
-    annotation_project_uuid: UUID,
+    annotation_project_uuids: Annotated[list[UUID], Query()],
     tags: Annotated[list[str], Query()],
     statuses: Annotated[list[str], Query()],
     format: str,
 ) -> Response:
     if format == "MultiBase":
-        return await export_annotation_project_multibase(session, annotation_project_uuid, tags, statuses)
+        return await export_annotation_project_multibase(session, annotation_project_uuids, tags, statuses)
     elif format == "Territory":
-        return await export_annotation_project_territory(session, annotation_project_uuid, tags, statuses)
+        return await export_annotation_project_territory(session, annotation_project_uuids, tags, statuses)
     elif format == "SoundEvent":
-        return await export_annotation_project_soundevent(session, annotation_project_uuid)
+        return await export_annotation_project_soundevent(session, annotation_project_uuids)
     else:
         return Response(status_code=501)
 

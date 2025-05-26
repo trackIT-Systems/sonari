@@ -81,7 +81,7 @@ export default function AnnotationProjectExport({
 
       const queryString = `${tagParams}&${statusParams}&format=${exportFormat}`;
       
-      const { blob, filename } = await api.annotationProjects.download(project, queryString);
+      const { blob, filename } = await api.annotationProjects.download([project], queryString);
   
       // Create a download link and trigger the download
       const url = window.URL.createObjectURL(blob);

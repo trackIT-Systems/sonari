@@ -142,14 +142,16 @@ export function registerAnnotationProjectAPI(
     return AnnotationProjectSchema.parse(data);
   }
   async function exportProject(
-    annotationProject: AnnotationProject,
+    annotationProjects: AnnotationProject[],
     queryString: string
   ): Promise<{ blob: Blob; filename: string }> {
-    const response = await instance.get(`${endpoints.export}?annotation_project_uuid=${annotationProject.uuid}&${queryString}`, {
+    const uuids = annotationProjects
+    .map(p => `annotation_project_uuids=${encodeURIComponent(p.uuid)}`)
+    .join('&');
+    const response = await instance.get(`${endpoints.export}?${uuids}&${queryString}`, {
       responseType: 'blob',
       withCredentials: true,
     });
-  
     // Extract filename from Content-Disposition header
     const contentDisposition = response.headers['content-disposition'];
     let filename = 'export.xlsx'; // Default filename

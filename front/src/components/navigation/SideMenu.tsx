@@ -19,6 +19,7 @@ import {
   LogOutIcon,
   UserIcon,
   SonariIcon,
+  DownloadIcon,
 } from "@/components/icons";
 import Button from "@/components/Button";
 import Link from "@/components/Link";
@@ -141,6 +142,16 @@ function MainNavigation({ pathname }: { pathname?: string }) {
           keyboardKeys={[`${getSpecialKeyLabel("Shift")}`, `${getMetaKeyLabel()}`, "2"]}
         >
           <AnnotationProjectIcon className="w-6 h-6 text-stone-400" />
+        </SideMenuLink>
+      </li>
+      <li className="px-3">
+        <SideMenuLink
+          isActive={pathname?.startsWith("/annotation_projects")}
+          tooltip={"Export"}
+          href="/export"
+          keyboardKeys={[`${getSpecialKeyLabel("Shift")}`, `${getMetaKeyLabel()}`, "3"]}
+        >
+          <DownloadIcon className="w-6 h-6 text-stone-400" />
         </SideMenuLink>
       </li>
     </ul>
