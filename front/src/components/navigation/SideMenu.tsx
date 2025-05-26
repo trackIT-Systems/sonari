@@ -6,6 +6,7 @@ import {
   getMetaKeyLabel,
   ShortcutConfig,
   GO_PROJECTS_SHORTCUT,
+  GO_EXPORT_SHORTCUT,
   GO_PROFILE_SHORTCUT,
   LOGOUT_SHORTCUT,
   GO_DATASETS_SHORTCUT,
@@ -146,10 +147,10 @@ function MainNavigation({ pathname }: { pathname?: string }) {
       </li>
       <li className="px-3">
         <SideMenuLink
-          isActive={pathname?.startsWith("/annotation_projects")}
+          isActive={pathname?.startsWith("/export")}
           tooltip={"Export"}
           href="/export"
-          keyboardKeys={[`${getSpecialKeyLabel("Shift")}`, `${getMetaKeyLabel()}`, "3"]}
+          keyboardKeys={[`${getSpecialKeyLabel("Shift")}`, `${getMetaKeyLabel()}`, "8"]}
         >
           <DownloadIcon className="w-6 h-6 text-stone-400" />
         </SideMenuLink>
@@ -211,6 +212,12 @@ export function SideMenu({
       shiftKey: true,
       metaKey: true,
       action: () => { router.push("/annotation_projects") },
+    },
+    {
+      key: GO_EXPORT_SHORTCUT,
+      shiftKey: true,
+      metaKey: true,
+      action: () => { router.push("/export") },
     },
     {
       key: GO_PROFILE_SHORTCUT,
