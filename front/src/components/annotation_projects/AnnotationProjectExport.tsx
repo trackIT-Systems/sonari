@@ -201,7 +201,7 @@ export default function AnnotationProjectExport({
                     onChange={() => handleExportFormatChange('Territory')}
                   />
                 </InputGroup>
-                <InputGroup
+                { /*<InputGroup
                   name="soundevent-format"
                   label="SoundEvent"
                   help="Note: this ignores all selections from above."
@@ -210,7 +210,7 @@ export default function AnnotationProjectExport({
                     isSelected={exportFormat === 'SoundEvent'}
                     onChange={() => handleExportFormatChange('SoundEvent')}
                   />
-                </InputGroup>
+                      </InputGroup> */ }
               </div>
             </div>
           </Card>
@@ -246,7 +246,7 @@ export default function AnnotationProjectExport({
                 </>
               ) : (
                 <p className="text-stone-500">
-                  Select at least one tag and one status badge, or export as SoundEvent
+                  Select at least one tag and one status badge
                 </p>
               )}
             </Card>

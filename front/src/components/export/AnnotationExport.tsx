@@ -64,12 +64,12 @@ export default function AnnotationExport() {
   }, []);
   
   const projectTagList: Tag[] = availableProjects.map(p => ({
-    key: typeof p.id === 'string' ? p.id : String(p.id ?? ''),
+    key: "project",
     value: typeof p.label === 'string' ? p.label : String(p.label ?? ''),
   }));  
 
   const selectedProjectTags: Tag[] = selectedProjects.map(p => ({
-    key: p.uuid,
+    key: "project",
     value: p.name,
   }));  
   
@@ -168,10 +168,10 @@ export default function AnnotationExport() {
     (selectedTags.length > 0 && selectedStatuses.length > 0);
 
     return (
-      <div className="flex flex-col gap-8">
+        <div className="flex flex-col gap-8">
         <H2>
           <DownloadIcon className="inline-block mr-2 w-8 h-8 align-middle" />
-          Export Annotation Project
+          Export Annotation Projects
         </H2>
         <Card>
           <div>
@@ -308,7 +308,7 @@ export default function AnnotationExport() {
                     </>
                   ) : (
                     <p className="text-stone-500">
-                      Select at least one tag and one status badge, or export as SoundEvent
+                      Select at least one tag and one status badge
                     </p>
                   )}
                 </Card>
