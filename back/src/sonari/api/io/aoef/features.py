@@ -1,6 +1,6 @@
 import datetime
+from enum import Enum
 
-from soundevent.geometry import GeometricFeature
 from soundevent.io.aoef import (
     AnnotationSetObject,
     RecordingSetObject,
@@ -9,6 +9,14 @@ from sqlalchemy import insert, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from sonari import models
+
+
+class GeometricFeature(str, Enum):
+    DURATION = "duration"
+    LOW_FREQ = "low_freq"
+    HIGH_FREQ = "high_freq"
+    BANDWIDTH = "bandwidth"
+    NUM_SEGMENTS = "num_segments"
 
 
 async def get_feature_names(

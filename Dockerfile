@@ -1,6 +1,5 @@
 # == Build Front End
-FROM node:latest as web_builder
-
+FROM node:current-alpine AS web_builder
 RUN mkdir /statics
 
 WORKDIR /front/
@@ -15,18 +14,28 @@ RUN npm install
 
 RUN npm run build
 
+# Prebuild rasterio, so that lateron builts will be quicker
+FROM python:3.13-alpine3.22 AS rasterio_builder
+RUN apk add \
+    gdal-dev \
+    python3-dev \
+    build-base
+RUN pip wheel --no-cache-dir --wheel-dir /wheels rasterio
+
 # == Run the web server
-FROM python:3.11
+FROM python:3.13-alpine3.22
 
-WORKDIR back/
+WORKDIR /back
 
-# Install libsndfile1
-RUN apt-get update && apt-get install -y \
-    libsndfile1 \
-    build-essential \
+RUN apk update && apk add \
+    libsndfile-dev \
     libffi-dev \
-    libgdal-dev \
-    python3-dev
+    gdal-dev \
+    python3-dev \
+    build-base \
+    curl
+
+COPY --from=rasterio_builder /wheels /wheels
 
 # Set the working directory to /code
 WORKDIR /code
@@ -37,16 +46,17 @@ WORKDIR /code
 COPY --from=web_builder /front/out/ /code/src/sonari/statics/
 
 # Install the Python dependencies for sonari
-COPY back/requirements.txt /code/requirements.txt
+COPY /back/requirements.txt /code/requirements.txt
 RUN pip install -r requirements.txt
+RUN pip install --no-index --find-links /wheels rasterio
 
 # Copy the sonari source code
-COPY back/src /code/src
-COPY back/app.py /code/app.py
-COPY back/pyproject.toml /code/pyproject.toml
-COPY back/alembic.ini /code/alembic.ini
-COPY back/README.md /code/README.md
-COPY back/LICENSE /code/LICENSE
+COPY /back/src /code/src
+COPY /back/app.py /code/app.py
+COPY /back/pyproject.toml /code/pyproject.toml
+COPY /back/alembic.ini /code/alembic.ini
+COPY /back/README.md /code/README.md
+COPY /back/LICENSE /code/LICENSE
     
 # Install Sonari
 RUN pip install --no-deps .
@@ -58,16 +68,16 @@ RUN mkdir /data
 VOLUME ["/data"]
 
 # Set the environment variables for the audio directory and the database URL
-ENV SONARI_AUDIO_DIR /audio
-ENV SONARI_DB_URL "sqlite+aiosqlite:////data/sonari.db"
-ENV SONARI_DEV "false"
-ENV SONARI_HOST "0.0.0.0"
-ENV SONARI_PORT "5000"
-ENV SONARI_LOG_LEVEL "info"
-ENV SONARI_LOG_TO_STDOUT "true"
-ENV SONARI_LOG_TO_FILE "false"
-ENV SONARI_OPEN_ON_STARTUP "false"
-ENV SONARI_DOMAIN "localhost"
+ENV SONARI_AUDIO_DIR="/audio"
+ENV SONARI_DB_URL="sqlite+aiosqlite:////data/sonari.db"
+ENV SONARI_DEV="false"
+ENV SONARI_HOST="0.0.0.0"
+ENV SONARI_PORT="5000"
+ENV SONARI_LOG_LEVEL="info"
+ENV SONARI_LOG_TO_STDOUT="true"
+ENV SONARI_LOG_TO_FILE="false"
+ENV SONARI_OPEN_ON_STARTUP="false"
+ENV SONARI_DOMAIN="localhost"
 
 # Expose the port for the web server
 EXPOSE 5000
