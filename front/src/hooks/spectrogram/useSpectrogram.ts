@@ -340,17 +340,46 @@ export default function useSpectrogram({
   );
 
   const handleSetParameters = useCallback(
-    (parameters: SpectrogramParameters) => {
-      const validated = validateParameters(parameters, recording);
+    (newParameters: SpectrogramParameters) => {
+      const validated = validateParameters(newParameters, recording);
       onParameterChange?.(validated);
       setParameters(validated);
+      const effectiveSamplerate = validated.resample
+        ? validated.samplerate ?? recording.samplerate
+        : recording.samplerate;
+      const newViewport = getInitialViewingWindow({
+        startTime: initialBounds.time.min,
+        endTime: initialBounds.time.max,
+        samplerate: effectiveSamplerate,
+        parameters: validated,
+      });
+      lastViewportRef.current = newViewport;
+      setViewport(newViewport);
     },
-    [recording, onParameterChange],
-  );
-
+    [recording, onParameterChange, initialBounds],
+  );  
+  
   const handleResetParameters = useCallback(() => {
-    setParameters(validateParameters(initialParameters, recording));
-  }, [initialParameters, recording]);
+    const validated = validateParameters(initialParameters, recording);
+    setParameters(validated);
+    onParameterChange?.(validated);
+  
+    const effectiveSamplerate = validated.resample
+      ? validated.samplerate ?? recording.samplerate
+      : recording.samplerate;
+  
+    const newViewport = getInitialViewingWindow({
+      startTime: initialBounds.time.min,
+      endTime: initialBounds.time.max,
+      samplerate: effectiveSamplerate,
+      parameters: validated,
+    });
+  
+    lastViewportRef.current = newViewport;
+    setViewport(newViewport);
+  }, [initialParameters, recording, initialBounds, onParameterChange]);
+  
+  
 
   const {
     props,
