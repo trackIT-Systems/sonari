@@ -4,6 +4,7 @@ import classnames from "classnames";
 import { Fragment } from "react";
 import useActiveUser from "@/hooks/api/useActiveUser";
 import { HOST } from "@/api/common";
+import Link from "next/link"
 
 import { HorizontalDivider } from "@/components/Divider";
 
@@ -11,11 +12,11 @@ import type { User } from "@/types";
 
 function Brand() {
   return (
-    <a href="/" className="flex items-center">
+    <Link href="/" className="flex items-center">
       <span className="self-center whitespace-nowrap text-2xl font-bold text-emerald-500 underline decoration-4">
         Sonari
       </span>
-    </a>
+    </Link>
   );
 }
 

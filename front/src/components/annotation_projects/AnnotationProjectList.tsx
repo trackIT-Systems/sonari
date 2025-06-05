@@ -4,14 +4,10 @@ import useKeyFilter from "@/hooks/utils/useKeyFilter";
 import { useRouter } from "next/navigation";
 import Loading from "@/app/loading";
 import AnnotationProjectComponent from "@/components/annotation_projects/AnnotationProject";
-import AnnotationProjectCreate from "@/components/annotation_projects/AnnotationProjectCreate";
-import AnnotationProjectImport from "@/components/annotation_projects/AnnotationProjectImport";
-import Dialog from "@/components/Dialog";
 import Empty from "@/components/Empty";
 import {
   AddIcon,
   DatasetIcon,
-  UploadIcon,
   WarningIcon,
 } from "@/components/icons";
 import Search from "@/components/inputs/Search";
@@ -107,38 +103,10 @@ export default function AnnotationProjectList({
             onSubmit={() => filter.submit()}
             icon={<DatasetIcon />}
             onKeyDown={handleSearchKeyDown}
-            inputRef={searchInputRef}
+            inputRef={searchInputRef as React.RefObject<HTMLInputElement>}
             isHighlighted={focusedElement === 'search'}
           />
         </div>
-        {/* <div className="h-full">
-          <Dialog
-            mode="text"
-            title="Create Annotation Project"
-            width="w-96"
-            label={
-              <>
-                <AddIcon className="inline-block w-4 h-4 align-middle" /> Create
-              </>
-            }
-          >
-            {() => <AnnotationProjectCreate onCreate={onCreate} />}
-          </Dialog>
-        </div>
-        <div className="h-full">
-          <Dialog
-            mode="text"
-            title="Import annotation project"
-            label={
-              <>
-                <UploadIcon className="inline-block w-4 h-4 align-middle" />{" "}
-                Import
-              </>
-            }
-          >
-            {() => <AnnotationProjectImport onCreate={onCreate} />}
-          </Dialog>
-        </div> */}
       </div>
       {isLoading ? (
         <Empty>

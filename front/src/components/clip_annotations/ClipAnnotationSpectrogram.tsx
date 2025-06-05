@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useMemo, useRef, useState, useEffect } from "react";
 
 import { DEFAULT_SPECTROGRAM_PARAMETERS } from "@/api/spectrograms";
 import AnnotationControls from "@/components/annotation/AnnotationControls";
@@ -106,7 +106,7 @@ export default function ClipAnnotationSpectrogram({
   const { recording } = clip;
 
   const initialParameters = useMemo(() => {
-    const shouldBeHSR = recording.samplerate >= 96000;
+    const shouldBeHSR = recording.samplerate > 96000;
     const currentPreset = parameters.conf_preset;
     
 
@@ -124,11 +124,15 @@ export default function ClipAnnotationSpectrogram({
         window_size: 0.03,
       };
     }
-
-    onParameterSave?.(params)
     
     return params;
-  }, [recording.samplerate, parameters, onParameterSave]);
+  }, [recording.samplerate, parameters]);
+
+  useEffect(() => {
+    if (initialParameters !== parameters) {
+      onParameterSave?.(initialParameters);
+    }
+  }, [initialParameters, parameters, onParameterSave]);
 
   const bounds = useMemo(
     () => ({

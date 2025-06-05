@@ -44,17 +44,19 @@ export function SpectrogramSettingForm({
   // with respect to the constraints computed from the recording samplerate
   // and then validate the parameters with respect to the schema
     const resolver = useMemo<Resolver<SpectrogramParameters>>(() => {
-      const schemaResolver = zodResolver(SpectrogramParametersSchema);
-      return async (values, context, options) => {
-        const { resample, samplerate } = values;
-        const currentSamplerate = resample
-          ? samplerate || recordingSamplerate
-          : recordingSamplerate;
-        const constraints = computeConstraints(currentSamplerate);
-        const validated = validateParameters(values, constraints);
-        return await schemaResolver(validated, context, options);
-      };
-    }, [recordingSamplerate]);
+  const schemaResolver = zodResolver(SpectrogramParametersSchema);
+  return async (values, context, options) => {
+    const { resample, samplerate } = values;
+    const currentSamplerate = resample
+      ? samplerate || recordingSamplerate
+      : recordingSamplerate;
+    const constraints = computeConstraints(currentSamplerate);
+    const validated = validateParameters(values, constraints);
+    
+    // Cast the options to match the expected type
+    return await schemaResolver(validated, context, options as any);
+  };
+}, [recordingSamplerate]);
 
   const { handleSubmit, watch, control } = useForm({
     resolver,

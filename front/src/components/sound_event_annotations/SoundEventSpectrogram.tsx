@@ -127,7 +127,7 @@ export default function SoundEventSpectrogramView({
     const { draw } = spectrogram;
 
     useCanvas({
-        ref: canvasRef,
+        ref: canvasRef as React.RefObject<HTMLCanvasElement>,
         draw: (ctx) => draw(ctx, { withAxes: false })
     });
 

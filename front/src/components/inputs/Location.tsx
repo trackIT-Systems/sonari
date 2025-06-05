@@ -27,12 +27,8 @@ const numSchema = z.union([
   z.undefined(),
   z.null(),
   z.number(),
-  z.string().transform((val) => {
-    const num = parseFloat(val);
-    if (isNaN(num)) return null;
-    return num;
-  }),
-]);
+  
+])
 
 const schema = z.object({
   latitude: numSchema,

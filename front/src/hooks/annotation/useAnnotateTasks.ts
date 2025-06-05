@@ -130,7 +130,7 @@ export default function useAnnotateTasks({
 
   const parameters = useStore((state) => state.spectrogramSettings);
 
-  async function preloadSpectrogramSegments(recording: Recording) {
+  const preloadSpectrogramSegments = useCallback(async (recording: Recording) => {
     if (!recording) return;
 
     // Calculate initial window to get segment size
@@ -191,7 +191,7 @@ export default function useAnnotateTasks({
         console.error('Failed to preload segment:', error);
       }
     });
-  }
+  }, [parameters]);
 
   const goToTask = useCallback(
     (task: AnnotationTask) => {
