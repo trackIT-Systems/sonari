@@ -328,7 +328,7 @@ export default function ClipAnnotationSpectrogram({
     audio.currentTime,
   ]);
 
-  useCanvas({ ref: canvasRef, draw });
+  useCanvas({ ref: canvasRef as React.RefObject<HTMLCanvasElement>, draw });
 
   const handleClearSelectedTag = useCallback(() => {
     onClearSelectedTag(null);

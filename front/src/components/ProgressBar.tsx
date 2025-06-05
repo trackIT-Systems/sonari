@@ -52,7 +52,6 @@ export default function ProgressBar({
             </div>
           }
           placement="top"
-          autoPlacement={false}
         >
           <div className="w-24 h-3 bg-stone-200 dark:bg-stone-700 rounded-full overflow-hidden">
             <div
@@ -76,7 +75,6 @@ export default function ProgressBar({
             </div>
           }
           placement="top"
-          autoPlacement={false}
         >
           <div className="w-24 h-3 bg-stone-200 dark:bg-stone-700 rounded-full overflow-hidden">
             <div
@@ -100,7 +98,6 @@ export default function ProgressBar({
             </div>
           }
           placement="top"
-          autoPlacement={false}
         >
           <div className="w-24 h-3 bg-stone-200 dark:bg-stone-700 rounded-full overflow-hidden">
             <div
@@ -124,7 +121,6 @@ export default function ProgressBar({
             </div>
           }
           placement="top"
-          autoPlacement={false}
         >
           <div className="w-24 h-3 bg-stone-200 dark:bg-stone-700 rounded-full overflow-hidden">
             <div
@@ -148,7 +144,6 @@ export default function ProgressBar({
             </div>
           }
           placement="top"
-          autoPlacement={false}
         >
           <div className="w-24 h-3 bg-stone-200 dark:bg-stone-700 rounded-full overflow-hidden">
             <div

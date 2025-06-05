@@ -6,10 +6,9 @@
  * @module
  * @exports Player
  */
-import { Listbox } from "@headlessui/react";
-import { Float } from "@headlessui-float/react";
+import { Listbox, ListboxButton, ListboxOptions, ListboxOption } from "@headlessui/react";
 import classNames from "classnames";
-import { Fragment, useRef } from "react";
+import { useRef } from "react";
 import {
   VisuallyHidden,
   mergeProps,
@@ -145,6 +144,17 @@ function secondsToTimeStr(seconds?: number): string {
  * speed change.
  * @param {SpeedOption[]} props.options - The available speed options.
  */
+/**
+ * SelectSpeed component represents the speed selection dropdown in the audio
+ * player.
+ *
+ * @component
+ * @param {object} props - Component properties.
+ * @param {number} props.speed - The selected playback speed.
+ * @param {(value: number) => void} props.onChange - Callback function for
+ * speed change.
+ * @param {SpeedOption[]} props.options - The available speed options.
+ */
 function SelectSpeed({
   speed,
   onChange,
@@ -156,18 +166,8 @@ function SelectSpeed({
 }) {
   return (
     <Listbox value={speed} onChange={onChange}>
-      <Float
-        as="div"
-        className="relative"
-        leave="transition ease-in duration-100"
-        leaveFrom="opacity-100"
-        leaveTo="opacity-0"
-        placement="bottom"
-        offset={4}
-        flip={true}
-        floatingAs={Fragment}
-      >
-        <Listbox.Button
+      <div className="relative">
+        <ListboxButton
           className={classNames(
             COMMON_BUTTON_CLASSES,
             "text-stone-600 hover:text-stone-800 dark:text-stone-400 dark:hover:text-stone-200",
@@ -178,14 +178,14 @@ function SelectSpeed({
           <span className="flex absolute inset-y-0 right-0 items-center pr-1 pointer-events-none">
             <ExpandIcon className="w-5 h-5" aria-hidden="true" />
           </span>
-        </Listbox.Button>
-        <Listbox.Options className="overflow-auto py-1 w-full max-h-60 text-base rounded-md ring-1 ring-opacity-5 shadow-lg sm:text-sm focus:outline-none bg-stone-50 ring-stone-900 dark:bg-stone-700 dark:ring-stone-600">
+        </ListboxButton>
+        <ListboxOptions className="absolute bottom-full mb-1 overflow-auto py-1 w-full max-h-60 text-base rounded-md ring-1 ring-opacity-5 shadow-lg sm:text-sm focus:outline-none bg-stone-50 ring-stone-900 dark:bg-stone-700 dark:ring-stone-600 z-10 transition ease-in duration-100 data-[closed]:opacity-0">
           {options.map((option) => (
-            <Listbox.Option
+            <ListboxOption
               key={option.value.toString()}
               value={option.value}
-              className={({ active }) =>
-                `relative cursor-default select-none p-1 ${active
+              className={({ focus }) =>
+                `relative cursor-default select-none p-1 ${focus
                   ? "bg-emerald-100 text-emerald-900"
                   : "text-stone-900 dark:text-stone-300"
                 }`
@@ -201,10 +201,10 @@ function SelectSpeed({
                   </span>
                 </>
               )}
-            </Listbox.Option>
+            </ListboxOption>
           ))}
-        </Listbox.Options>
-      </Float>
+        </ListboxOptions>
+      </div>
     </Listbox>
   );
 }

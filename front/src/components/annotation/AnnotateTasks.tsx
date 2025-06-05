@@ -14,7 +14,7 @@ import useAnnotationTasks from "@/hooks/annotation/useAnnotateTasks";
 import useClipAnnotation from "@/hooks/api/useClipAnnotation";
 import RecordingTagBar from "../recordings/RecordingTagBar";
 
-import { Popover } from "@headlessui/react";
+import { Popover, PopoverButton, PopoverPanel } from "@headlessui/react";
 import SearchMenu from "@/components/search/SearchMenu";
 import TagComponent, { getTagKey } from "@/components/tags/Tag";
 
@@ -467,7 +467,7 @@ export default function AnnotateTasks({
       </div>
 
       {isDeletePopoverOpen && (
-        <Popover>
+        <Popover as="div">
           {({ open, close }) => {
 
             const handleOverlayClick = (e: React.MouseEvent) => {
@@ -479,8 +479,8 @@ export default function AnnotateTasks({
 
             return (
               <>
-                <Popover.Button className="hidden" />
-                <Popover.Panel static={true} className="fixed inset-0 z-50">
+                <PopoverButton as="div" className="hidden" />
+                <PopoverPanel static={true} className="fixed inset-0 z-50">
                   <div className="fixed inset-0 flex items-center justify-center" onClick={handleOverlayClick}>
                     <div ref={menuRef} className="relative w-96 divide-y divide-stone-100 rounded-md bg-stone-50 dark:bg-stone-700 border border-stone-200 dark:border-stone-500 shadow-md dark:shadow-stone-800 ring-1 ring-stone-900 ring-opacity-5 focus:outline-none">
                       <div className="p-4">
@@ -514,7 +514,7 @@ export default function AnnotateTasks({
                       </div>
                     </div>
                   </div>
-                </Popover.Panel>
+                </PopoverPanel>
               </>
             );
           }}
@@ -522,7 +522,7 @@ export default function AnnotateTasks({
       )}
 
       {isTagPopoverOpen && (
-        <Popover>
+        <Popover as="div">
           {({ open, close }) => {
 
             const handleOverlayClick = (e: React.MouseEvent) => {
@@ -534,8 +534,8 @@ export default function AnnotateTasks({
 
             return (
               <>
-                <Popover.Button className="hidden" />
-                <Popover.Panel static={true} className="fixed inset-0 z-50">
+                <PopoverButton as="div" className="hidden" />
+                <PopoverPanel static={true} className="fixed inset-0 z-50">
                   <div className="fixed inset-0 flex items-center justify-center" onClick={handleOverlayClick}>
                     <div ref={menuRef} className="relative w-96 divide-y divide-stone-100 rounded-md bg-stone-50 dark:bg-stone-700 border border-stone-200 dark:border-stone-500 shadow-md dark:shadow-stone-800 ring-1 ring-stone-900 ring-opacity-5 focus:outline-none">
                       <div className="p-4">
@@ -568,7 +568,7 @@ export default function AnnotateTasks({
                       </div>
                     </div>
                   </div>
-                </Popover.Panel>
+                </PopoverPanel>
               </>
             );
           }}

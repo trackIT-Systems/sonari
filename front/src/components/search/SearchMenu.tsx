@@ -1,7 +1,6 @@
-import { Combobox } from "@headlessui/react";
-import { Float } from "@headlessui-float/react";
+import { Combobox, ComboboxOption, ComboboxOptions, ComboboxInput } from "@headlessui/react";
 import Fuse from "fuse.js";
-import { Fragment, type ReactNode, useEffect, useMemo, useState } from "react";
+import { type ReactNode, useEffect, useMemo, useState } from "react";
 
 import Button from "@/components/Button";
 import Search from "@/components/inputs/Search";
@@ -75,14 +74,14 @@ export default function SearchMenu<
       <Combobox value={value} onChange={onSelect}>
         {({ value, open }) => (
           <div className="relative">
-            <Combobox.Input
+            <ComboboxInput
               as={as}
               autoFocus={autoFocus}
               value={!open && value != null ? displayValue?.(value) : undefined}
               // @ts-ignore
               onChange={(value) => setQuery(value)}
             />
-            <Combobox.Options
+            <ComboboxOptions
               static={isStatic}
               className={`absolute mt-1 ${optionsClassName}`}
             >
@@ -96,7 +95,7 @@ export default function SearchMenu<
                 setLimit={setLimit}
                 empty={empty}
               />
-            </Combobox.Options>
+            </ComboboxOptions>
           </div>
         )}
       </Combobox>
@@ -106,22 +105,9 @@ export default function SearchMenu<
   return (
     <div className="flex flex-row w-full">
       <Combobox value={value} onChange={onSelect}>
-        <Float
-          offset={8}
-          as="div"
-          className="relative w-full"
-          enter="transition duration-200 ease-out"
-          enterFrom="scale-95 opacity-0"
-          enterTo="scale-100 opacity-100"
-          leave="transition duration-150 ease-in"
-          leaveFrom="scale-100 opacity-100"
-          leaveTo="scale-95 opacity-0"
-          placement="bottom"
-          autoPlacement
-          floatingAs={Fragment}
-        >
+        <div className="relative w-full">
           <div className="w-full">
-            <Combobox.Input
+            <ComboboxInput
               as={as}
               autoFocus={autoFocus}
               value={value != null ? displayValue?.(value) : undefined}
@@ -129,21 +115,25 @@ export default function SearchMenu<
               onChange={(value) => setQuery(value)}
             />
           </div>
-          <div className="w-full">
-            <Combobox.Options className={`${optionsClassName}`}>
-              <MenuContents
-                options={filteredOptions}
-                total={options.length}
-                limit={limit}
-                initialLimit={initialLimit}
-                renderOption={renderOption}
-                getOptionKey={getOptionKey}
-                setLimit={setLimit}
-                empty={empty}
-              />
-            </Combobox.Options>
-          </div>
-        </Float>
+          <ComboboxOptions className={`
+            absolute top-full mt-2 z-10 ${optionsClassName}
+            transition duration-200 ease-out
+            data-[closed]:scale-95 data-[closed]:opacity-0
+            data-[enter]:duration-200 data-[leave]:duration-150
+            data-[enter]:ease-out data-[leave]:ease-in
+          `}>
+            <MenuContents
+              options={filteredOptions}
+              total={options.length}
+              limit={limit}
+              initialLimit={initialLimit}
+              renderOption={renderOption}
+              getOptionKey={getOptionKey}
+              setLimit={setLimit}
+              empty={empty}
+            />
+          </ComboboxOptions>
+        </div>
       </Combobox>
     </div>
   );
@@ -157,9 +147,9 @@ function MenuOption<T>({
   renderOption: (option: T) => ReactNode;
 }) {
   return (
-    <Combobox.Option
-      className={({ active }) =>
-        `relative cursor-default select-none p-2 rounded-md ${active
+    <ComboboxOption
+      className={({ focus }) =>
+        `relative cursor-default select-none p-2 rounded-md ${focus
           ? "bg-stone-200 dark:bg-stone-800 text-emerald-600 dark:text-emerald-500"
           : ""
         }`
@@ -167,7 +157,7 @@ function MenuOption<T>({
       value={option}
     >
       {renderOption(option)}
-    </Combobox.Option>
+    </ComboboxOption>
   );
 }
 

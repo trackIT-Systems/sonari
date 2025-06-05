@@ -1,4 +1,4 @@
-import { Dialog as HeadlessDialog, Transition } from "@headlessui/react";
+import { Dialog as HeadlessDialog, Transition, TransitionChild, DialogTitle, DialogPanel } from "@headlessui/react";
 import { Fragment, useState } from "react";
 
 import Button from "@/components/Button";
@@ -55,7 +55,7 @@ export function DialogOverlay({
         className="relative z-50"
         onClose={() => onClose?.()}
       >
-        <Transition.Child
+        <TransitionChild
           as={Fragment}
           enter="ease-out duration-300"
           enterFrom="opacity-0"
@@ -65,10 +65,10 @@ export function DialogOverlay({
           leaveTo="opacity-0"
         >
           <div className="fixed inset-0 bg-black bg-opacity-25" />
-        </Transition.Child>
+        </TransitionChild>
         <div className="overflow-y-auto fixed inset-0">
           <div className="flex justify-center items-center p-4 min-h-full text-center">
-            <Transition.Child
+            <TransitionChild
               as={Fragment}
               enter="ease-out duration-300"
               enterFrom="opacity-0 scale-95"
@@ -77,8 +77,8 @@ export function DialogOverlay({
               leaveFrom="opacity-100 scale-100"
               leaveTo="opacity-0 scale-95"
             >
-              <HeadlessDialog.Panel className="overflow-hidden p-6 w-full text-left align-middle rounded-2xl shadow-xl transition-all transform max-w-fit bg-stone-50 text-stone-700 z-[99999] dark:bg-stone-700 dark:text-stone-300">
-                <HeadlessDialog.Title
+              <DialogPanel className="overflow-hidden p-6 w-full text-left align-middle rounded-2xl shadow-xl transition-all transform max-w-fit bg-stone-50 text-stone-700 z-[100] dark:bg-stone-700 dark:text-stone-300">
+                <DialogTitle
                   as="div"
                   className="mb-4 flex flex-row justify-between items-center gap-4"
                 >
@@ -94,12 +94,12 @@ export function DialogOverlay({
                   >
                     <CloseIcon className="w-5 h-5" />
                   </Button>
-                </HeadlessDialog.Title>
+                </DialogTitle>
                 <div className="mt-2">
                   {children({ close: () => onClose?.() })}
                 </div>
-              </HeadlessDialog.Panel>
-            </Transition.Child>
+              </DialogPanel>
+            </TransitionChild>
           </div>
         </div>
       </HeadlessDialog>

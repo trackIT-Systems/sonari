@@ -1,5 +1,4 @@
-import { Popover } from "@headlessui/react";
-import { Float } from "@headlessui-float/react";
+import { Popover, PopoverButton, PopoverPanel } from "@headlessui/react";
 
 import Button from "@/components/Button";
 import { AddIcon } from "@/components/icons";
@@ -61,37 +60,28 @@ export default function AddTagButton({
   variant?: "primary" | "secondary" | "danger";
 } & Omit<HTMLProps<HTMLInputElement>, "value" | "onChange" | "onBlur">) {
   return (
-    <Popover as="div" className="inline-block text-left">
-      <Float
-        zIndex={20}
-        placement="bottom"
-        offset={4}
-        enter="transition duration-200 ease-out"
-        enterFrom="scale-95 opacity-0"
-        enterTo="scale-100 opacity-100"
-        leave="transition duration-150 ease-in"
-        leaveFrom="scale-100 opacity-100"
-        leaveTo="scale-95 opacity-0"
-        portal={true}
+    <Popover as="div" className="relative inline-block text-left">
+      <PopoverButton as="div">
+        <Button mode="text" variant={variant} padding="py-1">
+          <AddIcon className="inline-block w-5 h-5 align-middle" />
+          {text}
+        </Button>
+      </PopoverButton>
+      <PopoverPanel 
+        className="absolute top-full mt-1 w-72 z-20 transition duration-200 ease-out data-[closed]:scale-95 data-[closed]:opacity-0 data-[enter]:duration-200 data-[leave]:duration-150 data-[enter]:ease-out data-[leave]:ease-in" 
+        focus 
+        unmount
       >
-        <Popover.Button as="div">
-          <Button mode="text" variant={variant} padding="py-1">
-            <AddIcon className="inline-block w-5 h-5 align-middle" />
-            {text}
-          </Button>
-        </Popover.Button>
-        <Popover.Panel className="w-72" focus unmount>
-          {({ close }) => (
-            <TagBarPopover
-              onClose={close}
-              onAdd={onAdd}
-              onCreate={onCreate}
-              filter={filter}
-              {...props}
-            />
-          )}
-        </Popover.Panel>
-      </Float>
+        {({ close }) => (
+          <TagBarPopover
+            onClose={close}
+            onAdd={onAdd}
+            onCreate={onCreate}
+            filter={filter}
+            {...props}
+          />
+        )}
+      </PopoverPanel>
     </Popover>
   );
 }

@@ -1,5 +1,4 @@
-import { Popover } from "@headlessui/react";
-import { Float } from "@headlessui-float/react";
+import { Popover, PopoverButton, PopoverPanel } from "@headlessui/react";
 
 import LocationInput, { formatLocation } from "@/components/inputs/Location";
 import { EditIcon } from "@/components/icons";
@@ -57,31 +56,19 @@ export default function TableMap({
   onChange?: (value: Location) => void;
 }) {
   return (
-    <Popover className="flex relative flex-row w-100">
-      <Float
-        enter="transition ease-out duration-200"
-        enterFrom="opacity-0 translate-y-1"
-        enterTo="opacity-100 translate-y-0"
-        leave="transition ease-in duration-150"
-        leaveFrom="opacity-100 translate-y-0"
-        leaveTo="opacity-0 translate-y-1"
-        placement="bottom"
-        offset={4}
-        portal={true}
+    <Popover as="div" className="flex relative flex-row w-100">
+      <PopoverButton as="div" className="flex flex-row gap-2 justify-between items-center px-1 text-center grow">
+        <span>{formatLocation(initialValue)}</span>
+        <EditIcon className="inline-block flex-none w-5 h-5 text-stone-500" />
+      </PopoverButton>
+      <PopoverPanel
+        unmount
+        className="absolute top-full left-1/2 z-40 px-4 mt-1 transform -translate-x-1/2 sm:px-0 lg:max-w-3xl transition ease-out duration-200 data-[closed]:opacity-0 data-[closed]:translate-y-1 data-[enter]:duration-200 data-[leave]:duration-150 data-[enter]:ease-out data-[leave]:ease-in"
       >
-        <Popover.Button className="flex flex-row gap-2 justify-between items-center px-1 text-center grow">
-          <span>{formatLocation(initialValue)}</span>
-          <EditIcon className="inline-block flex-none w-5 h-5 text-stone-500" />
-        </Popover.Button>
-        <Popover.Panel
-          unmount
-          className="absolute left-1/2 z-40 px-4 mt-3 transform -translate-x-1/2 sm:px-0 lg:max-w-3xl"
-        >
-          <div className="dark:bg-stone-800 bg-stone-200 w-80 border border-stone-300 dark:border-stone-700 border-1 p-2 rounded-md">
-          <LocationInput value={initialValue} onChange={onChange} />
-          </div>
-        </Popover.Panel>
-      </Float>
+        <div className="dark:bg-stone-800 bg-stone-200 w-80 border border-stone-300 dark:border-stone-700 border-1 p-2 rounded-md">
+        <LocationInput value={initialValue} onChange={onChange} />
+        </div>
+      </PopoverPanel>
     </Popover>
   );
 }

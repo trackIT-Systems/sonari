@@ -46,13 +46,14 @@ function SideMenuLink({
 }) {
   return (
     <Tooltip
+      portal={true} // Enable portaling for side menu tooltips
       tooltip={
         <p className="whitespace-nowrap text-stone-700 dark:text-stone-300">
           {tooltip}
           {keyboardKeys ? (
             <span className="pl-2">
               {keyboardKeys.map((keyboardKey: string) => (
-                <KeyboardKey key="key1" code={keyboardKey} />
+                <KeyboardKey key={`key${keyboardKey}`} code={keyboardKey} />
               ))
               }
             </span>
@@ -91,13 +92,14 @@ function SideMenuButton({
 }) {
   return (
     <Tooltip
+      portal={true}
       tooltip={
         <p className="whitespace-nowrap text-stone-700 dark:text-stone-300">
           {tooltip}
           {keyboardKeys ? (
             <span className="pl-2">
               {keyboardKeys.map((keyboardKey: string) => (
-                <KeyboardKey key="key2" code={keyboardKey} />
+                <KeyboardKey key={`key${keyboardKey}`} code={keyboardKey} />
               ))
               }
             </span>

@@ -86,7 +86,7 @@ export default function AnnotationControls({
             </div>
           }
           placement="bottom"
-          autoPlacement={false}
+
         >
           <Button
             variant={isSelecting ? "primary" : "secondary"}
@@ -110,7 +110,6 @@ export default function AnnotationControls({
           </div>
         }
         placement="bottom"
-        autoPlacement={false}
       >
         <Button variant={isMeasuring ? "primary" : "secondary"} onClick={onMeasure}>
           <ArrowTrendingDownIcon className="w-5 h-5" />
@@ -128,7 +127,6 @@ export default function AnnotationControls({
           </div>
         }
         placement="bottom"
-        autoPlacement={false}
       >
         <Button variant={isDrawing ? "primary" : "secondary"} onClick={onDraw}>
           <AddIcon className="w-5 h-5" />
@@ -147,7 +145,6 @@ export default function AnnotationControls({
             </div>
           }
           placement="bottom"
-          autoPlacement={false}
         >
           <Button
             variant={isSelecting ? "primary" : "secondary"}
@@ -171,7 +168,6 @@ export default function AnnotationControls({
           </div>
         }
         placement="bottom"
-        autoPlacement={false}
       >
         <Button
           variant={isDeleting ? "danger" : "secondary"}
@@ -185,7 +181,7 @@ export default function AnnotationControls({
         options={Object.values(geometryTypes)}
         selected={geometryTypes[geometryType]}
         onChange={(type) => onSelectGeometryType?.(type as GeometryType)}
-        buttonRef={geometrySelectRef}
+        buttonRef={geometrySelectRef as React.RefObject<HTMLButtonElement>}
       />
     </div>
   );

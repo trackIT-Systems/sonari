@@ -1,5 +1,4 @@
-import { Popover } from "@headlessui/react";
-import { Float } from "@headlessui-float/react";
+import { Popover, PopoverButton, PopoverPanel } from "@headlessui/react";
 import { type ReactNode, useState, useRef } from "react";
 
 import Button, { getButtonClassName } from "@/components/Button";
@@ -156,33 +155,23 @@ export default function FilterPopover<T extends Object>({
 
   return (
     <Popover as="div" className="relative inline-block text-left">
-      <Float
-        autoPlacement
-        portal={true}
-        offset={4}
-        enter="transition ease-out duration-100"
-        enterFrom="transform opacity-0 scale-95"
-        enterTo="transform opacity-100 scale-100"
-        leave="transition ease-in duration-75"
-        leaveFrom="transform opacity-100 scale-100"
-        leaveTo="transform opacity-0 scale-95"
+      {button != null ? (
+        <PopoverButton as="div">
+          {button}
+        </PopoverButton>
+      ) : (
+        <PopoverButton as="div" className={className}>
+          <FilterIcon className="h-4 w-4 stroke-2" />
+        </PopoverButton>
+      )}
+      <PopoverPanel
+        unmount
+        className="absolute right-0 mt-1 w-96 divide-y divide-stone-100 rounded-md bg-stone-50 dark:bg-stone-700 border border-stone-200 dark:border-stone-500 shadow-md dark:shadow-stone-800 ring-1 ring-stone-900 ring-opacity-5 focus:outline-none z-50 origin-top-right transition transform data-[closed]:scale-95 data-[closed]:opacity-0 data-[enter]:duration-100 data-[leave]:duration-75 data-[enter]:ease-out data-[leave]:ease-in"
       >
-        <Popover.Button className={className}>
-          {button != null ? (
-            button
-          ) : (
-            <FilterIcon className="h-4 w-4 stroke-2" />
-          )}
-        </Popover.Button>
-        <Popover.Panel
-          unmount
-          className="w-96 divide-y divide-stone-100 rounded-md bg-stone-50 dark:bg-stone-700 border border-stone-200 dark:border-stone-500 shadow-md dark:shadow-stone-800 ring-1 ring-stone-900 ring-opacity-5 focus:outline-none z-50"
-        >
-          <div className="p-4">
-            <FilterPanel filter={filter} filterDefs={filterDef} />
-          </div>
-        </Popover.Panel>
-      </Float>
+        <div className="p-4">
+          <FilterPanel filter={filter} filterDefs={filterDef} />
+        </div>
+      </PopoverPanel>
     </Popover>
   );
 }
