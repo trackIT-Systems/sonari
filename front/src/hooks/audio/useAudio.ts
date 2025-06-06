@@ -79,7 +79,6 @@ export default function useAudio({
     [recording],
   );
 
-  // Store internal player state
   const [speed, setSpeed] = useState<number>(
     initialSpeed || defaultSpeedOption.value,
   );
@@ -88,51 +87,79 @@ export default function useAudio({
   const [volume, setVolume] = useState<number>(1);
   const [isPlaying, setIsPlaying] = useState<boolean>(false);
 
-  const initialUrl = useMemo(() => {
-    if (audio.current) {
-      audio.current.src = '';
-      audio.current.load();
-    }
+  // Store the actual playback bounds (what segment should be played)
+  const playbackStartTime = startTime;
+  const playbackEndTime = endTime || recording.duration;
+
+  // Full audio URL - download entire recording once
+  const fullAudioUrl = useMemo(() => {
     return api.audio.getStreamUrl({
       recording,
-      startTime,
-      endTime,
       speed: speed,
+      // Don't specify startTime/endTime to get the full audio
     });
-  }, [recording, startTime, endTime, speed]);
+  }, [recording, speed]);
 
   const stopAudio = function(audio: HTMLAudioElement, startTime: number) {
-      audio.pause();
-      audio.currentTime = 0;
-      audio.src = '';
-      audio.load();
-      setTime(startTime);
-      setIsPlaying(false);
+    audio.pause();
+    // Don't reset currentTime to 0, reset to the segment start
+    audio.currentTime = startTime / speed;
+    setTime(startTime);
+    setIsPlaying(false);
   }
 
   useEffect(() => {
     const { current } = audio;
-    current.preload = "auto";
-    current.src = initialUrl;
+    
+    // Only update src if it's different (avoids re-download)
+    if (current.src !== fullAudioUrl) {
+      current.preload = "auto";
+      current.src = fullAudioUrl;
+      current.load();
+    }
+    
     current.loop = loop;
     current.volume = volume;
-    current.autoplay = withAutoplay;
-
-    setIsPlaying(withAutoplay ? true : false);
-    setTime(startTime);
+    current.playbackRate = 1; // Speed is handled in the URL
+    
+    // Seek to the start of our segment
+    current.currentTime = playbackStartTime / speed;
+    setTime(playbackStartTime);
+    
+    if (withAutoplay) {
+      current.play().then(() => setIsPlaying(true)).catch(() => {});
+    }
 
     let timer: number;
 
     const updateTime = () => {
       if (current.paused) return;
-      const currentTime = current.currentTime * speed + startTime;
-      setTime(currentTime);
+      
+      // Convert audio currentTime back to actual time considering speed
+      const actualCurrentTime = current.currentTime * speed;
+      
+      // Check if we've reached the end of our segment
+      if (actualCurrentTime >= playbackEndTime) {
+        // Stop at segment end
+        current.pause();
+        setIsPlaying(false);
+        setTime(playbackStartTime);
+        return;
+      }
+      
+      setTime(actualCurrentTime);
       timer = requestAnimationFrame(updateTime);
     };
 
     timer = requestAnimationFrame(updateTime);
 
     const onPlay = () => {
+      // Ensure we're starting from the right position
+      const actualCurrentTime = current.currentTime * speed;
+      if (actualCurrentTime < playbackStartTime || actualCurrentTime > playbackEndTime) {
+        current.currentTime = playbackStartTime / speed;
+        setTime(playbackStartTime);
+      }
       timer = requestAnimationFrame(updateTime);
     };
 
@@ -146,9 +173,8 @@ export default function useAudio({
 
     const onEnded = () => {
       cancelAnimationFrame(timer);
-      // set this explicitly to toggle button
       setIsPlaying(false);
-      setTime(startTime);
+      setTime(playbackStartTime);
     }
 
     current.addEventListener("play", onPlay);
@@ -158,14 +184,12 @@ export default function useAudio({
 
     return () => {
       cancelAnimationFrame(timer);
-      stopAudio(current, startTime);
-
       current.removeEventListener("play", onPlay);
       current.removeEventListener("pause", onPause);
       current.removeEventListener("error", onError);
       current.removeEventListener("ended", onEnded);
     };
-  }, [initialUrl, speed, startTime, loop, volume, withAutoplay]);
+  }, [fullAudioUrl, speed, playbackStartTime, playbackEndTime, loop, volume, withAutoplay]);
 
 
   // Some browsers return `Promise` on `.play()` and may throw errors
@@ -176,8 +200,14 @@ export default function useAudio({
 
   const handlePlay = useCallback(() => {
     if (lockPlay.current) return;
+    
+    // Ensure we start from the segment beginning if we're outside bounds
+    const actualCurrentTime = audio.current.currentTime * speed;
+    if (actualCurrentTime < playbackStartTime || actualCurrentTime >= playbackEndTime) {
+      audio.current.currentTime = playbackStartTime / speed;
+    }
+    
     const promise = audio.current.play();
-
     if (promise) {
       lockPlay.current = true;
       promise
@@ -191,7 +221,7 @@ export default function useAudio({
     } else {
       setIsPlaying(true);
     }
-  }, []);
+  }, [playbackStartTime, playbackEndTime, speed]);
 
   const handlePause = useCallback(() => {
     audio.current.pause();
@@ -199,8 +229,8 @@ export default function useAudio({
   }, []);
 
   const handleStop = useCallback(() => {
-    stopAudio(audio.current, startTime);
-  }, [startTime]);
+    stopAudio(audio.current, playbackStartTime);
+  }, [playbackStartTime]);
 
   const handleSetVolume = useCallback((volume: number) => {
     audio.current.volume = volume;
@@ -208,8 +238,11 @@ export default function useAudio({
   }, []);
 
   const handleSeek = useCallback((time: number) => {
-    audio.current.currentTime = time / speed;
-  }, [speed]);
+    // Clamp seek time to our playback bounds
+    const clampedTime = Math.max(playbackStartTime, Math.min(playbackEndTime, time));
+    audio.current.currentTime = clampedTime / speed;
+    setTime(clampedTime);
+  }, [speed, playbackStartTime, playbackEndTime]);
 
   const handleTogglePlay = useCallback(() => {
     if (isPlaying) {
@@ -230,8 +263,8 @@ export default function useAudio({
   });
 
   return {
-    startTime,
-    endTime: endTime || recording.duration,
+    startTime: playbackStartTime,
+    endTime: playbackEndTime,
     volume,
     currentTime: time,
     speed,
