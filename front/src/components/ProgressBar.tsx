@@ -39,8 +39,6 @@ export default function ProgressBar({
   const completedPerc = (progress.done.completed / progress.total) * 100;
   const rejectedPerc = (progress.done.rejected / progress.total) * 100;
 
-  console.log(progress.pending.count, progress.pending.assigned)
-
   return (
     <div className={classNames(className, "w-full flex flex-row gap-20 items-center")}>
       {/* Pending Bar */}
