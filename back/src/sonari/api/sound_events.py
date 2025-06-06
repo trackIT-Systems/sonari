@@ -292,18 +292,7 @@ class SoundEventAPI(
         session: AsyncSession,
         sound_event: schemas.SoundEvent,
     ) -> schemas.SoundEvent:
-        """Update the geometric features of a sound event.
-
-        Parameters
-        ----------
-        sound_event
-            The sound event to update the geometric features for.
-
-        Returns
-        -------
-        schemas.SoundEvent
-            The updated sound event.
-        """
+        """Update the geometric features of a sound event."""
         geom_features = compute_geometric_features(sound_event.geometry)
         for feature in geom_features:
             try:
@@ -319,7 +308,10 @@ class SoundEventAPI(
                     schemas.Feature(name=feature.name, value=feature.value),
                 )
 
-        feature_mapping = {f.name: f for f in geom_features}
+        # Convert soundevent.data.Feature objects to schemas.Feature objects
+        feature_mapping = {
+            feature.name: schemas.Feature(name=feature.name, value=feature.value) for feature in geom_features
+        }
         sound_event = sound_event.model_copy(
             update=dict(
                 features=[
