@@ -134,14 +134,6 @@ export default function ClipAnnotationSpectrogram({
     }
   }, [initialParameters, parameters, onParameterSave]);
 
-  const bounds = useMemo(
-    () => ({
-      time: { min: clip.start_time, max: clip.end_time },
-      freq: { min: 0, max: recording.samplerate / 2 },
-    }),
-    [clip.start_time, clip.end_time, recording.samplerate],
-  );
-
   const initial = useMemo(
     () => {
       if (withSpectrogram) {
@@ -235,7 +227,6 @@ export default function ClipAnnotationSpectrogram({
   const spectrogram = useSpectrogram({
     dimensions,
     recording,
-    bounds,
     initial,
     parameters: initialParameters,
     onDoubleClick: handleDoubleClick,

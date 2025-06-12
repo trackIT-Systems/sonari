@@ -167,6 +167,31 @@ export default function useSpectrogram({
 } & SpectrogramState &
   SpectrogramControls {
 
+  const [parameters, setParameters] = useState<SpectrogramParameters>(
+    validateParameters(initialParameters, recording),
+  );
+
+  // Update internal parameters when external parameters change
+  useEffect(() => {
+    setParameters(validateParameters(initialParameters, recording));
+  }, [initialParameters, recording]);
+
+  // Create dynamic bounds that respond to parameter changes (especially resampling)
+  const currentBounds = useMemo<SpectrogramWindow>(() => {
+    if (bounds) return bounds;
+    
+    // Use the effective samplerate for frequency bounds calculation
+    const effectiveSamplerate = parameters.resample
+      ? parameters.samplerate ?? recording.samplerate
+      : recording.samplerate;
+    
+    return {
+      time: { min: 0, max: recording.duration },
+      freq: { min: 0, max: effectiveSamplerate / 2 },
+    };
+  }, [bounds, recording.duration, recording.samplerate, parameters.resample, parameters.samplerate]);
+
+  // Keep the initial bounds for compatibility with existing code
   const initialBounds = useMemo<SpectrogramWindow>(() => {
     return (
       bounds ?? {
@@ -186,10 +211,6 @@ export default function useSpectrogram({
   }, [initial, initialBounds, recording, initialParameters]);
 
   const lastViewportRef = useRef<SpectrogramWindow>(initialViewport);
-
-  const [parameters, setParameters] = useState<SpectrogramParameters>(
-    validateParameters(initialParameters, recording),
-  );
   const [viewport, setViewport] = useState<SpectrogramWindow>(
     initialViewport,
   );
@@ -239,6 +260,42 @@ export default function useSpectrogram({
     }
   }, [initial]);
 
+  // Update viewport when bounds change due to resampling
+  useEffect(() => {
+    setViewport((prev) => {
+      // Check if frequency bounds have changed significantly (indicating resampling change)
+      const freqBoundsChanged = Math.abs(prev.freq.max - currentBounds.freq.max) > 1000; // 1kHz threshold
+      
+      if (freqBoundsChanged) {
+        // When resampling changes, reset to show the full new frequency range
+        const newViewport = {
+          time: prev.time, // Keep time range
+          freq: currentBounds.freq, // Use full new frequency range
+        };
+        
+        const adjustedViewPort = adjustWindowToBounds(newViewport, currentBounds);
+        lastViewportRef.current = adjustedViewPort;
+        return adjustedViewPort;
+      } else {
+        // For other changes, just constrain to bounds
+        const constrainedViewport = {
+          time: {
+            min: Math.max(prev.time.min, currentBounds.time.min),
+            max: Math.min(prev.time.max, currentBounds.time.max),
+          },
+          freq: {
+            min: Math.max(prev.freq.min, currentBounds.freq.min),
+            max: Math.min(prev.freq.max, currentBounds.freq.max),
+          },
+        };
+        
+        const adjustedViewPort = adjustWindowToBounds(constrainedViewport, currentBounds);
+        lastViewportRef.current = adjustedViewPort;
+        return adjustedViewPort;
+      }
+    });
+  }, [currentBounds]);
+
   const {
     draw: drawImage,
     isLoading,
@@ -254,11 +311,11 @@ export default function useSpectrogram({
 
   const handleZoomDrag = useCallback(
     (window: SpectrogramWindow) => {
-      const newViewPort = adjustWindowToBounds(window, initialBounds);
+      const newViewPort = adjustWindowToBounds(window, currentBounds);
       lastViewportRef.current = newViewPort;
       setViewport(newViewPort);
     },
-    [initialBounds],
+    [currentBounds],
   );
 
   const handleZoomIn = useCallback(() => {
@@ -288,10 +345,10 @@ export default function useSpectrogram({
   const handleScale = useCallback(
     ({ time = 1, freq = 1 }: { time?: number; freq?: number }) => {
       setViewport((prev) =>
-        adjustWindowToBounds(scaleWindow(prev, { time, freq }), initialBounds),
+        adjustWindowToBounds(scaleWindow(prev, { time, freq }), currentBounds),
       );
     },
-    [initialBounds],
+    [currentBounds],
   );
 
   const handleShift = useCallback(
@@ -299,11 +356,11 @@ export default function useSpectrogram({
       setViewport((prev) =>
         adjustWindowToBounds(
           shiftWindow(prev, { time, freq }, false),
-          initialBounds,
+          currentBounds,
         ),
       );
     },
-    [initialBounds],
+    [currentBounds],
   );
 
   const handleReset = useCallback(() => {
@@ -332,11 +389,11 @@ export default function useSpectrogram({
       setViewport((prev) =>
         adjustWindowToBounds(
           centerWindowOn(prev, { time, freq }),
-          initialBounds,
+          currentBounds,
         ),
       );
     },
-    [initialBounds],
+    [currentBounds],
   );
 
   const handleSetParameters = useCallback(
@@ -344,40 +401,15 @@ export default function useSpectrogram({
       const validated = validateParameters(newParameters, recording);
       onParameterChange?.(validated);
       setParameters(validated);
-      const effectiveSamplerate = validated.resample
-        ? validated.samplerate ?? recording.samplerate
-        : recording.samplerate;
-      const newViewport = getInitialViewingWindow({
-        startTime: initialBounds.time.min,
-        endTime: initialBounds.time.max,
-        samplerate: effectiveSamplerate,
-        parameters: validated,
-      });
-      lastViewportRef.current = newViewport;
-      setViewport(newViewport);
     },
-    [recording, onParameterChange, initialBounds],
+    [recording, onParameterChange],
   );  
   
   const handleResetParameters = useCallback(() => {
     const validated = validateParameters(initialParameters, recording);
     setParameters(validated);
     onParameterChange?.(validated);
-  
-    const effectiveSamplerate = validated.resample
-      ? validated.samplerate ?? recording.samplerate
-      : recording.samplerate;
-  
-    const newViewport = getInitialViewingWindow({
-      startTime: initialBounds.time.min,
-      endTime: initialBounds.time.max,
-      samplerate: effectiveSamplerate,
-      parameters: validated,
-    });
-  
-    lastViewportRef.current = newViewport;
-    setViewport(newViewport);
-  }, [initialParameters, recording, initialBounds, onParameterChange]);
+  }, [initialParameters, recording, onParameterChange]);
   
   
 
@@ -436,11 +468,11 @@ export default function useSpectrogram({
           max: prev.time.max - shiftAmount,
         }
       };
-      const newViewPort = adjustWindowToBounds(newWindow, initialBounds);
+      const newViewPort = adjustWindowToBounds(newWindow, currentBounds);
       lastViewportRef.current = newViewPort;
       return newViewPort;
     });
-  }, [initialBounds]);
+  }, [currentBounds]);
 
   const handleMoveRight = useCallback(() => {
     setViewport((prev) => {
@@ -453,11 +485,11 @@ export default function useSpectrogram({
           max: prev.time.max + shiftAmount,
         }
       };
-      const newViewPort = adjustWindowToBounds(newWindow, initialBounds);
+      const newViewPort = adjustWindowToBounds(newWindow, currentBounds);
       lastViewportRef.current = newViewPort;
       return newViewPort;
     });
-  }, [initialBounds]);
+  }, [currentBounds]);
 
 
 
@@ -472,11 +504,11 @@ export default function useSpectrogram({
           max: prev.freq.max + shiftAmount,
         }
       };
-      const newViewPort = adjustWindowToBounds(newWindow, initialBounds);
+      const newViewPort = adjustWindowToBounds(newWindow, currentBounds);
       lastViewportRef.current = newViewPort;
       return newViewPort;
     });
-  }, [initialBounds]);
+  }, [currentBounds]);
 
   const handleMoveDown = useCallback(() => {
     setViewport((prev) => {
@@ -489,11 +521,11 @@ export default function useSpectrogram({
           max: prev.freq.max - shiftAmount,
         }
       };
-      const newViewPort = adjustWindowToBounds(newWindow, initialBounds);
+      const newViewPort = adjustWindowToBounds(newWindow, currentBounds);
       lastViewportRef.current = newViewPort;
       return newViewPort;
     });
-  }, [initialBounds]);
+  }, [currentBounds]);
 
   useSpectrogramKeyShortcuts({
     onGoZoom: enableZoom,
@@ -511,7 +543,7 @@ export default function useSpectrogram({
   });
 
   return {
-    bounds: initialBounds,
+    bounds: currentBounds,
     parameters,
     viewport,
     isLoading,
