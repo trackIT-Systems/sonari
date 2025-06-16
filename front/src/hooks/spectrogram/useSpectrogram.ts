@@ -80,12 +80,12 @@ function hoverCallback(event: MouseEvent, canvas: HTMLCanvasElement, viewport: S
   const scaleY = (viewport.freq.max - viewport.freq.min) / canvas.height;
 
   // Translate canvas coordinates to custom bounding box coordinates
-  const time = (mouseX * scaleX + viewport.time.min).toFixed(4);
-  const freq = (((canvas.height - mouseY) * scaleY + viewport.freq.min) / 1000).toFixed(2); // The y-axis needs to be inverted...
+  const time = Math.round((mouseX * scaleX + viewport.time.min) * 1000);
+  const freq = Math.round(((canvas.height - mouseY) * scaleY + viewport.freq.min) / 1000); // The y-axis needs to be inverted...
 
   var popover = document.getElementById("popover-id");
   if (popover != null) {
-    popover.innerText = `Time: ${time} s, Freq: ${freq} kHz`;
+    popover.innerText = `${time}ms, ${freq} kHz`;
     popover.style.left = `${event.pageX + 5}px`;
     popover.style.top = `${event.pageY + 2}px`;
     popover.style.display = 'block';
