@@ -54,6 +54,9 @@ async def get_spectrogram(
     """
     recording = await api.recordings.get(session, recording_uuid)
 
+    # Close session BEFORE expensive computation
+    await session.close()
+
     data = api.compute_spectrogram(
         recording,
         start_time,
@@ -66,12 +69,7 @@ async def get_spectrogram(
 
     # Normalize.
     if spectrogram_parameters.normalize:
-        data_min = data.min()
-        data_max = data.max()
-        data = data - data_min
-        data_range = data_max - data_min
-        if data_range > 0:
-            data = data / data_range
+        data = data / data.max() if data.max() > 0 else data
 
     image = images.array_to_image(
         data,
