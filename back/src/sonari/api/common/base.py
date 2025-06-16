@@ -3,7 +3,6 @@
 from abc import ABC
 from typing import Any, Generic, Hashable, Sequence, TypeVar
 
-import cachetools
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import InstrumentedAttribute
@@ -22,6 +21,7 @@ from sonari.api.common.utils import (
     update_object,
 )
 from sonari.filters.base import Filter
+from sonari.shared_cache_global import get_shared_cache
 
 SonariModel = TypeVar("SonariModel", bound=models.Base)
 SonariSchema = TypeVar("SonariSchema", bound=BaseModel)
@@ -42,10 +42,15 @@ class BaseAPI(
 ):
     _schema: type[SonariSchema]
     _model: type[SonariModel]
-    _cache: cachetools.LRUCache
 
     def __init__(self):
-        self._cache = cachetools.LRUCache(maxsize=1000)
+        pass
+
+    @property
+    def _cache(self) -> Any:
+        """Get the shared cache, always returns a valid cache object."""
+        cache = get_shared_cache()
+        return cache
 
     async def get(
         self,
@@ -319,10 +324,11 @@ class BaseAPI(
         bool
             Whether the object is in the cache.
         """
-        # TODO: Disabled cache for now, as it is not working properly
-        # with related objects
-        return False
-        # return pk in self._cache
+        cache = self._cache
+        if cache is None:
+            return False
+
+        return pk in cache
 
     def _get_from_cache(self, pk: PrimaryKey) -> SonariSchema:
         """Get an object from the cache.
@@ -347,11 +353,12 @@ class BaseAPI(
         obj
             The object to update the cache with.
         """
-        # TODO: Disabled cache for now, as it is not working properly
-        # with related objects
-        return
-        # pk = self._get_pk_from_obj(obj)
-        # self._cache[pk] = obj
+        cache = self._cache
+        if cache is None:
+            return
+
+        pk = self._get_pk_from_obj(obj)
+        cache[pk] = obj
 
     def _clear_from_cache(self, obj: SonariSchema) -> None:
         """Clear an object from the cache.
@@ -361,20 +368,21 @@ class BaseAPI(
         obj
             The object to clear from the cache.
         """
-        # TODO: Disabled cache for now, as it is not working properly
-        # with related objects
-        return
+        cache = self._cache
+        if cache is None:
+            return
+
         pk = self._get_pk_from_obj(obj)
-        self._cache.pop(pk, None)
+        cache.pop(pk, None)
 
     def _get_pk_condition(self, pk: PrimaryKey) -> _ColumnExpressionArgument:
-        column = self._model.uuid  # type: ignore
+        column = getattr(self._model, "uuid", None)
         if not column:
-            raise NotImplementedError(f"The model {self._model.__name__} does not have a column named" " uuid")
+            raise NotImplementedError(f"The model {self._model.__name__} does not have a column named uuid")
         return column == pk
 
     def _get_pk_from_obj(self, obj: SonariSchema) -> PrimaryKey:
-        pk = obj.uuid  # type: ignore
+        pk = getattr(obj, "uuid", None)
         if not pk:
             raise NotImplementedError(
                 "The primary key could not be retrieved from the object. "
