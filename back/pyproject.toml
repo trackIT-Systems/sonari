@@ -1,6 +1,6 @@
 [project]
 name = "Sonari"
-version = "2025.6.1"
+version = "2025.6.3"
 description = "Audio Annotation Tool"
 authors = [{ name = "Santiago Martinez", email = "santiago.mbal@gmail.com" }, { name = "Artur Sterz", email = "sterz@trackit.systems" }]
 dependencies = [
@@ -25,7 +25,7 @@ dependencies = [
     "shapely==2.1.1",
     "matplotlib==3.10.3",
 ]
-requires-python = ">=3.13,<3.14"
+requires-python = ">=3.11,<3.14"
 readme = "README.md"
 keywords = ["audio", "annotation", "tool", "bioacoustics", "machine learning"]
 license = { file = "LICENSE" }
