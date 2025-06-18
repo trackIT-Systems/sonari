@@ -1,7 +1,5 @@
-// @ts-ignore
-import bbox from "@turf/bbox";
-// @ts-ignore
-import booleanPointInPolygon from "@turf/boolean-point-in-polygon";
+import { bbox }  from "@turf/bbox";
+import { booleanPointInPolygon } from "@turf/boolean-point-in-polygon";
 
 import { MAX_FREQ } from "@/constants";
 
@@ -885,22 +883,22 @@ export function computeGeometryBBox(geometry: Geometry): Box {
       return computeBoundingBoxBBox(geometry);
 
     case "Point":
-      return bbox(geometry);
+      return bbox(geometry) as Box;
 
     case "MultiPoint":
-      return bbox(geometry);
+      return bbox(geometry) as Box;
 
     case "LineString":
-      return bbox(geometry);
+      return bbox(geometry) as Box;
 
     case "MultiLineString":
-      return bbox(geometry);
+      return bbox(geometry) as Box;
 
     case "Polygon":
-      return bbox(geometry);
+      return bbox(geometry) as Box;
 
     case "MultiPolygon":
-      return bbox(geometry);
+      return bbox(geometry) as Box;
 
     default:
       throw Error(

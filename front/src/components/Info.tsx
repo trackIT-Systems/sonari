@@ -30,7 +30,9 @@ export default function Info({
       </svg>
       <span className="sr-only">Info</span>
       <div>
-        {title != null ?? <span className="font-medium">Info!</span>} {children}
+        <div>
+          <span className="font-medium">{title ?? "Info!"}</span> {children}
+        </div>
       </div>
     </div>
   );

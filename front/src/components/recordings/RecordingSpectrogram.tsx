@@ -106,7 +106,7 @@ export default function RecordingSpectrogram({
     [drawSpectrogram, drawTrackAudio, spectrogramIsLoading],
   );
 
-  useCanvas({ ref: canvasRef, draw });
+  useCanvas({ ref: canvasRef as React.RefObject<HTMLCanvasElement>, draw });
 
   return (
     <Card>

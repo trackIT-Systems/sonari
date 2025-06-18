@@ -3,6 +3,7 @@
 import functools
 import os
 from contextlib import asynccontextmanager
+from multiprocessing import Manager
 from pathlib import Path
 
 from fastapi import FastAPI
@@ -12,8 +13,10 @@ from fastapi.staticfiles import StaticFiles
 
 from sonari import exceptions
 from sonari.plugins import add_plugin_pages, add_plugin_routes, load_plugins
+from sonari.shared_cache_global import set_shared_cache
 from sonari.system.boot import sonari_init
 from sonari.system.settings import Settings
+from sonari.system.shared_cache import SharedTTLCache
 
 ROOT_DIR = Path(__file__).parent.parent
 
@@ -21,8 +24,23 @@ ROOT_DIR = Path(__file__).parent.parent
 @asynccontextmanager
 async def lifespan(settings: Settings, app: FastAPI):
     """Context manager to run startup and shutdown events."""
+    # Create per-worker cache (uvicorn workers are separate processes, so true sharing requires external services)
+    cache_manager = Manager()
+    shared_cache = SharedTTLCache(
+        manager=cache_manager,
+        maxsize=2000,  # Small but reasonable size
+        ttl=300,  # 5 minutes TTL
+    )
+    app.state.shared_cache = shared_cache
+    app.state.cache_manager = cache_manager
+
+    set_shared_cache(shared_cache)
+
     await sonari_init(settings, app)
     yield
+
+    # Cleanup on shutdown
+    cache_manager.shutdown()
 
 
 def create_app(settings: Settings) -> FastAPI:

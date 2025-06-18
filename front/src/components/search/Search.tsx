@@ -103,7 +103,7 @@ export default function Search<T extends object>({
 
   // Setup refs and get props for child elements.
   const inputRef = useRef(null);
-  const listBoxRef = useRef(null);
+  const listBoxRef = useRef<HTMLUListElement>(null);
   const popoverRef = useRef(null);
 
   const { inputProps, listBoxProps, labelProps } = useComboBox(
@@ -143,7 +143,7 @@ export default function Search<T extends object>({
         >
           <ListBox
             {...listBoxProps}
-            listBoxRef={listBoxRef}
+            listBoxRef={listBoxRef as React.RefObject<HTMLUListElement>}
             state={state}
             emptyMessage={emptyMessage}
           />

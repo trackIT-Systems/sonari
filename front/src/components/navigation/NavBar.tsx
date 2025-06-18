@@ -1,9 +1,10 @@
-import { Menu, Transition } from "@headlessui/react";
+import { Menu, Transition, MenuButton, MenuItem, MenuItems } from "@headlessui/react";
 import { UserIcon } from "@heroicons/react/24/outline";
 import classnames from "classnames";
 import { Fragment } from "react";
 import useActiveUser from "@/hooks/api/useActiveUser";
 import { HOST } from "@/api/common";
+import Link from "next/link"
 
 import { HorizontalDivider } from "@/components/Divider";
 
@@ -11,11 +12,11 @@ import type { User } from "@/types";
 
 function Brand() {
   return (
-    <a href="/" className="flex items-center">
+    <Link href="/" className="flex items-center">
       <span className="self-center whitespace-nowrap text-2xl font-bold text-emerald-500 underline decoration-4">
         Sonari
       </span>
-    </a>
+    </Link>
   );
 }
 
@@ -35,9 +36,9 @@ function UserMenu({ user, onLogout }: { user?: User; onLogout?: () => void }) {
 
   return (
     <Menu as="div" className="relative z-10 inline-block text-left">
-      <Menu.Button className="inline-flex w-full justify-center rounded-md">
+      <MenuButton className="inline-flex w-full justify-center rounded-md">
         User
-      </Menu.Button>
+      </MenuButton>
       <Transition
         as={Fragment}
         enter="transition ease-out duration-100"
@@ -47,17 +48,17 @@ function UserMenu({ user, onLogout }: { user?: User; onLogout?: () => void }) {
         leaveFrom="transform opacity-100 scale-100"
         leaveTo="transform opacity-0 scale-95"
       >
-        <Menu.Items className="origin-to-right absolute right-0 z-50 mt-2 w-44 space-y-1 rounded-md bg-stone-200 p-1 shadow-lg dark:bg-stone-700">
-          <Menu.Item>
+        <MenuItems className="origin-to-right absolute right-0 z-50 mt-2 w-44 space-y-1 rounded-md bg-stone-200 p-1 shadow-lg dark:bg-stone-700">
+          <MenuItem>
             <UserDetail user={user} />
-          </Menu.Item>
+          </MenuItem>
           <HorizontalDivider />
-          <Menu.Item>
-            {({ active }) => (
+          <MenuItem>
+            {({ focus }) => (
               <a
                 href={"profile"}
                 className={classnames(
-                  active
+                  focus
                     ? "bg-stone-300 text-stone-900 dark:bg-stone-800 dark:text-stone-100"
                     : "bg-stone-200 text-stone-700 dark:bg-stone-700 dark:text-stone-300",
                   "group flex w-full items-center rounded-md px-2 py-2 text-sm",
@@ -66,13 +67,13 @@ function UserMenu({ user, onLogout }: { user?: User; onLogout?: () => void }) {
                 Profile
               </a>
             )}
-          </Menu.Item>
-          <Menu.Item>
-            {({ active }) => (
+          </MenuItem>
+          <MenuItem>
+            {({ focus }) => (
               <button
                 onClick={() => logout()}
                 className={classnames(
-                  active
+                  focus
                     ? "bg-stone-300 text-stone-900 dark:bg-stone-800 dark:text-stone-100"
                     : "bg-stone-200 text-stone-700 dark:bg-stone-700 dark:text-stone-300",
                   "group flex w-full items-center rounded-md px-2 py-2 text-sm",
@@ -81,8 +82,8 @@ function UserMenu({ user, onLogout }: { user?: User; onLogout?: () => void }) {
                 Logout
               </button>
             )}
-          </Menu.Item>
-        </Menu.Items>
+          </MenuItem>
+        </MenuItems>
       </Transition>
     </Menu>
   );

@@ -169,7 +169,7 @@ export default function SoundEventAnnotationSpectrogram(props: {
     drawAnnotation,
   ]);
 
-  useCanvas({ ref: canvasRef, draw });
+  useCanvas({ ref: canvasRef as React.RefObject<HTMLCanvasElement>, draw });
 
   return (
     <div className="flex flex-col gap-2">

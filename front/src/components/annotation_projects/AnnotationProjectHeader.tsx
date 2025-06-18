@@ -61,28 +61,6 @@ export default function AnnotationProjectHeader({
                 );
               },
             },
-            // {
-            //   id: "tasks",
-            //   title: "Tasks",
-            //   isActive: selectedLayoutSegment === "tasks",
-            //   icon: <TasksIcon className="w-5 h-5 align-middle" />,
-            //   onClick: () => {
-            //     router.push(
-            //       `/annotation_projects/detail/tasks/?${params.toString()}`,
-            //     );
-            //   },
-            // },
-            // {
-            //   id: "tags",
-            //   title: "Tags",
-            //   isActive: selectedLayoutSegment === "tags",
-            //   icon: <TagsIcon className="w-5 h-5 align-middle" />,
-            //   onClick: () => {
-            //     router.push(
-            //       `/annotation_projects/detail/tags/?${params.toString()}`,
-            //     );
-            //   },
-            // },
             {
               id: "export",
               title: "Export",

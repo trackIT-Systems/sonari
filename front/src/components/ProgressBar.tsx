@@ -39,8 +39,6 @@ export default function ProgressBar({
   const completedPerc = (progress.done.completed / progress.total) * 100;
   const rejectedPerc = (progress.done.rejected / progress.total) * 100;
 
-  console.log(progress.pending.count, progress.pending.assigned)
-
   return (
     <div className={classNames(className, "w-full flex flex-row gap-20 items-center")}>
       {/* Pending Bar */}
@@ -52,7 +50,6 @@ export default function ProgressBar({
             </div>
           }
           placement="top"
-          autoPlacement={false}
         >
           <div className="w-24 h-3 bg-stone-200 dark:bg-stone-700 rounded-full overflow-hidden">
             <div
@@ -76,7 +73,6 @@ export default function ProgressBar({
             </div>
           }
           placement="top"
-          autoPlacement={false}
         >
           <div className="w-24 h-3 bg-stone-200 dark:bg-stone-700 rounded-full overflow-hidden">
             <div
@@ -100,7 +96,6 @@ export default function ProgressBar({
             </div>
           }
           placement="top"
-          autoPlacement={false}
         >
           <div className="w-24 h-3 bg-stone-200 dark:bg-stone-700 rounded-full overflow-hidden">
             <div
@@ -124,7 +119,6 @@ export default function ProgressBar({
             </div>
           }
           placement="top"
-          autoPlacement={false}
         >
           <div className="w-24 h-3 bg-stone-200 dark:bg-stone-700 rounded-full overflow-hidden">
             <div
@@ -148,7 +142,6 @@ export default function ProgressBar({
             </div>
           }
           placement="top"
-          autoPlacement={false}
         >
           <div className="w-24 h-3 bg-stone-200 dark:bg-stone-700 rounded-full overflow-hidden">
             <div

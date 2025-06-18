@@ -1,6 +1,5 @@
 """Common API functions."""
 
-import logging
 import re
 from dataclasses import MISSING, fields
 from typing import Any, Callable, Sequence, TypeVar
@@ -37,9 +36,6 @@ __all__ = [
     "update_feature_on_object",
     "update_object",
 ]
-
-
-logger = logging.getLogger(__name__)
 
 
 A = TypeVar("A", bound=models.Base)

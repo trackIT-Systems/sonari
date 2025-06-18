@@ -4,7 +4,7 @@ import { z } from "zod";
 import { GetManySchema, Page } from "@/api/common";
 import { AnnotationProjectSchema } from "@/schemas";
 
-import type { AnnotationProject, Tag, AnnotationStatus } from "@/types";
+import type { AnnotationProject, Tag } from "@/types";
 
 const DEFAULT_ENDPOINTS = {
   getMany: "/api/v1/annotation_projects/",
@@ -24,16 +24,6 @@ export const AnnotationProjectFilterSchema = z.object({
 
 export type AnnotationProjectFilter = z.input<
   typeof AnnotationProjectFilterSchema
->;
-
-export const AnnotationProjectCreateSchema = z.object({
-  name: z.string().min(1),
-  description: z.string().min(1),
-  annotation_instructions: z.string().nullable().optional(),
-});
-
-export type AnnotationProjectCreate = z.input<
-  typeof AnnotationProjectCreateSchema
 >;
 
 export const AnnotationProjectUpdateSchema = z.object({
@@ -76,14 +66,6 @@ export function registerAnnotationProjectAPI(
       params: { annotation_project_uuid: uuid },
     });
     return AnnotationProjectSchema.parse(data);
-  }
-
-  async function create(
-    data: AnnotationProjectCreate,
-  ): Promise<AnnotationProject> {
-    const body = AnnotationProjectCreateSchema.parse(data);
-    const { data: responseData } = await instance.post(endpoints.create, body);
-    return AnnotationProjectSchema.parse(responseData);
   }
 
   async function update(
@@ -178,7 +160,6 @@ export function registerAnnotationProjectAPI(
   return {
     getMany,
     get,
-    create,
     update,
     delete: deleteAnnotationProject,
     addTag,

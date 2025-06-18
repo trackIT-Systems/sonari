@@ -109,7 +109,7 @@ export default function AnnotationTaskTable({
                 annotationTasks.filter.set("search_recordings", value as string)
               }
               onKeyDown={handleSearchKeyDown}
-              inputRef={searchInputRef}
+              inputRef={searchInputRef as React.RefObject<HTMLInputElement>}
               isHighlighted={focusedElement === 'search'}
             />
           </div>

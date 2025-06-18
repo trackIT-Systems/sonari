@@ -24,9 +24,9 @@ pip install .
 
 ### Development Environment
 
-We manage Sonari's development with `rye`. 
+We manage Sonari's development with `pdm`. 
 
-1. Follow the official [installation instructions](https://rye-up.com/guide/installation/) to get `rye` on your machine.
+1. Follow the official [installation instructions](https://pdm-project.org/en/latest/#installation) to get `pdm` on your machine.
 
 2. Clone the repository:
 
@@ -38,17 +38,11 @@ git clone https://github.com/trackIT-Systems/sonari.git
 
 ```bash
 cd sonari/back
-rye sync
+pdm sync
 ```
 
 4. Start the development server:
 
 ```bash
 make serve-dev
-```
-
-or
-
-```bash
-SONARI_DEV=true rye run python -m sonari
 ```

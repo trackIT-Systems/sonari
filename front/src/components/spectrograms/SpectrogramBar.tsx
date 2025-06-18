@@ -60,7 +60,7 @@ export default function SpectrogramBar({
     [drawFullSpectrogram, bounds]
   );
 
-  useCanvas({ ref: canvasRef, draw });
+  useCanvas({ ref: canvasRef as React.RefObject<HTMLCanvasElement>, draw });
 
   const { moveProps } = useWindowDrag({
     dimensions: { width, height },

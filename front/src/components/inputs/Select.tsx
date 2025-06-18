@@ -1,6 +1,5 @@
-import { Listbox } from "@headlessui/react";
-import { Float } from "@headlessui-float/react";
-import { Fragment, type ReactNode, RefObject } from "react";
+import { Listbox, ListboxButton, ListboxOption, ListboxOptions, Label} from "@headlessui/react";
+import { type ReactNode, RefObject } from "react";
 
 import { CheckIcon, ExpandIcon } from "@/components/icons";
 import {
@@ -39,28 +38,36 @@ export default function Select<T>({
   | "bottom";
   buttonRef?: RefObject<HTMLButtonElement>;
 }) {
+  // Generate positioning classes based on placement
+  const getPositionClasses = (placement: string) => {
+    switch (placement) {
+      case "top-end":
+        return "bottom-full right-0 mb-1";
+      case "top-start":
+        return "bottom-full left-0 mb-1";
+      case "bottom-end":
+        return "top-full right-0 mt-1";
+      case "bottom-start":
+        return "top-full left-0 mt-1";
+      case "bottom":
+        return "top-full left-1/2 -translate-x-1/2 mt-1";
+      default:
+        return "bottom-full right-0 mb-1";
+    }
+  };
+
   return (
     <Listbox value={selected.value} onChange={onChange}>
-      <Float
-        as="div"
-        className="relative"
-        leave="transition ease-in duration-100"
-        leaveFrom="opacity-100"
-        leaveTo="opacity-0"
-        placement={placement}
-        offset={4}
-        flip={true}
-        floatingAs={Fragment}
-      >
+      <div className="relative">
         <div className="inline-flex gap-2 w-full">
           {label ? (
             <div className="my-auto inline-block">
-              <Listbox.Label className="text-sm text-stone-500 dark:text-stone-400 whitespace-nowrap">
+              <Label className="text-sm text-stone-500 dark:text-stone-400 whitespace-nowrap">
                 {label}
-              </Listbox.Label>
+              </Label>
             </div>
           ) : null}
-          <Listbox.Button
+          <ListboxButton
             ref={buttonRef}
             className={`${COMMON_STYLE} ${BORDER_STYLE} ${BACKGROUND_STYLE} ${TEXT_STYLE} ${FOCUS_STYLE} ${DISABLED_STYLE} w-full border pl-3 pr-10 text-left  relative cursor-default`}
           >
@@ -71,15 +78,19 @@ export default function Select<T>({
                 aria-hidden="true"
               />
             </span>
-          </Listbox.Button>
+          </ListboxButton>
         </div>
-        <Listbox.Options className="max-h-60 w-full overflow-auto rounded-lg bg-stone-50 dark:bg-stone-700 py-1 text-base shadow-lg ring-1 ring-stone-900 dark:ring-stone-600 ring-opacity-5 focus:outline-none sm:text-sm">
+        <ListboxOptions className={`
+          absolute z-10 ${getPositionClasses(placement)}
+          max-h-60 w-full overflow-auto rounded-lg bg-stone-50 dark:bg-stone-700 py-1 text-base shadow-lg ring-1 ring-stone-900 dark:ring-stone-600 ring-opacity-5 focus:outline-none sm:text-sm
+          transition ease-in duration-100 data-[closed]:opacity-0
+        `}>
           {options.map((option) => (
-            <Listbox.Option
+            <ListboxOption
               key={option.id}
               value={option.value}
-              className={({ active }) =>
-                `relative cursor-default select-none py-2 pl-10 pr-4 ${active
+              className={({ focus }) =>
+                `relative cursor-default select-none py-2 pl-10 pr-4 ${focus
                   ? "bg-amber-100 text-amber-900"
                   : "text-stone-900 dark:text-stone-400"
                 }`
@@ -100,10 +111,10 @@ export default function Select<T>({
                   ) : null}
                 </>
               )}
-            </Listbox.Option>
+            </ListboxOption>
           ))}
-        </Listbox.Options>
-      </Float>
+        </ListboxOptions>
+      </div>
     </Listbox>
   );
 }

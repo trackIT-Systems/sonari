@@ -18,6 +18,7 @@ export default function Search({
   onKeyDown,
   inputRef,
   isHighlighted = false,
+  spellCheck,
   ...props
 }: {
   placeholder?: string;
@@ -27,13 +28,15 @@ export default function Search({
   inputRef?: React.RefObject<HTMLInputElement>;
   isHighlighted?: boolean;
 } & SearchFieldProps &
-  InputHTMLAttributes<HTMLInputElement>) {
+  Omit<InputHTMLAttributes<HTMLInputElement>, 'spellCheck'> & {
+    spellCheck?: string;
+  }) {
   const state = useSearchFieldState({ label, ...props });
   const localRef = useRef(null);
   const ref = inputRef || localRef;
 
   const { labelProps, inputProps, clearButtonProps } = useSearchField(
-    { label, ...props },
+    { label, spellCheck, ...props },
     state,
     ref,
   );

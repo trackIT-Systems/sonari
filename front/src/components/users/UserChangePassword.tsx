@@ -1,5 +1,5 @@
 import { zodResolver } from "@hookform/resolvers/zod";
-import z from "zod";
+import { z } from "zod";
 import type { User } from "@/types";
 import useActiveUser from "@/hooks/api/useActiveUser";
 import { useForm } from "react-hook-form";

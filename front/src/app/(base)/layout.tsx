@@ -1,6 +1,6 @@
 "use client";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { type ReactNode, useContext, useCallback } from "react";
+import { type ReactNode, useContext, useCallback, useEffect } from "react";
 import toast from "react-hot-toast";
 
 import Loading from "@/app/loading";
@@ -28,6 +28,13 @@ function WithLogIn({ children }: { children: React.ReactNode }) {
     },
   });
 
+  // Handle error navigation in useEffect to avoid rendering issues
+  useEffect(() => {
+    if (isError) {
+      router.push(`/login?back=${encodeURIComponent(currentPath)}`);
+    }
+  }, [isError, router, currentPath]);
+
   if (isLoading) {
     return (
       <div className="flex justify-center items-center w-screen h-screen">
@@ -44,8 +51,19 @@ function WithLogIn({ children }: { children: React.ReactNode }) {
   }
 
   if (isError) {
-    router.push(`/login?back=${encodeURIComponent(currentPath)}`);
-    return;
+    // Return loading state while navigation is happening
+    return (
+      <div className="flex justify-center items-center w-screen h-screen">
+        <div className="flex flex-col items-center">
+          <div>
+            <SonariIcon width={128} height={128} className="w-32 h-32" />
+          </div>
+          <div>
+            <Loading />
+          </div>
+        </div>
+      </div>
+    );
   }
 
   if (user == null) {

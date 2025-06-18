@@ -94,6 +94,7 @@ function TabContent({ tab, shortcutNumber }: { tab: TabType; shortcutNumber?: nu
 
   if (shortcutNumber !== undefined) {
     return <Tooltip
+      portal={true}
       tooltip={
         <div className="inline-flex gap-2 items-center">
           Go to {tab.title}

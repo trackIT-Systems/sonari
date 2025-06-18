@@ -50,7 +50,6 @@ export default function AnnotationTaskStatus({
             </div>
           }
           placement="bottom"
-          autoPlacement={false}
         >
           <Button mode="text" variant="primary" onClick={onDone}>
             <CompleteIcon className="w-8 h-8" />
@@ -66,7 +65,6 @@ export default function AnnotationTaskStatus({
             </div>
           }
           placement="bottom"
-          autoPlacement={false}
         >
           <Button mode="text" variant="warning" onClick={onUnsure}>
             <HelpIcon className="w-8 h-8" />
@@ -82,7 +80,6 @@ export default function AnnotationTaskStatus({
             </div>
           }
           placement="bottom"
-          autoPlacement={false}
         >
           <Button mode="text" variant="danger" onClick={onReview}>
             <NeedsReviewIcon className="w-8 h-8" />
@@ -98,7 +95,6 @@ export default function AnnotationTaskStatus({
             </div>
           }
           placement="bottom"
-          autoPlacement={false}
         >
           <Button mode="text" variant="info" onClick={onVerify}>
             <VerifiedIcon className="w-8 h-8" />

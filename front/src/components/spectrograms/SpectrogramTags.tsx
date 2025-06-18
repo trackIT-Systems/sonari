@@ -1,8 +1,7 @@
 // Purpose: React component for displaying tags on the spectrogram.
-import { Popover } from "@headlessui/react";
-import { Float } from "@headlessui-float/react";
+import { Popover, PopoverButton, PopoverPanel } from "@headlessui/react";
 import classNames from "classnames";
-import { type HTMLProps, type ReactNode, useEffect } from "react";
+import { type HTMLProps, type ReactNode } from "react";
 import { useMemo } from "react";
 
 import { CloseIcon, TagIcon } from "@/components/icons";
@@ -91,42 +90,33 @@ export function AddTagButton({
   onAdd?: (tag: TagType) => void;
 }) {
   return (
-    <Popover as="div">
-      <Float
-        placement="bottom"
-        offset={4}
-        zIndex={20}
-        enter="transition duration-200 ease-out"
-        enterFrom="scale-95 opacity-0"
-        enterTo="scale-100 opacity-100"
-        leave="transition duration-150 ease-in"
-        leaveFrom="scale-100 opacity-100"
-        leaveTo="scale-95 opacity-0"
-        portal={true}
+    <Popover as="div" className="relative">
+      <PopoverButton as="div" className="whitespace-nowrap rounded hover:text-emerald-500 focus:ring-4 focus:outline-none group focus:ring-emerald-500/50 z-20">
+        +<TagIcon className="inline-block ml-1 w-4 h-4 stroke-2" />
+        <span className="hidden absolute ml-1 whitespace-nowrap opacity-0 transition-all duration-200 group-hover:inline-block group-hover:opacity-100">
+          Add tag
+        </span>
+      </PopoverButton>
+      <PopoverPanel 
+        className="absolute top-full mt-1 w-52 z-20 transition duration-200 ease-out data-[closed]:scale-95 data-[closed]:opacity-0 data-[enter]:duration-200 data-[leave]:duration-150 data-[enter]:ease-out data-[leave]:ease-in" 
+        focus 
+        unmount
       >
-        <Popover.Button className="whitespace-nowrap rounded hover:text-emerald-500 focus:ring-4 focus:outline-none group focus:ring-emerald-500/50 z-20">
-          +<TagIcon className="inline-block ml-1 w-4 h-4 stroke-2" />
-          <span className="hidden absolute ml-1 whitespace-nowrap opacity-0 transition-all duration-200 group-hover:inline-block group-hover:opacity-100">
-            Add tag
-          </span>
-        </Popover.Button>
-        <Popover.Panel className="w-52" focus unmount>
-          {({ close }) => (
-            <TagBarPopover
-              filter={filter}
-              onClose={close}
-              onCreate={(tag) => {
-                onCreate?.(tag);
-                close();
-              }}
-              onAdd={(tag) => {
-                onAdd?.(tag);
-                close();
-              }}
-            />
-          )}
-        </Popover.Panel>
-      </Float>
+        {({ close }) => (
+          <TagBarPopover
+            filter={filter}
+            onClose={close}
+            onCreate={(tag) => {
+              onCreate?.(tag);
+              close();
+            }}
+            onAdd={(tag) => {
+              onAdd?.(tag);
+              close();
+            }}
+          />
+        )}
+      </PopoverPanel>
     </Popover>
   );
 }

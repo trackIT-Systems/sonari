@@ -1,6 +1,4 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
 
 .remove-arrow::-webkit-inner-spin-button,
 .remove-arrow::-webkit-outer-spin-button {
@@ -8,5 +6,6 @@
   margin: 0;
 }
 .remove-arrow {
+  appearance: textfield;
   -moz-appearance: textfield;
 }
