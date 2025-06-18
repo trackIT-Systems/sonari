@@ -266,6 +266,9 @@ export const SpectrogramParametersSchema = z
     pcen: z.boolean().default(false),
     cmap: z.string().default(DEFAULT_CMAP),
     gamma: z.coerce.number().positive().default(2),
+    freqLines: z
+      .array(z.coerce.number().int().nonnegative())
+      .default([]),
   })
   .refine(
     (data) => {

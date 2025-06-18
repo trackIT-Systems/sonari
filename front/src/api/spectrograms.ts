@@ -46,6 +46,7 @@ export const DEFAULT_SPECTROGRAM_PARAMETERS: SpectrogramParameters = {
   max_dB: 0,
   channel: 0,
   gamma: 1.2,
+  freqLines: []
 };
 
 export function registerSpectrogramAPI(

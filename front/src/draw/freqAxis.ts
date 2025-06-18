@@ -51,7 +51,7 @@ function drawFreqTick(
   }
 }
 
-export default function drawTimeAxis(
+export default function drawFreqAxis(
   ctx: CanvasRenderingContext2D,
   interval: Interval,
   style: AxisStyle = DEFAULT_AXIS_STYLE,

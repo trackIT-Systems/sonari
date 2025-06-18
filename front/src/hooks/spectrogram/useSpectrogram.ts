@@ -22,6 +22,8 @@ import type {
   SpectrogramWindow,
 } from "@/types";
 import { ZOOM_FACTOR } from "@/constants";
+import { number } from "zod";
+import { drawLineString, DEFAULT_LINESTRING_STYLE } from "@/draw/linestring";
 
 /**
  * A function type representing the drawing function for a spectrogram.
@@ -125,6 +127,30 @@ function drawPosition(ctx: CanvasRenderingContext2D, viewport: SpectrogramWindow
   });
 }
 
+function drawFrequencyLines(
+  ctx: CanvasRenderingContext2D,
+  freqLines: number[],
+  viewport: SpectrogramWindow,
+  style = DEFAULT_LINESTRING_STYLE
+) {
+  const { height, width } = ctx.canvas;
+  const { min: freqMin, max: freqMax } = viewport.freq;
+
+  for (const freq of freqLines) {
+    if (freq < freqMin || freq > freqMax) continue;
+
+    const y = height * (1 - (freq - freqMin) / (freqMax - freqMin));
+
+    drawLineString(ctx, {
+      type: "LineString",
+      coordinates: [
+        [0, y],
+        [width, y],
+      ],
+    }, style);
+  }
+}
+
 /**
  * The `useSpectrogram` hook provides state, controls, and drawing functions
  * for managing and displaying a spectrogram of an audio recording.
@@ -167,14 +193,14 @@ export default function useSpectrogram({
 } & SpectrogramState &
   SpectrogramControls {
 
-  const initialBounds = useMemo<SpectrogramWindow>(() => {
+    const initialBounds = useMemo<SpectrogramWindow>(() => {
     return (
       bounds ?? {
         time: { min: 0, max: recording.duration },
         freq: { min: 0, max: recording.samplerate / 2 },
       }
     );
-  }, [bounds, recording]);
+    }, [bounds, recording]);
 
   const initialViewport = useMemo<SpectrogramWindow>(() => {
     return initial ?? getInitialViewingWindow({
@@ -344,17 +370,7 @@ export default function useSpectrogram({
       const validated = validateParameters(newParameters, recording);
       onParameterChange?.(validated);
       setParameters(validated);
-      const effectiveSamplerate = validated.resample
-        ? validated.samplerate ?? recording.samplerate
-        : recording.samplerate;
-      const newViewport = getInitialViewingWindow({
-        startTime: initialBounds.time.min,
-        endTime: initialBounds.time.max,
-        samplerate: effectiveSamplerate,
-        parameters: validated,
-      });
-      lastViewportRef.current = newViewport;
-      setViewport(newViewport);
+      
     },
     [recording, onParameterChange, initialBounds],
   );  
@@ -421,6 +437,13 @@ export default function useSpectrogram({
       }
       drawMotions(ctx);
       drawPosition(ctx, viewport)
+      if (parameters.freqLines && Array.isArray(parameters.freqLines)) {
+        drawFrequencyLines(ctx, parameters.freqLines, viewport, {
+          borderColor: "rgba(0, 255, 0, 0.6)",
+          borderWidth: 1.5,
+          borderAlpha: 1,
+        });
+      }
     },
     [drawImage, drawMotions, viewport, canDrag, canZoom, withSpectrogram],
   );

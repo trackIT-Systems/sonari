@@ -25,6 +25,7 @@ import KeyboardKey from "../KeyboardKey";
 import { SETTINGS_SHORTCUT } from "@/utils/keyboard";
 import useKeyFilter from "@/hooks/utils/useKeyFilter";
 import { useKeyPressEvent } from "react-use";
+import  FreqLineSettings  from "./settings/FreqLineSettings";
 
 export function SpectrogramSettingForm({
   settings,
@@ -88,6 +89,7 @@ export function SpectrogramSettingForm({
       <FilteringSettings constraints={constraints} control={control} />
       <AmplitudeSettings control={control} />
       <ResamplingSettings control={control} />
+      <FreqLineSettings control={control}/>
       <DeNoiseSettings control={control} />
       <ColorSettings constraints={constraints} control={control} />
     </div>
