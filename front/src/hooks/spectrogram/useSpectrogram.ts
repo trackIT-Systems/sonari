@@ -150,6 +150,16 @@ function drawFrequencyLines(
     }, style);
   }
 }
+const FREQ_LINE_COLORS = [
+  "#00FFD0", // Bright Cyan
+  "#00FF00", // Lime
+  "#00BFFF", // Electric Blue
+  "#FFD700", // Gold
+  "#FFFFFF", // White
+];
+
+
+
 
 /**
  * The `useSpectrogram` hook provides state, controls, and drawing functions
@@ -480,12 +490,16 @@ export default function useSpectrogram({
       drawMotions(ctx);
       drawPosition(ctx, viewport)
       if (parameters.freqLines && Array.isArray(parameters.freqLines)) {
-        drawFrequencyLines(ctx, parameters.freqLines, viewport, {
-          borderColor: "rgba(0, 255, 0, 0.6)",
-          borderWidth: 1.5,
-          borderAlpha: 1,
+        parameters.freqLines.forEach((freq, index) => {
+          const color = FREQ_LINE_COLORS[index % FREQ_LINE_COLORS.length];
+          drawFrequencyLines(ctx, [freq], viewport, {
+            borderColor: color,
+            borderWidth: 1.5,
+            borderAlpha: 1,
+          });
         });
       }
+      
     },
     [drawImage, drawMotions, viewport, canDrag, canZoom, withSpectrogram],
   );

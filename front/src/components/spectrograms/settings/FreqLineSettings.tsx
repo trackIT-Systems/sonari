@@ -53,26 +53,37 @@ export default function FreqLineSettings({
         error={freqLinesState.error?.message}
       >
         <div className="flex flex-wrap gap-4 mb-2">
-          {[...(freqLinesField.value ?? [])].map((freq) => (
+          {PRESET_FREQS.map((freq) => (
             <div key={freq} className="flex flex-col items-center">
               <Toggle
-                isSelected={true}
+                isSelected={freqLinesField.value?.includes(freq)}
                 onChange={() => toggleFreq(freq)}
               />
               <span className="text-xs text-gray-300 mt-1">
                 {freq / 1000} kHz
-                {!PRESET_FREQS.includes(freq) && " (custom)"}
               </span>
             </div>
           ))}
+          {[...(freqLinesField.value ?? [])]
+            .filter((freq) => !PRESET_FREQS.includes(freq))
+            .map((freq) => (
+              <div key={freq} className="flex flex-col items-center">
+                <Toggle
+                  isSelected={true}
+                  onChange={() => toggleFreq(freq)}
+                />
+                <span className="text-xs text-gray-300 mt-1">
+                  {freq / 1000} kHz (custom)
+                </span>
+              </div>
+            ))}
         </div>
-
         <div className="flex gap-2 mt-2 items-center">
           <Input
             type="number"
-            placeholder="Custom Hz"
-            value={customFreq ?? ""}
-            onChange={(e) => setCustomFreq(Number(e.target.value))}
+            placeholder="Custom kHz"
+            value={customFreq === "" ? "" : customFreq / 1000} // Show in kHz
+            onChange={(e) => setCustomFreq(Number(e.target.value) * 1000)} // Store in Hz
             min={0}
           />
           <button
