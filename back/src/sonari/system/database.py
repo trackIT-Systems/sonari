@@ -142,14 +142,20 @@ def create_async_db_engine(database_url: str | URL) -> AsyncEngine:
         database_url = make_url(database_url)
     database_url = validate_database_url(database_url, is_async=True)
 
-    return create_async_engine(
-        database_url,
-        pool_size=50,
-        max_overflow=50,
-        pool_timeout=5,
-        pool_recycle=1800,
-        pool_pre_ping=True,
-    )
+    backend = database_url.get_backend_name()
+    if backend == "sqlite":
+        return create_async_engine(
+            database_url,)
+    
+    if backend == "postgresql":
+        return create_async_engine(
+            database_url,
+            pool_size=50,
+            max_overflow=50,
+            pool_timeout=5,
+            pool_recycle=1800,
+            pool_pre_ping=True,
+        )
 
 
 def create_sync_db_engine(database_url: str | URL) -> Engine:
