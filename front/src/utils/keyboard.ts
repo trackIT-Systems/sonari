@@ -67,8 +67,6 @@ export const getSpecialKeyLabel = (key: string) => {
 export const GO_DATASETS_SHORTCUT = "1";
 export const GO_PROJECTS_SHORTCUT = "2";
 export const GO_EXPORT_SHORTCUT = "8";
-export const GO_PROFILE_SHORTCUT = "9";
-export const LOGOUT_SHORTCUT = "0";
 
 // Shortcuts for Task Annotation
 export const ACCEPT_TASK_SHORTCUT = "1";
@@ -151,16 +149,6 @@ export const ROOT_NAVIGATION_SHORTCUTS: KeyShortcut[] = [
         label: "Open Export",
         shortcut: `${getSpecialKeyLabel("Shift")} ${getMetaKeyLabel()} ${GO_EXPORT_SHORTCUT}`,
         description: "Go to annotation projects export",
-    },
-    {
-        label: "Open Profile",
-        shortcut: `${getSpecialKeyLabel("Shift")} ${getMetaKeyLabel()} ${GO_PROFILE_SHORTCUT}`,
-        description: "Go to user profile page",
-    },
-    {
-        label: "Logout",
-        shortcut: `${getSpecialKeyLabel("Shift")} ${getMetaKeyLabel()} ${LOGOUT_SHORTCUT}`,
-        description: "Logout",
     },
 ]
 

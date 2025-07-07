@@ -40,13 +40,11 @@ from sonari.models.sound_event_annotation import (
     SoundEventAnnotationTag,
 )
 from sonari.models.tag import Tag
-from sonari.models.token import AccessToken
 from sonari.models.user import User
 
 setup_model_events()
 
 __all__ = [
-    "AccessToken",
     "AnnotationProject",
     "AnnotationProjectTag",
     "AnnotationStatusBadge",

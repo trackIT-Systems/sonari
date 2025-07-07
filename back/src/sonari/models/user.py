@@ -35,8 +35,6 @@ class User(Base):
         The unique identifier for the user.
     email
         The email address of the user.
-    hashed_password
-        The hashed password of the user.
     username
         The username of the user.
     name
@@ -53,7 +51,7 @@ class User(Base):
     We are using the fastapi-users package to handle user authentication. This
     package is built on top of SQLAlchemy. The User class inherits from the
     SQLAlchemyBaseUserTableUUID class, which provides the id, email,
-    hashed_password, is_active, and is_superuser attributes. The username and
+    is_active, and is_superuser attributes. The username and
     name attribute is added to the User class.
 
     Do not instantiate this class directly. Instead, use the create_user
@@ -67,7 +65,6 @@ class User(Base):
         unique=True,
         index=True,
     )
-    hashed_password: orm.Mapped[str] = orm.mapped_column(String(length=1024))
     username: orm.Mapped[str] = orm.mapped_column(unique=True)
     id: orm.Mapped[UUID] = orm.mapped_column(primary_key=True, default_factory=uuid4, kw_only=False)
     name: orm.Mapped[Optional[str]] = orm.mapped_column(default=None)

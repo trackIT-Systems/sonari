@@ -501,7 +501,7 @@ export default function useSpectrogram({
       }
       
     },
-    [drawImage, drawMotions, viewport, canDrag, canZoom, withSpectrogram],
+    [drawImage, drawMotions, viewport, canDrag, canZoom, withSpectrogram, parameters.freqLines],
   );
 
   const handleMoveLeft = useCallback(() => {

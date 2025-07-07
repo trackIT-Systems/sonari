@@ -10,7 +10,6 @@ from sonari.system.database import (
     init_database,
 )
 from sonari.system.settings import Settings
-from sonari.system.users import is_first_user
 
 just_fix_windows_console()
 
@@ -24,44 +23,18 @@ def print_ready_message(settings: Settings):
     {Fore.GREEN}{Style.DIM}Sonari is ready to go!{Style.RESET_ALL}
 
     {Fore.GREEN}{Style.BRIGHT} * Listening on http://{host}:{port}/{Style.RESET_ALL}
+    {Fore.CYAN}{Style.BRIGHT} * Authentication via Keycloak: {settings.keycloak_server_url}{Style.RESET_ALL}
 
     {Fore.YELLOW}Press Ctrl+C to exit.{Style.RESET_ALL}
     """
     )
-
-
-def print_first_run_message(settings: Settings):
-    host = settings.host
-    port = settings.port
-
-    print(
-        f"""
-    {Fore.YELLOW}{Style.BRIGHT}This is the first time you run Sonari, welcome!{Style.RESET_ALL}
-
-    {Fore.GREEN}{Style.DIM}Sonari is ready to go!{Style.RESET_ALL}
-
-    {Fore.GREEN}{Style.BRIGHT} * Navigate to http://{host}:{port}/first to create your first user.{Style.RESET_ALL}
-
-    {Fore.YELLOW}Press Ctrl+C to exit.{Style.RESET_ALL}
-    """
-    )
-
-
-async def is_first_run(settings: Settings) -> bool:
-    """Check if this is the first time the application is run."""
-    db_url = get_database_url(settings)
-    engine = create_async_db_engine(db_url)
-    async with get_async_session(engine) as session:
-        is_first_run = await is_first_user(session)
-
-    return is_first_run
 
 
 def print_dev_message(settings: Settings):
     database_url = get_database_url(settings)
     settings_str = settings.model_dump_json(
         indent=4,
-        exclude={"db_username", "db_password", "db_url"},
+        exclude={"db_username", "db_password", "db_url", "keycloak_client_secret"},
     )
     print(
         f"""
@@ -82,13 +55,6 @@ async def sonari_init(settings: Settings, _: FastAPI):
     print("Please wait while the database is initialized...")
 
     await init_database(settings)
-
-    if await is_first_run(settings):
-        print_first_run_message(settings)
-
-        if settings.open_on_startup and not settings.dev:
-            webbrowser.open(f"http://{settings.host}:{settings.port}/first/")
-        return
 
     print_ready_message(settings)
 

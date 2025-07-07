@@ -19,7 +19,6 @@ from sonari.routes.sound_event_annotations import (
 from sonari.routes.sound_events import sound_events_router
 from sonari.routes.spectrograms import spectrograms_router
 from sonari.routes.tags import tags_router
-from sonari.routes.users import get_users_router
 from sonari.system.settings import Settings
 
 __all__ = [
@@ -39,12 +38,6 @@ def get_main_router(settings: Settings):
     )
 
     # Descriptors
-    users_router = get_users_router(settings)
-    main_router.include_router(
-        users_router,
-        prefix="/users",
-        tags=["Users"],
-    )
     main_router.include_router(
         tags_router,
         prefix="/tags",

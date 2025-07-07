@@ -39,7 +39,7 @@ export default function DatasetNavHeader({ dataset }: { dataset: Dataset }) {
               isActive: selectedLayoutSegment === null,
               icon: <DatasetIcon className="w-4 h-4 align-middle" />,
               onClick: () => {
-                router.push(`/datasets/detail/?${params.toString()}`);
+                router.push(`/datasets/detail/?${params?.toString() || ''}`);
               },
             },
             {
@@ -49,7 +49,7 @@ export default function DatasetNavHeader({ dataset }: { dataset: Dataset }) {
               isActive: selectedLayoutSegment === "recordings",
               onClick: () => {
                 router.push(
-                  `/datasets/detail/recordings/?${params.toString()}`,
+                  `/datasets/detail/recordings/?${params?.toString() || ''}`,
                 );
               },
             },

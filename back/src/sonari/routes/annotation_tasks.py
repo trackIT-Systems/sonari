@@ -15,7 +15,8 @@ from sqlalchemy.orm.attributes import InstrumentedAttribute
 from sonari import api, models, schemas
 from sonari.filters.annotation_tasks import AnnotationTaskFilter
 from sonari.filters.clips import UUIDFilter as ClipUUIDFilter
-from sonari.routes.dependencies import Session, get_current_user_dependency
+from sonari.routes.dependencies import Session
+from sonari.routes.dependencies.auth import CurrentUser
 from sonari.routes.dependencies.settings import SonariSettings
 from sonari.routes.types import Limit, Offset
 
@@ -78,8 +79,6 @@ def _get_night_day_tasks(
 
 def get_annotation_tasks_router(settings: SonariSettings) -> APIRouter:
     """Get the API router for annotation tasks."""
-    active_user = get_current_user_dependency(settings)
-
     annotation_tasks_router = APIRouter()
 
     @annotation_tasks_router.post(
@@ -230,7 +229,7 @@ def get_annotation_tasks_router(settings: SonariSettings) -> APIRouter:
         session: Session,
         annotation_task_uuid: UUID,
         state: AnnotationState,
-        user: Annotated[schemas.SimpleUser, Depends(active_user)],
+        user: CurrentUser,
     ):
         """Add a badge to an annotation task."""
         annotation_task = await api.annotation_tasks.get(

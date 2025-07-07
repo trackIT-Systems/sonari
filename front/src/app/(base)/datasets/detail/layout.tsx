@@ -20,7 +20,7 @@ import DatasetNavHeader from "./nav";
 export default function Layout({ children }: { children: ReactNode }) {
   const router = useRouter();
   const params = useSearchParams();
-  const uuid = params.get("dataset_uuid");
+  const uuid = params?.get("dataset_uuid");
 
   if (!uuid) notFound();
 

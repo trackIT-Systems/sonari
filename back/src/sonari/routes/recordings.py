@@ -7,7 +7,8 @@ from fastapi import APIRouter, Depends
 
 from sonari import api, schemas
 from sonari.filters.recordings import RecordingFilter
-from sonari.routes.dependencies import Session, get_current_user_dependency
+from sonari.routes.dependencies import Session
+from sonari.routes.dependencies.auth import CurrentUser
 from sonari.routes.dependencies.settings import SonariSettings
 from sonari.routes.types import Limit, Offset
 
@@ -18,8 +19,6 @@ __all__ = [
 
 def get_recording_router(settings: SonariSettings) -> APIRouter:
     """Get the API router for recordings."""
-    active_user = get_current_user_dependency(settings)
-
     recording_router = APIRouter()
 
     @recording_router.get(
@@ -125,7 +124,7 @@ def get_recording_router(settings: SonariSettings) -> APIRouter:
         session: Session,
         recording_uuid: UUID,
         data: schemas.NoteCreate,
-        user: Annotated[schemas.SimpleUser, Depends(active_user)],
+        user: CurrentUser,
     ):
         """Add a note to a recording."""
         recording = await api.recordings.get(session, recording_uuid)

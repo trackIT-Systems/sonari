@@ -6,7 +6,6 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from sonari import models
-from sonari.api.users import generate_random_password_hash
 
 
 async def import_users(
@@ -19,6 +18,7 @@ async def import_users(
     they don't already exist. The search is based on a comparison of the user
     objects' name and email fields. If a UUID clash occurs, the function
     assumes the user is the same and does not update the existing user.
+
     """
     if not users:
         return {}
@@ -70,9 +70,9 @@ async def import_users(
             username=username,
             name=user.name,
             email=email,
-            hashed_password=generate_random_password_hash(session),
             is_active=False,
             is_superuser=False,
+            is_verified=False,
         )
         new_users.append(db_user)
 

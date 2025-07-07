@@ -9,20 +9,20 @@ export default function useStateParams<T>(
 ): [T, (state: T) => void] {
   const path = usePathname();
   const searchParams = useSearchParams();
-  const existingValue = searchParams.get(paramsName);
+  const existingValue = searchParams?.get(paramsName);
   const [state, setStateRaw] = useState<T>(
     existingValue ? deserialize(existingValue) : initialState,
   );
 
   const setState = useCallback(
     (s: T) => {
-      const params = new URLSearchParams(searchParams);
+      const params = new URLSearchParams(searchParams || undefined);
       if (s == null) {
         params.delete(paramsName);
       } else {
         params.set(paramsName, serialize(s));
       }
-      const url = new URL(path, window.location.origin);
+      const url = new URL(path || '/', window.location.origin);
       url.search = params.toString();
       window.history.replaceState({ [paramsName]: s }, "", url);
       setStateRaw(s);

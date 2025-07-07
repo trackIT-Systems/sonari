@@ -230,7 +230,7 @@ export default function useAudio({
 
   const handleStop = useCallback(() => {
     stopAudio(audio.current, playbackStartTime);
-  }, [playbackStartTime]);
+  }, [playbackStartTime, stopAudio]);
 
   const handleSetVolume = useCallback((volume: number) => {
     audio.current.volume = volume;

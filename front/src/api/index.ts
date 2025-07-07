@@ -9,7 +9,7 @@ import axios from "axios";
 import { registerAnnotationProjectAPI } from "./annotation_projects";
 import { registerAnnotationTasksAPI } from "./annotation_tasks";
 import { registerAudioAPI } from "./audio";
-import { registerAuthAPI } from "./auth";
+import { registerAuthAPI, setupAuthInterceptor } from "./auth";
 import { registerClipAnnotationsAPI } from "./clip_annotations";
 import { registerClipAPI } from "./clips";
 import { registerDatasetAPI } from "./datasets";
@@ -19,32 +19,52 @@ import { registerSoundEventAnnotationsAPI } from "./sound_event_annotations";
 import { registerSoundEventAPI } from "./sound_events";
 import { registerSpectrogramAPI } from "./spectrograms";
 import { registerTagAPI } from "./tags";
-import { registerUserAPI } from "./user";
 
 type APIConfig = {
   baseURL: string;
-  withCredentials: boolean;
+  withCredentials?: boolean;
 };
 
 /**
  * Create an instance of the Sonari API.
  */
 export default function createAPI(config: APIConfig) {
-  let instance = axios.create(config);
+  const { baseURL, withCredentials = true } = config;
+
+  const instance = axios.create({
+    baseURL,
+    withCredentials,
+  });
+
+  setupAuthInterceptor(instance);
+
+  const annotationProjectAPI = registerAnnotationProjectAPI(instance);
+  const annotationTasksAPI = registerAnnotationTasksAPI(instance);
+  const audioAPI = registerAudioAPI(instance);
+  const authAPI = registerAuthAPI(instance)
+  const clipAnnotationsAPI = registerClipAnnotationsAPI(instance);
+  const clipAPI = registerClipAPI(instance);
+  const datasetAPI = registerDatasetAPI(instance);
+  const notesAPI = registerNotesAPI(instance);
+  const recordingAPI = registerRecordingAPI(instance);
+  const soundEventAnnotationsAPI = registerSoundEventAnnotationsAPI(instance);
+  const soundEventAPI = registerSoundEventAPI(instance);
+  const spectrogramAPI = registerSpectrogramAPI(instance);
+  const tagAPI = registerTagAPI(instance);
+
   return {
-    annotationProjects: registerAnnotationProjectAPI(instance),
-    soundEventAnnotations: registerSoundEventAnnotationsAPI(instance),
-    clipAnnotations: registerClipAnnotationsAPI(instance),
-    audio: registerAudioAPI(instance),
-    auth: registerAuthAPI(instance),
-    clips: registerClipAPI(instance),
-    datasets: registerDatasetAPI(instance),
-    notes: registerNotesAPI(instance),
-    recordings: registerRecordingAPI(instance),
-    soundEvents: registerSoundEventAPI(instance),
-    spectrograms: registerSpectrogramAPI(instance),
-    tags: registerTagAPI(instance),
-    annotationTasks: registerAnnotationTasksAPI(instance),
-    user: registerUserAPI(instance),
+    annotationProjects: annotationProjectAPI,
+    annotationTasks: annotationTasksAPI,
+    audio: audioAPI,
+    auth: authAPI,
+    clipAnnotations: clipAnnotationsAPI,
+    clips: clipAPI,
+    datasets: datasetAPI,
+    notes: notesAPI,
+    recordings: recordingAPI,
+    soundEventAnnotations: soundEventAnnotationsAPI,
+    soundEvents: soundEventAPI,
+    spectrograms: spectrogramAPI,
+    tags: tagAPI,
   } as const;
-}
+} 

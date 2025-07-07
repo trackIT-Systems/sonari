@@ -7,8 +7,6 @@ import {
   ShortcutConfig,
   GO_PROJECTS_SHORTCUT,
   GO_EXPORT_SHORTCUT,
-  GO_PROFILE_SHORTCUT,
-  LOGOUT_SHORTCUT,
   GO_DATASETS_SHORTCUT,
   getSpecialKeyLabel
 } from "@/utils/keyboard";
@@ -17,15 +15,12 @@ import KeyboardKey from "../KeyboardKey";
 import {
   AnnotationProjectIcon,
   DatasetsIcon,
-  LogOutIcon,
-  UserIcon,
   SonariIcon,
   DownloadIcon,
 } from "@/components/icons";
 import Button from "@/components/Button";
 import Link from "@/components/Link";
 import Tooltip from "@/components/Tooltip";
-import useActiveUser from "@/hooks/api/useActiveUser";
 
 import type { User } from "@/types";
 import type { ComponentProps } from "react";
@@ -161,44 +156,8 @@ function MainNavigation({ pathname }: { pathname?: string }) {
   );
 }
 
-function SecondaryNavigation({
-  user,
-  pathname,
-  onLogout,
-}: {
-  user: User;
-  pathname?: string;
-  onLogout?: () => void;
-}) {
-  const {
-    logout: { mutate: logout },
-  } = useActiveUser({ user, onLogout });
 
-  return (
-    <ul className="flex flex-col space-y-3 py-4 text-stone-400">
-      <li className="px-3">
-        <SideMenuLink href="/profile" tooltip={"User"}
-          keyboardKeys={[`${getSpecialKeyLabel("Shift")}`, `${getMetaKeyLabel()}`, "9"]}>
-          <UserIcon className="w-6 h-6 text-stone-400" />
-        </SideMenuLink>
-      </li>
-      <li className="px-3">
-        <SideMenuButton tooltip={"Log Out"}
-          keyboardKeys={[`${getSpecialKeyLabel("Shift")}`, `${getMetaKeyLabel()}`, "0"]}>
-          <LogOutIcon onClick={() => logout()} className="w-6 h-6 text-stone-400" />
-        </SideMenuButton>
-      </li>
-    </ul>
-  );
-}
-
-export function SideMenu({
-  onLogout,
-  user,
-}: {
-  onLogout: () => void;
-  user: User;
-}) {
+export function SideMenu() {
   const pathname = usePathname();
   const router = useRouter()
 
@@ -221,18 +180,6 @@ export function SideMenu({
       metaKey: true,
       action: () => { router.push("/export") },
     },
-    {
-      key: GO_PROFILE_SHORTCUT,
-      shiftKey: true,
-      metaKey: true,
-      action: () => { router.push("/profile") },
-    },
-    {
-      key: LOGOUT_SHORTCUT,
-      shiftKey: true,
-      metaKey: true,
-      action: () => { onLogout() },
-    }
   ];
 
   useSpecialKeyShortcuts(shortcuts);
@@ -248,13 +195,8 @@ export function SideMenu({
           <Link href="/" className="px-2 py-4" mode="text">
             <SonariIcon width={46} height={46} />
           </Link>
-          <MainNavigation pathname={pathname} />
+          <MainNavigation pathname={pathname || undefined} />
         </div>
-        <SecondaryNavigation
-          pathname={pathname}
-          user={user}
-          onLogout={onLogout}
-        />
       </div>
     </aside>
   );

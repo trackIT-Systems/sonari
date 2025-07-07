@@ -27,7 +27,7 @@ export default function Page() {
   const project = useContext(AnnotationProjectContext);
   const user = useContext(UserContext);
 
-  const annotationTaskUUID = search.get("annotation_task_uuid");
+  const annotationTaskUUID = search?.get("annotation_task_uuid");
 
   const annotationTask = useAnnotationTask({
     uuid: annotationTaskUUID || "",
@@ -66,7 +66,7 @@ export default function Page() {
     (task: AnnotationTask) => {
       const url = changeURLParam({
         pathname,
-        search,
+        search: search ? new URLSearchParams(search) : new URLSearchParams(),
         param: "annotation_task_uuid",
         value: task.uuid,
       });

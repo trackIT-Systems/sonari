@@ -7,7 +7,8 @@ from fastapi import APIRouter, Depends
 
 from sonari import api, schemas
 from sonari.filters.clip_annotations import ClipAnnotationFilter
-from sonari.routes.dependencies import Session, get_current_user_dependency
+from sonari.routes.dependencies import Session
+from sonari.routes.dependencies.auth import CurrentUser
 from sonari.routes.dependencies.settings import SonariSettings
 from sonari.routes.types import Limit, Offset
 
@@ -18,8 +19,6 @@ __all__ = [
 
 def get_clip_annotations_router(settings: SonariSettings) -> APIRouter:
     """Get the API router for clip_annotations."""
-    active_user = get_current_user_dependency(settings)
-
     clip_annotations_router = APIRouter()
 
     @clip_annotations_router.post(
@@ -115,7 +114,7 @@ def get_clip_annotations_router(settings: SonariSettings) -> APIRouter:
         clip_annotation_uuid: UUID,
         key: str,
         value: str,
-        user: Annotated[schemas.SimpleUser, Depends(active_user)],
+        user: CurrentUser,
     ):
         """Add a tag to an annotation annotation."""
         clip_annotation = await api.clip_annotations.get(
@@ -164,7 +163,7 @@ def get_clip_annotations_router(settings: SonariSettings) -> APIRouter:
         session: Session,
         clip_annotation_uuid: UUID,
         data: schemas.NoteCreate,
-        user: Annotated[schemas.SimpleUser, Depends(active_user)],
+        user: CurrentUser,
     ):
         """Create a note for an annotation annotation."""
         clip_annotation = await api.clip_annotations.get(

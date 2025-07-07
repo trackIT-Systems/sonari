@@ -13,7 +13,7 @@ export default function Layout({ children }: { children: ReactNode }) {
   const params = useSearchParams();
   const router = useRouter();
 
-  const uuid = params.get("annotation_project_uuid");
+  const uuid = params?.get("annotation_project_uuid");
 
   if (uuid == null) {
     toast.error("Annotation project uuid not specified.");

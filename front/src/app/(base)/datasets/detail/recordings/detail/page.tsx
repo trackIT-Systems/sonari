@@ -16,8 +16,8 @@ export default function Page() {
   const user = useContext(UserContext);
   const router = useRouter();
   const searchParams = useSearchParams();
-  const recordingUUID = searchParams.get("recording_uuid");
-  const datasetUUID = searchParams.get("dataset_uuid");
+  const recordingUUID = searchParams?.get("recording_uuid");
+  const datasetUUID = searchParams?.get("dataset_uuid");
   const parameters = useStore((state) => state.spectrogramSettings);
   const setParameters = useStore((state) => state.setSpectrogramSettings);
 

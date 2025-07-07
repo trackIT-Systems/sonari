@@ -57,7 +57,7 @@ export default function DatasetOverview({ dataset }: { dataset: Dataset }) {
       <div className="flex flex-row gap-2 justify-around">
         <MetricBadge
           icon={
-            <Link href={`/datasets/detail/recordings?${params.toString()}`}>
+            <Link href={`/datasets/detail/recordings?${params?.toString() || ''}`}>
               <RecordingsIcon className="inline-block w-8 h-8 text-blue-500" />
             </Link>
           }

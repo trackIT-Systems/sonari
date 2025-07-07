@@ -47,7 +47,7 @@ export default function AnnotationExport() {
   useEffect(() => {
     async function fetchProjects() {
       try {
-        const page = await api.annotationProjects.getMany({});
+        const page = await api.annotationProjects.getMany({limit: -1});
         const projects = page.items;
         const options = projects.map(project => ({
           id: project.uuid,

@@ -11,7 +11,8 @@ from sonari.api.scatterplots.sound_event_annotations import (
     get_scatterplot_data,
 )
 from sonari.filters.sound_event_annotations import SoundEventAnnotationFilter
-from sonari.routes.dependencies import Session, get_current_user_dependency
+from sonari.routes.dependencies import Session
+from sonari.routes.dependencies.auth import CurrentUser
 from sonari.routes.dependencies.settings import SonariSettings
 from sonari.routes.types import Limit, Offset
 
@@ -22,8 +23,6 @@ __all__ = [
 
 def get_sound_event_annotations_router(settings: SonariSettings) -> APIRouter:
     """Get the API router for sound_event_annotations."""
-    active_user = get_current_user_dependency(settings)
-
     sound_event_annotations_router = APIRouter()
 
     @sound_event_annotations_router.post(
@@ -32,7 +31,7 @@ def get_sound_event_annotations_router(settings: SonariSettings) -> APIRouter:
     )
     async def create_annotation(
         session: Session,
-        user: Annotated[schemas.SimpleUser, Depends(active_user)],
+        user: CurrentUser,
         clip_annotation_uuid: UUID,
         data: schemas.SoundEventAnnotationCreate,
     ):
@@ -166,7 +165,7 @@ def get_sound_event_annotations_router(settings: SonariSettings) -> APIRouter:
         sound_event_annotation_uuid: UUID,
         key: str,
         value: str,
-        user: Annotated[schemas.SimpleUser, Depends(active_user)],
+        user: CurrentUser,
     ):
         """Add a tag to an annotation annotation."""
         sound_event_annotation = await api.sound_event_annotations.get(
@@ -215,7 +214,7 @@ def get_sound_event_annotations_router(settings: SonariSettings) -> APIRouter:
         session: Session,
         sound_event_annotation_uuid: UUID,
         data: schemas.NoteCreate,
-        user: Annotated[schemas.SimpleUser, Depends(active_user)],
+        user: CurrentUser,
     ):
         """Create a note for an annotation annotation."""
         sound_event_annotation = await api.sound_event_annotations.get(
