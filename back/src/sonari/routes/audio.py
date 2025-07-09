@@ -6,15 +6,16 @@ from typing import Annotated
 from uuid import UUID
 
 import soundfile as sf
-from fastapi import APIRouter, Depends, Header, Response
+from fastapi import Depends, Header, Response
 from fastapi.responses import StreamingResponse
 
 from sonari import api, schemas
 from sonari.routes.dependencies import Session, SonariSettings
+from sonari.routes.dependencies.auth import create_authenticated_router
 
 __all__ = ["audio_router"]
 
-audio_router = APIRouter()
+audio_router = create_authenticated_router()
 
 CHUNK_SIZE = 1024 * 124
 

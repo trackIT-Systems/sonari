@@ -3,25 +3,26 @@
 import datetime
 import json
 from io import StringIO
-from typing import Annotated, Sequence
+from typing import Annotated
 from uuid import UUID
 
-from fastapi import APIRouter, Body, Depends, UploadFile
+from fastapi import Body, Depends, UploadFile
 from fastapi.responses import Response, StreamingResponse
 from pydantic import DirectoryPath
 from soundevent.io.aoef import DatasetObject, to_aeof
 
-from sonari import api, models, schemas
+from sonari import api, schemas
 from sonari.api.io import aoef
 from sonari.filters.datasets import DatasetFilter
 from sonari.routes.dependencies import Session, SonariSettings
+from sonari.routes.dependencies.auth import create_authenticated_router
 from sonari.routes.types import Limit, Offset
 
 __all__ = [
     "dataset_router",
 ]
 
-dataset_router = APIRouter()
+dataset_router = create_authenticated_router()
 
 
 @dataset_router.get(

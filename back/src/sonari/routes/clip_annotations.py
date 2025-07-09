@@ -3,12 +3,12 @@
 from typing import Annotated
 from uuid import UUID
 
-from fastapi import APIRouter, Depends
+from fastapi import Depends
 
 from sonari import api, schemas
 from sonari.filters.clip_annotations import ClipAnnotationFilter
 from sonari.routes.dependencies import Session
-from sonari.routes.dependencies.auth import CurrentUser
+from sonari.routes.dependencies.auth import CurrentUser, create_authenticated_router
 from sonari.routes.dependencies.settings import SonariSettings
 from sonari.routes.types import Limit, Offset
 
@@ -17,9 +17,9 @@ __all__ = [
 ]
 
 
-def get_clip_annotations_router(settings: SonariSettings) -> APIRouter:
+def get_clip_annotations_router(settings: SonariSettings):
     """Get the API router for clip_annotations."""
-    clip_annotations_router = APIRouter()
+    clip_annotations_router = create_authenticated_router()
 
     @clip_annotations_router.post(
         "/",

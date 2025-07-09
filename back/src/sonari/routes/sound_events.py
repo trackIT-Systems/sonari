@@ -3,18 +3,19 @@
 from typing import Annotated
 from uuid import UUID
 
-from fastapi import APIRouter, Depends
+from fastapi import Depends
 
 from sonari import api, schemas
 from sonari.filters.sound_events import SoundEventFilter
 from sonari.routes.dependencies import Session
+from sonari.routes.dependencies.auth import create_authenticated_router
 from sonari.routes.types import Limit, Offset
 
 __all__ = [
     "sound_events_router",
 ]
 
-sound_events_router = APIRouter()
+sound_events_router = create_authenticated_router()
 
 
 @sound_events_router.get(

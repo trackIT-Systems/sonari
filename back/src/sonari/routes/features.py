@@ -2,11 +2,12 @@
 
 from typing import Annotated
 
-from fastapi import APIRouter, Depends
+from fastapi import Depends
 
 from sonari import api, schemas
 from sonari.filters.feature_names import FeatureNameFilter
 from sonari.routes.dependencies import Session
+from sonari.routes.dependencies.auth import create_authenticated_router
 from sonari.routes.types import Limit, Offset
 
 __all__ = [
@@ -14,7 +15,7 @@ __all__ = [
 ]
 
 
-features_router = APIRouter()
+features_router = create_authenticated_router()
 
 
 @features_router.get("/", response_model=schemas.Page[str])

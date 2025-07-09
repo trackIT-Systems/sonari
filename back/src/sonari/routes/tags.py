@@ -2,15 +2,16 @@
 
 from typing import Annotated
 
-from fastapi import APIRouter, Depends
+from fastapi import Depends
 
 from sonari import api, schemas
 from sonari.filters.recording_tags import RecordingTagFilter
 from sonari.filters.tags import TagFilter
 from sonari.routes.dependencies import Session
+from sonari.routes.dependencies.auth import create_authenticated_router
 from sonari.routes.types import Limit, Offset
 
-tags_router = APIRouter()
+tags_router = create_authenticated_router()
 
 
 @tags_router.get("/", response_model=schemas.Page[schemas.Tag])

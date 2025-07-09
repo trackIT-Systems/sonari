@@ -1,11 +1,11 @@
 """Authentication router supporting Keycloak OIDC."""
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter
 from pydantic import BaseModel
 
 from sonari import models, schemas
+from sonari.routes.dependencies.auth import CurrentUser
 from sonari.routes.dependencies.settings import SonariSettings
-from sonari.system.keycloak import get_current_user
 
 __all__ = [
     "get_auth_router",
@@ -35,7 +35,7 @@ def get_auth_router(settings: SonariSettings) -> APIRouter:
 
     @auth_router.get("/me", response_model=schemas.SimpleUser)
     async def get_current_user_info(
-        current_user: models.User = Depends(get_current_user),
+        current_user: models.User = CurrentUser,
     ) -> schemas.SimpleUser:
         """Get current user information."""
         return current_user

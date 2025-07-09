@@ -4,15 +4,13 @@ import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 
 import { type ClipboardSlice, createClipboardSlice } from "./clipboard";
-import { type SessionSlice, createSessionSlice } from "./session";
 import { type SpectrogramSlice, createSpectrogramSlice } from "./spectrogram";
 
-type Store = SessionSlice & ClipboardSlice & SpectrogramSlice;
+type Store = ClipboardSlice & SpectrogramSlice;
 
 const useStore = create<Store>()(
   persist(
     (...a) => ({
-      ...createSessionSlice(...a),
       ...createClipboardSlice(...a),
       ...createSpectrogramSlice(...a),
     }),

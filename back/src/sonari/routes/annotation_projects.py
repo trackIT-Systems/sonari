@@ -6,7 +6,7 @@ from io import BytesIO
 from typing import Annotated
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Query, UploadFile
+from fastapi import Depends, Query, UploadFile
 from fastapi.responses import Response
 from openpyxl import Workbook
 from soundevent.io.aoef import to_aeof
@@ -15,6 +15,7 @@ from sonari import api, models, schemas
 from sonari.api.io import aoef
 from sonari.filters.annotation_projects import AnnotationProjectFilter
 from sonari.routes.dependencies import Session, SonariSettings
+from sonari.routes.dependencies.auth import create_authenticated_router
 from sonari.routes.types import Limit, Offset
 
 __all__ = [
@@ -22,7 +23,7 @@ __all__ = [
 ]
 
 
-annotation_projects_router = APIRouter()
+annotation_projects_router = create_authenticated_router()
 
 
 @annotation_projects_router.get(
@@ -434,12 +435,14 @@ async def export_annotation_project(
     statuses: Annotated[list[str], Query()],
     format: str,
 ) -> Response:
-    projects = await api.annotation_projects.get_many(session, limit=-1, filters=[models.AnnotationProject.uuid.in_(annotation_project_uuids)])
+    projects = await api.annotation_projects.get_many(
+        session, limit=-1, filters=[models.AnnotationProject.uuid.in_(annotation_project_uuids)]
+    )
     project_ids = [p.id for p in projects[0]]
     if format == "MultiBase":
-        return await export_annotation_project_multibase(session,project_ids, tags, statuses)
+        return await export_annotation_project_multibase(session, project_ids, tags, statuses)
     elif format == "Territory":
-        return await export_annotation_project_territory(session,project_ids, tags, statuses)
+        return await export_annotation_project_territory(session, project_ids, tags, statuses)
     elif format == "SoundEvent":
         return await export_annotation_project_soundevent(session, annotation_project_uuids)
     else:

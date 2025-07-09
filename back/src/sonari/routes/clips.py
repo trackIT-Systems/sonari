@@ -3,12 +3,13 @@
 from typing import Annotated
 from uuid import UUID, uuid4
 
-from fastapi import APIRouter, Depends
+from fastapi import Depends
 
 from sonari import api, schemas
 from sonari.filters.clips import ClipFilter
 from sonari.filters.recordings import UUIDFilter as RecordingUUIDFilter
 from sonari.routes.dependencies import Session
+from sonari.routes.dependencies.auth import create_authenticated_router
 from sonari.routes.types import Limit, Offset
 
 __all__ = [
@@ -16,7 +17,7 @@ __all__ = [
 ]
 
 
-clips_router = APIRouter()
+clips_router = create_authenticated_router()
 
 
 @clips_router.get(

@@ -11,7 +11,6 @@ from sonari.routes.clips import clips_router
 from sonari.routes.datasets import dataset_router
 from sonari.routes.features import features_router
 from sonari.routes.notes import notes_router
-from sonari.routes.plugins import plugin_router
 from sonari.routes.recordings import get_recording_router
 from sonari.routes.sound_event_annotations import (
     get_sound_event_annotations_router,
@@ -114,12 +113,6 @@ def get_main_router(settings: Settings):
         annotation_projects_router,
         prefix="/annotation_projects",
         tags=["Annotation Projects"],
-    )
-    # Extensions
-    main_router.include_router(
-        plugin_router,
-        prefix="/plugins",
-        tags=["Plugins"],
     )
 
     return main_router

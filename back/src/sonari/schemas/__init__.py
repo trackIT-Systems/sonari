@@ -49,7 +49,6 @@ from sonari.schemas.features import (
     FeatureNameUpdate,
 )
 from sonari.schemas.notes import Note, NoteCreate, NoteUpdate
-from sonari.schemas.plugin import PluginInfo
 from sonari.schemas.recordings import (
     Recording,
     RecordingCreate,
@@ -110,7 +109,6 @@ __all__ = [
     "NoteCreate",
     "NoteUpdate",
     "Page",
-    "PluginInfo",
     "Recording",
     "RecordingCreate",
     "RecordingTag",

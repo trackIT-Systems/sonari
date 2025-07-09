@@ -4,8 +4,6 @@ from colorama import Fore, Style, just_fix_windows_console
 from fastapi import FastAPI
 
 from sonari.system.database import (
-    create_async_db_engine,
-    get_async_session,
     get_database_url,
     init_database,
 )

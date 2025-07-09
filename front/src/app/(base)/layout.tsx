@@ -5,17 +5,14 @@ import { SideMenu } from "@/components/navigation/SideMenu";
 import { AuthProvider, useAuth } from "@/lib/auth/AuthContext";
 import { AuthGuard } from "@/components/auth/AuthGuard";
 import UserContext from "./context";
-import useActiveUser from "@/hooks/api/useActiveUser";
 
 function AuthenticatedContent({ children }: { children: ReactNode }) {
-  const { isAuthenticated } = useAuth();
-  
-  const { data: user } = useActiveUser({
-    enabled: isAuthenticated,
-  });
+  // Get user from AuthContext - AuthGuard ensures this is available
+  const { user } = useAuth();
 
+  // AuthGuard ensures user is loaded before this component renders
   if (!user) {
-    return null; // AuthGuard will handle loading states
+    return null;
   }
 
   return (
