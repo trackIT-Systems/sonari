@@ -25,8 +25,11 @@ import type {
   Position,
   SoundEventAnnotation,
   SpectrogramParameters,
+  SpectrogramWindow,
   Tag,
 } from "@/types";
+import useWaveform, { toWaveformWindow } from "@/hooks/spectrogram/useWaveform";
+import { spec } from "node:test/reporters";
 
 export default function ClipAnnotationSpectrogram({
   clipAnnotation,
@@ -97,11 +100,11 @@ export default function ClipAnnotationSpectrogram({
 }) {
   const [isAnnotating, setIsAnnotating] = useState(false);
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const canvasReWave = useRef<HTMLCanvasElement>(null);
   const dimensions = canvasRef.current?.getBoundingClientRect() ?? {
     width: 0,
     height: 0,
   };
-
   const { clip } = clipAnnotation;
   const { recording } = clip;
 
@@ -239,6 +242,12 @@ export default function ClipAnnotationSpectrogram({
     onSegmentsLoaded,
   });
 
+  const waveform = useWaveform({
+    recording,
+    parameters: spectrogram.parameters,
+    viewport: spectrogram.viewport,
+  });
+
   const { centerOn } = spectrogram;
 
   const handleTimeChange = useCallback(
@@ -324,6 +333,31 @@ export default function ClipAnnotationSpectrogram({
   ]);
 
   useCanvas({ ref: canvasRef as React.RefObject<HTMLCanvasElement>, draw });
+  const drawWave = useCallback((ctx: CanvasRenderingContext2D) => {
+    if (waveform.isLoading) {
+      ctx.canvas.style.cursor = "wait";
+      return;
+    }
+    waveform.draw(ctx);
+  }, [waveform.draw, waveform.isLoading]);
+  
+
+  useCanvas({ ref: canvasReWave as React.RefObject<HTMLCanvasElement>, draw: drawWave });
+  const waveformRef = canvasReWave;
+  const spectrogramRef = canvasRef;
+
+  useEffect(() => {
+    const spectrogramCanvas = spectrogramRef.current;
+    const waveformCanvas = waveformRef.current;
+    if (spectrogramCanvas && waveformCanvas) {
+      const spectrogramHeight = spectrogramCanvas.height;
+      const waveformHeight = spectrogramHeight / 4;
+      // Set visual (CSS) height
+      waveformCanvas.style.height = `${waveformHeight}px`;
+      // Set actual canvas height (drawing resolution)
+      waveformCanvas.height = waveformHeight;
+    }
+  }, [spectrogramRef.current?.height]); 
 
   const handleClearSelectedTag = useCallback(() => {
     onClearSelectedTag(null);
@@ -400,6 +434,14 @@ export default function ClipAnnotationSpectrogram({
             />
           </div>
         )}
+      </div>
+      <div className="relative overflow-hidden rounded-md" style={{ height: height / 4 }}>
+          <canvas
+          ref={canvasReWave}
+            {...props}
+            className="absolute w-full h-full"
+            id="main-waveform-canvas" 
+          />
       </div>
       {withBar && (
         <SpectrogramBar

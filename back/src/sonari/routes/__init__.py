@@ -18,6 +18,7 @@ from sonari.routes.sound_event_annotations import (
 )
 from sonari.routes.sound_events import sound_events_router
 from sonari.routes.spectrograms import spectrograms_router
+from sonari.routes.waveforms import waveform_router
 from sonari.routes.tags import tags_router
 from sonari.routes.users import get_users_router
 from sonari.system.settings import Settings
@@ -84,6 +85,11 @@ def get_main_router(settings: Settings):
         spectrograms_router,
         prefix="/spectrograms",
         tags=["Spectrograms"],
+    )
+    main_router.include_router(
+        waveform_router,
+        prefix="/waveforms",
+        tags=["Waveforms"],
     )
 
     # Acoustic Objects

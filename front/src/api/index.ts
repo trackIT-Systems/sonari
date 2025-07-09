@@ -20,6 +20,7 @@ import { registerSoundEventAPI } from "./sound_events";
 import { registerSpectrogramAPI } from "./spectrograms";
 import { registerTagAPI } from "./tags";
 import { registerUserAPI } from "./user";
+import { registerWaveformsAPI } from "./waveforms";
 
 type APIConfig = {
   baseURL: string;
@@ -43,6 +44,7 @@ export default function createAPI(config: APIConfig) {
     recordings: registerRecordingAPI(instance),
     soundEvents: registerSoundEventAPI(instance),
     spectrograms: registerSpectrogramAPI(instance),
+    waveforms: registerWaveformsAPI(instance),
     tags: registerTagAPI(instance),
     annotationTasks: registerAnnotationTasksAPI(instance),
     user: registerUserAPI(instance),

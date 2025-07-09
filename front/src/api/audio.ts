@@ -41,7 +41,7 @@ export const AudioParametersSchema = z
 
 export type AudioParameters = z.input<typeof AudioParametersSchema>;
 
-const DEFAULT_AUDIO_PARAMETERS: AudioParameters = {
+export const DEFAULT_AUDIO_PARAMETERS: AudioParameters = {
   resample: false,
 };
 

@@ -13,6 +13,7 @@ from sonari.api.sessions import create_session
 from sonari.api.sound_event_annotations import sound_event_annotations
 from sonari.api.sound_events import sound_events
 from sonari.api.spectrograms import compute_spectrogram
+from sonari.api.spectrograms import compute_waveform
 from sonari.api.tags import find_tag, find_tag_value, tags
 from sonari.api.users import users
 
@@ -22,6 +23,7 @@ __all__ = [
     "clip_annotations",
     "clips",
     "compute_spectrogram",
+    "compute_waveforms",
     "create_session",
     "datasets",
     "features",

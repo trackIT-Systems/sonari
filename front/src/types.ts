@@ -115,6 +115,10 @@ export type Dimensions = {
   height: number;
 };
 
+export type WaveformWindow = {
+  time: { min: number; max: number };
+};
+
 export type Interval = z.infer<typeof IntervalSchema>;
 
 export type SpectrogramWindow = z.infer<typeof SpectrogramWindowSchema>;
