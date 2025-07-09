@@ -417,36 +417,50 @@ export default function AnnotateTasks({
             )}
           </div>
 
-          {selectedAnnotation == null || data == null ? (
+                    {data ? (
+            <div className="w-[35rem] flex-none mt-5 flex flex-col gap-4">
+              <div className="flex-1">
+                {selectedAnnotation ? (
+                  <SelectedSoundEventAnnotation
+                    clipAnnotation={data}
+                    tagFilter={tagFilter}
+                    soundEventAnnotation={selectedAnnotation}
+                    parameters={parameters}
+                    withSpectrogram={withSpectrogram}
+                    onAddTag={onAddSoundEventTag}
+                    onCreateTag={onCreateTag}
+                    onRemoveTag={onRemoveSoundEventTag}
+                  />
+                ) : (
+                  <Empty
+                    padding="p-0">
+                    No sound event selected. Select a sound event to view details.
+                  </Empty>
+                )}
+              </div>
+              <div className="flex-none">
+                <ClipAnnotationTags
+                  clipAnnotation={data}
+                  projectTags={projectTags}
+                  onReplaceTagInSoundEvents={handleReplaceTagInSoundEvents}
+                  selectedAnnotation={selectedAnnotation}
+                />
+              </div>
+            </div>
+          ) : (
             <div className="w-[35rem] flex-none mt-9">
               <Empty
                 padding="p-0">
-                No sound event selected. Select a sound event to view details.
+                No clip selected.
               </Empty>
-            </div>
-          ) : (
-            <div className="w-[35rem] flex-none mt-5">
-              <SelectedSoundEventAnnotation
-                clipAnnotation={data}
-                tagFilter={tagFilter}
-                soundEventAnnotation={selectedAnnotation}
-                parameters={parameters}
-                withSpectrogram={withSpectrogram}
-                onAddTag={onAddSoundEventTag}
-                onCreateTag={onCreateTag}
-                onRemoveTag={onRemoveSoundEventTag}
-              />
             </div>
           )}
         </div>
 
 
         {data && (
-          <div className="flex flex-row gap-4 w-full">
+          <div className="flex flex-row gap-4 w-full mt-4">
             <div className="min-w-[63rem] flex flex-col gap-4">
-              <RecordingTagBar
-                recording={data.clip.recording}
-              />
               <ClipAnnotationNotes
                 onCreateNote={addNote.mutate}
                 onDeleteNote={removeNote.mutate}
@@ -455,11 +469,8 @@ export default function AnnotateTasks({
               />
             </div>
             <div className="min-w-[35rem]">
-              <ClipAnnotationTags
-                clipAnnotation={data}
-                projectTags={projectTags}
-                onReplaceTagInSoundEvents={handleReplaceTagInSoundEvents}
-                selectedAnnotation={selectedAnnotation}
+              <RecordingTagBar
+                recording={data.clip.recording}
               />
             </div>
           </div>
@@ -472,7 +483,7 @@ export default function AnnotateTasks({
 
             const handleOverlayClick = (e: React.MouseEvent) => {
               // Check if click is inside menu
-              if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+              if (menuRef.current && !menuRef.current.contains(e.target as Node)) {s
                 setIsDeletePopoverOpen(false);
               }
             };
