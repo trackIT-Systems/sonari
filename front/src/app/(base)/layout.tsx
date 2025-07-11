@@ -2,7 +2,7 @@
 import { type ReactNode } from "react";
 
 import { SideMenu } from "@/components/navigation/SideMenu";
-import { AuthProvider, useAuth } from "@/lib/auth/AuthContext";
+import { AuthProvider, useAuth } from "@/components/auth/AuthContext";
 import { AuthGuard } from "@/components/auth/AuthGuard";
 import UserContext from "./context";
 
