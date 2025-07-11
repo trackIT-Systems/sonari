@@ -1,6 +1,6 @@
 import { AxiosInstance } from "axios";
 import { UserSchema } from "@/schemas";
-import authClient from "@/lib/auth/authClient";
+import authClient from "@/components/auth/authClient";
 import type { User } from "@/types";
 
 const DEFAULT_ENDPOINTS = {

@@ -4,7 +4,7 @@ import { type ReactNode, useEffect, useState } from "react";
 
 import Loading from "@/app/loading";
 import { SonariIcon } from "@/components/icons";
-import { useAuth } from "@/lib/auth/AuthContext";
+import { useAuth } from "@/components/auth/AuthContext";
 
 interface AuthGuardProps {
   children: ReactNode;
