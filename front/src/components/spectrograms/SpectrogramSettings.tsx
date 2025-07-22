@@ -87,13 +87,13 @@ export function SpectrogramSettingForm({
 
   return (
     <div className="flex flex-col gap-2">
+      <FreqLineSettings control={control}/>
+      <AmplitudeSettings control={control} />
+      <ColorSettings constraints={constraints} control={control} />
+      <ResamplingSettings control={control} />
+      <DeNoiseSettings control={control} />
       <STFTSettings constraints={constraints} control={control} />
       <FilteringSettings constraints={constraints} control={control} />
-      <AmplitudeSettings control={control} />
-      <ResamplingSettings control={control} />
-      <FreqLineSettings control={control}/>
-      <DeNoiseSettings control={control} />
-      <ColorSettings constraints={constraints} control={control} />
     </div>
   );
 }
