@@ -22,8 +22,25 @@ import type {
   SpectrogramWindow,
 } from "@/types";
 import { ZOOM_FACTOR } from "@/constants";
-import { number } from "zod";
 import { drawLineString, DEFAULT_LINESTRING_STYLE } from "@/draw/linestring";
+import { setFontStyle } from "@/draw/styles";
+
+const FREQ_LINE_COLORS = [
+  "rgb(248 113 113)", // red-400
+  "rgb(251 146 60)",  // orange-400
+  "rgb(250 204 21)",  // yellow-400
+  "rgb(251 191 36)",  // amber-400
+  "rgb(232 121 249)", // fuchsia-400
+  "rgb(244 114 182)", // pink-400
+  "rgb(251 113 133)", // rose-400
+  "rgb(153 27 27)",   // red-800
+  "rgb(154 52 18)",   // orange-800
+  "rgb(133 77 14)",   // yellow-800
+  "rgb(146 64 14)",   // amber-800
+  "rgb(134 25 143)",  // fuchsia-800
+  "rgb(157 23 77)",   // pink-800
+  "rgb(159 18 57)",   // rose-800
+];
 
 /**
  * A function type representing the drawing function for a spectrogram.
@@ -141,6 +158,7 @@ function drawFrequencyLines(
 
     const y = height * (1 - (freq - freqMin) / (freqMax - freqMin));
 
+    // Draw the frequency line
     drawLineString(ctx, {
       type: "LineString",
       coordinates: [
@@ -148,17 +166,30 @@ function drawFrequencyLines(
         [width, y],
       ],
     }, style);
+
+    // Draw the frequency label
+    ctx.save();
+
+    setFontStyle(ctx, {fontSize: 10, fontColor: style.borderColor})
+    
+    ctx.textAlign = "left";
+    ctx.textBaseline = "bottom";
+    
+    // Format frequency for display (convert Hz to kHz if >= 1000)
+    const freqLabel = freq >= 1000 ? `${(freq / 1000).toFixed(0)} kHz` : `${freq} Hz`;
+    
+    // Position text slightly to the left and above the line
+    const textX = 8; // 8 pixels from left edge
+    const textY = y - 4; // 4 pixels above the line
+    
+    // Only draw label if it's within visible bounds
+    if (textY > 0 && textY < height) {
+      ctx.fillText(freqLabel, textX, textY);
+    }
+    
+    ctx.restore();
   }
 }
-const FREQ_LINE_COLORS = [
-  "#00FFD0", // Bright Cyan
-  "#00FF00", // Lime
-  "#00BFFF", // Electric Blue
-  "#FFD700", // Gold
-  "#FFFFFF", // White
-];
-
-
 
 
 /**
@@ -215,12 +246,12 @@ export default function useSpectrogram({
   // Create dynamic bounds that respond to parameter changes (especially resampling)
   const currentBounds = useMemo<SpectrogramWindow>(() => {
     if (bounds) return bounds;
-    
+
     // Use the effective samplerate for frequency bounds calculation
     const effectiveSamplerate = parameters.resample
       ? parameters.samplerate ?? recording.samplerate
       : recording.samplerate;
-    
+
     return {
       time: { min: 0, max: recording.duration },
       freq: { min: 0, max: effectiveSamplerate / 2 },
@@ -235,7 +266,7 @@ export default function useSpectrogram({
         freq: { min: 0, max: recording.samplerate / 2 },
       }
     );
-    }, [bounds, recording]);
+  }, [bounds, recording]);
 
   const initialViewport = useMemo<SpectrogramWindow>(() => {
     return initial ?? getInitialViewingWindow({
@@ -301,14 +332,14 @@ export default function useSpectrogram({
     setViewport((prev) => {
       // Check if frequency bounds have changed significantly (indicating resampling change)
       const freqBoundsChanged = Math.abs(prev.freq.max - currentBounds.freq.max) > 1000; // 1kHz threshold
-      
+
       if (freqBoundsChanged) {
         // When resampling changes, reset to show the full new frequency range
         const newViewport = {
           time: prev.time, // Keep time range
           freq: currentBounds.freq, // Use full new frequency range
         };
-        
+
         const adjustedViewPort = adjustWindowToBounds(newViewport, currentBounds);
         lastViewportRef.current = adjustedViewPort;
         return adjustedViewPort;
@@ -324,7 +355,7 @@ export default function useSpectrogram({
             max: Math.min(prev.freq.max, currentBounds.freq.max),
           },
         };
-        
+
         const adjustedViewPort = adjustWindowToBounds(constrainedViewport, currentBounds);
         lastViewportRef.current = adjustedViewPort;
         return adjustedViewPort;
@@ -439,15 +470,15 @@ export default function useSpectrogram({
       setParameters(validated);
     },
     [recording, onParameterChange],
-  );  
-  
+  );
+
   const handleResetParameters = useCallback(() => {
     const validated = validateParameters(initialParameters, recording);
     setParameters(validated);
     onParameterChange?.(validated);
   }, [initialParameters, recording, onParameterChange]);
-  
-  
+
+
 
   const {
     props,
@@ -499,7 +530,7 @@ export default function useSpectrogram({
           });
         });
       }
-      
+
     },
     [drawImage, drawMotions, viewport, canDrag, canZoom, withSpectrogram, parameters.freqLines],
   );

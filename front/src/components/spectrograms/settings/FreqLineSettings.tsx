@@ -49,7 +49,7 @@ export default function FreqLineSettings({
       <InputGroup
         name="freqLines"
         label="Frequency Lines"
-        help="Toggle standard frequency lines or add a custom frequency (in Hz)."
+        help="Toggle standard frequency lines or add a custom frequency (in kHz)."
         error={freqLinesState.error?.message}
       >
         <div className="flex flex-wrap gap-4 mb-2">
