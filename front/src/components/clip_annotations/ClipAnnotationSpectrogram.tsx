@@ -302,7 +302,14 @@ export default function ClipAnnotationSpectrogram({
     draw: drawSpectrogram,
     isLoading: spectrogramIsLoading,
   } = spectrogram;
-  const { props: annotateProps, draw: drawAnnotations } = annotate;
+  
+  // Use separate props and draw functions from annotate
+  const { 
+    spectrogramProps: annotateSpectrogramProps, 
+    waveformProps: annotateWaveformProps,
+    drawSpectrogram: drawAnnotations,
+    drawWaveform: drawWaveformAnnotations,
+  } = annotate;
 
   // Get sound events from clip annotation
   const soundEvents = useMemo(() => {
@@ -313,15 +320,15 @@ export default function ClipAnnotationSpectrogram({
     }
   }, [clipAnnotation, withSoundEvent]);
 
-  // Waveform annotation drawing
-  const drawWaveformAnnotations = useAnnotationDrawWaveform({
+  // Waveform annotation drawing for non-measurement annotations
+  const drawWaveformAnnotationsLegacy = useAnnotationDrawWaveform({
     viewport: spectrogram.viewport,
     annotations: soundEvents,
     mode: annotate.mode,
     selectedAnnotation: selectedAnnotation,
   });
 
-  const draw = useMemo(() => {
+  const drawSpectrogramCanvas = useMemo(() => {
     if (spectrogramIsLoading) {
       return (ctx: CanvasRenderingContext2D) => {
         ctx.canvas.style.cursor = "wait";
@@ -350,18 +357,7 @@ export default function ClipAnnotationSpectrogram({
     audio.currentTime,
   ]);
 
-  useCanvas({ ref: spectrogramCanvasRef as React.RefObject<HTMLCanvasElement>, draw });
-  const drawWave = useCallback((ctx: CanvasRenderingContext2D) => {
-    if (waveform.isLoading) {
-      ctx.canvas.style.cursor = "wait";
-      return;
-    }
-    ctx.canvas.style.cursor = "default";
-    waveform.draw(ctx);
-  }, [waveform]);
-  
-
-  const drawWaveformWithAnnotations = useCallback((ctx: CanvasRenderingContext2D) => {
+  const drawWaveformCanvas = useCallback((ctx: CanvasRenderingContext2D) => {
     if (waveform.isLoading) {
       ctx.canvas.style.cursor = "wait";
       return;
@@ -371,13 +367,17 @@ export default function ClipAnnotationSpectrogram({
     // Draw waveform first
     waveform.draw(ctx);
     
-    // Draw annotations on top if sound events are enabled
+    // Always draw sound event annotations when enabled
     if (withSoundEvent && soundEvents.length > 0) {
-      drawWaveformAnnotations(ctx);
+      drawWaveformAnnotationsLegacy(ctx);
     }
-  }, [waveform, withSoundEvent, soundEvents, drawWaveformAnnotations]);
+    
+    // Draw measurement-aware annotations (includes measurement reflection from spectrogram)
+    drawWaveformAnnotations(ctx);
+  }, [waveform, withSoundEvent, soundEvents, drawWaveformAnnotations, drawWaveformAnnotationsLegacy]);
 
-  useCanvas({ ref: waveformCanvasRef as React.RefObject<HTMLCanvasElement>, draw: drawWaveformWithAnnotations });
+  useCanvas({ ref: spectrogramCanvasRef as React.RefObject<HTMLCanvasElement>, draw: drawSpectrogramCanvas });
+  useCanvas({ ref: waveformCanvasRef as React.RefObject<HTMLCanvasElement>, draw: drawWaveformCanvas });
 
   const waveformHeight = spectrogramCanvasRef.current ? spectrogramCanvasRef.current.height / 6 : 0
 
@@ -393,7 +393,10 @@ export default function ClipAnnotationSpectrogram({
     onClearSelectedTag(null);
   }, [onClearSelectedTag]);
 
-  const props = isAnnotating ? annotateProps : spectrogramProps;
+  // Determine which props to use for each canvas based on annotation mode
+  const finalSpectrogramProps = isAnnotating ? annotateSpectrogramProps : spectrogramProps;
+  const finalWaveformProps = isAnnotating ? annotateWaveformProps : {};
+
   return (
     <Card>
       <div className="flex flex-row gap-4">
@@ -453,9 +456,9 @@ export default function ClipAnnotationSpectrogram({
         >
           <canvas
             ref={spectrogramCanvasRef}
-            {...props}
+            {...finalSpectrogramProps}
             className="absolute w-full h-full"
-            id="main-spectrogram-canvas" // Add an ID to easily reference this canvas
+            id="main-spectrogram-canvas"
           />
         </SpectrogramTags>
         {selectedTag && (
@@ -473,7 +476,7 @@ export default function ClipAnnotationSpectrogram({
       <div className="relative overflow-hidden rounded-md" style={{ height: waveformHeight }}>
           <canvas
           ref={waveformCanvasRef}
-            {...props}
+            {...finalWaveformProps}
             className="absolute w-full h-full"
             id="main-waveform-canvas" 
           />

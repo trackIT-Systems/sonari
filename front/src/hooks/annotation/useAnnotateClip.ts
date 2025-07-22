@@ -8,6 +8,7 @@ import useAnnotationSelect from "@/hooks/annotation/useAnnotationSelect";
 import useClipAnnotation from "@/hooks/api/useClipAnnotation";
 import useSpectrogramTags from "@/hooks/spectrogram/useSpectrogramTags";
 import useAnnotateClipKeyShortcuts from "@/hooks/annotation/useAnnotateClipKeyShortcuts";
+import useCreateWaveformMeasurement from "@/hooks/draw/useCreateWaveformMeasurement";
 
 import { ABORT_SHORTCUT } from "@/utils/keyboard";
 
@@ -35,6 +36,7 @@ export type AnnotateClipState = {
   isDrawing: boolean;
   isEditing: boolean;
   isDeleting: boolean;
+  activeMeasurementCanvas: "spectrogram" | "waveform" | null;
 };
 
 export type AnnotateClipActions = {
@@ -206,13 +208,70 @@ export default function useAnnotateClip(props: {
     [defaultTags, addSoundEvent, disabled, setSelectedAnnotation],
   );
 
-  const { props: measureProps, draw: drawMeasure } = useAnnotationCreate({
+  // State to track measurements from different sources
+  const [spectrogramMeasurement, setSpectrogramMeasurement] = useState<LineString | null>(null);
+  const [measurementSource, setMeasurementSource] = useState<"spectrogram" | "waveform" | null>(null);
+  const [activeMeasurementCanvas, setActiveMeasurementCanvas] = useState<"spectrogram" | "waveform" | null>(null);
+
+  // Measurement hook for spectrogram - measurements here will be reflected in waveform
+  const { props: spectrogramMeasureProps, draw: drawSpectrogramMeasure } = useAnnotationCreate({
     viewport,
     dimensions,
     geometryType: "LineString",
-    enabled: active && mode === "measure" && !disabled,
-    onCreate: () => {},
+    enabled: active && mode === "measure" && !disabled && (activeMeasurementCanvas === null || activeMeasurementCanvas === "spectrogram"),
+    onCreate: (geometry: Geometry) => {
+      if (geometry.type === "LineString") {
+        // Store spectrogram measurements to show in both canvases
+        setSpectrogramMeasurement(geometry);
+        setMeasurementSource("spectrogram");
+        setActiveMeasurementCanvas(null); // Reset after measurement complete
+      }
+    },
   });
+
+  // Add mouse event handlers to detect which canvas starts the measurement
+  const handleSpectrogramMeasureStart = useCallback(() => {
+    if (mode === "measure" && activeMeasurementCanvas === null) {
+      setActiveMeasurementCanvas("spectrogram");
+    }
+  }, [mode, activeMeasurementCanvas]);
+
+  const handleWaveformMeasureStart = useCallback(() => {
+    if (mode === "measure" && activeMeasurementCanvas === null) {
+      setActiveMeasurementCanvas("waveform");
+    }
+  }, [mode, activeMeasurementCanvas]);
+
+  // Enhanced spectrogram props with measurement detection
+  const enhancedSpectrogramMeasureProps = useMemo(() => ({
+    ...spectrogramMeasureProps,
+    onMouseDown: (e: React.MouseEvent) => {
+      handleSpectrogramMeasureStart();
+      spectrogramMeasureProps?.onMouseDown?.(e);
+    },
+  }), [spectrogramMeasureProps, handleSpectrogramMeasureStart]);
+
+  // Measurement hook for waveform - measurements here stay only in waveform
+  const { props: waveformMeasureProps, draw: drawWaveformMeasure } = useCreateWaveformMeasurement({
+    viewport,
+    dimensions,
+    enabled: active && mode === "measure" && !disabled && (activeMeasurementCanvas === null || activeMeasurementCanvas === "waveform"),
+    onCreate: (geometry: Geometry) => {
+      // Only clear spectrogram measurement if this was actually a waveform interaction
+      setSpectrogramMeasurement(null);
+      setMeasurementSource("waveform");
+      setActiveMeasurementCanvas(null); // Reset after measurement complete
+    },
+  });
+
+  // Enhanced waveform props with measurement detection
+  const enhancedWaveformMeasureProps = useMemo(() => ({
+    ...waveformMeasureProps,
+    onMouseDown: (e: React.MouseEvent) => {
+      handleWaveformMeasureStart();
+      waveformMeasureProps?.onMouseDown?.(e);
+    },
+  }), [waveformMeasureProps, handleWaveformMeasureStart]);
 
   const { props: createProps, draw: drawCreate } = useAnnotationCreate({
     viewport,
@@ -417,30 +476,41 @@ export default function useAnnotateClip(props: {
     annotations: soundEvents,
   });
 
-  let annotateProps = {};
+  // Create props objects for spectrogram and waveform
+  let spectrogramProps = {};
+  let waveformProps = {};
+  
   if (active) {
     switch (mode) {
       case "select":
-        annotateProps = selectProps;
+        spectrogramProps = selectProps;
+        waveformProps = selectProps;
         break;
       case "delete":
-        annotateProps = deleteProps;
+        spectrogramProps = deleteProps;
+        waveformProps = deleteProps;
         break;
       case "measure":
-        annotateProps = measureProps;
+        // Both canvases get measurement props with enhanced detection
+        spectrogramProps = enhancedSpectrogramMeasureProps;
+        waveformProps = enhancedWaveformMeasureProps;
         break;
       case "draw":
-        annotateProps = createProps;
+        spectrogramProps = createProps;
+        waveformProps = {};
         break;
       case "edit":
-        annotateProps = editProps;
+        spectrogramProps = editProps;
+        waveformProps = {};
         break;
       default:
-        annotateProps = {};
+        spectrogramProps = {};
+        waveformProps = {};
     }
   }
 
-  const draw = useMemo(() => {
+  // Create separate draw functions for spectrogram and waveform
+  const drawSpectrogram = useMemo(() => {
     if (!active) return drawAnnotations;
 
     const otherDraw: DrawFunction = {
@@ -448,7 +518,7 @@ export default function useAnnotateClip(props: {
       delete: drawDelete,
       edit: drawEdit,
       draw: drawCreate,
-      measure: drawMeasure,
+      measure: drawSpectrogramMeasure,
       idle: () => undefined,
     }[mode];
 
@@ -460,11 +530,37 @@ export default function useAnnotateClip(props: {
     active,
     mode,
     drawAnnotations,
-    drawMeasure,
+    drawSpectrogramMeasure,
     drawCreate,
     drawSelect,
     drawDelete,
     drawEdit,
+  ]);
+
+  const drawWaveform = useMemo(() => {
+    const otherDraw: DrawFunction = {
+      select: () => {},
+      delete: () => {},
+      edit: () => {},
+      draw: () => {},
+      measure: drawWaveformMeasure,
+      idle: () => undefined,
+    }[mode];
+
+    return (ctx: CanvasRenderingContext2D) => {
+      // Draw any time bounds from spectrogram measurements (persist even when not actively measuring)
+      if (spectrogramMeasurement && measurementSource === "spectrogram") {
+        drawSpectrogramMeasurementBounds(ctx, spectrogramMeasurement, viewport);
+      }
+      otherDraw(ctx);
+    };
+  }, [
+    mode,
+    spectrogramMeasurement,
+    measurementSource,
+    activeMeasurementCanvas,
+    drawWaveformMeasure,
+    viewport,
   ]);
 
   const enableDelete = useCallback(() => {
@@ -477,6 +573,9 @@ export default function useAnnotateClip(props: {
 
   const enableMeasure = useCallback(() => {
     setMode("measure");
+    setSpectrogramMeasurement(null);
+    setMeasurementSource(null);
+    setActiveMeasurementCanvas(null);
   }, [setMode]);
 
   const enableDraw = useCallback(() => {
@@ -511,8 +610,16 @@ export default function useAnnotateClip(props: {
 
   return {
     mode,
-    props: annotateProps,
-    draw,
+    // Return separate props for each canvas
+    spectrogramProps,
+    waveformProps,
+    // Keep the old props for backward compatibility, defaulting to spectrogram
+    props: spectrogramProps,
+    // Return separate draw functions
+    drawSpectrogram,
+    drawWaveform,
+    // Keep the old draw for backward compatibility
+    draw: drawSpectrogram,
     geometryType,
     selectedAnnotation,
     enabled: mode !== "idle" && active,
@@ -602,4 +709,41 @@ function useAnnotateClipState({
     setSelectedAnnotation: selectAnnotation,
     setGeometryType: changeGeometryType,
   };
+}
+
+// Helper function to draw spectrogram measurement time bounds on waveform
+function drawSpectrogramMeasurementBounds(
+  ctx: CanvasRenderingContext2D, 
+  measurement: LineString, 
+  viewport: SpectrogramWindow
+) {
+  if (measurement.coordinates.length < 2) return;
+  
+  const { width, height } = ctx.canvas;
+  const timeCoords = measurement.coordinates.map(coord => coord[0]);
+  const minTime = Math.min(...timeCoords);
+  const maxTime = Math.max(...timeCoords);
+  
+  // Convert time to canvas x coordinates
+  const timeRange = viewport.time.max - viewport.time.min;
+  const minX = ((minTime - viewport.time.min) / timeRange) * width;
+  const maxX = ((maxTime - viewport.time.min) / timeRange) * width;
+  
+  // Draw vertical lines to show time bounds
+  ctx.strokeStyle = "rgba(16, 185, 129, 0.8)"; // Green color
+  ctx.lineWidth = 2;
+  ctx.setLineDash([5, 5]);
+  
+  ctx.beginPath();
+  ctx.moveTo(minX, 0);
+  ctx.lineTo(minX, height);
+  ctx.moveTo(maxX, 0);
+  ctx.lineTo(maxX, height);
+  ctx.stroke();
+  
+  // Draw a subtle background between the bounds
+  ctx.fillStyle = "rgba(16, 185, 129, 0.1)";
+  ctx.fillRect(minX, 0, maxX - minX, height);
+  
+  ctx.setLineDash([]);
 }
