@@ -30,6 +30,7 @@ import type {
   Tag,
 } from "@/types";
 import useWaveform from "@/hooks/spectrogram/useWaveform";
+import useAnnotationDrawWaveform from "@/hooks/annotation/useAnnotationDrawWaveform";
 
 export default function ClipAnnotationSpectrogram({
   clipAnnotation,
@@ -303,6 +304,23 @@ export default function ClipAnnotationSpectrogram({
   } = spectrogram;
   const { props: annotateProps, draw: drawAnnotations } = annotate;
 
+  // Get sound events from clip annotation
+  const soundEvents = useMemo(() => {
+    if (withSoundEvent) {
+      return clipAnnotation?.sound_events || []
+    } else {
+      return []
+    }
+  }, [clipAnnotation, withSoundEvent]);
+
+  // Waveform annotation drawing
+  const drawWaveformAnnotations = useAnnotationDrawWaveform({
+    viewport: spectrogram.viewport,
+    annotations: soundEvents,
+    mode: annotate.mode,
+    selectedAnnotation: selectedAnnotation,
+  });
+
   const draw = useMemo(() => {
     if (spectrogramIsLoading) {
       return (ctx: CanvasRenderingContext2D) => {
@@ -343,7 +361,23 @@ export default function ClipAnnotationSpectrogram({
   }, [waveform]);
   
 
-  useCanvas({ ref: waveformCanvasRef as React.RefObject<HTMLCanvasElement>, draw: drawWave });
+  const drawWaveformWithAnnotations = useCallback((ctx: CanvasRenderingContext2D) => {
+    if (waveform.isLoading) {
+      ctx.canvas.style.cursor = "wait";
+      return;
+    }
+    ctx.canvas.style.cursor = "default";
+    
+    // Draw waveform first
+    waveform.draw(ctx);
+    
+    // Draw annotations on top if sound events are enabled
+    if (withSoundEvent && soundEvents.length > 0) {
+      drawWaveformAnnotations(ctx);
+    }
+  }, [waveform, withSoundEvent, soundEvents, drawWaveformAnnotations]);
+
+  useCanvas({ ref: waveformCanvasRef as React.RefObject<HTMLCanvasElement>, draw: drawWaveformWithAnnotations });
 
   const waveformHeight = spectrogramCanvasRef.current ? spectrogramCanvasRef.current.height / 6 : 0
 
