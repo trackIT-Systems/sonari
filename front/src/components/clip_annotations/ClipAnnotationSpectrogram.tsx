@@ -28,8 +28,7 @@ import type {
   SpectrogramWindow,
   Tag,
 } from "@/types";
-import useWaveform, { toWaveformWindow } from "@/hooks/spectrogram/useWaveform";
-import { spec } from "node:test/reporters";
+import useWaveform from "@/hooks/spectrogram/useWaveform";
 
 export default function ClipAnnotationSpectrogram({
   clipAnnotation,
@@ -339,7 +338,7 @@ export default function ClipAnnotationSpectrogram({
       return;
     }
     waveform.draw(ctx);
-  }, [waveform.draw, waveform.isLoading]);
+  }, [waveform]);
   
 
   useCanvas({ ref: canvasReWave as React.RefObject<HTMLCanvasElement>, draw: drawWave });
@@ -357,7 +356,7 @@ export default function ClipAnnotationSpectrogram({
       // Set actual canvas height (drawing resolution)
       waveformCanvas.height = waveformHeight;
     }
-  }, [spectrogramRef.current?.height]); 
+  }, [spectrogramRef, waveformRef]); 
 
   const handleClearSelectedTag = useCallback(() => {
     onClearSelectedTag(null);

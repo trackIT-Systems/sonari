@@ -100,13 +100,13 @@ export default function useAudio({
     });
   }, [recording, speed]);
 
-  const stopAudio = function(audio: HTMLAudioElement, startTime: number) {
+  const stopAudio = useCallback((audio: HTMLAudioElement, startTime: number) => {
     audio.pause();
     // Don't reset currentTime to 0, reset to the segment start
     audio.currentTime = startTime / speed;
     setTime(startTime);
     setIsPlaying(false);
-  }
+  }, [speed]);
 
   useEffect(() => {
     const { current } = audio;
@@ -230,7 +230,7 @@ export default function useAudio({
 
   const handleStop = useCallback(() => {
     stopAudio(audio.current, playbackStartTime);
-  }, [playbackStartTime]);
+  }, [playbackStartTime, stopAudio]);
 
   const handleSetVolume = useCallback((volume: number) => {
     audio.current.volume = volume;

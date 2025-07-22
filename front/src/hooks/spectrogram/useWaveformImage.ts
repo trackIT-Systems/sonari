@@ -53,7 +53,7 @@ export default function useWaveformImage({ recording, window,parameters }: UseWa
       0, 0,
       canvasWidth, canvasHeight
     );
-  }, [image, window.time.min, window.time.max, recording.duration]);
+  }, [image, window.time, recording.duration]);
   
 
   return { draw, isLoading, isError };

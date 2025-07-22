@@ -20,7 +20,7 @@ export default function useWaveform({
 }) {
   const waveformWindow = useMemo(
     () => toWaveformWindow(viewport),
-    [viewport.time.min, viewport.time.max]
+    [viewport]
   );
 
   const { draw: drawImage, isLoading, isError } = useWaveformImage({

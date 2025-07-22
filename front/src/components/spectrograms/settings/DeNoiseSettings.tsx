@@ -30,7 +30,7 @@ export default function DeNoiseSettings({
           >
             <Toggle
               label="De-noise"
-              isSelected={!field.value ?? false}
+              isSelected={field.value ?? false}
               onChange={(denoise) => field.onChange(!denoise)}
             />
           </InputGroup>
