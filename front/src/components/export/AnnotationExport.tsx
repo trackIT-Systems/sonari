@@ -31,7 +31,7 @@ const statusTooltips: Record<AnnotationStatus, string> = {
   completed: "Accept",
 };
 
-type ExportFormat = 'MultiBase' | 'SoundEvent' | 'Territory';
+type ExportFormat = 'MultiBase' | 'Territory';
 
 export default function AnnotationExport() {
   const [selectedTags, setSelectedTags] = useState<Tag[]>([]);
@@ -41,7 +41,7 @@ export default function AnnotationExport() {
   const [selectedProjects, setSelectedProjects] = useState<AnnotationProject[]>([]);
   const [projectTags, setProjectTags] = useState<Tag[]>([]);
   const [availableProjects, setAvailableProjects] = useState<Option<AnnotationProject>[]>([]);
-  
+
 
   //const annotationProject = selectedProject ? useAnnotationProject({uuid: selectedProject.uuid, annotationProject: selectedProject}) : null;
   useEffect(() => {
@@ -59,21 +59,25 @@ export default function AnnotationExport() {
         console.error("Failed to fetch projects", err);
       }
     }
-  
+
     fetchProjects();
   }, []);
-  
-  const projectTagList: Tag[] = availableProjects.map(p => ({
-    key: "project",
-    value: typeof p.label === 'string' ? p.label : String(p.label ?? ''),
-  }));  
+
+  const availableProjectOptions = availableProjects.filter(p =>
+    !selectedProjects.some(selected => selected.uuid === p.value.uuid)
+  );
+
+  const projectTagList: Tag[] = availableProjectOptions.map(p => ({
+    key: "",
+    value: p.value.name,
+  }));
 
   const selectedProjectTags: Tag[] = selectedProjects.map(p => ({
-    key: "project",
+    key: "",
     value: p.name,
-  }));  
-  
-  
+  }));
+
+
   const handleTagSelect = (tag: Tag) => {
     setSelectedTags(prev => [...prev, tag]);
   };
@@ -88,11 +92,11 @@ export default function AnnotationExport() {
       setSelectedProjects(prev => [...prev, project]);
     }
   };
-  
+
   const handleProjectDeselect = (tag: Tag) => {
     setSelectedProjects(prev => prev.filter(p => p.name !== tag.value));
   };
-  
+
 
   const handleStatusToggle = (status: AnnotationStatus) => {
     setSelectedStatuses(prev =>
@@ -114,12 +118,12 @@ export default function AnnotationExport() {
         selectedTags.length > 0
           ? selectedTags.map(tag => `tags=${encodeURIComponent(`${tag.key}:${tag.value}`)}`).join('&')
           : 'tags=[]';
-  
+
       const statusParams =
         selectedStatuses.length > 0
           ? selectedStatuses.map(status => `statuses=${encodeURIComponent(status)}`).join('&')
           : 'statuses=[]';
-  
+
       const queryString = `${tagParams}&${statusParams}&format=${exportFormat}`;
       const { blob, filename } = await api.annotationProjects.download(selectedProjects, queryString);
       const url = window.URL.createObjectURL(blob);
@@ -137,7 +141,7 @@ export default function AnnotationExport() {
       setIsExporting(false);
     }
   };
-  
+
   useEffect(() => {
     if (selectedProjects.length === 0) {
       setProjectTags([]);
@@ -157,165 +161,152 @@ export default function AnnotationExport() {
     setSelectedTags([]);
     setSelectedStatuses([]);
   }, [selectedProjects]);
-  
-  
 
-  const availableTags = projectTags.filter(tag => 
+
+
+  const availableTags = projectTags.filter(tag =>
     !selectedTags.some(t => t.key === tag.key && t.value === tag.value)
   );
 
-  const isSelectionMade = (exportFormat === 'SoundEvent') || 
-    (selectedTags.length > 0 && selectedStatuses.length > 0);
+  const isSelectionMade = selectedTags.length > 0 && selectedStatuses.length > 0 && selectedProjects.length > 0;
 
-    return (
-        <div className="flex flex-col gap-8">
-        <H2>
-          <DownloadIcon className="inline-block mr-2 w-8 h-8 align-middle" />
-          Export Annotation Projects
-        </H2>
-        <Card>
-          <div>
-            <H3 className="text-lg">Projects</H3>
-            <p className="text-stone-500">Select projects to include in the export.</p>
-          </div>
-          <div className="grid grid-cols-2 gap-y-4 gap-x-14">
-            <div className="col-span-2 md:col-span-1">
-              <label className="block mb-2 font-medium text-stone-600 dark:text-stone-400">Available Projects</label>
-              <small className="text-stone-500">Click a project to add it to the export selection.</small>
-              <div className="py-2">
-                <TagList autoFocus={true} tags={projectTagList} onClick={handleProjectSelect} />
+  return (
+    <div className="flex flex-col gap-8">
+      <H2>
+        <DownloadIcon className="inline-block mr-2 w-8 h-8 align-middle" />
+        Export Annotation Projects
+      </H2>
+      <div className="flex flex-row gap-8">
+        <div className="flex flex-col gap-y-6 max-w-prose">
+          <>
+
+            <Card>
+              <div>
+                <H3 className="text-lg">Projects</H3>
+                <p className="text-stone-500">Select projects to include in the export.</p>
               </div>
-            </div>
-            <div className="col-span-2 md:col-span-1">
-              <label className="block mb-2 font-medium text-stone-600 dark:text-stone-400">Selected Projects</label>
-              <small className="text-stone-500">Click a tag to remove it from the export selection.</small>
-              <div className="py-2">
-                <TagList autoFocus={false} tags={selectedProjectTags} onClick={handleProjectDeselect} />
+              <div className="grid grid-cols-2 gap-y-4 gap-x-14">
+                <div className="col-span-2 md:col-span-1">
+                  <label className="block mb-2 font-medium text-stone-600 dark:text-stone-400">Available Projects</label>
+                  <small className="text-stone-500">Click a project to add it to the export selection.</small>
+                  <div className="py-2">
+                    <TagList autoFocus={true} tags={projectTagList} onClick={handleProjectSelect} />
+                  </div>
+                </div>
+                <div className="col-span-2 md:col-span-1">
+                  <label className="block mb-2 font-medium text-stone-600 dark:text-stone-400">Selected Projects</label>
+                  <small className="text-stone-500">Click a tag to remove it from the export selection.</small>
+                  <div className="py-2">
+                    <TagList autoFocus={false} tags={selectedProjectTags} onClick={handleProjectDeselect} />
+                  </div>
+                </div>
               </div>
-            </div>
-          </div>
-        </Card>
-        <div className="flex flex-row gap-8">
-          <div className="flex flex-col gap-y-6 max-w-prose">
-            {selectedProjects ? (
-              <>
-                <Card>
-                  <div>
-                    <H3 className="text-lg">Tags</H3>
-                    <p className="text-stone-500">Select tags that should be exported.</p>
+            </Card>
+            <Card>
+              <div>
+                <H3 className="text-lg">Tags</H3>
+                <p className="text-stone-500">Select tags that should be exported.</p>
+              </div>
+              <div className="grid grid-cols-2 gap-y-4 gap-x-14">
+                <div className="col-span-2 md:col-span-1">
+                  <label className="block mb-2 font-medium text-stone-600 dark:text-stone-400">Available Tags</label>
+                  <small className="text-stone-500">Click on a tag to add it to the export selection.</small>
+                  <div className="py-2">
+                    <TagList autoFocus={false} tags={availableTags} onClick={handleTagSelect} />
                   </div>
-                  <div className="grid grid-cols-2 gap-y-4 gap-x-14">
-                    <div className="col-span-2 md:col-span-1">
-                      <label className="block mb-2 font-medium text-stone-600 dark:text-stone-400">Available Tags</label>
-                      <small className="text-stone-500">Click on a tag to add it to the export selection.</small>
-                      <div className="py-2">
-                        <TagList autoFocus={true} tags={availableTags} onClick={handleTagSelect} />
-                      </div>
-                    </div>
-                    <div className="col-span-2 md:col-span-1">
-                      <label className="block mb-2 font-medium text-stone-600 dark:text-stone-400">Selected Tags</label>
-                      <small className="text-stone-500">Click on a tag to remove it from the export selection.</small>
-                      <div className="py-2">
-                        <TagList autoFocus={false} tags={selectedTags} onClick={handleTagDeselect} />
-                      </div>
-                    </div>
+                </div>
+                <div className="col-span-2 md:col-span-1">
+                  <label className="block mb-2 font-medium text-stone-600 dark:text-stone-400">Selected Tags</label>
+                  <small className="text-stone-500">Click on a tag to remove it from the export selection.</small>
+                  <div className="py-2">
+                    <TagList autoFocus={false} tags={selectedTags} onClick={handleTagDeselect} />
                   </div>
-                </Card>
-                <Card>
-                  <div>
-                    <H3>Select Task Statuses</H3>
-                    <p className="text-stone-500">Select status badges that should be exported.</p>
-                    <div className="flex flex-row gap-4">
-                      {Object.values(AnnotationStatusSchema.enum).map(status => (
-                        <Tooltip
-                          key={status}
-                          tooltip={statusTooltips[status as keyof typeof statusTooltips]}
-                          placement="bottom"
-                        >
-                          <button
-                            className={`p-2 rounded-md ${
-                              selectedStatuses.includes(status)
-                                ? "bg-stone-200 dark:bg-stone-700"
-                                : "hover:bg-stone-100 dark:hover:bg-stone-800"
-                            }`}
-                            onClick={() => handleStatusToggle(status)}
-                          >
-                            {statusIcons[status as keyof typeof statusIcons]}
-                          </button>
-                        </Tooltip>
-                      ))}
-                    </div>
-                  </div>
-                </Card>
-                <Card>
-                  <div>
-                    <H3>Export Format</H3>
-                    <p className="text-stone-500">Select the format for exporting the project data.</p>
-                    <div className="flex flex-col gap-2">
-                      <InputGroup name="multibase-format" label="MultiBase">
-                        <Toggle
-                          isSelected={exportFormat === "MultiBase"}
-                          onChange={() => handleExportFormatChange("MultiBase")}
-                        />
-                      </InputGroup>
-                      <InputGroup name="territory-format" label="Territory">
-                        <Toggle
-                          isSelected={exportFormat === "Territory"}
-                          onChange={() => handleExportFormatChange("Territory")}
-                        />
-                      </InputGroup>
-                      {/* <InputGroup name="soundevent-format" label="SoundEvent" help="Note: this ignores all selections from above.">
-                        <Toggle
-                          isSelected={exportFormat === "SoundEvent"}
-                          onChange={() => handleExportFormatChange("SoundEvent")}
-                        />
-                          </InputGroup> */}
-                    </div>
-                  </div>
-                </Card>
-              </>
-            ) : (
-              <p className="text-stone-500">Please select a project to see export options.</p>
-            )}
-          </div>
-          <div className="w-96">
-            <div className="sticky top-8">
-              {selectedProjects && (
-                <Card>
-                  {isExporting ? (
-                    <Loading />
-                  ) : isSelectionMade ? (
-                    <>
-                      <H3>Summary</H3>
-                      {exportFormat !== "SoundEvent" && (
-                        <ul className="list-disc list-inside mb-4">
-                          <li>
-                            Selected tags: <span className="text-emerald-500">{selectedTags.length}</span>
-                          </li>
-                          <li>
-                            Selected statuses: <span className="text-emerald-500">{selectedStatuses.length}</span>
-                          </li>
-                        </ul>
-                      )}
-                      <p className="text-stone-500 mb-4">
-                        {exportFormat === "SoundEvent"
-                          ? "Click the button below to export the project in SoundEvent format."
-                          : "Once satisfied with your selections, click the button below to export the project."}
-                      </p>
-                      <Button onClick={handleExport} className="w-full">
-                        Export
-                      </Button>
-                    </>
-                  ) : (
-                    <p className="text-stone-500">
-                      Select at least one tag and one status badge
-                    </p>
-                  )}
-                </Card>
+                </div>
+              </div>
+            </Card>
+            <Card>
+              <div>
+                <H3>Select Task Statuses</H3>
+                <p className="text-stone-500">Select status badges that should be exported.</p>
+                <div className="flex flex-row gap-4">
+                  {Object.values(AnnotationStatusSchema.enum).map(status => (
+                    <Tooltip
+                      key={status}
+                      tooltip={statusTooltips[status as keyof typeof statusTooltips]}
+                      placement="bottom"
+                    >
+                      <button
+                        className={`p-2 rounded-md ${selectedStatuses.includes(status)
+                          ? "bg-stone-200 dark:bg-stone-700"
+                          : "hover:bg-stone-100 dark:hover:bg-stone-800"
+                          }`}
+                        onClick={() => handleStatusToggle(status)}
+                      >
+                        {statusIcons[status as keyof typeof statusIcons]}
+                      </button>
+                    </Tooltip>
+                  ))}
+                </div>
+              </div>
+            </Card>
+            <Card>
+              <div>
+                <H3>Export Format</H3>
+                <p className="text-stone-500">Select the format for exporting the project data.</p>
+                <div className="flex flex-col gap-2">
+                  <InputGroup name="multibase-format" label="MultiBase">
+                    <Toggle
+                      isSelected={exportFormat === "MultiBase"}
+                      onChange={() => handleExportFormatChange("MultiBase")}
+                    />
+                  </InputGroup>
+                  <InputGroup name="territory-format" label="Territory">
+                    <Toggle
+                      isSelected={exportFormat === "Territory"}
+                      onChange={() => handleExportFormatChange("Territory")}
+                    />
+                  </InputGroup>
+                </div>
+              </div>
+            </Card>
+          </>
+
+        </div>
+        <div className="w-96">
+          <div className="sticky top-8">
+            <Card>
+              {isExporting ? (
+                <Loading />
+              ) : isSelectionMade ? (
+                <>
+                  <H3>Summary</H3>
+                  <ul className="list-disc list-inside mb-4">
+                    <li>
+                      Selected projects: <span className="text-emerald-500">{selectedProjects.length}</span>
+                    </li>
+                    <li>
+                      Selected tags: <span className="text-emerald-500">{selectedTags.length}</span>
+                    </li>
+                    <li>
+                      Selected statuses: <span className="text-emerald-500">{selectedStatuses.length}</span>
+                    </li>
+                  </ul>
+                  <p className="text-stone-500 mb-4">
+                    Once satisfied with your selections, click the button below to export the project.
+                  </p>
+                  <Button onClick={handleExport} className="w-full">
+                    Export
+                  </Button>
+                </>
+              ) : (
+                <p className="text-stone-500">
+                  Select at least one tag, project and one status badge
+                </p>
               )}
-            </div>
+            </Card>
           </div>
         </div>
       </div>
-    );
-  }       
+    </div>
+  );
+}       
