@@ -40,12 +40,7 @@ COPY --from=rasterio_builder /wheels /wheels
 # Set the working directory to /code
 WORKDIR /code
 
-# Copy the current directory contents into the container at /code
-
-# Copy the statics
-COPY --from=web_builder /front/out/ /code/src/sonari/statics/
-
-# Install the Python dependencies for sonari
+# Install the Python dependencies
 COPY /back/requirements.txt /code/requirements.txt
 RUN pip install -r requirements.txt
 RUN pip install --no-index --find-links /wheels rasterio
@@ -57,6 +52,9 @@ COPY /back/pyproject.toml /code/pyproject.toml
 COPY /back/alembic.ini /code/alembic.ini
 COPY /back/README.md /code/README.md
 COPY /back/LICENSE /code/LICENSE
+
+# Copy the frontend statics BEFORE installing the package
+COPY --from=web_builder /front/out/ /code/src/sonari/statics/
     
 # Install Sonari
 RUN pip install --no-deps .
