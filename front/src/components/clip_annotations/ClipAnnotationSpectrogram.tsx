@@ -2,6 +2,7 @@ import { useCallback, useMemo, useRef, useState, useEffect } from "react";
 
 import { DEFAULT_SPECTROGRAM_PARAMETERS } from "@/api/spectrograms";
 import AnnotationControls from "@/components/annotation/AnnotationControls";
+import MeasurementControls from "../annotation/MeasurementControls";
 import Player from "@/components/audio/Player";
 import Card from "@/components/Card";
 import SpectrogramBar from "@/components/spectrograms/SpectrogramBar";
@@ -375,16 +376,21 @@ export default function ClipAnnotationSpectrogram({
             onToggleAspectRatio={toggleFixedAspectRatio}
           />
         )}
+
+        {!disabled && withControls && withSpectrogram && (
+          <MeasurementControls
+            isMeasuring={annotate.isMeasuring}
+            onMeasure={annotate.enableMeasure}
+          />
+        )}
         {!disabled && withControls && withSpectrogram && withSoundEvent && (
           <AnnotationControls
             disabled={disabled}
-            isMeasuring={annotate.isMeasuring}
             isDrawing={annotate.isDrawing}
             isDeleting={annotate.isDeleting}
             isSelecting={annotate.isSelecting}
             isEditing={annotate.isEditing}
             geometryType={annotate.geometryType}
-            onMeasure={annotate.enableMeasure}
             onDraw={annotate.enableDraw}
             onDelete={annotate.enableDelete}
             onSelect={annotate.enableSelect}
