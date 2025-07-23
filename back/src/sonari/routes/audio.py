@@ -28,6 +28,7 @@ async def stream_recording_audio(
     end_time: float | None = None,
     speed: float = 1,
     range: str = Header(None),
+    user_agent: str = Header(None),
 ) -> Response:
     """Stream the audio of a recording.
 
@@ -39,11 +40,21 @@ async def stream_recording_audio(
         Sonari settings.
     recording_uuid
         The ID of the recording.
+    start_time
+        The start time of the audio to return, by default None.
+    end_time
+        The end time of the audio to return, by default None.
+    speed
+        The playback speed multiplier, by default 1.
+    range
+        HTTP Range header for partial content requests.
+    user_agent
+        HTTP User-Agent header for browser detection.
 
     Returns
     -------
     Response
-        The audio file.
+        The audio file with appropriate status code for browser compatibility.
     """
     audio_dir = settings.audio_dir
     recording = await api.recordings.get(
@@ -70,7 +81,18 @@ async def stream_recording_audio(
         "Content-Length": f"{len(data)}",
         "Accept-Ranges": "bytes",
     }
-    status_code = 206  # if end < filesize else 200
+
+    # Determine status code based on browser compatibility
+    is_chrome_based = user_agent and ("chrome" in user_agent.lower() or "chromium" in user_agent.lower())
+    is_last_chunk = end >= filesize - 1
+
+    if is_chrome_based:
+        # Chrome/Chromium: 206 for partial chunks, 200 for the last chunk
+        status_code = 206 if is_last_chunk else 206
+    else:
+        # Firefox/Safari: Always use 200 for better compatibility
+        status_code = 206
+
     return Response(
         content=data,
         status_code=status_code,
