@@ -70,6 +70,59 @@ class SoundEventAnnotationAPI(
             **kwargs,
         )
 
+    async def mark_as_edited_by_user(
+        self,
+        session: AsyncSession,
+        sound_event_annotation: schemas.SoundEventAnnotation,
+        user: schemas.SimpleUser,
+    ) -> schemas.SoundEventAnnotation:
+        """Mark a sound event annotation as edited by removing detection_confidence and updating user.
+
+        This method should be called whenever a sound event annotation is edited (geometry, tags, etc.)
+        to remove any machine-generated confidence scores and transfer ownership to the editing user.
+
+        Parameters
+        ----------
+        session
+            SQLAlchemy AsyncSession.
+        sound_event_annotation
+            The sound event annotation that was edited.
+        user
+            The user who made the edit.
+
+        Returns
+        -------
+        schemas.SoundEventAnnotation
+            The updated annotation.
+        """
+        # Remove detection_confidence feature if it exists
+        detection_confidence_feature = None
+        for feature in sound_event_annotation.sound_event.features:
+            if feature.name == "detection_confidence" or feature.name == "species_confidence":
+                detection_confidence_feature = feature
+                break
+
+        if detection_confidence_feature is not None:
+            sound_event_annotation.sound_event = await sound_events.remove_feature(
+                session,
+                sound_event_annotation.sound_event,
+                detection_confidence_feature,
+            )
+
+            # Update created_by to current user using direct field update
+        updated_annotation = await common.update_object(
+            session,
+            models.SoundEventAnnotation,
+            condition=models.SoundEventAnnotation.id == sound_event_annotation.id,
+            created_by_id=user.id,
+        )
+
+        # Create updated schema object with the new created_by info
+        updated_annotation = sound_event_annotation.model_copy(update=dict(created_by=user))
+        self._update_cache(updated_annotation)
+
+        return updated_annotation
+
     async def add_tag(
         self,
         session: AsyncSession,

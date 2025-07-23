@@ -121,6 +121,7 @@ def get_sound_event_annotations_router(settings: SonariSettings) -> APIRouter:
     )
     async def update_annotation(
         session: Session,
+        user: Annotated[schemas.SimpleUser, Depends(active_user)],
         sound_event_annotation_uuid: UUID,
         data: schemas.SoundEventUpdate,
     ):
@@ -134,6 +135,14 @@ def get_sound_event_annotations_router(settings: SonariSettings) -> APIRouter:
             sound_event_annotation.sound_event,
             data,
         )
+
+        # Mark as edited by user (remove confidence and update ownership)
+        sound_event_annotation = await api.sound_event_annotations.mark_as_edited_by_user(
+            session,
+            sound_event_annotation,
+            user,
+        )
+
         await session.commit()
         return sound_event_annotation
 
@@ -180,6 +189,14 @@ def get_sound_event_annotations_router(settings: SonariSettings) -> APIRouter:
             tag,
             user,
         )
+
+        # Mark as edited by user (remove confidence and update ownership)
+        sound_event_annotation = await api.sound_event_annotations.mark_as_edited_by_user(
+            session,
+            sound_event_annotation,
+            user,
+        )
+
         await session.commit()
         return sound_event_annotation
 
@@ -192,6 +209,7 @@ def get_sound_event_annotations_router(settings: SonariSettings) -> APIRouter:
         sound_event_annotation_uuid: UUID,
         key: str,
         value: str,
+        user: Annotated[schemas.SimpleUser, Depends(active_user)],
     ):
         """Remove a tag from an annotation annotation."""
         sound_event_annotation = await api.sound_event_annotations.get(
@@ -204,6 +222,14 @@ def get_sound_event_annotations_router(settings: SonariSettings) -> APIRouter:
             sound_event_annotation,
             tag,
         )
+
+        # Mark as edited by user (remove confidence and update ownership)
+        sound_event_annotation = await api.sound_event_annotations.mark_as_edited_by_user(
+            session,
+            sound_event_annotation,
+            user,
+        )
+
         await session.commit()
         return sound_event_annotation
 
