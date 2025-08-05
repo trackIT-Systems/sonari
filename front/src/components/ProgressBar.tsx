@@ -1,5 +1,6 @@
 import classNames from "classnames";
 
+import Spinner from "./Spinner";
 import Tooltip from "./Tooltip";
 import { CompleteIcon, HelpIcon, NeedsReviewIcon, VerifiedIcon } from "./icons";
 
@@ -19,11 +20,21 @@ type ProgressStats = {
 
 export default function ProgressBar({
   progress,
+  loading = false,
   className = "mb-4",
 }: {
   progress: ProgressStats;
+  loading?: boolean;
   className?: string;
 }) {
+  if (loading) {
+    return (
+      <div className={classNames(className, "w-full")}>
+        <div className="text-sm text-stone-500">Loading tasks...</div>
+      </div>
+    );
+  }
+
   if (progress.total === 0) {
     return (
       <div className={classNames(className, "w-full")}>

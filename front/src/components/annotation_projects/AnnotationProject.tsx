@@ -69,7 +69,7 @@ export default function AnnotationProject({
       </div>
       <div className="py-2 flex flex-row items-center gap-12">
         <div>
-          <ProgressBar progress={progress} className="h-2" />
+          <ProgressBar progress={progress} loading={isLoading} className="h-2" />
         </div>
         <Atom
           label="Created on:"
