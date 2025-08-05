@@ -558,7 +558,6 @@ export default function useAnnotateClip(props: {
     mode,
     spectrogramMeasurement,
     measurementSource,
-    activeMeasurementCanvas,
     drawWaveformMeasure,
     viewport,
   ]);

@@ -128,7 +128,7 @@ export default function useAnnotationDrawWaveform({
       ctx.setLineDash([]);
       ctx.globalAlpha = 1;
     },
-    [viewport, annotations, mode, selectedAnnotation],
+    [viewport, annotations, selectedAnnotation],
   );
 
   return draw;
