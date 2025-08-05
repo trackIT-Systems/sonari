@@ -8,6 +8,7 @@ import { FilterIcon, NextIcon, PreviousIcon } from "@/components/icons";
 import Tooltip from "@/components/Tooltip";
 import KeyboardKey from "@/components/KeyboardKey";
 import ShortcutHelper from "@/components/ShortcutHelper";
+import Spinner from "@/components/Spinner";
 import { computeAnnotationTasksProgress } from "@/utils/annotation_tasks";
 import { useKeyPressEvent } from "react-use";
 
@@ -46,12 +47,14 @@ export default function AnnotationProgress({
   current,
   tasks,
   filter,
+  isLoading = false,
   onNext,
   onPrevious,
 }: {
   current?: number | null;
   tasks: AnnotationTask[];
   filter: Filter<AnnotationTaskFilter>;
+  isLoading?: boolean;
   onNext?: () => void;
   onPrevious?: () => void;
 }) {
@@ -115,16 +118,25 @@ export default function AnnotationProgress({
             <span>Total tasks:</span>
             <span className="font-medium text-blue-500">{progress.total}</span>
           </span>
-          <FilterMenu
-            filter={filter}
-            filterDef={taskFilterDefs}
-            className={getButtonClassName({
-              variant: "info",
-              mode: "text",
-              padding: "p-1",
-            })}
-            button={filterBtn}
-          />
+          {isLoading ? (
+            <div className="flex items-center justify-center px-3 py-1">
+              <Spinner variant="info" className="w-5 h-5" />
+              <span className="text-sm ml-2 text-stone-500">
+                Filtering...
+              </span>
+            </div>
+          ) : (
+            <FilterMenu
+              filter={filter}
+              filterDef={taskFilterDefs}
+              className={getButtonClassName({
+                variant: "info",
+                mode: "text",
+                padding: "p-1",
+              })}
+              button={filterBtn}
+            />
+          )}
           <FilterBar
             withLabel={false}
             filter={filter}

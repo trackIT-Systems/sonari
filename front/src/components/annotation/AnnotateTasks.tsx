@@ -356,6 +356,7 @@ export default function AnnotateTasks({
             current={tasks.current}
             tasks={tasks.tasks}
             filter={tasks._filter}
+            isLoading={tasks.isLoading}
             onNext={tasks.nextTask}
             onPrevious={tasks.prevTask}
           />
