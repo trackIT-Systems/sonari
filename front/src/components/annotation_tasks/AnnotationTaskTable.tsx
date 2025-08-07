@@ -37,7 +37,8 @@ export default function AnnotationTaskTable({
   const table = useAnnotationTaskTable({
     data: annotationTasks.items,
     getAnnotationTaskLink: getAnnotationTaskLink,
-    pathFormatter
+    pathFormatter,
+    pagination: annotationTasks.pagination
   });
 
   const handleSearchKeyDown = useCallback((e: React.KeyboardEvent) => {

@@ -1,11 +1,13 @@
 """Python API for interacting with Tasks."""
 
 from pathlib import Path
+from typing import Any, Sequence
 from uuid import UUID
 
 from soundevent import data
 from sqlalchemy import and_, select, tuple_
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.sql._typing import _ColumnExpressionArgument
 
 from sonari import exceptions, models, schemas
 from sonari.api import common
@@ -44,6 +46,34 @@ class AnnotationTaskAPI(
 
     _model = models.AnnotationTask
     _schema = schemas.AnnotationTask
+
+    async def get_many(
+        self,
+        session: AsyncSession,
+        *,
+        limit: int | None = 1000,
+        offset: int | None = 0,
+        filters: Sequence[Filter | _ColumnExpressionArgument] | None = None,
+        sort_by: _ColumnExpressionArgument | str | None = "-created_on",
+        noloads: list[Any] | None = None,
+    ) -> tuple[Sequence[schemas.AnnotationTask], int]:
+        """Get many annotation tasks without unique() to avoid duplicate removal after pagination."""
+        from sonari.api.common.utils import get_objects_from_query
+
+        query = select(models.AnnotationTask)
+        result, count = await get_objects_from_query(
+            session,
+            models.AnnotationTask,
+            query,
+            limit=limit,
+            offset=offset,
+            filters=filters,
+            sort_by=sort_by,
+            noloads=noloads,
+        )
+        # Don't use unique() - just return the scalars directly
+        objs = result.scalars().all()
+        return [self._schema.model_validate(obj) for obj in objs], count
 
     async def get_clip_annotation(
         self,
