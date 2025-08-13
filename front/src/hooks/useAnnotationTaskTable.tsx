@@ -28,10 +28,12 @@ export default function useAnnotationTaskTable({
   data,
   pathFormatter = defaultPathFormatter,
   getAnnotationTaskLink,
+  pagination,
 }: {
   data: AnnotationTask[];
   pathFormatter?: (path: string) => string;
   getAnnotationTaskLink?: (annotationTask: AnnotationTask) => string;
+  pagination?: { page: number; pageSize: number };
 }) {
 
   // Column definitions
@@ -44,10 +46,14 @@ export default function useAnnotationTaskTable({
         size: 1,
         accessorFn: () => {},
         cell: ({ row }) => {
+          // Calculate the global index across all pages
+          const globalIndex = pagination 
+            ? (pagination.page * pagination.pageSize) + row.index + 1
+            : row.index + 1;
           return (
             <TableCell>
               <span className="text-emerald-500 mr-2">
-                {row.index + 1}
+                {globalIndex}
               </span>
             </TableCell>
           )
@@ -165,7 +171,7 @@ export default function useAnnotationTaskTable({
         },
       },
     ],
-    [getAnnotationTaskLink, pathFormatter],
+    [getAnnotationTaskLink, pathFormatter, pagination],
   );
   return useReactTable<AnnotationTask>({
     data,

@@ -135,9 +135,7 @@ async def get_object(
     obj = result.unique().scalar_one_or_none()
 
     if obj is None:
-        raise exceptions.NotFoundError(
-            f"A {model.__name__} with the specified condition was not found" f" ({condition})"
-        )
+        raise exceptions.NotFoundError(f"A {model.__name__} with the specified condition was not found ({condition})")
 
     return obj
 
@@ -211,7 +209,7 @@ def get_sort_by_col_from_str(
     col = getattr(model, sort_by)
 
     if not col:
-        raise ValueError(f"The model {model.__name__} does not have a column named" f" {sort_by}")
+        raise ValueError(f"The model {model.__name__} does not have a column named {sort_by}")
 
     if descending:
         col = col.desc()
@@ -252,6 +250,7 @@ async def get_objects_from_query(
                     .order_by(
                         models.Recording.date.asc(),
                         models.Recording.time.asc(),
+                        models.AnnotationTask.id.asc(),  # Add stable secondary sort
                     )
                 )
             else:
@@ -259,6 +258,10 @@ async def get_objects_from_query(
                 query = query.order_by(sort_by)
         else:
             query = query.order_by(sort_by)
+
+    # For recording_datetime sorting, the join shouldn't create duplicates
+    # since it's a simple 1:1:1 relationship (AnnotationTask -> Clip -> Recording)
+    # The issue might be elsewhere. Let's remove the distinct logic for now.
 
     if limit is not None and limit >= 0:
         query = query.limit(limit)
@@ -585,11 +588,9 @@ async def update_object(
     update_with = {}
 
     if data is not None:
-        update_with.update(
-            {
-                **{key: getattr(data, key) for key in data.model_fields_set},
-            }
-        )
+        update_with.update({
+            **{key: getattr(data, key) for key in data.model_fields_set},
+        })
 
     update_with.update(kwargs)
 
@@ -659,12 +660,10 @@ async def add_note_to_object(
     # Get the association model
     association_model = getattr(models, association_model_name)
 
-    object_tag = association_model(
-        **{
-            "note_id": note.id,
-            foreign_key: obj.id,  # type: ignore
-        }
-    )  # type: ignore
+    object_tag = association_model(**{
+        "note_id": note.id,
+        foreign_key: obj.id,  # type: ignore
+    })  # type: ignore
     getattr(obj, relation_field_name).append(object_tag)  # type: ignore
     session.add(obj)
     await session.flush()
@@ -790,13 +789,11 @@ async def add_feature_to_object(
     foreign_key = f"{name}_id"
     association_model = getattr(models, feature_model_name)
 
-    feature = association_model(
-        **{
-            foreign_key: obj.id,  # type: ignore
-            "feature_name_id": feature_name.id,  # type: ignore
-            "value": value,  # type: ignore
-        }
-    )
+    feature = association_model(**{
+        foreign_key: obj.id,  # type: ignore
+        "feature_name_id": feature_name.id,  # type: ignore
+        "value": value,  # type: ignore
+    })
     obj.features.append(feature)  # type: ignore
     await session.flush()
     await session.refresh(obj)
