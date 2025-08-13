@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useDebounce } from "react-use";
 
 /**
@@ -58,20 +58,53 @@ export default function useFilter<T extends Object>({
   defaults,
   fixed = _fixed,
   debounce = 500,
+  persistKey,
 }: {
   defaults: T;
   fixed?: (keyof T)[];
   debounce?: number;
   prefix?: string;
+  persistKey?: string;
 }): Filter<T> {
-  const [state, setState] = useState<T>(defaults);
-  const [debouncedState, setDebouncedState] = useState<T>(state);
+  // Initialize from persisted storage if available, otherwise from defaults
+  const initialState = useMemo(() => {
+    if (!persistKey) return defaults;
+    if (typeof window === "undefined") return defaults;
+    try {
+      const raw = window.localStorage.getItem(persistKey);
+      if (!raw) return defaults;
+      const parsed = JSON.parse(raw) as T;
+      const enforced: T = { ...parsed } as T;
+      for (const key of fixed) {
+        if (key in defaults) {
+          // @ts-ignore
+          enforced[key] = defaults[key];
+        } else {
+          // @ts-ignore
+          delete enforced[key];
+        }
+      }
+      return enforced;
+    } catch {
+      return defaults;
+    }
+  }, [persistKey, defaults, fixed]);
+
+  const [state, setState] = useState<T>(initialState);
+  const [debouncedState, setDebouncedState] = useState<T>(initialState);
 
   // Reset the state when the fixed filter changes
+  const prevDefaultsRef = useRef<T>(defaults);
   useEffect(() => {
-    setState(defaults);
-    setDebouncedState(defaults);
+    // Only react when defaults reference actually changes after mount
+    if (prevDefaultsRef.current !== defaults) {
+      setState(defaults);
+      setDebouncedState(defaults);
+      prevDefaultsRef.current = defaults;
+    }
   }, [defaults]);
+
+  // (Removed separate hydration effect; handled in initialState)
 
   const isFixed = useCallback((key: keyof T) => fixed.includes(key), [fixed]);
 
@@ -119,6 +152,17 @@ export default function useFilter<T extends Object>({
   const submit = useCallback(() => {
     setDebouncedState(state);
   }, [state]);
+
+  // Persist debounced state to localStorage
+  useEffect(() => {
+    if (!persistKey) return;
+    if (typeof window === "undefined") return;
+    try {
+      window.localStorage.setItem(persistKey, JSON.stringify(debouncedState));
+    } catch {
+      // ignore quota errors
+    }
+  }, [debouncedState, persistKey]);
 
   const size = useMemo(() => {
     // @ts-ignore

@@ -19,7 +19,11 @@ export default function useClips({
   pageSize?: number;
   enabled?: boolean;
 } = {}) {
-  const filter = useFilter<ClipFilter>({ defaults: initialFilter, fixed });
+  const filter = useFilter<ClipFilter>({
+    defaults: initialFilter,
+    fixed,
+    persistKey: "filters:clips",
+  });
 
   const { query, pagination, items, total } = usePagedQuery({
     name: "clips",

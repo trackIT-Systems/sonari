@@ -1,4 +1,5 @@
 import FilterBadge, { NumberEqFilterBadge, NumberFilterBadge } from "@/components/filters/FilterBadge";
+import Button from "@/components/Button";
 import { type FilterDef } from "@/components/filters/FilterMenu";
 import {
   BooleanFilter,
@@ -280,10 +281,20 @@ const tasksFilterDefs: FilterDef<AnnotationTaskFilter>[] = [
         onRemove={clear}
       />
     ),
-    selector: ({ setFilter }) => {
-      setFilter("night", {eq: true, timezone: Intl.DateTimeFormat().resolvedOptions().timeZone});
-      return null;
-    },
+    selector: ({ setFilter }) => (
+      <Button
+        mode="text"
+        variant="info"
+        onClick={() =>
+          setFilter(
+            "night",
+            { eq: true, timezone: Intl.DateTimeFormat().resolvedOptions().timeZone },
+          )
+        }
+      >
+        Apply
+      </Button>
+    ),
     description: "Only show tasks during night time.",
     icon: (
       <MoonIcon className="h-5 w-5 inline-block text-stone-500 mr-1 align-middle" />
@@ -299,10 +310,20 @@ const tasksFilterDefs: FilterDef<AnnotationTaskFilter>[] = [
         onRemove={clear}
       />
     ),
-    selector: ({ setFilter }) => {
-      setFilter("day", {eq: true, timezone: Intl.DateTimeFormat().resolvedOptions().timeZone});
-      return null;
-    },
+    selector: ({ setFilter }) => (
+      <Button
+        mode="text"
+        variant="info"
+        onClick={() =>
+          setFilter(
+            "day",
+            { eq: true, timezone: Intl.DateTimeFormat().resolvedOptions().timeZone },
+          )
+        }
+      >
+        Apply
+      </Button>
+    ),
     description: "Only show tasks during day time.",
     icon: (
       <SunIcon className="h-5 w-5 inline-block text-stone-500 mr-1 align-middle" />
