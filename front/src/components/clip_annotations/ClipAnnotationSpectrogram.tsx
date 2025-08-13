@@ -367,6 +367,14 @@ export default function ClipAnnotationSpectrogram({
     // Draw waveform first
     waveform.draw(ctx);
     
+    // Draw the audio tracking onset over the waveform
+    if (trackingAudio) {
+      drawTrackAudio(ctx);
+    } else {
+      // Draw static onset when not playing
+      drawOnsetAt?.(ctx, audio.currentTime);
+    }
+    
     // Always draw sound event annotations when enabled
     if (withSoundEvent && soundEvents.length > 0) {
       drawWaveformAnnotationsLegacy(ctx);
@@ -374,7 +382,7 @@ export default function ClipAnnotationSpectrogram({
     
     // Draw measurement-aware annotations (includes measurement reflection from spectrogram)
     drawWaveformAnnotations(ctx);
-  }, [waveform, withSoundEvent, soundEvents, drawWaveformAnnotations, drawWaveformAnnotationsLegacy]);
+  }, [waveform, trackingAudio, drawTrackAudio, drawOnsetAt, audio.currentTime, withSoundEvent, soundEvents, drawWaveformAnnotations, drawWaveformAnnotationsLegacy]);
 
   useCanvas({ ref: spectrogramCanvasRef as React.RefObject<HTMLCanvasElement>, draw: drawSpectrogramCanvas });
   useCanvas({ ref: waveformCanvasRef as React.RefObject<HTMLCanvasElement>, draw: drawWaveformCanvas });
