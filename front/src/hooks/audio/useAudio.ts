@@ -108,11 +108,28 @@ export default function useAudio({
     setIsPlaying(false);
   }, [speed]);
 
+  // Track when we should stop audio on cleanup (only for recording changes)
+  const shouldStopOnCleanup = useRef<boolean>(false);
+  const prevFullAudioUrl = useRef<string | undefined>(undefined);
+  
   useEffect(() => {
     const { current } = audio;
     
+    // Check if this is a recording change (different audio file)
+    const isRecordingChange = prevFullAudioUrl.current !== undefined && 
+                              prevFullAudioUrl.current !== fullAudioUrl;
+    
+    // Set flag for cleanup function
+    shouldStopOnCleanup.current = isRecordingChange;
+    
     // Only update src if it's different (avoids re-download)
     if (current.src !== fullAudioUrl) {
+      // Stop current audio before changing source if this is a recording change
+      if (isRecordingChange) {
+        current.pause();
+        setIsPlaying(false);
+      }
+      
       current.preload = "auto";
       current.src = fullAudioUrl;
       current.load();
@@ -126,9 +143,12 @@ export default function useAudio({
     current.currentTime = playbackStartTime / speed;
     setTime(playbackStartTime);
     
-    if (withAutoplay) {
+    if (withAutoplay && !isRecordingChange) {
       current.play().then(() => setIsPlaying(true)).catch(() => {});
     }
+
+    // Update the previous URL after processing
+    prevFullAudioUrl.current = fullAudioUrl;
 
     let timer: number;
 
@@ -188,10 +208,12 @@ export default function useAudio({
       current.removeEventListener("pause", onPause);
       current.removeEventListener("error", onError);
       current.removeEventListener("ended", onEnded);
-      // Stop audio playback when component unmounts or recording changes
-      current.pause();
-      current.currentTime = 0;
-      setIsPlaying(false);
+      // Only stop audio during cleanup if this was a recording change
+      if (shouldStopOnCleanup.current) {
+        current.pause();
+        current.currentTime = 0;
+        setIsPlaying(false);
+      }
     };
   }, [fullAudioUrl, speed, playbackStartTime, playbackEndTime, loop, volume, withAutoplay]);
 
