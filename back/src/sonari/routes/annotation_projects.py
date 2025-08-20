@@ -318,16 +318,22 @@ async def export_annotation_project_multibase(
     session: Session,
     project_ids: list[int],
     tags: Annotated[list[str], Query()],
-    statuses: Annotated[list[str], Query()],
+    statuses: Annotated[list[str] | None, Query()] = None,
 ) -> Response:
     """Export an annotation project."""
+    filters = [
+        models.AnnotationTask.annotation_project_id.in_(project_ids),
+    ]
+    if statuses:
+        filters.append(
+            models.AnnotationTask.status_badges.any(
+                models.AnnotationStatusBadge.state.in_(statuses)
+            )
+        )
     tasks = await api.annotation_tasks.get_many(
         session,
         limit=-1,
-        filters=[
-            models.AnnotationTask.annotation_project_id.in_(project_ids),
-            models.AnnotationTask.status_badges.any(models.AnnotationStatusBadge.state.in_(statuses)),
-        ],
+        filters=filters,
     )
 
     # Create a new workbook and select the active sheet
@@ -421,8 +427,8 @@ async def export_annotation_project(
     session: Session,
     annotation_project_uuids: Annotated[list[UUID], Query()],
     tags: Annotated[list[str], Query()],
-    statuses: Annotated[list[str], Query()],
     format: str,
+    statuses: Annotated[list[str] | None, Query()] = None,
 ) -> Response:
     projects = await api.annotation_projects.get_many(
         session, limit=-1, filters=[models.AnnotationProject.uuid.in_(annotation_project_uuids)]

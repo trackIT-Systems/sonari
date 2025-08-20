@@ -128,10 +128,12 @@ export default function AnnotationExport() {
           ? selectedTags.map(tag => `tags=${encodeURIComponent(`${tag.key}:${tag.value}`)}`).join('&')
           : 'tags=[]';
 
-      const statusParams =
-        selectedStatuses.length > 0
-          ? selectedStatuses.map(status => `statuses=${encodeURIComponent(status)}`).join('&')
-          : 'statuses=[]';
+      const statusesToUse = selectedStatuses.length > 0
+        ? selectedStatuses
+        : Object.values(AnnotationStatusSchema.enum);
+      const statusParams = statusesToUse
+        .map(status => `statuses=${encodeURIComponent(status)}`)
+        .join('&');
 
       const queryString = `${tagParams}&${statusParams}&format=${exportFormat}`;
       const { blob, filename } = await api.annotationProjects.download(selectedProjects, queryString);
@@ -177,7 +179,7 @@ export default function AnnotationExport() {
     !selectedTags.some(t => t.key === tag.key && t.value === tag.value)
   );
 
-  const isSelectionMade = selectedTags.length > 0 && selectedStatuses.length > 0 && selectedProjects.length > 0;
+  const isSelectionMade = selectedTags.length > 0 && selectedProjects.length > 0;
 
   return (
     <div className="flex flex-col gap-8">
@@ -319,9 +321,7 @@ export default function AnnotationExport() {
                   </Button>
                 </>
               ) : (
-                <p className="text-stone-500">
-                  Select at least one tag, project and one status badge
-                </p>
+                <p className="text-stone-500">Select at least one tag and one project</p>
               )}
             </Card>
           </div>
