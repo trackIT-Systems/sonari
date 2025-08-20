@@ -86,6 +86,15 @@ export default function AnnotationExport() {
     setSelectedTags(prev => prev.filter(t => t.key !== tag.key || t.value !== tag.value));
   };
 
+  const handleSelectAllTags = () => {
+    if (availableTags.length === 0) return;
+    setSelectedTags(prev => {
+      // Add only the tags that are not already selected
+      const tagsToAdd = availableTags.filter(avail => !prev.some(sel => sel.key === avail.key && sel.value === avail.value));
+      return [...prev, ...tagsToAdd];
+    });
+  };
+
   const handleProjectSelect = (tag: Tag) => {
     const project = availableProjects.find(p => p.label === tag.value)?.value;
     if (project && !selectedProjects.some(p => p.uuid === project.uuid)) {
@@ -210,7 +219,18 @@ export default function AnnotationExport() {
               <div className="grid grid-cols-2 gap-y-4 gap-x-14">
                 <div className="col-span-2 md:col-span-1">
                   <label className="block mb-2 font-medium text-stone-600 dark:text-stone-400">Available Tags</label>
-                  <small className="text-stone-500">Click on a tag to add it to the export selection.</small>
+                  <div className="flex items-center justify-between">
+                    <small className="text-stone-500">Click on a tag to add it to the export selection.</small>
+                    <Button
+                      variant="secondary"
+                      mode="outline"
+                      padding="px-3 py-1.5"
+                      onClick={handleSelectAllTags}
+                      disabled={availableTags.length === 0}
+                    >
+                      Select all
+                    </Button>
+                  </div>
                   <div className="py-2">
                     <TagList autoFocus={false} tags={availableTags} onClick={handleTagSelect} />
                   </div>
