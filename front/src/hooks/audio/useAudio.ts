@@ -188,9 +188,22 @@ export default function useAudio({
       current.removeEventListener("pause", onPause);
       current.removeEventListener("error", onError);
       current.removeEventListener("ended", onEnded);
+      // Stop audio playback when component unmounts or recording changes
+      current.pause();
+      current.currentTime = 0;
+      setIsPlaying(false);
     };
   }, [fullAudioUrl, speed, playbackStartTime, playbackEndTime, loop, volume, withAutoplay]);
 
+  // Cleanup audio on component unmount
+  useEffect(() => {
+    const currentAudio = audio.current;
+    return () => {
+      // Ensure audio is stopped when component unmounts
+      currentAudio.pause();
+      currentAudio.currentTime = 0;
+    };
+  }, []);
 
   // Some browsers return `Promise` on `.play()` and may throw errors
   // if one tries to execute another `.play()` or `.pause()` while that
