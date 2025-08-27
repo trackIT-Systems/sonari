@@ -14,6 +14,7 @@ import {
 } from "@/utils/spectrogram_parameters";
 
 import AmplitudeSettings from "./settings/AmplitudeSettings";
+import ChannelSettings from "./settings/ChannelSettings";
 import ColorSettings from "./settings/ColorSettings";
 import DeNoiseSettings from "./settings/DeNoiseSettings";
 import FilteringSettings from "./settings/FilteringSettings";
@@ -30,16 +31,18 @@ import  FreqLineSettings  from "./settings/FreqLineSettings";
 export function SpectrogramSettingForm({
   settings,
   samplerate: recordingSamplerate,
+  maxChannels = 1,
   onChange,
 }: {
   settings: SpectrogramParameters;
   samplerate: number;
+  maxChannels?: number;
   onChange?: (parameters: SpectrogramParameters) => void;
 }) {
   const initialSettings = useMemo(() => {
-    const constraints = computeConstraints(recordingSamplerate);
+    const constraints = computeConstraints(recordingSamplerate, maxChannels);
     return validateParameters(settings, constraints);
-  }, [settings, recordingSamplerate]);
+  }, [settings, recordingSamplerate, maxChannels]);
 
   // Create a custom resolver that will first validate the parameters
   // with respect to the constraints computed from the recording samplerate
@@ -51,13 +54,13 @@ export function SpectrogramSettingForm({
     const currentSamplerate = resample
       ? samplerate || recordingSamplerate
       : recordingSamplerate;
-    const constraints = computeConstraints(currentSamplerate);
+    const constraints = computeConstraints(currentSamplerate, maxChannels);
     const validated = validateParameters(values, constraints);
     
     // Cast the options to match the expected type
     return await schemaResolver(validated, context, options as any);
   };
-}, [recordingSamplerate]);
+}, [recordingSamplerate, maxChannels]);
 
   const { handleSubmit, watch, control } = useForm({
     resolver,
@@ -68,8 +71,8 @@ export function SpectrogramSettingForm({
 
   const samplerate = watch("samplerate") as number;
   const constraints = useMemo(
-    () => computeConstraints(samplerate),
-    [samplerate],
+    () => computeConstraints(samplerate, maxChannels),
+    [samplerate, maxChannels],
   );
 
   // When the form is submitted, we debounce the callback to avoid
@@ -87,6 +90,7 @@ export function SpectrogramSettingForm({
 
   return (
     <div className="flex flex-col gap-2">
+      <ChannelSettings control={control} maxChannels={maxChannels} />
       <FreqLineSettings control={control}/>
       <AmplitudeSettings control={control} />
       <ColorSettings constraints={constraints} control={control} />
@@ -101,12 +105,14 @@ export function SpectrogramSettingForm({
 export default function SpectrogramSettings({
   settings,
   samplerate,
+  maxChannels = 1,
   onChange,
   onReset,
   onSave,
 }: {
   settings: SpectrogramParameters;
   samplerate: number;
+  maxChannels?: number;
   onChange?: (parameters: SpectrogramParameters) => void;
   onReset?: () => void;
   onSave?: () => void;
@@ -153,6 +159,7 @@ export default function SpectrogramSettings({
         <SpectrogramSettingForm
           samplerate={samplerate}
           settings={settings}
+          maxChannels={maxChannels}
           onChange={onChange}
         />
       </SlideOver>

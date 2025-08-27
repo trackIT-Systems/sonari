@@ -31,13 +31,19 @@ export type ParameterConstraints = {
   gamma: {
     min: number;
     max: number;
-  },
+  };
+
+  /* Available channels for the recording */
+  channels: {
+    min: number;
+    max: number;
+  };
 };
 
 /** Compute the constraints for the spectrogram parameters
- * based on the samplerate of the audio
+ * based on the samplerate and channel count of the audio
  */
-export function computeConstraints(samplerate: number): ParameterConstraints {
+export function computeConstraints(samplerate: number, maxChannels: number = 1): ParameterConstraints {
   const minWindowSize = MIN_FFT_SIZE / (samplerate/2);
   const maxWindowSize = MAX_FFT_SIZE / (samplerate/2);
   return {
@@ -57,6 +63,10 @@ export function computeConstraints(samplerate: number): ParameterConstraints {
     gamma: {
       min: 1.0,
       max: 5.0,
+    },
+    channels: {
+      min: 0,
+      max: Math.max(0, maxChannels - 1), // 0-indexed
     },
   };
 }
@@ -87,6 +97,7 @@ export function validateParameters(
   const windowSize = clamp(parameters.window_size, constraints.windowSize);
   const hopSize = clamp(parameters.hop_size, constraints.hopSize);
   const gamma = clamp(parameters.gamma, constraints.gamma);
+  const channel = clamp(parameters.channel, constraints.channels);
 
   return {
     ...parameters,
@@ -96,5 +107,6 @@ export function validateParameters(
     window_size: windowSize,
     hop_size: hopSize,
     gamma: gamma,
+    channel: channel,
   };
 }

@@ -445,6 +445,7 @@ export default function ClipAnnotationSpectrogram({
         {withSettings && withSpectrogram && withSoundEvent && (
           <SpectrogramSettings
             samplerate={recording.samplerate}
+            maxChannels={recording.channels}
             settings={spectrogram.parameters}
             onChange={spectrogram.setParameters}
             onReset={spectrogram.resetParameters}

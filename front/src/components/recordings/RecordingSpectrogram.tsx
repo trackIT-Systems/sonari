@@ -123,6 +123,7 @@ export default function RecordingSpectrogram({
         {withSettings && (
           <SpectrogramSettings
             samplerate={recording.samplerate}
+            maxChannels={recording.channels}
             settings={spectrogram.parameters}
             onChange={spectrogram.setParameters}
             onReset={spectrogram.resetParameters}
