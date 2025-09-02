@@ -6,16 +6,13 @@ import { H2, H3 } from "@/components/Headings";
 import { DownloadIcon, CheckIcon, CloseIcon, VerifiedIcon, HelpIcon } from "@/components/icons";
 import TagList from "@/components/tags/TagList";
 import Tooltip from "@/components/Tooltip";
-import useAnnotationProject from "@/hooks/api/useAnnotationProject";
 import Toggle from "@/components/inputs/Toggle";
 import { InputGroup } from "@/components/inputs/index";
 import Loading from "@/components/Loading";
 
 import type { Tag, AnnotationStatus, AnnotationProject } from "@/types";
 import api from "@/app/api";
-import AnnotationProjectList from "../annotation_projects/AnnotationProjectList";
-import Select from "../inputs/Select"
-import type { Option } from "@/components/inputs/Select"; // adjust path
+import type { Option } from "@/components/inputs/Select";
 
 const statusIcons: Record<AnnotationStatus, React.ReactNode> = {
   verified: <VerifiedIcon className="w-6 h-6 text-blue-500" />,
@@ -31,7 +28,7 @@ const statusTooltips: Record<AnnotationStatus, string> = {
   completed: "Accept",
 };
 
-type ExportFormat = 'MultiBase' | 'Territory';
+type ExportFormat = 'MultiBase';
 
 export default function AnnotationExport() {
   const [selectedTags, setSelectedTags] = useState<Tag[]>([]);
@@ -43,7 +40,6 @@ export default function AnnotationExport() {
   const [availableProjects, setAvailableProjects] = useState<Option<AnnotationProject>[]>([]);
 
 
-  //const annotationProject = selectedProject ? useAnnotationProject({uuid: selectedProject.uuid, annotationProject: selectedProject}) : null;
   useEffect(() => {
     async function fetchProjects() {
       try {
@@ -280,12 +276,6 @@ export default function AnnotationExport() {
                     <Toggle
                       isSelected={exportFormat === "MultiBase"}
                       onChange={() => handleExportFormatChange("MultiBase")}
-                    />
-                  </InputGroup>
-                  <InputGroup name="territory-format" label="Territory">
-                    <Toggle
-                      isSelected={exportFormat === "Territory"}
-                      onChange={() => handleExportFormatChange("Territory")}
                     />
                   </InputGroup>
                 </div>
