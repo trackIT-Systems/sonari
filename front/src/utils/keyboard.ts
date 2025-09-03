@@ -64,9 +64,8 @@ export const getSpecialKeyLabel = (key: string) => {
 };
 
 // Root level shortcuts
-export const GO_DATASETS_SHORTCUT = "1";
-export const GO_PROJECTS_SHORTCUT = "2";
-export const GO_EXPORT_SHORTCUT = "8";
+export const GO_PROJECTS_SHORTCUT = "1";
+export const GO_EXPORT_SHORTCUT = "2";
 export const GO_PROFILE_SHORTCUT = "9";
 export const LOGOUT_SHORTCUT = "0";
 
@@ -138,11 +137,6 @@ export const FILTER_POPOVER_SHORTCUT = "f";
 
 export const ROOT_NAVIGATION_SHORTCUTS: KeyShortcut[] = [
     {
-        label: "Open Datasets",
-        shortcut: `${getSpecialKeyLabel("Shift")} ${getMetaKeyLabel()} ${GO_DATASETS_SHORTCUT}`,
-        description: "Go to dataset overview",
-    },
-    {
         label: "Open Projects",
         shortcut: `${getSpecialKeyLabel("Shift")} ${getMetaKeyLabel()} ${GO_PROJECTS_SHORTCUT}`,
         description: "Go to annotation project overview",
@@ -153,9 +147,9 @@ export const ROOT_NAVIGATION_SHORTCUTS: KeyShortcut[] = [
         description: "Go to annotation projects export",
     },
     {
-        label: "Open Profile",
+        label: "Open Account",
         shortcut: `${getSpecialKeyLabel("Shift")} ${getMetaKeyLabel()} ${GO_PROFILE_SHORTCUT}`,
-        description: "Go to user profile page",
+        description: "Go to user account page",
     },
     {
         label: "Logout",

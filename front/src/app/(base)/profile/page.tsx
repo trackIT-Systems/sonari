@@ -11,7 +11,7 @@ export default function Page() {
 
   return (
     <>
-      <Hero text="Profile" />
+      <Hero text="Account" />
       <Center>
         <Card className="max-w-prose">
           <UserProfile user={user} />

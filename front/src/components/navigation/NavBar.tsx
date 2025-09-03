@@ -64,7 +64,7 @@ function UserMenu({ user, onLogout }: { user?: User; onLogout?: () => void }) {
                   "group flex w-full items-center rounded-md px-2 py-2 text-sm",
                 )}
               >
-                Profile
+                Account
               </a>
             )}
           </MenuItem>

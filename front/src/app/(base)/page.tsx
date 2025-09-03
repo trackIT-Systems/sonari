@@ -18,39 +18,46 @@ export default function Page() {
             Sonari
           </span>
         </h1>
-        {/* <h2 className="text-center text-3xl text-stone-500 dark:text-stone-500">
-          Audio annotation tool with ML in mind!
-        </h2> */}
       </div>
       <div className="pt-16">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-8">
+        <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-3 gap-8">
           <Card className="p-6 justify-between">
-            <h2 className="text-2xl font-bold mb-4">
-              Create and Manage Datasets
-            </h2>
+            <h2 className="text-2xl font-bold mb-4">Annotate</h2>
             <p className="text-sm mb-4">
-              Register new datasets of audio recordings and manage their
-              metadata.
-            </p>
-            <Link
-              mode="text"
-              href="/datasets/"
-              className="text-sm underline font-bold"
-            >
-              Get Started
-            </Link>
-          </Card>
-          <Card className="p-6 justify-between">
-            <h2 className="text-2xl font-bold mb-4">Annotate Audio</h2>
-            <p className="text-sm mb-4">
-              Handle annotation projects, monitor progress, and export data.
+              Annotate audio recordings.
             </p>
             <Link
               mode="text"
               href="/annotation_projects/"
               className="text-sm underline font-bold"
             >
-              Start Annotating
+              Annotate
+            </Link>
+          </Card>
+          <Card className="p-6 justify-between">
+            <h2 className="text-2xl font-bold mb-4">Export</h2>
+            <p className="text-sm mb-4">
+              Export your annotations.
+            </p>
+            <Link
+              mode="text"
+              href="/export/"
+              className="text-sm underline font-bold"
+            >
+              Export
+            </Link>
+          </Card>
+          <Card className="p-6 justify-between">
+            <h2 className="text-2xl font-bold mb-4">Account</h2>
+            <p className="text-sm mb-4">
+              Edit your account.
+            </p>
+            <Link
+              mode="text"
+              href="/profile/"
+              className="text-sm underline font-bold"
+            >
+              Account
             </Link>
           </Card>
         </div>

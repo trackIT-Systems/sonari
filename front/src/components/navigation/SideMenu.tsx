@@ -9,7 +9,6 @@ import {
   GO_EXPORT_SHORTCUT,
   GO_PROFILE_SHORTCUT,
   LOGOUT_SHORTCUT,
-  GO_DATASETS_SHORTCUT,
   getSpecialKeyLabel
 } from "@/utils/keyboard";
 
@@ -129,20 +128,10 @@ function MainNavigation({ pathname }: { pathname?: string }) {
     <ul className="flex flex-col space-y-3 py-4 text-stone-400">
       <li className="px-3">
         <SideMenuLink
-          isActive={pathname?.startsWith("/datasets")}
-          tooltip={"Datasets"}
-          href="/datasets"
-          keyboardKeys={[`${getSpecialKeyLabel("Shift")}`, `${getMetaKeyLabel()}`, "1"]}
-        >
-          <DatasetsIcon className="w-6 h-6 text-stone-400" />
-        </SideMenuLink>
-      </li>
-      <li className="px-3">
-        <SideMenuLink
           isActive={pathname?.startsWith("/annotation_projects")}
           tooltip={"Annotation Projects"}
           href="/annotation_projects"
-          keyboardKeys={[`${getSpecialKeyLabel("Shift")}`, `${getMetaKeyLabel()}`, "2"]}
+          keyboardKeys={[`${getSpecialKeyLabel("Shift")}`, `${getMetaKeyLabel()}`, "1"]}
         >
           <AnnotationProjectIcon className="w-6 h-6 text-stone-400" />
         </SideMenuLink>
@@ -152,7 +141,7 @@ function MainNavigation({ pathname }: { pathname?: string }) {
           isActive={pathname?.startsWith("/export")}
           tooltip={"Export"}
           href="/export"
-          keyboardKeys={[`${getSpecialKeyLabel("Shift")}`, `${getMetaKeyLabel()}`, "8"]}
+          keyboardKeys={[`${getSpecialKeyLabel("Shift")}`, `${getMetaKeyLabel()}`, "2"]}
         >
           <DownloadIcon className="w-6 h-6 text-stone-400" />
         </SideMenuLink>
@@ -203,12 +192,6 @@ export function SideMenu({
   const router = useRouter()
 
   const shortcuts: ShortcutConfig[] = [
-    {
-      key: GO_DATASETS_SHORTCUT,
-      shiftKey: true,
-      metaKey: true,
-      action: () => { router.push("/datasets") },
-    },
     {
       key: GO_PROJECTS_SHORTCUT,
       shiftKey: true,

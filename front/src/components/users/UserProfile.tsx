@@ -21,11 +21,11 @@ export default function UserProfile(props: { user: User }) {
       <div className="px-4 sm:px-0 inline-flex items-end">
         <UserIcon className="w-12 h-12 text-stone-500" />
         <h3 className="text-base font-semibold leading-7 text-stone-900 dark:text-stone-200">
-          Your Profile
+          Your Account
         </h3>
       </div>
       <p className="text-stone-500">
-        Manage your public profile information here. Please note that this
+        Manage your public account information here. Please note that this
         information is visible to other users. Your username is used for
         authentication, so ensure it&apos;s memorable.
       </p>
