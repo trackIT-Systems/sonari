@@ -1,17 +1,12 @@
 """REST API routes for annotation projects."""
 
-import datetime
 import json
-from io import BytesIO
 from typing import Annotated
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Query, UploadFile
-from fastapi.responses import Response
-from openpyxl import Workbook
-from soundevent.io.aoef import to_aeof
+from fastapi import APIRouter, Depends, UploadFile
 
-from sonari import api, models, schemas
+from sonari import api, schemas
 from sonari.api.io import aoef
 from sonari.filters.annotation_projects import AnnotationProjectFilter
 from sonari.routes.dependencies import Session, SonariSettings
@@ -172,147 +167,6 @@ async def remove_tag_from_annotation_project(
     )
     await session.commit()
     return project
-
-
-async def export_annotation_project_soundevent(
-    session: Session,
-    annotation_project_uuids: list[UUID],
-):
-    """Export an annotation project."""
-    all_objs = []
-    for uuid in annotation_project_uuids:
-        sonari_project = await api.annotation_projects.get(session, uuid)
-        soundevent_project = await api.annotation_projects.to_soundevent(session, sonari_project)
-        obj = to_aeof(soundevent_project)
-        all_objs.append(obj.model_dump())
-    filename = "soundevent_export.json"
-    return Response(
-        all_objs,
-        media_type="application/json",
-        headers={"Content-Disposition": f"attachment; filename={filename}"},
-    )
-
-
-async def export_annotation_project_multibase(
-    session: Session,
-    project_ids: list[int],
-    tags: Annotated[list[str], Query()],
-    statuses: Annotated[list[str] | None, Query()] = None,
-) -> Response:
-    """Export an annotation project."""
-    filters = [
-        models.AnnotationTask.annotation_project_id.in_(project_ids),
-    ]
-    if statuses:
-        filters.append(models.AnnotationTask.status_badges.any(models.AnnotationStatusBadge.state.in_(statuses)))
-    tasks = await api.annotation_tasks.get_many(
-        session,
-        limit=-1,
-        filters=filters,
-    )
-
-    # Create a new workbook and select the active sheet
-    wb = Workbook()
-    ws = wb.active
-    if ws is None:
-        return Response(status_code=422)
-    ws.title = "Beobachtungen"
-
-    # Append the header to the excel file
-    ws.append([
-        "Art",
-        "Datum",
-        "Tag",
-        "Monat",
-        "Jahr",
-        "Beobachter",
-        "Bestimmer",
-        "Fundort",
-        "X",
-        "Y",
-        "EPSG",
-        "Nachweistyp",
-        "Bemerkung_1",
-    ])
-
-    for task in tasks[0]:
-        if not task.clip_annotation:
-            continue
-
-        clip_annotation: schemas.ClipAnnotation = task.clip_annotation
-        clip_annotation_notes: str = "|"
-        for n in clip_annotation.notes:
-            clip_annotation_notes += f" {n.message} "
-            clip_annotation_notes += "|"
-
-        for sound_event_annotation in clip_annotation.sound_events:
-            tag_set: set[str] = {f"{tag.key}:{tag.value}" for tag in sound_event_annotation.tags}
-            for tag in tags:
-                if tag in tag_set:
-                    if not task.clip:
-                        continue
-
-                    species = tag.split(":")[-1]
-
-                    date = task.clip.recording.date
-                    if date is None:
-                        date = ""
-                        day = ""
-                        month = ""
-                        year = ""
-                    else:
-                        day = date.day
-                        month = date.month
-                        year = date.year
-
-                    station = task.clip.recording.path.stem.split("_")[0]
-                    latitude = task.clip.recording.latitude
-                    longitude = task.clip.recording.longitude
-
-                    # Write the content to the worksheet
-                    ws.append(
-                        f"{species};{date};{day};{month};{year};;;{station};{latitude};{longitude};4326;Akustik;{clip_annotation_notes}".split(
-                            ";"
-                        )
-                    )
-
-    # Save the workbook to a BytesIO object
-    excel_file = BytesIO()
-    wb.save(excel_file)
-    excel_file.seek(0)
-
-    # Generate the filename
-    filename = f"{datetime.datetime.now().strftime('%d.%m.%Y_%H_%M')}_multibase.xlsx"
-
-    return Response(
-        excel_file.getvalue(),
-        status_code=200,
-        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        headers={
-            "content-disposition": f"attachment; filename={filename}",
-            "content-type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        },
-    )
-
-
-@annotation_projects_router.get(
-    "/detail/export/",
-)
-async def export_annotation_project(
-    session: Session,
-    annotation_project_uuids: Annotated[list[UUID], Query()],
-    tags: Annotated[list[str], Query()],
-    format: str,
-    statuses: Annotated[list[str] | None, Query()] = None,
-) -> Response:
-    projects = await api.annotation_projects.get_many(
-        session, limit=-1, filters=[models.AnnotationProject.uuid.in_(annotation_project_uuids)]
-    )
-    project_ids = [p.id for p in projects[0]]
-    if format == "MultiBase":
-        return await export_annotation_project_multibase(session, project_ids, tags, statuses)
-    else:
-        return Response(status_code=501)
 
 
 @annotation_projects_router.post(

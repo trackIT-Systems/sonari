@@ -13,6 +13,7 @@ import { registerAuthAPI } from "./auth";
 import { registerClipAnnotationsAPI } from "./clip_annotations";
 import { registerClipAPI } from "./clips";
 import { registerDatasetAPI } from "./datasets";
+import { registerExportAPI } from "./export";
 import { registerNotesAPI } from "./notes";
 import { registerRecordingAPI } from "./recordings";
 import { registerSoundEventAnnotationsAPI } from "./sound_event_annotations";
@@ -40,6 +41,7 @@ export default function createAPI(config: APIConfig) {
     auth: registerAuthAPI(instance),
     clips: registerClipAPI(instance),
     datasets: registerDatasetAPI(instance),
+    export: registerExportAPI(instance),
     notes: registerNotesAPI(instance),
     recordings: registerRecordingAPI(instance),
     soundEvents: registerSoundEventAPI(instance),
