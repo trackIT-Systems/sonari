@@ -49,6 +49,22 @@ export default function ExportPage() {
               Export Passes
             </Link>
           </Card>
+          <Card className="p-6 justify-between">
+            <h2 className="text-2xl font-bold mb-4">
+                Dump
+            </h2>
+            <p className="text-sm mb-4">
+              Export comprehensive sound event annotation data in CSV format with all features, 
+              coordinates, and metadata..
+            </p>
+            <Link
+              mode="text"
+              href="/export/dump/"
+              className="text-sm underline font-bold"
+            >
+              Export Dump
+            </Link>
+          </Card>
         </div>
       </div>
     </div>

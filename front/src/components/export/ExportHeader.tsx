@@ -40,6 +40,15 @@ export default function ExportHeader() {
                                 router.push(`/export/passes/?${params.toString()}`);
                             },
                         },
+                        {
+                            id: "dump",
+                            title: "Dump",
+                            isActive: selectedLayoutSegment === "dump",
+                            icon: <EditIcon className="w-5 h-5 align-middle" />,
+                            onClick: () => {
+                                router.push(`/export/dump/?${params.toString()}`);
+                            },
+                        },
                     ]}
                 />
             </div>

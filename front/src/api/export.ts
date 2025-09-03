@@ -4,6 +4,7 @@ import type { AnnotationProject } from "@/types";
 
 const DEFAULT_ENDPOINTS = {
   multibase: "/api/v1/export/multibase/",
+  dump: "/api/v1/export/dump/",
   passes: "/api/v1/export/passes/",
 };
 
@@ -64,6 +65,39 @@ export function registerExportAPI(
     return { blob, filename };
   }
 
+  async function exportDump(
+    annotationProjects: AnnotationProject[],
+  ): Promise<{ blob: Blob; filename: string }> {
+    const params = new URLSearchParams();
+    
+    // Add annotation project UUIDs
+    annotationProjects.forEach(project => {
+      params.append('annotation_project_uuids', project.uuid);
+    });
+
+    const response = await instance.get(`${endpoints.dump}?${params.toString()}`, {
+      responseType: 'blob',
+      withCredentials: true,
+    });
+
+    // Extract filename from Content-Disposition header
+    const contentDisposition = response.headers['content-disposition'];
+    let filename = 'dump.csv'; // Default filename
+    if (contentDisposition) {
+      const filenameMatch = contentDisposition.match(/filename="?(.+)"?/i);
+      if (filenameMatch) {
+        filename = filenameMatch[1];
+      }
+    }
+
+    // Create a Blob with the correct MIME type for XLSX
+    const blob = new Blob([response.data], { 
+      type: 'text/csv' 
+    });
+
+    return { blob, filename };
+  }
+
   async function exportPasses(
     annotationProjects: AnnotationProject[],
     tags: string[],
@@ -119,6 +153,7 @@ export function registerExportAPI(
 
   return {
     multibase: exportMultiBase,
+    dump: exportDump,
     passes: exportPasses,
   } as const;
 }
