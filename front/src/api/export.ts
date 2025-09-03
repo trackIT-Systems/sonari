@@ -102,8 +102,10 @@ export function registerExportAPI(
     annotationProjects: AnnotationProject[],
     tags: string[],
     statuses?: string[],
-    passThreshold: number = 0.8,
-    includeMetadata: boolean = true
+    eventCount?: number,
+    timePeriod?: { type: 'predefined'; value: string } | { type: 'custom'; value: number; unit: string },
+    startDate?: string,
+    endDate?: string,
   ): Promise<{ blob: Blob; filename: string }> {
     const params = new URLSearchParams();
     
@@ -124,10 +126,29 @@ export function registerExportAPI(
       });
     }
     
-    // Add format-specific parameters
-    params.append('pass_threshold', passThreshold.toString());
-    params.append('include_metadata', includeMetadata.toString());
+    // Add passes configuration
+    if (eventCount !== undefined) {
+      params.append('event_count', eventCount.toString());
+    }
+    
+    if (timePeriod) {
+      params.append('time_period_type', timePeriod.type);
+      if (timePeriod.type === 'predefined') {
+        params.append('predefined_period', timePeriod.value);
+      } else {
+        params.append('custom_period_value', timePeriod.value.toString());
+        params.append('custom_period_unit', timePeriod.unit);
+      }
+    }
 
+    // Add date range if provided
+    if (startDate) {
+      params.append('start_date', startDate);
+    }
+    if (endDate) {
+      params.append('end_date', endDate);
+    }
+  
     const response = await instance.get(`${endpoints.passes}?${params.toString()}`, {
       responseType: 'blob',
       withCredentials: true,
@@ -135,7 +156,7 @@ export function registerExportAPI(
 
     // Extract filename from Content-Disposition header
     const contentDisposition = response.headers['content-disposition'];
-    let filename = 'passes_export.json'; // Default filename
+    let filename = 'passes_export.csv'; // Default filename
     if (contentDisposition) {
       const filenameMatch = contentDisposition.match(/filename="?(.+)"?/i);
       if (filenameMatch) {
