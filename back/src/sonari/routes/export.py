@@ -23,66 +23,16 @@ __all__ = [
 ]
 
 
-export_router = APIRouter()
+class ExportConstants:
+    """Constants used across export functions."""
 
+    DEFAULT_BATCH_SIZE = 1000
+    DEFAULT_DATE_FORMAT = "DD.MM.YYYY"
+    DEFAULT_EVENT_COUNT = 2
+    NIGHT_START_HOUR = 18  # 6PM
+    NIGHT_END_HOUR = 6  # 6AM
 
-@export_router.get("/multibase/")
-async def export_multibase(
-    session: Session,
-    annotation_project_uuids: Annotated[list[UUID], Query()],
-    tags: Annotated[list[str], Query()],
-    statuses: Annotated[list[str] | None, Query()] = None,
-    include_notes: bool = True,
-    date_format: str = "DD.MM.YYYY",
-) -> Response:
-    """Export annotation projects in MultiBase format."""
-    # Get the projects and their IDs
-    projects = await api.annotation_projects.get_many(
-        session, limit=-1, filters=[models.AnnotationProject.uuid.in_(annotation_project_uuids)]
-    )
-    project_ids = [p.id for p in projects[0]]
-
-    # Build filters for annotation tasks
-    filters = [
-        models.AnnotationTask.annotation_project_id.in_(project_ids),
-    ]
-    if statuses:
-        # Handle special "no" status for tasks without any status badges
-        status_filters = []
-        regular_statuses = [s for s in statuses if s != "no"]
-
-        # Add filter for tasks with matching status badges
-        if regular_statuses:
-            status_filters.append(
-                models.AnnotationTask.status_badges.any(models.AnnotationStatusBadge.state.in_(regular_statuses))
-            )
-
-        # Add filter for tasks with no status badges
-        if "no" in statuses:
-            status_filters.append(~models.AnnotationTask.status_badges.any())
-
-        # Combine status filters with OR logic
-        if len(status_filters) == 1:
-            filters.append(status_filters[0])
-        elif len(status_filters) > 1:
-            filters.append(or_(*status_filters))
-
-    # Get annotation tasks
-    tasks = await api.annotation_tasks.get_many(
-        session,
-        limit=-1,
-        filters=filters,
-    )
-
-    # Create a new workbook and select the active sheet
-    wb = Workbook()
-    ws = wb.active
-    if ws is None:
-        return Response(status_code=422)
-    ws.title = "Beobachtungen"
-
-    # Append the header to the excel file
-    ws.append([
+    MULTIBASE_HEADERS = [
         "Art",
         "Datum",
         "Tag",
@@ -96,7 +46,175 @@ async def export_multibase(
         "EPSG",
         "Nachweistyp",
         "Bemerkung_1",
-    ])
+    ]
+
+    DUMP_HEADERS = [
+        "filename",
+        "date",
+        "time",
+        "longitude",
+        "latitude",
+        "sound_event_tags",
+        "media_duration",
+        "detection_confidence",
+        "species_confidence",
+        "start_time",
+        "lower_frequency",
+        "end_time",
+        "higher_frequency",
+        "user",
+        "recording_tags",
+        "task_status_badges",
+        "geometry_type",
+    ]
+
+
+class DateFormatter:
+    """Utility class for consistent date formatting across exports."""
+
+    @staticmethod
+    def format_date(date: datetime.date | None, format_type: str = "DD.MM.YYYY") -> str:
+        """Format date according to specified format."""
+        if date is None:
+            return ""
+
+        if format_type == "DD.MM.YYYY":
+            return date.strftime("%d.%m.%Y")
+        else:
+            return str(date)
+
+    @staticmethod
+    def parse_date_string(date_str: str) -> datetime.date:
+        """Parse date string in YYYY-MM-DD format."""
+        return datetime.datetime.strptime(date_str, "%Y-%m-%d").date()
+
+    @staticmethod
+    def extract_date_components(date: datetime.date | None, format_type: str = "DD.MM.YYYY") -> dict:
+        """Extract day, month, year components."""
+        if date is None:
+            return {"day": "", "month": "", "year": "", "date_str": ""}
+
+        return {
+            "day": date.day,
+            "month": date.month,
+            "year": date.year,
+            "date_str": DateFormatter.format_date(date, format_type),
+        }
+
+
+async def _resolve_project_ids(
+    session: Session, annotation_project_uuids: list[UUID]
+) -> tuple[list[int], dict[int, models.AnnotationProject]]:
+    """Resolve annotation project UUIDs to IDs and return both lists and mapping."""
+    projects = await api.annotation_projects.get_many(
+        session, limit=-1, filters=[models.AnnotationProject.uuid.in_(annotation_project_uuids)]
+    )
+    project_list = projects[0]
+    if not project_list:
+        raise ValueError("No valid annotation projects found")
+
+    project_ids = [p.id for p in project_list]
+    projects_by_id = {p.id: p for p in project_list}
+    return project_ids, projects_by_id
+
+
+def _build_status_filters(statuses: list[str] | None) -> list:
+    """Build status filters for annotation tasks."""
+    if not statuses:
+        return []
+
+    status_filters = []
+    regular_statuses = [s for s in statuses if s != "no"]
+
+    # Add filter for tasks with matching status badges
+    if regular_statuses:
+        status_filters.append(
+            models.AnnotationTask.status_badges.any(models.AnnotationStatusBadge.state.in_(regular_statuses))
+        )
+
+    # Add filter for tasks with no status badges
+    if "no" in statuses:
+        status_filters.append(~models.AnnotationTask.status_badges.any())
+
+    # Combine status filters with OR logic
+    if len(status_filters) == 1:
+        return [status_filters[0]]
+    elif len(status_filters) > 1:
+        return [or_(*status_filters)]
+
+    return []
+
+
+async def _get_filtered_annotation_tasks(
+    session: Session, project_ids: list[int], statuses: list[str] | None = None, additional_filters: list | None = None
+) -> tuple[list[models.AnnotationTask], int]:
+    """Get annotation tasks with common filtering logic."""
+    filters = [models.AnnotationTask.annotation_project_id.in_(project_ids)]
+
+    # Add status filters
+    filters.extend(_build_status_filters(statuses))
+
+    # Add any additional filters
+    if additional_filters:
+        filters.extend(additional_filters)
+
+    return await api.annotation_tasks.get_many(
+        session,
+        limit=-1,
+        filters=filters,
+    )
+
+
+def _create_csv_streaming_response(generator_func, export_type: str) -> StreamingResponse:
+    """Create a streaming CSV response with standardized filename."""
+    filename = f"{datetime.datetime.now().strftime('%d.%m.%Y_%H_%M')}_{export_type}.csv"
+    return StreamingResponse(
+        generator_func(),
+        media_type="text/csv",
+        headers={
+            "Content-Disposition": f"attachment; filename={filename}",
+        },
+    )
+
+
+def _find_matching_tags(event_tags: set[str], selected_tags: list[str]) -> list[str]:
+    """Find which selected tags match the event tags."""
+    return [tag for tag in selected_tags if tag in event_tags]
+
+
+def _extract_tag_set(annotation_tags) -> set[str]:
+    """Extract tag set from annotation tags."""
+    return {f"{tag.key}:{tag.value}" for tag in annotation_tags}
+
+
+export_router = APIRouter()
+
+
+@export_router.get("/multibase/")
+async def export_multibase(
+    session: Session,
+    annotation_project_uuids: Annotated[list[UUID], Query()],
+    tags: Annotated[list[str], Query()],
+    statuses: Annotated[list[str] | None, Query()] = None,
+    include_notes: bool = True,
+    date_format: str = ExportConstants.DEFAULT_DATE_FORMAT,
+) -> Response:
+    """Export annotation projects in MultiBase format."""
+    # Get the projects and their IDs
+    project_ids, _ = await _resolve_project_ids(session, annotation_project_uuids)
+
+    # Get annotation tasks with filtering
+    tasks = await _get_filtered_annotation_tasks(session, project_ids, statuses)
+
+    # Create a new workbook and select the active sheet
+    wb = Workbook()
+    ws = wb.active
+    if ws is None:
+        return Response(status_code=422)
+    ws.title = "Beobachtungen"
+
+    # Append the header to the excel file
+    ws.append(ExportConstants.MULTIBASE_HEADERS)
 
     for task in tasks[0]:
         if not task.clip_annotation:
@@ -111,40 +229,38 @@ async def export_multibase(
                 clip_annotation_notes += "|"
 
         for sound_event_annotation in clip_annotation.sound_events:
-            tag_set = {f"{tag.key}:{tag.value}" for tag in sound_event_annotation.tags}
-            for tag in tags:
-                if tag in tag_set:
-                    if not task.clip:
-                        continue
+            tag_set = _extract_tag_set(sound_event_annotation.tags)
+            matching_tags = _find_matching_tags(tag_set, tags)
 
-                    species = tag.split(":")[-1]
+            for tag in matching_tags:
+                if not task.clip:
+                    continue
 
-                    date = task.clip.recording.date
-                    if date is None:
-                        date = ""
-                        day = ""
-                        month = ""
-                        year = ""
-                        date_str = ""
-                    else:
-                        if date_format == "DD.MM.YYYY":
-                            date_str = date.strftime("%d.%m.%Y")
-                        else:
-                            date_str = str(date)
-                        day = date.day
-                        month = date.month
-                        year = date.year
+                species = tag.split(":")[-1]
 
-                    station = task.clip.recording.path.stem.split("_")[0]
-                    latitude = task.clip.recording.latitude
-                    longitude = task.clip.recording.longitude
+                # Extract date components using DateFormatter
+                date_components = DateFormatter.extract_date_components(task.clip.recording.date, date_format)
 
-                    # Write the content to the worksheet
-                    ws.append(
-                        f"{species};{date_str};{day};{month};{year};;;{station};{latitude};{longitude};4326;Akustik;{clip_annotation_notes}".split(
-                            ";"
-                        )
-                    )
+                station = task.clip.recording.path.stem.split("_")[0]
+                latitude = task.clip.recording.latitude
+                longitude = task.clip.recording.longitude
+
+                # Write the content to the worksheet
+                ws.append([
+                    species,
+                    date_components["date_str"],
+                    date_components["day"],
+                    date_components["month"],
+                    date_components["year"],
+                    "",  # Beobachter
+                    "",  # Bestimmer
+                    station,
+                    latitude,
+                    longitude,
+                    "4326",
+                    "Akustik",
+                    clip_annotation_notes,
+                ])
 
     # Save the workbook to a BytesIO object
     excel_file = BytesIO()
@@ -174,40 +290,16 @@ async def export_dump(
     logger = logging.getLogger(__name__)
 
     # Get the projects and their IDs
-    projects = await api.annotation_projects.get_many(
-        session, limit=-1, filters=[models.AnnotationProject.uuid.in_(annotation_project_uuids)]
-    )
-    project_ids = [p.id for p in projects[0]]
+    project_ids, _ = await _resolve_project_ids(session, annotation_project_uuids)
 
-    if not project_ids:
-        raise ValueError("No valid annotation projects found")
-
-    # Hard-coded configuration
-    batch_size = 1000
+    # Configuration
+    batch_size = ExportConstants.DEFAULT_BATCH_SIZE
 
     async def generate_csv():
         """Generate CSV data progressively in batches."""
         try:
             # CSV headers
-            headers = [
-                "filename",
-                "date",
-                "time",
-                "longitude",
-                "latitude",
-                "sound_event_tags",
-                "media_duration",
-                "detection_confidence",
-                "species_confidence",
-                "start_time",
-                "lower_frequency",
-                "end_time",
-                "higher_frequency",
-                "user",
-                "recording_tags",
-                "task_status_badges",
-                "geometry_type",
-            ]
+            headers = ExportConstants.DUMP_HEADERS
 
             # Create CSV header row
             output = StringIO()
@@ -270,16 +362,7 @@ async def export_dump(
             logger.error(f"Error during CSV generation: {e}")
             raise e
 
-    # Generate filename
-    filename = f"{datetime.datetime.now().strftime('%d.%m.%Y_%H_%M')}_dump.csv"
-
-    return StreamingResponse(
-        generate_csv(),
-        media_type="text/csv",
-        headers={
-            "Content-Disposition": f"attachment; filename={filename}",
-        },
-    )
+    return _create_csv_streaming_response(generate_csv, "dump")
 
 
 async def _extract_batch(
@@ -492,7 +575,7 @@ async def export_passes(
     annotation_project_uuids: Annotated[list[UUID], Query()],
     tags: Annotated[list[str], Query()],
     statuses: Annotated[list[str] | None, Query()] = None,
-    event_count: int = 2,
+    event_count: int = ExportConstants.DEFAULT_EVENT_COUNT,
     time_period_type: str = "predefined",
     predefined_period: Annotated[str | None, Query()] = None,
     custom_period_value: Annotated[int | None, Query()] = None,
@@ -504,14 +587,7 @@ async def export_passes(
     logger = logging.getLogger(__name__)
 
     # Get the projects and their IDs
-    projects = await api.annotation_projects.get_many(
-        session, limit=-1, filters=[models.AnnotationProject.uuid.in_(annotation_project_uuids)]
-    )
-    project_ids = [p.id for p in projects[0]]
-    projects_by_id = {p.id: p for p in projects[0]}
-
-    if not project_ids:
-        raise ValueError("No valid annotation projects found")
+    project_ids, projects_by_id = await _resolve_project_ids(session, annotation_project_uuids)
 
     # Convert time period to seconds
     period_seconds = _convert_time_period_to_seconds(
@@ -541,9 +617,9 @@ async def export_passes(
             parsed_start_date = None
             parsed_end_date = None
             if start_date:
-                parsed_start_date = datetime.datetime.strptime(start_date, "%Y-%m-%d").date()
+                parsed_start_date = DateFormatter.parse_date_string(start_date)
             if end_date:
-                parsed_end_date = datetime.datetime.strptime(end_date, "%Y-%m-%d").date()
+                parsed_end_date = DateFormatter.parse_date_string(end_date)
 
             # Extract events with and without datetime information
             events_with_datetime, events_without_datetime = await _extract_events_with_datetime(
@@ -597,16 +673,7 @@ async def export_passes(
             logger.error(f"Error during passes CSV generation: {e}")
             raise e
 
-    # Generate filename
-    filename = f"{datetime.datetime.now().strftime('%d.%m.%Y_%H_%M')}_passes.csv"
-
-    return StreamingResponse(
-        generate_passes_csv(),
-        media_type="text/csv",
-        headers={
-            "Content-Disposition": f"attachment; filename={filename}",
-        },
-    )
+    return _create_csv_streaming_response(generate_passes_csv, "passes")
 
 
 def _convert_time_period_to_seconds(
@@ -673,30 +740,9 @@ async def _extract_events_with_datetime(
     -------
         Tuple of (events_with_datetime, events_without_datetime)
     """
-    # Build filters for annotation tasks (reuse logic from multibase)
-    filters = [
-        models.AnnotationTask.annotation_project_id.in_(project_ids),
-    ]
-    if statuses:
-        # Handle special "no" status for tasks without any status badges
-        status_filters = []
-        regular_statuses = [s for s in statuses if s != "no"]
-
-        # Add filter for tasks with matching status badges
-        if regular_statuses:
-            status_filters.append(
-                models.AnnotationTask.status_badges.any(models.AnnotationStatusBadge.state.in_(regular_statuses))
-            )
-
-        # Add filter for tasks with no status badges
-        if "no" in statuses:
-            status_filters.append(~models.AnnotationTask.status_badges.any())
-
-        # Combine status filters with OR logic
-        if len(status_filters) == 1:
-            filters.append(status_filters[0])
-        elif len(status_filters) > 1:
-            filters.append(or_(*status_filters))
+    # Build filters for annotation tasks
+    filters = [models.AnnotationTask.annotation_project_id.in_(project_ids)]
+    filters.extend(_build_status_filters(statuses))
 
     # Get annotation tasks with annotation_project relationship loaded
     from sqlalchemy.orm import selectinload
@@ -721,8 +767,8 @@ async def _extract_events_with_datetime(
 
         for sound_event_annotation in clip_annotation.sound_events:
             # Check if this event has any of the requested tags
-            event_tags = {f"{tag.key}:{tag.value}" for tag in sound_event_annotation.tags}
-            matching_tags = [tag for tag in tags if tag in event_tags]
+            event_tags = _extract_tag_set(sound_event_annotation.tags)
+            matching_tags = _find_matching_tags(event_tags, tags)
 
             if matching_tags and task.clip:
                 recording = task.clip.recording
@@ -823,9 +869,11 @@ def _generate_night_buckets(
 
     while current_date <= end_date:
         # Night starts at 6PM of current day
-        night_start = datetime.datetime.combine(current_date, datetime.time(18, 0))
+        night_start = datetime.datetime.combine(current_date, datetime.time(ExportConstants.NIGHT_START_HOUR, 0))
         # Night ends at 6AM of next day
-        night_end = datetime.datetime.combine(current_date + timedelta(days=1), datetime.time(6, 0))
+        night_end = datetime.datetime.combine(
+            current_date + timedelta(days=1), datetime.time(ExportConstants.NIGHT_END_HOUR, 0)
+        )
 
         # Only include if within our overall range
         if night_end >= start_datetime and night_start <= end_datetime:
