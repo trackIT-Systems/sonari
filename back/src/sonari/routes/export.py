@@ -10,7 +10,7 @@ from uuid import UUID
 from fastapi import APIRouter, Query
 from fastapi.responses import Response, StreamingResponse
 from openpyxl import Workbook
-from sqlalchemy import select
+from sqlalchemy import or_, select
 from sqlalchemy.orm import joinedload, selectinload
 
 from sonari import api, models
@@ -45,7 +45,25 @@ async def export_multibase(
         models.AnnotationTask.annotation_project_id.in_(project_ids),
     ]
     if statuses:
-        filters.append(models.AnnotationTask.status_badges.any(models.AnnotationStatusBadge.state.in_(statuses)))
+        # Handle special "no" status for tasks without any status badges
+        status_filters = []
+        regular_statuses = [s for s in statuses if s != "no"]
+
+        # Add filter for tasks with matching status badges
+        if regular_statuses:
+            status_filters.append(
+                models.AnnotationTask.status_badges.any(models.AnnotationStatusBadge.state.in_(regular_statuses))
+            )
+
+        # Add filter for tasks with no status badges
+        if "no" in statuses:
+            status_filters.append(~models.AnnotationTask.status_badges.any())
+
+        # Combine status filters with OR logic
+        if len(status_filters) == 1:
+            filters.append(status_filters[0])
+        elif len(status_filters) > 1:
+            filters.append(or_(*status_filters))
 
     # Get annotation tasks
     tasks = await api.annotation_tasks.get_many(

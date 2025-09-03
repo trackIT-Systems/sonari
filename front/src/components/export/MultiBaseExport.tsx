@@ -3,35 +3,38 @@ import { AnnotationStatusSchema } from "@/schemas";
 import Button from "@/components/Button";
 import Card from "@/components/Card";
 import { H3 } from "@/components/Headings";
-import { CheckIcon, CloseIcon, VerifiedIcon, HelpIcon } from "@/components/icons";
+import { CheckIcon, CloseIcon, VerifiedIcon, HelpIcon, NoIcon } from "@/components/icons";
 import TagList from "@/components/tags/TagList";
 import Tooltip from "@/components/Tooltip";
-import Toggle from "@/components/inputs/Toggle";
-import { InputGroup } from "@/components/inputs/index";
 import Loading from "@/components/Loading";
 
 import type { Tag, AnnotationStatus, AnnotationProject } from "@/types";
 import api from "@/app/api";
 import type { Option } from "@/components/inputs/Select";
 
-const statusIcons: Record<AnnotationStatus, React.ReactNode> = {
+const statusIcons: Record<AnnotationStatus | string, React.ReactNode> = {
   verified: <VerifiedIcon className="w-6 h-6 text-blue-500" />,
   rejected: <CloseIcon className="w-6 h-6 text-red-500" />,
   assigned: <HelpIcon className="w-6 h-6 text-amber-500" />,
   completed: <CheckIcon className="w-6 h-6 text-emerald-500" />,
+  "no": <NoIcon className="w-6 h-6 text-slate-500" />,
 };
 
-const statusTooltips: Record<AnnotationStatus, string> = {
+const statusTooltips: Record<AnnotationStatus | string, string> = {
   verified: "Verified",
   rejected: "Reject",
   assigned: "Unsure",
   completed: "Accept",
+  "no": "No State",
 };
 
 export default function MultiBaseExport() {
   const [selectedTags, setSelectedTags] = useState<Tag[]>([]);
-  const [selectedStatuses, setSelectedStatuses] = useState<AnnotationStatus[]>([]);
+  const [selectedStatuses, setSelectedStatuses] = useState<(AnnotationStatus | string)[]>([]);
   const [selectedProjects, setSelectedProjects] = useState<AnnotationProject[]>([]);
+  
+  // Combined array of schema statuses plus the special "no" option
+  const allStatusOptions = [...Object.values(AnnotationStatusSchema.enum), "no"] as const;
   const [projectTags, setProjectTags] = useState<Tag[]>([]);
   const [availableProjects, setAvailableProjects] = useState<Option<AnnotationProject>[]>([]);
   const [isExporting, setIsExporting] = useState(false);
@@ -97,7 +100,7 @@ export default function MultiBaseExport() {
     setSelectedProjects(prev => prev.filter(p => p.name !== tag.value));
   };
 
-  const handleStatusToggle = (status: AnnotationStatus) => {
+  const handleStatusToggle = (status: AnnotationStatus | string) => {
     setSelectedStatuses(prev =>
       prev.includes(status)
         ? prev.filter(s => s !== status)
@@ -229,7 +232,7 @@ export default function MultiBaseExport() {
             <H3>Select Task Statuses</H3>
             <p className="text-stone-500">Select status badges that should be exported.</p>
             <div className="flex flex-row gap-4">
-              {Object.values(AnnotationStatusSchema.enum).map(status => (
+              {allStatusOptions.map(status => (
                 <Tooltip
                   key={status}
                   tooltip={statusTooltips[status as keyof typeof statusTooltips]}
