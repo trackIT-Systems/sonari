@@ -1,7 +1,7 @@
 import {
-  useRouter,
-  useSearchParams,
-  useSelectedLayoutSegment,
+    useRouter,
+    useSearchParams,
+    useSelectedLayoutSegment,
 } from "next/navigation";
 
 import Header from "@/components/Header";
@@ -10,39 +10,39 @@ import { DatasetIcon, EditIcon } from "@/components/icons";
 import Tabs from "@/components/Tabs";
 
 export default function ExportHeader() {
-  const router = useRouter();
-  const params = useSearchParams();
-  const selectedLayoutSegment = useSelectedLayoutSegment();
+    const router = useRouter();
+    const params = useSearchParams();
+    const selectedLayoutSegment = useSelectedLayoutSegment();
 
-  return (
-    <Header>
-      <div className="flex overflow-x-auto flex-row space-x-4 w-full">
-        <H1 className="overflow-auto max-w-xl whitespace-nowrap">
-          Export
-        </H1>
-        <Tabs
-          tabs={[
-            {
-              id: "multibase",
-              title: "MultiBase",
-              isActive: selectedLayoutSegment === null,
-              icon: <DatasetIcon className="w-5 h-5 align-middle" />,
-              onClick: () => {
-                router.push(`/export/?${params.toString()}`);
-              },
-            },
-            {
-              id: "passes",
-              title: "Passes",
-              isActive: selectedLayoutSegment === "passes",
-              icon: <EditIcon className="w-5 h-5 align-middle" />,
-              onClick: () => {
-                router.push(`/export/passes/?${params.toString()}`);
-              },
-            },
-          ]}
-        />
-      </div>
-    </Header>
-  );
+    return (
+        <Header>
+            <div className="flex overflow-x-auto flex-row space-x-4 w-full">
+                <H1 className="overflow-auto max-w-xl whitespace-nowrap">
+                    Export
+                </H1>
+                <Tabs
+                    tabs={[
+                        {
+                            id: "multibase",
+                            title: "MultiBase",
+                            isActive: selectedLayoutSegment === "multibase",
+                            icon: <DatasetIcon className="w-5 h-5 align-middle" />,
+                            onClick: () => {
+                                router.push(`/export/multibase/?${params.toString()}`);
+                            },
+                        },
+                        {
+                            id: "passes",
+                            title: "Passes",
+                            isActive: selectedLayoutSegment === "passes",
+                            icon: <EditIcon className="w-5 h-5 align-middle" />,
+                            onClick: () => {
+                                router.push(`/export/passes/?${params.toString()}`);
+                            },
+                        },
+                    ]}
+                />
+            </div>
+        </Header>
+    );
 }
