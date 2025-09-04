@@ -7,25 +7,14 @@ import {
   ExportTagSelection,
   ExportStatusSelection,
   ExportDateRangeFilter,
-  ExportSummary,
-  ExportPassesConfiguration,
-  TimePeriodType,
-  PredefinedPeriod,
-  TimeUnit
+  ExportSummary
 } from "./shared";
 import api from "@/app/api";
 import Info from "@/components/Info";
 
-export default function PassesExport() {
+export default function StatsExport() {
   const exportSelection = useExportSelection();
   const { downloadFile } = useExportDownload();
-
-  // Passes configuration
-  const [eventCount, setEventCount] = useState<number>(2);
-  const [timePeriodType, setTimePeriodType] = useState<TimePeriodType>('predefined');
-  const [predefinedPeriod, setPredefinedPeriod] = useState<PredefinedPeriod>('minute');
-  const [customPeriodValue, setCustomPeriodValue] = useState<number>(1);
-  const [customPeriodUnit, setCustomPeriodUnit] = useState<TimeUnit>('minutes');
 
   const handleExport = async () => {
     if (exportSelection.selectedProjects.length === 0) return;
@@ -36,24 +25,14 @@ export default function PassesExport() {
         ? exportSelection.selectedStatuses
         : Object.values(AnnotationStatusSchema.enum);
 
-      // Prepare passes configuration
-      const passesConfig = {
-        eventCount,
-        timePeriod: timePeriodType === 'predefined'
-          ? { type: 'predefined' as const, value: predefinedPeriod }
-          : { type: 'custom' as const, value: customPeriodValue, unit: customPeriodUnit }
-      };
-
       // Format dates for API (YYYY-MM-DD format)
       const formattedStartDate = exportSelection.startDate ? exportSelection.startDate.toISOString().split('T')[0] : undefined;
       const formattedEndDate = exportSelection.endDate ? exportSelection.endDate.toISOString().split('T')[0] : undefined;
 
-      const { blob, filename } = await api.export.passes(
+      const { blob, filename } = await api.export.stat(
         exportSelection.selectedProjects,
         tags,
         statusesToUse,
-        passesConfig.eventCount,
-        passesConfig.timePeriod,
         formattedStartDate,
         formattedEndDate,
       );
@@ -69,10 +48,10 @@ export default function PassesExport() {
   return (
     <div className="flex flex-row gap-8">
       <div className="flex flex-col gap-y-6 max-w-prose">
-        <Info title="Passes:">
-          This export analyzes your recordings for passes, i.e., time periods where a certain number of events 
-          occur, indicating activity patterns. It creates a CSV file showing when and where different species 
-          were active during specific time periods (like hourly, nightly, or custom intervals).
+        <Info title="Statistics">
+          This export generates summary statistics about your recording projects in CSV format. It provides an overview 
+          of how many recordings are available, their total duration, and breaks down the data by project, review status, 
+          and species tags, giving a high-level view.
         </Info>
         
         <ExportProjectSelection
@@ -102,19 +81,6 @@ export default function PassesExport() {
           onStartDateChange={exportSelection.setStartDate}
           onEndDateChange={exportSelection.setEndDate}
         />
-
-        <ExportPassesConfiguration
-          eventCount={eventCount}
-          timePeriodType={timePeriodType}
-          predefinedPeriod={predefinedPeriod}
-          customPeriodValue={customPeriodValue}
-          customPeriodUnit={customPeriodUnit}
-          onEventCountChange={setEventCount}
-          onTimePeriodTypeChange={setTimePeriodType}
-          onPredefinedPeriodChange={setPredefinedPeriod}
-          onCustomPeriodValueChange={setCustomPeriodValue}
-          onCustomPeriodUnitChange={setCustomPeriodUnit}
-        />
       </div>
 
       <ExportSummary
@@ -124,8 +90,8 @@ export default function PassesExport() {
         selectedTagsCount={exportSelection.selectedTags.length}
         selectedStatusesCount={exportSelection.selectedStatuses.length}
         onExport={handleExport}
-        exportButtonText="Export Passes"
-        summaryDescription="Once satisfied with your selections, click the button below to export the passes."
+        exportButtonText="Export Statistics"
+        summaryDescription="Once satisfied with your selections, click the button below to export the statistics."
       />
     </div>
   );

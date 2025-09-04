@@ -6,7 +6,64 @@ const DEFAULT_ENDPOINTS = {
   multibase: "/api/v1/export/multibase/",
   dump: "/api/v1/export/dump/",
   passes: "/api/v1/export/passes/",
+  stats: "/api/v1/export/stats/",
 };
+
+interface CommonExportParams {
+  annotationProjects: AnnotationProject[];
+  tags?: string[];
+  statuses?: string[];
+  startDate?: string;
+  endDate?: string;
+}
+
+function buildCommonParams(params: CommonExportParams): URLSearchParams {
+  const urlParams = new URLSearchParams();
+  
+  // Add annotation project UUIDs
+  params.annotationProjects.forEach(project => {
+    urlParams.append('annotation_project_uuids', project.uuid);
+  });
+  
+  // Add tags if provided
+  if (params.tags && params.tags.length > 0) {
+    params.tags.forEach(tag => {
+      urlParams.append('tags', tag);
+    });
+  }
+  
+  // Add statuses if provided
+  if (params.statuses && params.statuses.length > 0) {
+    params.statuses.forEach(status => {
+      urlParams.append('statuses', status);
+    });
+  }
+
+  // Add date range if provided
+  if (params.startDate) {
+    urlParams.append('start_date', params.startDate);
+  }
+  if (params.endDate) {
+    urlParams.append('end_date', params.endDate);
+  }
+
+  return urlParams;
+}
+
+function extractFilenameFromResponse(response: any, defaultFilename: string): string {
+  const contentDisposition = response.headers['content-disposition'];
+  if (contentDisposition) {
+    const filenameMatch = contentDisposition.match(/filename="?(.+)"?/i);
+    if (filenameMatch) {
+      return filenameMatch[1];
+    }
+  }
+  return defaultFilename;
+}
+
+function createBlobFromResponse(response: any, mimeType: string): Blob {
+  return new Blob([response.data], { type: mimeType });
+}
 
 export function registerExportAPI(
   instance: AxiosInstance,
@@ -16,51 +73,24 @@ export function registerExportAPI(
     annotationProjects: AnnotationProject[],
     tags: string[],
     statuses?: string[],
-    includeNotes: boolean = true,
-    dateFormat: string = "DD.MM.YYYY"
+    startDate?: string,
+    endDate?: string,
   ): Promise<{ blob: Blob; filename: string }> {
-    const params = new URLSearchParams();
-    
-    // Add annotation project UUIDs
-    annotationProjects.forEach(project => {
-      params.append('annotation_project_uuids', project.uuid);
+    const params = buildCommonParams({
+      annotationProjects,
+      tags,
+      statuses,
+      startDate,
+      endDate,
     });
-    
-    // Add tags
-    tags.forEach(tag => {
-      params.append('tags', tag);
-    });
-    
-    // Add statuses if provided
-    if (statuses && statuses.length > 0) {
-      statuses.forEach(status => {
-        params.append('statuses', status);
-      });
-    }
-    
-    // Add format-specific parameters
-    params.append('include_notes', includeNotes.toString());
-    params.append('date_format', dateFormat);
 
     const response = await instance.get(`${endpoints.multibase}?${params.toString()}`, {
       responseType: 'blob',
       withCredentials: true,
     });
 
-    // Extract filename from Content-Disposition header
-    const contentDisposition = response.headers['content-disposition'];
-    let filename = 'multibase_export.xlsx'; // Default filename
-    if (contentDisposition) {
-      const filenameMatch = contentDisposition.match(/filename="?(.+)"?/i);
-      if (filenameMatch) {
-        filename = filenameMatch[1];
-      }
-    }
-
-    // Create a Blob with the correct MIME type for XLSX
-    const blob = new Blob([response.data], { 
-      type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' 
-    });
+    const filename = extractFilenameFromResponse(response, 'multibase_export.xlsx');
+    const blob = createBlobFromResponse(response, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
 
     return { blob, filename };
   }
@@ -68,11 +98,8 @@ export function registerExportAPI(
   async function exportDump(
     annotationProjects: AnnotationProject[],
   ): Promise<{ blob: Blob; filename: string }> {
-    const params = new URLSearchParams();
-    
-    // Add annotation project UUIDs
-    annotationProjects.forEach(project => {
-      params.append('annotation_project_uuids', project.uuid);
+    const params = buildCommonParams({
+      annotationProjects,
     });
 
     const response = await instance.get(`${endpoints.dump}?${params.toString()}`, {
@@ -80,20 +107,8 @@ export function registerExportAPI(
       withCredentials: true,
     });
 
-    // Extract filename from Content-Disposition header
-    const contentDisposition = response.headers['content-disposition'];
-    let filename = 'dump.csv'; // Default filename
-    if (contentDisposition) {
-      const filenameMatch = contentDisposition.match(/filename="?(.+)"?/i);
-      if (filenameMatch) {
-        filename = filenameMatch[1];
-      }
-    }
-
-    // Create a Blob with the correct MIME type for XLSX
-    const blob = new Blob([response.data], { 
-      type: 'text/csv' 
-    });
+    const filename = extractFilenameFromResponse(response, 'dump.csv');
+    const blob = createBlobFromResponse(response, 'text/csv');
 
     return { blob, filename };
   }
@@ -107,26 +122,15 @@ export function registerExportAPI(
     startDate?: string,
     endDate?: string,
   ): Promise<{ blob: Blob; filename: string }> {
-    const params = new URLSearchParams();
-    
-    // Add annotation project UUIDs
-    annotationProjects.forEach(project => {
-      params.append('annotation_project_uuids', project.uuid);
+    const params = buildCommonParams({
+      annotationProjects,
+      tags,
+      statuses,
+      startDate,
+      endDate,
     });
     
-    // Add tags
-    tags.forEach(tag => {
-      params.append('tags', tag);
-    });
-    
-    // Add statuses if provided
-    if (statuses && statuses.length > 0) {
-      statuses.forEach(status => {
-        params.append('statuses', status);
-      });
-    }
-    
-    // Add passes configuration
+    // Add passes-specific configuration
     if (eventCount !== undefined) {
       params.append('event_count', eventCount.toString());
     }
@@ -140,34 +144,40 @@ export function registerExportAPI(
         params.append('custom_period_unit', timePeriod.unit);
       }
     }
-
-    // Add date range if provided
-    if (startDate) {
-      params.append('start_date', startDate);
-    }
-    if (endDate) {
-      params.append('end_date', endDate);
-    }
   
     const response = await instance.get(`${endpoints.passes}?${params.toString()}`, {
       responseType: 'blob',
       withCredentials: true,
     });
 
-    // Extract filename from Content-Disposition header
-    const contentDisposition = response.headers['content-disposition'];
-    let filename = 'passes_export.csv'; // Default filename
-    if (contentDisposition) {
-      const filenameMatch = contentDisposition.match(/filename="?(.+)"?/i);
-      if (filenameMatch) {
-        filename = filenameMatch[1];
-      }
-    }
+    const filename = extractFilenameFromResponse(response, 'passes_export.csv');
+    const blob = createBlobFromResponse(response, response.headers['content-type'] || 'application/octet-stream');
 
-    // Create a Blob with the appropriate MIME type
-    const blob = new Blob([response.data], { 
-      type: response.headers['content-type'] || 'application/octet-stream'
+    return { blob, filename };
+  }
+
+  async function exportStats(
+    annotationProjects: AnnotationProject[],
+    tags: string[],
+    statuses?: string[],
+    startDate?: string,
+    endDate?: string,
+  ): Promise<{ blob: Blob; filename: string }> {
+    const params = buildCommonParams({
+      annotationProjects,
+      tags,
+      statuses,
+      startDate,
+      endDate,
     });
+  
+    const response = await instance.get(`${endpoints.stats}?${params.toString()}`, {
+      responseType: 'blob',
+      withCredentials: true,
+    });
+
+    const filename = extractFilenameFromResponse(response, 'stats_export.csv');
+    const blob = createBlobFromResponse(response, response.headers['content-type'] || 'application/octet-stream');
 
     return { blob, filename };
   }
@@ -176,5 +186,6 @@ export function registerExportAPI(
     multibase: exportMultiBase,
     dump: exportDump,
     passes: exportPasses,
+    stat: exportStats,
   } as const;
 }

@@ -26,7 +26,6 @@ export default function ExportHeader() {
                             id: "multibase",
                             title: "MultiBase",
                             isActive: selectedLayoutSegment === "multibase",
-                            icon: <DatasetIcon className="w-5 h-5 align-middle" />,
                             onClick: () => {
                                 router.push(`/export/multibase/?${params.toString()}`);
                             },
@@ -35,16 +34,22 @@ export default function ExportHeader() {
                             id: "passes",
                             title: "Passes",
                             isActive: selectedLayoutSegment === "passes",
-                            icon: <EditIcon className="w-5 h-5 align-middle" />,
                             onClick: () => {
                                 router.push(`/export/passes/?${params.toString()}`);
+                            },
+                        },
+                        {
+                            id: "stats",
+                            title: "Statistics",
+                            isActive: selectedLayoutSegment === "stats",
+                            onClick: () => {
+                                router.push(`/export/stats/?${params.toString()}`);
                             },
                         },
                         {
                             id: "dump",
                             title: "Dump",
                             isActive: selectedLayoutSegment === "dump",
-                            icon: <EditIcon className="w-5 h-5 align-middle" />,
                             onClick: () => {
                                 router.push(`/export/dump/?${params.toString()}`);
                             },

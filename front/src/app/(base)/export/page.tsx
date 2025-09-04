@@ -39,7 +39,7 @@ export default function ExportPage() {
                 Passes
             </h2>
             <p className="text-sm mb-4">
-              Lorem ipsum...
+              Export passes, i.e., if the number of events exceeds a threshold per defined time.
             </p>
             <Link
               mode="text"
@@ -47,6 +47,21 @@ export default function ExportPage() {
               className="text-sm underline font-bold"
             >
               Export Passes
+            </Link>
+          </Card>
+          <Card className="p-6 justify-between">
+            <h2 className="text-2xl font-bold mb-4">
+                Statistics
+            </h2>
+            <p className="text-sm mb-4">
+              Export recording-level statistics such as number of recordings per tag and total audio duration.
+            </p>
+            <Link
+              mode="text"
+              href="/export/stats/"
+              className="text-sm underline font-bold"
+            >
+              Export Statistics
             </Link>
           </Card>
           <Card className="p-6 justify-between">
