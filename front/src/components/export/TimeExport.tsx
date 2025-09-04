@@ -7,14 +7,24 @@ import {
   ExportTagSelection,
   ExportStatusSelection,
   ExportDateRangeFilter,
-  ExportSummary
+  ExportSummary,
+  TimePeriodType,
+  PredefinedPeriod,
+  TimeUnit
 } from "./shared";
+import ExportTimePeriodConfiguration from "./shared/ExportTimePeriodConfiguration";
 import api from "@/app/api";
 import Info from "@/components/Info";
 
-export default function StatsExport() {
+export default function TimeExport() {
   const exportSelection = useExportSelection();
   const { downloadFile } = useExportDownload();
+
+  // Time period configuration
+  const [timePeriodType, setTimePeriodType] = useState<TimePeriodType>('predefined');
+  const [predefinedPeriod, setPredefinedPeriod] = useState<PredefinedPeriod>('minute');
+  const [customPeriodValue, setCustomPeriodValue] = useState<number>(1);
+  const [customPeriodUnit, setCustomPeriodUnit] = useState<TimeUnit>('minutes');
 
   const handleExport = async () => {
     if (exportSelection.selectedProjects.length === 0) return;
@@ -25,14 +35,20 @@ export default function StatsExport() {
         ? exportSelection.selectedStatuses
         : Object.values(AnnotationStatusSchema.enum);
 
+      // Prepare time period configuration
+      const timePeriod = timePeriodType === 'predefined'
+        ? { type: 'predefined' as const, value: predefinedPeriod }
+        : { type: 'custom' as const, value: customPeriodValue, unit: customPeriodUnit };
+
       // Format dates for API (YYYY-MM-DD format)
       const formattedStartDate = exportSelection.startDate ? exportSelection.startDate.toISOString().split('T')[0] : undefined;
       const formattedEndDate = exportSelection.endDate ? exportSelection.endDate.toISOString().split('T')[0] : undefined;
 
-      const { blob, filename } = await api.export.stat(
+      const { blob, filename } = await api.export.time(
         exportSelection.selectedProjects,
         tags,
         statusesToUse,
+        timePeriod,
         formattedStartDate,
         formattedEndDate,
       );
@@ -48,10 +64,10 @@ export default function StatsExport() {
   return (
     <div className="flex flex-row gap-8">
       <div className="flex flex-col gap-y-6 max-w-prose">
-        <Info title="Statistics:">
-          This export generates summary statistics about your recording projects in CSV format. It provides an overview 
-          of how many recordings are available, their total duration, and breaks down the data by project, review status, 
-          and species tags, giving a high-level view.
+        <Info title="Time:">
+          This export analyzes recordings by counting events within specified time periods. 
+          It creates a CSV file showing the number of events for each species during different time intervals 
+          (like hourly, daily, or custom periods).
         </Info>
         
         <ExportProjectSelection
@@ -81,6 +97,17 @@ export default function StatsExport() {
           onStartDateChange={exportSelection.setStartDate}
           onEndDateChange={exportSelection.setEndDate}
         />
+
+        <ExportTimePeriodConfiguration
+          timePeriodType={timePeriodType}
+          predefinedPeriod={predefinedPeriod}
+          customPeriodValue={customPeriodValue}
+          customPeriodUnit={customPeriodUnit}
+          onTimePeriodTypeChange={setTimePeriodType}
+          onPredefinedPeriodChange={setPredefinedPeriod}
+          onCustomPeriodValueChange={setCustomPeriodValue}
+          onCustomPeriodUnitChange={setCustomPeriodUnit}
+        />
       </div>
 
       <ExportSummary
@@ -90,8 +117,8 @@ export default function StatsExport() {
         selectedTagsCount={exportSelection.selectedTags.length}
         selectedStatusesCount={exportSelection.selectedStatuses.length}
         onExport={handleExport}
-        exportButtonText="Export Statistics"
-        summaryDescription="Once satisfied with your selections, click the button below to export the statistics."
+        exportButtonText="Export Time Data"
+        summaryDescription="Once satisfied with your selections, click the button below to export the time-based event counts."
       />
     </div>
   );

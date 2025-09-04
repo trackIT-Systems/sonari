@@ -1103,3 +1103,155 @@ async def _get_recording_statistics(
     result.sort(key=lambda x: (x["annotation_project"], x["status_badge"], x["tag"]))
 
     return result
+
+
+@export_router.get("/time/")
+async def export_time(
+    session: Session,
+    annotation_project_uuids: Annotated[list[UUID], Query()],
+    tags: Annotated[list[str], Query()],
+    statuses: Annotated[list[str] | None, Query()] = None,
+    time_period_type: str = "predefined",
+    predefined_period: Annotated[str | None, Query()] = None,
+    custom_period_value: Annotated[int | None, Query()] = None,
+    custom_period_unit: Annotated[str | None, Query()] = None,
+    start_date: Annotated[str | None, Query()] = None,
+    end_date: Annotated[str | None, Query()] = None,
+) -> StreamingResponse:
+    """Export time-based event counts in CSV format."""
+    logger = logging.getLogger(__name__)
+
+    # Get the projects and their IDs
+    project_ids, projects_by_id = await _resolve_project_ids(session, annotation_project_uuids)
+
+    # Convert time period to seconds
+    period_seconds = _convert_time_period_to_seconds(
+        time_period_type, predefined_period, custom_period_value, custom_period_unit
+    )
+
+    async def generate_time_csv():
+        """Generate time export CSV data."""
+        try:
+            # CSV headers
+            headers = [
+                "time_period_start",
+                "time_period_end",
+                "species_tag",
+                "event_count",
+            ]
+
+            # Create CSV header row
+            output = StringIO()
+            writer = csv.writer(output)
+            writer.writerow(headers)
+            yield output.getvalue()
+
+            # Parse date range if provided
+            parsed_start_date = None
+            parsed_end_date = None
+            if start_date:
+                parsed_start_date = DateFormatter.parse_date_string(start_date)
+            if end_date:
+                parsed_end_date = DateFormatter.parse_date_string(end_date)
+
+            # Extract events with and without datetime information
+            events_with_datetime, events_without_datetime = await _extract_events_with_datetime(
+                session, project_ids, tags, statuses, parsed_start_date, parsed_end_date
+            )
+
+            all_time_data = []
+
+            # Process events with datetime information
+            if events_with_datetime:
+                # Group events by species tag
+                events_by_species = _group_events_by_species(events_with_datetime, tags)
+
+                # Generate time buckets
+                time_buckets = _generate_time_buckets(
+                    events_with_datetime, period_seconds, time_period_type, predefined_period
+                )
+
+                # Calculate event counts for each species
+                time_data = _calculate_time_events_per_species(events_by_species, time_buckets, projects_by_id)
+                all_time_data.extend(time_data)
+
+            # Process events without datetime information
+            if events_without_datetime:
+                time_without_datetime = _calculate_time_events_without_datetime(
+                    events_without_datetime, tags, projects_by_id
+                )
+                all_time_data.extend(time_without_datetime)
+
+            # If no events found at all, return empty CSV with headers only
+            if not all_time_data:
+                return
+
+            # Generate CSV rows for all time data
+            for time_entry in all_time_data:
+                output = StringIO()
+                writer = csv.writer(output)
+                writer.writerow([
+                    time_entry["time_period_start"],
+                    time_entry["time_period_end"],
+                    time_entry["species_tag"],
+                    time_entry["event_count"],
+                ])
+                yield output.getvalue()
+
+        except Exception as e:
+            logger.error(f"Error during time CSV generation: {e}")
+            raise e
+
+    return _create_csv_streaming_response(generate_time_csv, "time")
+
+
+def _calculate_time_events_per_species(
+    events_by_species: Dict[str, List[Dict[str, Any]]],
+    time_buckets: List[Tuple[datetime.datetime, datetime.datetime]],
+    projects_by_id: Dict[int, Any],
+) -> List[Dict[str, Any]]:
+    """Calculate event counts for each species in each time bucket."""
+    time_data = []
+
+    for species_tag, species_events in events_by_species.items():
+        for bucket_start, bucket_end in time_buckets:
+            # Find events in this time bucket
+            bucket_events = [event for event in species_events if bucket_start <= event["datetime"] < bucket_end]
+
+            event_count = len(bucket_events)
+
+            time_data.append({
+                "time_period_start": bucket_start.strftime("%Y-%m-%d %H:%M:%S"),
+                "time_period_end": bucket_end.strftime("%Y-%m-%d %H:%M:%S"),
+                "species_tag": species_tag,
+                "event_count": event_count,
+            })
+
+    return time_data
+
+
+def _calculate_time_events_without_datetime(
+    events_without_datetime: List[Dict[str, Any]],
+    selected_tags: List[str],
+    projects_by_id: Dict[int, Any],
+) -> List[Dict[str, Any]]:
+    """Calculate event counts for events without date/time information."""
+    if not events_without_datetime:
+        return []
+
+    # Group events by species tag
+    events_by_species = _group_events_by_species(events_without_datetime, selected_tags)
+
+    time_data = []
+
+    for species_tag, species_events in events_by_species.items():
+        event_count = len(species_events)
+
+        time_data.append({
+            "time_period_start": "No Date",
+            "time_period_end": "No Time",
+            "species_tag": species_tag,
+            "event_count": event_count,
+        })
+
+    return time_data

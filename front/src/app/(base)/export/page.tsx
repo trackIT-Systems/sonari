@@ -20,23 +20,7 @@ export default function ExportPage() {
         <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-3 gap-8">
           <Card className="p-6 justify-between">
             <h2 className="text-2xl font-bold mb-4">
-                MultiBase
-            </h2>
-            <p className="text-sm mb-4">
-              Export your annotation data in MultiBase format, optimized for biodiversity 
-              databases and species occurrence records.
-            </p>
-            <Link
-              mode="text"
-              href="/export/multibase/"
-              className="text-sm underline font-bold"
-            >
-              Export MultiBase
-            </Link>
-          </Card>
-          <Card className="p-6 justify-between">
-            <h2 className="text-2xl font-bold mb-4">
-                Passes
+              Passes
             </h2>
             <p className="text-sm mb-4">
               Export passes, i.e., if the number of events exceeds a threshold per defined time.
@@ -51,7 +35,23 @@ export default function ExportPage() {
           </Card>
           <Card className="p-6 justify-between">
             <h2 className="text-2xl font-bold mb-4">
-                Statistics
+              Time
+            </h2>
+            <p className="text-sm mb-4">
+              Export event per configurable time periods. Count events per species
+              within hourly, daily, or custom time intervals.
+            </p>
+            <Link
+              mode="text"
+              href="/export/time/"
+              className="text-sm underline font-bold"
+            >
+              Export Events/Time
+            </Link>
+          </Card>
+          <Card className="p-6 justify-between">
+            <h2 className="text-2xl font-bold mb-4">
+              Statistics
             </h2>
             <p className="text-sm mb-4">
               Export recording-level statistics such as number of recordings per tag and total audio duration.
@@ -66,10 +66,26 @@ export default function ExportPage() {
           </Card>
           <Card className="p-6 justify-between">
             <h2 className="text-2xl font-bold mb-4">
-                Dump
+              MultiBase
             </h2>
             <p className="text-sm mb-4">
-              Export comprehensive sound event annotation data in CSV format with all features, 
+              Export your annotation data in MultiBase format, optimized for biodiversity
+              databases and species occurrence records.
+            </p>
+            <Link
+              mode="text"
+              href="/export/multibase/"
+              className="text-sm underline font-bold"
+            >
+              Export MultiBase
+            </Link>
+          </Card>
+          <Card className="p-6 justify-between">
+            <h2 className="text-2xl font-bold mb-4">
+              Dump
+            </h2>
+            <p className="text-sm mb-4">
+              Export comprehensive sound event annotation data in CSV format with all features,
               coordinates, and metadata..
             </p>
             <Link

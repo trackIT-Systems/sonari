@@ -23,14 +23,6 @@ export default function ExportHeader() {
                 <Tabs
                     tabs={[
                         {
-                            id: "multibase",
-                            title: "MultiBase",
-                            isActive: selectedLayoutSegment === "multibase",
-                            onClick: () => {
-                                router.push(`/export/multibase/?${params.toString()}`);
-                            },
-                        },
-                        {
                             id: "passes",
                             title: "Passes",
                             isActive: selectedLayoutSegment === "passes",
@@ -39,11 +31,27 @@ export default function ExportHeader() {
                             },
                         },
                         {
+                            id: "time",
+                            title: "Events/Time",
+                            isActive: selectedLayoutSegment === "time",
+                            onClick: () => {
+                                router.push(`/export/time/?${params.toString()}`);
+                            },
+                        },
+                        {
                             id: "stats",
                             title: "Statistics",
                             isActive: selectedLayoutSegment === "stats",
                             onClick: () => {
                                 router.push(`/export/stats/?${params.toString()}`);
+                            },
+                        },
+                        {
+                            id: "multibase",
+                            title: "MultiBase",
+                            isActive: selectedLayoutSegment === "multibase",
+                            onClick: () => {
+                                router.push(`/export/multibase/?${params.toString()}`);
                             },
                         },
                         {

@@ -7,6 +7,7 @@ const DEFAULT_ENDPOINTS = {
   dump: "/api/v1/export/dump/",
   passes: "/api/v1/export/passes/",
   stats: "/api/v1/export/stats/",
+  time: "/api/v1/export/time/",
 };
 
 interface CommonExportParams {
@@ -182,10 +183,49 @@ export function registerExportAPI(
     return { blob, filename };
   }
 
+  async function exportTime(
+    annotationProjects: AnnotationProject[],
+    tags: string[],
+    statuses?: string[],
+    timePeriod?: { type: 'predefined'; value: string } | { type: 'custom'; value: number; unit: string },
+    startDate?: string,
+    endDate?: string,
+  ): Promise<{ blob: Blob; filename: string }> {
+    const params = buildCommonParams({
+      annotationProjects,
+      tags,
+      statuses,
+      startDate,
+      endDate,
+    });
+    
+    // Add time-specific configuration
+    if (timePeriod) {
+      params.append('time_period_type', timePeriod.type);
+      if (timePeriod.type === 'predefined') {
+        params.append('predefined_period', timePeriod.value);
+      } else {
+        params.append('custom_period_value', timePeriod.value.toString());
+        params.append('custom_period_unit', timePeriod.unit);
+      }
+    }
+  
+    const response = await instance.get(`${endpoints.time}?${params.toString()}`, {
+      responseType: 'blob',
+      withCredentials: true,
+    });
+
+    const filename = extractFilenameFromResponse(response, 'time_export.csv');
+    const blob = createBlobFromResponse(response, response.headers['content-type'] || 'application/octet-stream');
+
+    return { blob, filename };
+  }
+
   return {
     multibase: exportMultiBase,
     dump: exportDump,
     passes: exportPasses,
     stat: exportStats,
+    time: exportTime,
   } as const;
 }
