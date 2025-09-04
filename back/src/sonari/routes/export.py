@@ -50,6 +50,7 @@ class ExportConstants:
 
     DUMP_HEADERS = [
         "filename",
+        "station",
         "date",
         "time",
         "longitude",
@@ -158,11 +159,23 @@ async def _get_filtered_annotation_tasks(
     if additional_filters:
         filters.extend(additional_filters)
 
-    return await api.annotation_tasks.get_many(
-        session,
-        limit=-1,
-        filters=filters,
+    # Use a custom query to eagerly load dataset information
+    stmt = (
+        select(models.AnnotationTask)
+        .where(and_(*filters))
+        .options(
+            joinedload(models.AnnotationTask.clip_annotation)
+            .joinedload(models.ClipAnnotation.clip)
+            .joinedload(models.Clip.recording)
+            .selectinload(models.Recording.recording_datasets)
+            .joinedload(models.DatasetRecording.dataset)
+        )
     )
+
+    result = await session.execute(stmt)
+    tasks = result.unique().scalars().all()
+
+    return (tasks, len(tasks))
 
 
 def _create_csv_streaming_response(generator_func, export_type: str) -> StreamingResponse:
@@ -241,9 +254,16 @@ async def export_multibase(
                 # Extract date components using DateFormatter
                 date_components = DateFormatter.extract_date_components(task.clip.recording.date, date_format)
 
-                station = task.clip.recording.path.stem.split("_")[0]
                 latitude = task.clip.recording.latitude
                 longitude = task.clip.recording.longitude
+
+                recording = task.clip.recording
+                if recording.recording_datasets:
+                    # Get the first dataset (or you could get all and choose)
+                    dataset_recording = recording.recording_datasets[0]
+                    station = dataset_recording.dataset.name
+                else:
+                    station = str(recording.path)
 
                 # Write the content to the worksheet
                 ws.append([
@@ -329,6 +349,7 @@ async def export_dump(
                         writer = csv.writer(output)
                         writer.writerow([
                             data["filename"],
+                            data["station"],
                             data["date"],
                             data["time"],
                             data["longitude"],
@@ -428,6 +449,12 @@ async def _extract_annotation_data(annotation: models.SoundEventAnnotation) -> D
     """Extract data from a single sound event annotation."""
     sound_event = annotation.sound_event
     recording = sound_event.recording
+    if recording.recording_datasets:
+        # Get the first dataset (or you could get all and choose)
+        dataset_recording = recording.recording_datasets[0]
+        station = dataset_recording.dataset.name
+    else:
+        station = str(recording.path)
 
     # Extract filename
     filename = str(recording.path)
@@ -495,6 +522,7 @@ async def _extract_annotation_data(annotation: models.SoundEventAnnotation) -> D
 
     return {
         "filename": filename,
+        "station": station,
         "date": recording_date,
         "time": recording_time,
         "longitude": recording_longitude,
