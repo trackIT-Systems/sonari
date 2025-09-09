@@ -35,7 +35,7 @@ export default function DumpExport() {
         your sound recordings. <b>Note: export one project at a time. This export is really slow!</b>
       </Info>
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        <div className="flex flex-col gap-y-6 max-w-prose">
+        <div className="flex flex-col gap-y-6 min-w-0">
 
           <ExportProjectSelection
             projectTagList={exportSelection.projectTagList}

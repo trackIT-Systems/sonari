@@ -2,6 +2,7 @@
 
 from fastapi import APIRouter
 
+from sonari.exports import export_router
 from sonari.routes.annotation_projects import annotation_projects_router
 from sonari.routes.annotation_tasks import get_annotation_tasks_router
 from sonari.routes.audio import audio_router
@@ -9,7 +10,6 @@ from sonari.routes.auth import get_auth_router
 from sonari.routes.clip_annotations import get_clip_annotations_router
 from sonari.routes.clips import clips_router
 from sonari.routes.datasets import dataset_router
-from sonari.routes.export import export_router
 from sonari.routes.features import features_router
 from sonari.routes.notes import notes_router
 from sonari.routes.plugins import plugin_router
