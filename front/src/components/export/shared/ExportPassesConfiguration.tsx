@@ -65,7 +65,7 @@ export default function ExportPassesConfiguration({
       </div>
       <div className="space-y-4">
         {/* Event Count Input */}
-        <InputGroup name="event-count" label="Number of Events (N)">
+        <InputGroup name="event-count" label="Number of Events per recording">
           <input
             type="number"
             min="1"
@@ -77,7 +77,7 @@ export default function ExportPassesConfiguration({
         </InputGroup>
 
         {/* Time Period Type Selection */}
-        <InputGroup name="period-type" label="Time Period">
+        <InputGroup name="period-type" label="Time Period for grouping">
           <div className="space-y-3">
             <label className="flex items-center">
               <input
@@ -142,17 +142,6 @@ export default function ExportPassesConfiguration({
             )}
           </div>
         </InputGroup>
-
-        {/* Pass Definition Preview */}
-        <div className="bg-stone-100 dark:bg-stone-800 rounded-lg p-3">
-          <p className="text-sm text-stone-600 dark:text-stone-400">
-            <strong>Pass Definition:</strong> {eventCount} events per{' '}
-            {timePeriodType === 'predefined'
-              ? (predefinedPeriodOptions.find(p => p.value === predefinedPeriod)?.label || predefinedPeriod).toString().toLowerCase()
-              : `${customPeriodValue} ${customPeriodUnit}`
-            }
-          </p>
-        </div>
       </div>
     </Card>
   );

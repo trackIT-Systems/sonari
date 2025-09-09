@@ -27,43 +27,39 @@ export default function ExportSummary({
   summaryDescription,
 }: ExportSummaryProps) {
   return (
-    <div className="w-96">
-      <div className="sticky top-8">
-        <Card>
-          {isExporting ? (
-            <Loading />
-          ) : isSelectionValid ? (
-            <>
-              <H3>Summary</H3>
-              <ul className="list-disc list-inside mb-4">
-                <li>
-                  Selected projects: <span className="text-emerald-500">{selectedProjectsCount}</span>
-                </li>
-                {selectedTagsCount !== undefined && (
-                  <li>
-                    Selected tags: <span className="text-emerald-500">{selectedTagsCount}</span>
-                  </li>
-                )}
-                {selectedStatusesCount !== undefined && (
-                  <li>
-                    Selected statuses: <span className="text-emerald-500">{selectedStatusesCount}</span>
-                  </li>
-                )}
-              </ul>
-              {summaryDescription && (
-                <p className="text-stone-500 mb-4">
-                  {summaryDescription}
-                </p>
-              )}
-              <Button onClick={onExport} className="w-full">
-                {exportButtonText}
-              </Button>
-            </>
-          ) : (
-            <p className="text-stone-500">{emptySelectionMessage}</p>
+    <Card>
+      {isExporting ? (
+        <Loading />
+      ) : isSelectionValid ? (
+        <>
+          <H3>Summary</H3>
+          <ul className="list-disc list-inside mb-4">
+            <li>
+              Selected projects: <span className="text-emerald-500">{selectedProjectsCount}</span>
+            </li>
+            {selectedTagsCount !== undefined && (
+              <li>
+                Selected tags: <span className="text-emerald-500">{selectedTagsCount}</span>
+              </li>
+            )}
+            {selectedStatusesCount !== undefined && (
+              <li>
+                Selected statuses: <span className="text-emerald-500">{selectedStatusesCount}</span>
+              </li>
+            )}
+          </ul>
+          {summaryDescription && (
+            <p className="text-stone-500 mb-4">
+              {summaryDescription}
+            </p>
           )}
-        </Card>
-      </div>
-    </div>
+          <Button onClick={onExport} className="w-full">
+            {exportButtonText}
+          </Button>
+        </>
+      ) : (
+        <p className="text-stone-500">{emptySelectionMessage}</p>
+      )}
+    </Card>
   );
 }

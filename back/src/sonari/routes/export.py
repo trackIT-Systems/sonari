@@ -1,5 +1,6 @@
 """REST API routes for exports."""
 
+import base64
 import csv
 import datetime
 import logging
@@ -9,6 +10,10 @@ from io import BytesIO, StringIO
 from typing import Annotated, Any, Dict, List, Tuple
 from uuid import UUID
 
+import matplotlib
+
+matplotlib.use("Agg")  # Use non-interactive backend
+import matplotlib.pyplot as plt
 from fastapi import APIRouter, Query
 from fastapi.responses import Response, StreamingResponse
 from openpyxl import Workbook
@@ -607,8 +612,8 @@ async def export_passes(
     custom_period_unit: Annotated[str | None, Query()] = None,
     start_date: Annotated[str | None, Query()] = None,
     end_date: Annotated[str | None, Query()] = None,
-) -> StreamingResponse:
-    """Export passes analysis in CSV format."""
+):
+    """Export passes analysis in CSV format or JSON with chart."""
     logger = logging.getLogger(__name__)
 
     # Get the projects and their IDs
@@ -619,86 +624,87 @@ async def export_passes(
         time_period_type, predefined_period, custom_period_value, custom_period_unit
     )
 
-    async def generate_passes_csv():
-        """Generate passes CSV data."""
-        try:
-            # CSV headers
-            headers = [
-                "time_period_start",
-                "time_period_end",
-                "species_tag",
-                "event_count",
-                "pass_threshold",
-                "is_pass",
-            ]
+    # Parse date range if provided
+    parsed_start_date = None
+    parsed_end_date = None
+    if start_date:
+        parsed_start_date = DateFormatter.parse_date_string(start_date)
+    if end_date:
+        parsed_end_date = DateFormatter.parse_date_string(end_date)
 
-            # Create CSV header row
-            output = StringIO()
-            writer = csv.writer(output)
-            writer.writerow(headers)
-            yield output.getvalue()
+    # Extract events with and without datetime information
+    events_with_datetime, events_without_datetime = await _extract_events_with_datetime(
+        session, project_ids, tags, statuses, parsed_start_date, parsed_end_date
+    )
 
-            # Parse date range if provided
-            parsed_start_date = None
-            parsed_end_date = None
-            if start_date:
-                parsed_start_date = DateFormatter.parse_date_string(start_date)
-            if end_date:
-                parsed_end_date = DateFormatter.parse_date_string(end_date)
+    all_passes_data = []
 
-            # Extract events with and without datetime information
-            events_with_datetime, events_without_datetime = await _extract_events_with_datetime(
-                session, project_ids, tags, statuses, parsed_start_date, parsed_end_date
-            )
+    # Process events with datetime information
+    if events_with_datetime:
+        # Group events by species tag
+        events_by_species = _group_events_by_species(events_with_datetime, tags)
 
-            all_passes_data = []
+        # Generate time buckets
+        time_buckets = _generate_time_buckets(events_with_datetime, period_seconds, time_period_type, predefined_period)
 
-            # Process events with datetime information
-            if events_with_datetime:
-                # Group events by species tag
-                events_by_species = _group_events_by_species(events_with_datetime, tags)
+        # Calculate passes for each species
+        passes_data = _calculate_passes_per_species(events_by_species, time_buckets, event_count, projects_by_id)
+        all_passes_data.extend(passes_data)
 
-                # Generate time buckets
-                time_buckets = _generate_time_buckets(
-                    events_with_datetime, period_seconds, time_period_type, predefined_period
-                )
+    # Process events without datetime information
+    if events_without_datetime:
+        passes_without_datetime = _calculate_passes_without_datetime(
+            events_without_datetime, tags, event_count, projects_by_id
+        )
+        all_passes_data.extend(passes_without_datetime)
 
-                # Calculate passes for each species
-                passes_data = _calculate_passes_per_species(
-                    events_by_species, time_buckets, event_count, projects_by_id
-                )
-                all_passes_data.extend(passes_data)
+    # Generate filename
+    filename = f"{datetime.datetime.now().strftime('%d.%m.%Y_%H_%M')}_passes"
 
-            # Process events without datetime information
-            if events_without_datetime:
-                passes_without_datetime = _calculate_passes_without_datetime(
-                    events_without_datetime, tags, event_count, projects_by_id
-                )
-                all_passes_data.extend(passes_without_datetime)
+    # Return JSON response with chart
+    try:
+        # Generate CSV content as string
+        csv_output = StringIO()
+        writer = csv.writer(csv_output)
 
-            # If no events found at all, return empty CSV with headers only
-            if not all_passes_data:
-                return
+        # Write headers
+        headers = [
+            "time_period_start",
+            "time_period_end",
+            "species_tag",
+            "event_count",
+            "pass_threshold",
+            "pass_count",
+        ]
+        writer.writerow(headers)
 
-            # Generate CSV rows for all passes data
-            for pass_data in all_passes_data:
-                output = StringIO()
-                writer = csv.writer(output)
-                writer.writerow([
-                    pass_data["time_period_start"],
-                    pass_data["time_period_end"],
-                    pass_data["species_tag"],
-                    pass_data["event_count"],
-                    pass_data["pass_threshold"],
-                    pass_data["is_pass"],
-                ])
-                yield output.getvalue()
+        # Write data rows
+        for pass_data in all_passes_data:
+            writer.writerow([
+                pass_data["time_period_start"],
+                pass_data["time_period_end"],
+                pass_data["species_tag"],
+                pass_data["event_count"],
+                pass_data["pass_threshold"],
+                pass_data["pass_count"],
+            ])
 
-        except Exception as e:
-            logger.error(f"Error during passes CSV generation: {e}")
-            raise e
+        csv_content = csv_output.getvalue()
+        csv_output.close()
 
-    return _create_csv_streaming_response(generate_passes_csv, "passes")
+        # Generate chart
+        chart_base64 = _generate_passes_chart(all_passes_data, event_count)
+
+        return {
+            "csv_data": csv_content,
+            "chart_image": chart_base64,
+            "filename": filename,
+            "passes_data": all_passes_data,
+        }
+
+    except Exception as e:
+        logger.error(f"Error during passes JSON generation: {e}")
+        raise e
 
 
 def _convert_time_period_to_seconds(
@@ -919,7 +925,11 @@ def _calculate_passes_per_species(
     event_threshold: int,
     projects_by_id: Dict[int, Any],
 ) -> List[Dict[str, Any]]:
-    """Calculate passes for each species in each time bucket."""
+    """Calculate bat passes for each species in each time bucket.
+
+    A bat pass is defined as a clip/recording containing >= event_threshold sound events of the same species.
+    This function counts how many such clips exist in each time period.
+    """
     passes_data = []
 
     for species_tag, species_events in events_by_species.items():
@@ -927,16 +937,31 @@ def _calculate_passes_per_species(
             # Find events in this time bucket
             bucket_events = [event for event in species_events if bucket_start <= event["datetime"] < bucket_end]
 
-            event_count = len(bucket_events)
-            is_pass = event_count >= event_threshold
+            # Group events by recording/clip filename
+            events_by_recording = defaultdict(list)
+            for event in bucket_events:
+                recording_filename = event["recording_filename"]
+                events_by_recording[recording_filename].append(event)
+
+            # Count bat passes: recordings with >= threshold events for this species
+            pass_count = 0
+            total_event_count = 0
+
+            for _, recording_events in events_by_recording.items():
+                event_count_in_recording = len(recording_events)
+                total_event_count += event_count_in_recording
+
+                # This recording constitutes a bat pass if it has >= threshold events
+                if event_count_in_recording >= event_threshold:
+                    pass_count += 1
 
             passes_data.append({
                 "time_period_start": bucket_start.strftime("%Y-%m-%d %H:%M:%S"),
                 "time_period_end": bucket_end.strftime("%Y-%m-%d %H:%M:%S"),
                 "species_tag": species_tag,
-                "event_count": event_count,
+                "event_count": total_event_count,  # Total events in time period
                 "pass_threshold": event_threshold,
-                "is_pass": is_pass,
+                "pass_count": pass_count,  # Number of recordings that qualify as bat passes
             })
 
     return passes_data
@@ -948,7 +973,7 @@ def _calculate_passes_without_datetime(
     event_threshold: int,
     projects_by_id: Dict[int, Any],
 ) -> List[Dict[str, Any]]:
-    """Calculate passes for events without date/time information."""
+    """Calculate bat passes for events without date/time information."""
     if not events_without_datetime:
         return []
 
@@ -958,19 +983,187 @@ def _calculate_passes_without_datetime(
     passes_data = []
 
     for species_tag, species_events in events_by_species.items():
-        event_count = len(species_events)
-        is_pass = event_count >= event_threshold
+        # Group events by recording/clip filename
+        events_by_recording = defaultdict(list)
+        for event in species_events:
+            recording_filename = event["recording_filename"]
+            events_by_recording[recording_filename].append(event)
+
+        # Count bat passes: recordings with >= threshold events for this species
+        pass_count = 0
+        total_event_count = len(species_events)
+
+        for _, recording_events in events_by_recording.items():
+            event_count_in_recording = len(recording_events)
+
+            # This recording constitutes a bat pass if it has >= threshold events
+            if event_count_in_recording >= event_threshold:
+                pass_count += 1
 
         passes_data.append({
             "time_period_start": "No Date",
             "time_period_end": "No Time",
             "species_tag": species_tag,
-            "event_count": event_count,
+            "event_count": total_event_count,  # Total events
             "pass_threshold": event_threshold,
-            "is_pass": is_pass,
+            "pass_count": pass_count,  # Number of recordings that qualify as bat passes
         })
 
     return passes_data
+
+
+def _generate_passes_chart(passes_data: List[Dict[str, Any]], event_threshold: int) -> str:
+    """Generate a unified time series bar chart for passes data and return as base64 encoded PNG."""
+    if not passes_data:
+        return ""
+
+    # Separate data with and without datetime info
+    datetime_data = []
+    no_datetime_data = []
+
+    for pass_entry in passes_data:
+        if pass_entry["time_period_start"] == "No Date":
+            no_datetime_data.append(pass_entry)
+        else:
+            datetime_data.append(pass_entry)
+
+    # Always use the unified time series chart
+    return _generate_unified_time_series_chart(datetime_data, no_datetime_data, event_threshold)
+
+
+def _generate_unified_time_series_chart(
+    datetime_data: List[Dict[str, Any]], no_datetime_data: List[Dict[str, Any]], event_threshold: int
+) -> str:
+    """Generate a unified time series bar chart that includes both datetime and non-datetime data."""
+    # Combine all data for processing
+    all_data = datetime_data + no_datetime_data
+
+    if not all_data:
+        return ""
+
+    # Group data by species and time periods
+    species_data = defaultdict(lambda: {"periods": [], "counts": [], "passes": []})
+
+    for pass_entry in all_data:
+        species = pass_entry["species_tag"]
+        time_period = pass_entry["time_period_start"]
+        pass_count = pass_entry["pass_count"]
+
+        species_data[species]["periods"].append(time_period)
+        species_data[species]["counts"].append(pass_count)  # Use actual pass count
+        species_data[species]["passes"].append(pass_count > 0)
+
+    # Create the chart
+    plt.style.use("default")
+    fig, ax = plt.subplots(figsize=(14, 6))
+
+    # Get unique time periods and species
+    # Separate datetime periods from "No Date" periods
+    datetime_periods = []
+    no_date_periods = []
+
+    for data in species_data.values():
+        for period in data["periods"]:
+            if period == "No Date":
+                if period not in no_date_periods:
+                    no_date_periods.append(period)
+            else:
+                if period not in datetime_periods:
+                    datetime_periods.append(period)
+
+    # Sort datetime periods, keep "No Date" periods at the end
+    datetime_periods.sort()
+    all_periods = datetime_periods + no_date_periods
+
+    species_list = list(species_data.keys())
+
+    # Set up colors for species using tab10 with rotation for more than 10 species
+    tab10_colors = plt.cm.tab10.colors
+    colors = [tab10_colors[i % len(tab10_colors)] for i in range(len(species_list))]
+
+    # Bar width and positions
+    bar_width = 0.8 / len(species_list) if species_list else 0.8
+    x_positions = range(len(all_periods))
+
+    # Plot bars for each species
+    for i, (species, color) in enumerate(zip(species_list, colors, strict=True)):
+        data = species_data[species]
+
+        # Create counts array for all time periods (0 for missing periods)
+        counts_for_periods = []
+        for period in all_periods:
+            if period in data["periods"]:
+                idx = data["periods"].index(period)
+                counts_for_periods.append(data["counts"][idx])
+            else:
+                counts_for_periods.append(0)
+
+        # Calculate x positions for this species
+        species_x_positions = [x + i * bar_width for x in x_positions]
+
+        # Create bars
+        ax.bar(species_x_positions, counts_for_periods, bar_width, label=species, color=color, alpha=0.8)
+
+    # Customize the chart
+    ax.set_xlabel("Time Period", fontsize=12)
+    ax.set_ylabel("Number of Passes", fontsize=12)
+    ax.set_title("Species Activity Passes Over Time", fontsize=14)
+
+    # Set x-axis labels
+    ax.set_xticks([x + bar_width * (len(species_list) - 1) / 2 for x in x_positions])
+
+    # Format time period labels
+    period_labels = []
+    for period in all_periods:
+        if period == "No Date":
+            period_labels.append("No Date/Time")
+        else:
+            try:
+                # Try to parse and format the datetime
+                dt = datetime.datetime.strptime(period, "%Y-%m-%d %H:%M:%S")
+                period_labels.append(dt.strftime("%m/%d %H:%M"))
+            except (ValueError, TypeError):
+                # Fallback to original string
+                period_labels.append(period[:10] if len(period) > 10 else period)
+
+    ax.set_xticklabels(period_labels, rotation=45, ha="right")
+
+    # Add visual separator between datetime and no-datetime data
+    if datetime_periods and no_date_periods:
+        separator_x = len(datetime_periods) - 0.5
+        ax.axvline(x=separator_x, color="gray", linestyle=":", alpha=0.5, linewidth=2)
+
+    # Set y-axis for pass counts - let matplotlib handle ticks automatically
+    # but ensure we start from 0 and use integer ticks for pass counts
+    ax.set_ylim(bottom=0)
+
+    # Use integer ticks for pass counts (no fractional passes)
+    from matplotlib.ticker import MaxNLocator
+
+    ax.yaxis.set_major_locator(MaxNLocator(integer=True))
+
+    # Add legend
+    ax.legend(bbox_to_anchor=(1.05, 1), loc="upper left")
+
+    # Add grid for better readability
+    ax.grid(True, alpha=0.3)
+
+    # Tight layout to prevent label cutoff
+    plt.tight_layout()
+
+    # Save to buffer
+    buffer = BytesIO()
+    plt.savefig(buffer, format="png", dpi=150, bbox_inches="tight")
+    buffer.seek(0)
+
+    # Convert to base64
+    chart_base64 = base64.b64encode(buffer.getvalue()).decode("utf-8")
+
+    # Clean up
+    plt.close(fig)
+    buffer.close()
+
+    return chart_base64
 
 
 @export_router.get("/stats/")
