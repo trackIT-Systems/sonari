@@ -42,33 +42,57 @@ class TimeService(BaseExportService):
         # Parse date range if provided
         parsed_start_date, parsed_end_date = self.parse_date_range(start_date, end_date)
 
-        # Extract events with and without datetime information
-        events_with_datetime, events_without_datetime = await extract_events_with_datetime(
-            self.session, project_ids, tags, statuses, parsed_start_date, parsed_end_date
-        )
-
         all_time_data = []
+        chart_images = []
+        project_names = []
 
-        # Process events with datetime information
-        if events_with_datetime:
-            # Group events by species tag
-            events_by_species = group_events_by_species(events_with_datetime, tags)
+        # Process each project separately
+        for project_id in project_ids:
+            project = projects_by_id[project_id]
+            project_name = project.name
+            project_names.append(project_name)
 
-            # Generate time buckets
-            time_buckets = generate_time_buckets(
-                events_with_datetime, period_seconds, time_period_type, predefined_period
+            # Extract events for this specific project
+            events_with_datetime, events_without_datetime = await extract_events_with_datetime(
+                self.session, [project_id], tags, statuses, parsed_start_date, parsed_end_date
             )
 
-            # Calculate event counts for each species
-            time_data = self._calculate_time_events_per_species(events_by_species, time_buckets, projects_by_id)
-            all_time_data.extend(time_data)
+            project_time_data = []
 
-        # Process events without datetime information
-        if events_without_datetime:
-            time_without_datetime = self._calculate_time_events_without_datetime(
-                events_without_datetime, tags, projects_by_id
+            # Process events with datetime information
+            if events_with_datetime:
+                # Group events by species tag
+                events_by_species = group_events_by_species(events_with_datetime, tags)
+
+                # Generate time buckets
+                time_buckets = generate_time_buckets(
+                    events_with_datetime, period_seconds, time_period_type, predefined_period
+                )
+
+                # Calculate event counts for each species
+                time_data = self._calculate_time_events_per_species(
+                    events_by_species, time_buckets, {project_id: project}, project_name
+                )
+                project_time_data.extend(time_data)
+
+            # Process events without datetime information
+            if events_without_datetime:
+                time_without_datetime = self._calculate_time_events_without_datetime(
+                    events_without_datetime, tags, {project_id: project}, project_name
+                )
+                project_time_data.extend(time_without_datetime)
+
+            # Generate chart for this project
+            chart_base64 = generate_time_series_chart(
+                [d for d in project_time_data if d["time_period_start"] != "No Date"],
+                [d for d in project_time_data if d["time_period_start"] == "No Date"],
+                chart_type="events",
+                project_name=project_name,
             )
-            all_time_data.extend(time_without_datetime)
+            chart_images.append(chart_base64)
+
+            # Add project time data to all data
+            all_time_data.extend(project_time_data)
 
         # Generate filename
         filename = self.generate_filename("time")
@@ -81,6 +105,7 @@ class TimeService(BaseExportService):
 
             # Write headers
             headers = [
+                "project_name",
                 "time_period_start",
                 "time_period_end",
                 "species_tag",
@@ -91,6 +116,7 @@ class TimeService(BaseExportService):
             # Write data rows
             for time_entry in all_time_data:
                 writer.writerow([
+                    time_entry["project_name"],
                     time_entry["time_period_start"],
                     time_entry["time_period_end"],
                     time_entry["species_tag"],
@@ -100,16 +126,10 @@ class TimeService(BaseExportService):
             csv_content = csv_output.getvalue()
             csv_output.close()
 
-            # Generate chart using unified chart generator
-            chart_base64 = generate_time_series_chart(
-                [d for d in all_time_data if d["time_period_start"] != "No Date"],
-                [d for d in all_time_data if d["time_period_start"] == "No Date"],
-                chart_type="events",
-            )
-
             return {
                 "csv_data": csv_content,
-                "chart_image": chart_base64,
+                "chart_images": chart_images,
+                "project_names": project_names,
                 "filename": filename,
                 "time_data": all_time_data,
             }
@@ -123,6 +143,7 @@ class TimeService(BaseExportService):
         events_by_species: Dict[str, List[Dict[str, Any]]],
         time_buckets: List[Tuple],
         projects_by_id: Dict[int, Any],
+        project_name: str,
     ) -> List[Dict[str, Any]]:
         """Calculate event counts for each species in each time bucket."""
         time_data = []
@@ -135,6 +156,7 @@ class TimeService(BaseExportService):
                 event_count = len(bucket_events)
 
                 time_data.append({
+                    "project_name": project_name,
                     "time_period_start": bucket_start.strftime("%Y-%m-%d %H:%M:%S"),
                     "time_period_end": bucket_end.strftime("%Y-%m-%d %H:%M:%S"),
                     "species_tag": species_tag,
@@ -148,6 +170,7 @@ class TimeService(BaseExportService):
         events_without_datetime: List[Dict[str, Any]],
         selected_tags: List[str],
         projects_by_id: Dict[int, Any],
+        project_name: str,
     ) -> List[Dict[str, Any]]:
         """Calculate event counts for events without date/time information."""
         if not events_without_datetime:
@@ -162,6 +185,7 @@ class TimeService(BaseExportService):
             event_count = len(species_events)
 
             time_data.append({
+                "project_name": project_name,
                 "time_period_start": "No Date",
                 "time_period_end": "No Time",
                 "species_tag": species_tag,

@@ -18,6 +18,7 @@ def generate_time_series_chart(
     no_datetime_data: List[Dict[str, Any]],
     chart_type: str = "events",
     event_threshold: int | None = None,
+    project_name: str | None = None,
 ) -> str:
     """Generate a unified time series bar chart for different export types.
 
@@ -26,8 +27,10 @@ def generate_time_series_chart(
         no_datetime_data: Data without datetime information
         chart_type: Type of chart - "events" for event counts, "passes" for pass counts
         event_threshold: Event threshold for passes charts (required for passes)
+        project_name: Name of the project to include in chart title
 
-    Returns:
+    Returns
+    -------
         Base64 encoded PNG chart
     """
     # Combine all data for processing
@@ -107,10 +110,12 @@ def generate_time_series_chart(
 
     if chart_type == "passes":
         ax.set_ylabel("Number of Passes", fontsize=12)
-        ax.set_title("Species Activity Passes Over Time", fontsize=14)
+        title = project_name if project_name else ""
+        ax.set_title(title, fontsize=14)
     else:
         ax.set_ylabel("Number of Events", fontsize=12)
-        ax.set_title("Species Event Counts Over Time", fontsize=14)
+        title = project_name if project_name else ""
+        ax.set_title(title, fontsize=14)
 
     # Set x-axis labels
     ax.set_xticks([x + bar_width * (len(species_list) - 1) / 2 for x in x_positions])

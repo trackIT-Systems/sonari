@@ -32,7 +32,8 @@ export default function TimeExport() {
   // Chart preview state
   const [chartData, setChartData] = useState<{
     csv_data: string;
-    chart_image: string;
+    chart_images: string[];
+    project_names: string[];
     filename: string;
     time_data: any[];
   } | null>(null);
@@ -66,8 +67,14 @@ export default function TimeExport() {
         formattedEndDate,
       );
 
-      if ('chart_image' in result) {
-        setChartData(result);
+      if ('chart_images' in result && Array.isArray(result.chart_images)) {
+        setChartData(result as unknown as {
+          csv_data: string;
+          chart_images: string[];
+          project_names: string[];
+          filename: string;
+          time_data: any[];
+        });
         setShowPreview(true);
       }
     } catch (error) {
@@ -89,19 +96,32 @@ export default function TimeExport() {
       await new Promise(resolve => setTimeout(resolve, 100));
     }
 
-    // Download Chart as PNG
-    if (chartData.chart_image) {
-      try {
-        const byteCharacters = atob(chartData.chart_image);
-        const byteNumbers = new Array(byteCharacters.length);
-        for (let i = 0; i < byteCharacters.length; i++) {
-          byteNumbers[i] = byteCharacters.charCodeAt(i);
+    // Download Charts as PNG
+    if (chartData.chart_images && chartData.project_names) {
+      for (let i = 0; i < chartData.chart_images.length; i++) {
+        const chartImage = chartData.chart_images[i];
+        const projectName = chartData.project_names[i];
+        
+        try {
+          const byteCharacters = atob(chartImage);
+          const byteNumbers = new Array(byteCharacters.length);
+          for (let j = 0; j < byteCharacters.length; j++) {
+            byteNumbers[j] = byteCharacters.charCodeAt(j);
+          }
+          const byteArray = new Uint8Array(byteNumbers);
+          const chartBlob = new Blob([byteArray], { type: 'image/png' });
+          
+          // Clean project name for filename (remove special characters)
+          const cleanProjectName = projectName.replace(/[^a-zA-Z0-9]/g, '_');
+          downloadFile(chartBlob, `${chartData.filename}_${cleanProjectName}_chart.png`);
+          
+          // Add a small delay between downloads to prevent browser blocking
+          if (i < chartData.chart_images.length - 1) {
+            await new Promise(resolve => setTimeout(resolve, 100));
+          }
+        } catch (error) {
+          console.error(`Error processing chart image for project ${projectName}:`, error);
         }
-        const byteArray = new Uint8Array(byteNumbers);
-        const chartBlob = new Blob([byteArray], { type: 'image/png' });
-        downloadFile(chartBlob, `${chartData.filename}_chart.png`);
-      } catch (error) {
-        console.error('Error processing chart image:', error);
       }
     }
   };
@@ -176,14 +196,23 @@ export default function TimeExport() {
 
       {/* Chart Preview Section - Shows below the main layout */}
       {showPreview && chartData && (
-        <Card>
-          <TimeChart
-            chartImage={chartData.chart_image}
-          />
+        <div className="space-y-6">
+          {chartData.chart_images.map((chartImage, index) => (
+            <Card key={index}>
+              <div className="space-y-4">
+                <h3 className="text-lg font-semibold text-center">
+                  {chartData.project_names[index]}
+                </h3>
+                <TimeChart chartImage={chartImage} />
+              </div>
+            </Card>
+          ))}
+          <Card>
             <Button onClick={handleDownload} className="w-full">
               Download
             </Button>
-        </Card>
+          </Card>
+        </div>
       )}
     </div>
   );

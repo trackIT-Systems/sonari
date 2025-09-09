@@ -45,35 +45,58 @@ class PassesService(BaseExportService):
         # Parse date range if provided
         parsed_start_date, parsed_end_date = self.parse_date_range(start_date, end_date)
 
-        # Extract events with and without datetime information
-        events_with_datetime, events_without_datetime = await extract_events_with_datetime(
-            self.session, project_ids, tags, statuses, parsed_start_date, parsed_end_date
-        )
-
         all_passes_data = []
+        chart_images = []
+        project_names = []
 
-        # Process events with datetime information
-        if events_with_datetime:
-            # Group events by species tag
-            events_by_species = group_events_by_species(events_with_datetime, tags)
+        # Process each project separately
+        for project_id in project_ids:
+            project = projects_by_id[project_id]
+            project_name = project.name
+            project_names.append(project_name)
 
-            # Generate time buckets
-            time_buckets = generate_time_buckets(
-                events_with_datetime, period_seconds, time_period_type, predefined_period
+            # Extract events for this specific project
+            events_with_datetime, events_without_datetime = await extract_events_with_datetime(
+                self.session, [project_id], tags, statuses, parsed_start_date, parsed_end_date
             )
 
-            # Calculate passes for each species
-            passes_data = self._calculate_passes_per_species(
-                events_by_species, time_buckets, event_count, projects_by_id
-            )
-            all_passes_data.extend(passes_data)
+            project_passes_data = []
 
-        # Process events without datetime information
-        if events_without_datetime:
-            passes_without_datetime = self._calculate_passes_without_datetime(
-                events_without_datetime, tags, event_count, projects_by_id
+            # Process events with datetime information
+            if events_with_datetime:
+                # Group events by species tag
+                events_by_species = group_events_by_species(events_with_datetime, tags)
+
+                # Generate time buckets
+                time_buckets = generate_time_buckets(
+                    events_with_datetime, period_seconds, time_period_type, predefined_period
+                )
+
+                # Calculate passes for each species
+                passes_data = self._calculate_passes_per_species(
+                    events_by_species, time_buckets, event_count, {project_id: project}, project_name
+                )
+                project_passes_data.extend(passes_data)
+
+            # Process events without datetime information
+            if events_without_datetime:
+                passes_without_datetime = self._calculate_passes_without_datetime(
+                    events_without_datetime, tags, event_count, {project_id: project}, project_name
+                )
+                project_passes_data.extend(passes_without_datetime)
+
+            # Generate chart for this project
+            chart_base64 = generate_time_series_chart(
+                [d for d in project_passes_data if d["time_period_start"] != "No Date"],
+                [d for d in project_passes_data if d["time_period_start"] == "No Date"],
+                chart_type="passes",
+                event_threshold=event_count,
+                project_name=project_name,
             )
-            all_passes_data.extend(passes_without_datetime)
+            chart_images.append(chart_base64)
+
+            # Add project passes data to all data
+            all_passes_data.extend(project_passes_data)
 
         # Generate filename
         filename = self.generate_filename("passes")
@@ -86,6 +109,7 @@ class PassesService(BaseExportService):
 
             # Write headers
             headers = [
+                "project_name",
                 "time_period_start",
                 "time_period_end",
                 "species_tag",
@@ -98,6 +122,7 @@ class PassesService(BaseExportService):
             # Write data rows
             for pass_data in all_passes_data:
                 writer.writerow([
+                    pass_data["project_name"],
                     pass_data["time_period_start"],
                     pass_data["time_period_end"],
                     pass_data["species_tag"],
@@ -109,17 +134,10 @@ class PassesService(BaseExportService):
             csv_content = csv_output.getvalue()
             csv_output.close()
 
-            # Generate chart using unified chart generator
-            chart_base64 = generate_time_series_chart(
-                [d for d in all_passes_data if d["time_period_start"] != "No Date"],
-                [d for d in all_passes_data if d["time_period_start"] == "No Date"],
-                chart_type="passes",
-                event_threshold=event_count,
-            )
-
             return {
                 "csv_data": csv_content,
-                "chart_image": chart_base64,
+                "chart_images": chart_images,
+                "project_names": project_names,
                 "filename": filename,
                 "passes_data": all_passes_data,
             }
@@ -134,6 +152,7 @@ class PassesService(BaseExportService):
         time_buckets: List[Tuple],
         event_threshold: int,
         projects_by_id: Dict[int, Any],
+        project_name: str,
     ) -> List[Dict[str, Any]]:
         """Calculate bat passes for each species in each time bucket."""
         passes_data = []
@@ -162,6 +181,7 @@ class PassesService(BaseExportService):
                         pass_count += 1
 
                 passes_data.append({
+                    "project_name": project_name,
                     "time_period_start": bucket_start.strftime("%Y-%m-%d %H:%M:%S"),
                     "time_period_end": bucket_end.strftime("%Y-%m-%d %H:%M:%S"),
                     "species_tag": species_tag,
@@ -178,6 +198,7 @@ class PassesService(BaseExportService):
         selected_tags: List[str],
         event_threshold: int,
         projects_by_id: Dict[int, Any],
+        project_name: str,
     ) -> List[Dict[str, Any]]:
         """Calculate bat passes for events without date/time information."""
         if not events_without_datetime:
@@ -207,6 +228,7 @@ class PassesService(BaseExportService):
                     pass_count += 1
 
             passes_data.append({
+                "project_name": project_name,
                 "time_period_start": "No Date",
                 "time_period_end": "No Time",
                 "species_tag": species_tag,
