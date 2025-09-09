@@ -46,53 +46,58 @@ export default function StatsExport() {
   };
 
   return (
-    <div className="flex flex-row gap-8">
-      <div className="flex flex-col gap-y-6 max-w-prose">
-        <Info title="Statistics:">
-          This export generates summary statistics about your recording projects in CSV format. It provides an overview 
-          of how many recordings are available, their total duration, and breaks down the data by project, review status, 
-          and species tags, giving a high-level view.
-        </Info>
-        
-        <ExportProjectSelection
-          projectTagList={exportSelection.projectTagList}
-          selectedProjectTags={exportSelection.selectedProjectTags}
-          onProjectSelect={exportSelection.handleProjectSelect}
-          onProjectDeselect={exportSelection.handleProjectDeselect}
-        />
+    <div className="space-y-8">
 
-        <ExportTagSelection
-          availableTags={exportSelection.availableTags}
-          selectedTags={exportSelection.selectedTags}
-          onTagSelect={exportSelection.handleTagSelect}
-          onTagDeselect={exportSelection.handleTagDeselect}
-          onSelectAllTags={exportSelection.handleSelectAllTags}
-        />
+      <Info title="Statistics:">
+        This export generates summary statistics about your recording projects in CSV format. It provides an overview
+        of how many recordings are available, their total duration, and breaks down the data by project, review status,
+        and species tags, giving a high-level view.
+      </Info>
+      <div className="flex flex-row gap-8">
+        <div className="flex flex-col gap-y-6 max-w-prose">
 
-        <ExportStatusSelection
-          allStatusOptions={exportSelection.allStatusOptions}
-          selectedStatuses={exportSelection.selectedStatuses}
-          onStatusToggle={exportSelection.handleStatusToggle}
-        />
+          <ExportProjectSelection
+            projectTagList={exportSelection.projectTagList}
+            selectedProjectTags={exportSelection.selectedProjectTags}
+            onProjectSelect={exportSelection.handleProjectSelect}
+            onProjectDeselect={exportSelection.handleProjectDeselect}
+          />
 
-        <ExportDateRangeFilter
-          startDate={exportSelection.startDate}
-          endDate={exportSelection.endDate}
-          onStartDateChange={exportSelection.setStartDate}
-          onEndDateChange={exportSelection.setEndDate}
-        />
+          <ExportStatusSelection
+            allStatusOptions={exportSelection.allStatusOptions}
+            selectedStatuses={exportSelection.selectedStatuses}
+            onStatusToggle={exportSelection.handleStatusToggle}
+          />
+
+          <ExportSummary
+            isExporting={exportSelection.isExporting}
+            isSelectionValid={exportSelection.validation.isValid}
+            selectedProjectsCount={exportSelection.selectedProjects.length}
+            selectedTagsCount={exportSelection.selectedTags.length}
+            selectedStatusesCount={exportSelection.selectedStatuses.length}
+            onExport={handleExport}
+            exportButtonText="Export Statistics"
+            summaryDescription="Once satisfied with your selections, click the button below to export the statistics."
+          />
+        </div>
+
+        <div className="flex flex-col gap-y-6 min-w-0">
+          <ExportTagSelection
+            availableTags={exportSelection.availableTags}
+            selectedTags={exportSelection.selectedTags}
+            onTagSelect={exportSelection.handleTagSelect}
+            onTagDeselect={exportSelection.handleTagDeselect}
+            onSelectAllTags={exportSelection.handleSelectAllTags}
+          />
+          <ExportDateRangeFilter
+            startDate={exportSelection.startDate}
+            endDate={exportSelection.endDate}
+            onStartDateChange={exportSelection.setStartDate}
+            onEndDateChange={exportSelection.setEndDate}
+          />
+        </div>
+
       </div>
-
-      <ExportSummary
-        isExporting={exportSelection.isExporting}
-        isSelectionValid={exportSelection.validation.isValid}
-        selectedProjectsCount={exportSelection.selectedProjects.length}
-        selectedTagsCount={exportSelection.selectedTags.length}
-        selectedStatusesCount={exportSelection.selectedStatuses.length}
-        onExport={handleExport}
-        exportButtonText="Export Statistics"
-        summaryDescription="Once satisfied with your selections, click the button below to export the statistics."
-      />
     </div>
   );
 }

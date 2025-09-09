@@ -109,7 +109,7 @@ export default function TimeExport() {
   return (
     <div className="space-y-8">
       {/* Info header spanning full width */}
-      <Info title="Time:">
+      <Info title="Events per Time:">
         This export analyzes recordings by counting events within specified time periods.
         It creates a CSV file showing the number of events for each species during different time intervals
         (like hourly, daily, or custom periods).
