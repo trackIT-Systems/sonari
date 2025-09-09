@@ -187,7 +187,7 @@ export function registerExportAPI(
     timePeriod?: { type: 'predefined'; value: string } | { type: 'custom'; value: number; unit: string },
     startDate?: string,
     endDate?: string,
-  ): Promise<{ blob: Blob; filename: string }> {
+  ): Promise<{ csv_data: string; chart_image: string; filename: string; time_data: any[] }> {
     const params = buildCommonParams({
       annotationProjects,
       tags,
@@ -208,14 +208,11 @@ export function registerExportAPI(
     }
   
     const response = await instance.get(`${endpoints.time}?${params.toString()}`, {
-      responseType: 'blob',
+      responseType: 'json',
       withCredentials: true,
     });
 
-    const filename = extractFilenameFromResponse(response, 'time_export.csv');
-    const blob = createBlobFromResponse(response, response.headers['content-type'] || 'application/octet-stream');
-
-    return { blob, filename };
+    return response.data;
   }
 
   return {
