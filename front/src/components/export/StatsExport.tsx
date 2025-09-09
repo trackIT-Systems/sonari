@@ -47,13 +47,12 @@ export default function StatsExport() {
 
   return (
     <div className="space-y-8">
-
       <Info title="Statistics:">
         This export generates summary statistics about your recording projects in CSV format. It provides an overview
         of how many recordings are available, their total duration, and breaks down the data by project, review status,
         and species tags, giving a high-level view.
       </Info>
-      <div className="flex flex-row gap-8">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         <div className="flex flex-col gap-y-6 max-w-prose">
 
           <ExportProjectSelection

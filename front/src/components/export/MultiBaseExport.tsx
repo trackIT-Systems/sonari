@@ -34,7 +34,7 @@ export default function MultiBaseExport() {
         formattedStartDate,
         formattedEndDate,
       );
-      
+
       downloadFile(blob, filename);
     } catch (error) {
       console.error('Export failed:', error);
@@ -44,53 +44,56 @@ export default function MultiBaseExport() {
   };
 
   return (
-    <div className="flex flex-row gap-8">
-      <div className="flex flex-col gap-y-6 max-w-prose">
-        <Info title="MultiBase:">
-          This export creates an Excel file containing species observations in a standardized MultiBase format. 
-          It extracts identified tags from events along with location coordinates, dates, 
-          and recording station information.
-        </Info>
-        
-        <ExportProjectSelection
-          projectTagList={exportSelection.projectTagList}
-          selectedProjectTags={exportSelection.selectedProjectTags}
-          onProjectSelect={exportSelection.handleProjectSelect}
-          onProjectDeselect={exportSelection.handleProjectDeselect}
-        />
-        
-        <ExportTagSelection
-          availableTags={exportSelection.availableTags}
-          selectedTags={exportSelection.selectedTags}
-          onTagSelect={exportSelection.handleTagSelect}
-          onTagDeselect={exportSelection.handleTagDeselect}
-          onSelectAllTags={exportSelection.handleSelectAllTags}
-        />
-        
-        <ExportStatusSelection
-          allStatusOptions={exportSelection.allStatusOptions}
-          selectedStatuses={exportSelection.selectedStatuses}
-          onStatusToggle={exportSelection.handleStatusToggle}
-        />
+    <div className="space-y-8">
+      <Info title="MultiBase:">
+        This export creates an Excel file containing species observations in a standardized MultiBase format.
+        It extracts identified tags from events along with location coordinates, dates,
+        and recording station information.
+      </Info>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <div className="flex flex-col gap-y-6 min-w-0">
+          <ExportProjectSelection
+            projectTagList={exportSelection.projectTagList}
+            selectedProjectTags={exportSelection.selectedProjectTags}
+            onProjectSelect={exportSelection.handleProjectSelect}
+            onProjectDeselect={exportSelection.handleProjectDeselect}
+          />
 
-        <ExportDateRangeFilter
-          startDate={exportSelection.startDate}
-          endDate={exportSelection.endDate}
-          onStartDateChange={exportSelection.setStartDate}
-          onEndDateChange={exportSelection.setEndDate}
-        />
+          <ExportStatusSelection
+            allStatusOptions={exportSelection.allStatusOptions}
+            selectedStatuses={exportSelection.selectedStatuses}
+            onStatusToggle={exportSelection.handleStatusToggle}
+          />
+
+          <ExportSummary
+            isExporting={exportSelection.isExporting}
+            isSelectionValid={exportSelection.validation.isValid}
+            selectedProjectsCount={exportSelection.selectedProjects.length}
+            selectedTagsCount={exportSelection.selectedTags.length}
+            selectedStatusesCount={exportSelection.selectedStatuses.length}
+            onExport={handleExport}
+            exportButtonText="Export MultiBase"
+            summaryDescription="Once satisfied with your selections, click the button below to export the project in MultiBase format."
+          />
+        </div>
+
+        <div className="flex flex-col gap-y-6 min-w-0">
+          <ExportTagSelection
+            availableTags={exportSelection.availableTags}
+            selectedTags={exportSelection.selectedTags}
+            onTagSelect={exportSelection.handleTagSelect}
+            onTagDeselect={exportSelection.handleTagDeselect}
+            onSelectAllTags={exportSelection.handleSelectAllTags}
+          />
+
+          <ExportDateRangeFilter
+            startDate={exportSelection.startDate}
+            endDate={exportSelection.endDate}
+            onStartDateChange={exportSelection.setStartDate}
+            onEndDateChange={exportSelection.setEndDate}
+          />
+        </div>
       </div>
-
-      <ExportSummary
-        isExporting={exportSelection.isExporting}
-        isSelectionValid={exportSelection.validation.isValid}
-        selectedProjectsCount={exportSelection.selectedProjects.length}
-        selectedTagsCount={exportSelection.selectedTags.length}
-        selectedStatusesCount={exportSelection.selectedStatuses.length}
-        onExport={handleExport}
-        exportButtonText="Export MultiBase"
-        summaryDescription="Once satisfied with your selections, click the button below to export the project in MultiBase format."
-      />
     </div>
   );
 }
