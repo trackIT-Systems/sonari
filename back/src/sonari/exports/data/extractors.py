@@ -84,7 +84,7 @@ async def extract_annotation_data(annotation: models.SoundEventAnnotation) -> Di
     filename = str(recording.path)
 
     # Extract sound event tags
-    sound_event_tags = [f"{tag.key}:{tag.value}" for tag in annotation.tags]
+    sound_event_tags = [tag.value for tag in annotation.tags]
     sound_event_tags_str = ", ".join(sound_event_tags)
 
     # Extract individual features into separate fields
@@ -118,7 +118,7 @@ async def extract_annotation_data(annotation: models.SoundEventAnnotation) -> Di
     # Extract recording tags
     recording_tags = []
     for tag_rel in recording.recording_tags:
-        recording_tags.append(f"{tag_rel.tag.key}:{tag_rel.tag.value}")
+        recording_tags.append(tag_rel.tag.value)
     recording_tags_str = ", ".join(recording_tags)
 
     # Extract task status badges per user

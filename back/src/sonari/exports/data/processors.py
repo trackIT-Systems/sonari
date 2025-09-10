@@ -8,7 +8,7 @@ from typing import Any, Dict, List, Tuple
 from sqlalchemy import and_, select
 from sqlalchemy.orm import selectinload
 
-from ..utils.tag_utils import extract_tag_set, find_matching_tags
+from ..utils.tag_utils import extract_tag_set, extract_tag_values_from_selected, find_matching_tags
 from sonari import models
 from sonari.routes.dependencies import Session
 
@@ -181,9 +181,12 @@ def group_events_by_species(
     """Group events by species tag."""
     events_by_species = defaultdict(list)
 
+    # Extract values from selected_tags (which come in "key:value" format)
+    selected_tag_values = extract_tag_values_from_selected(selected_tags)
+
     for event in events_with_datetime:
-        for tag in event["tags"]:
-            if tag in selected_tags:
+        for tag in event["tags"]:  # tag is now just the value
+            if tag in selected_tag_values:
                 events_by_species[tag].append(event)
 
     return dict(events_by_species)
