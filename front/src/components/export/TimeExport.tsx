@@ -15,6 +15,7 @@ import {
   TimeUnit
 } from "./shared";
 import ExportTimePeriodConfiguration from "./shared/ExportTimePeriodConfiguration";
+import ExportGroupTagsToggle from "./shared/ExportGroupTagsToggle";
 import TimeChart from "./TimeChart";
 import api from "@/app/api";
 import Info from "@/components/Info";
@@ -28,6 +29,7 @@ export default function TimeExport() {
   const [predefinedPeriod, setPredefinedPeriod] = useState<PredefinedPeriod>('minute');
   const [customPeriodValue, setCustomPeriodValue] = useState<number>(1);
   const [customPeriodUnit, setCustomPeriodUnit] = useState<TimeUnit>('minutes');
+  const [groupSpecies, setGroupSpecies] = useState<boolean>(false);
 
   // Chart preview state
   const [chartData, setChartData] = useState<{
@@ -65,6 +67,7 @@ export default function TimeExport() {
         timePeriod,
         formattedStartDate,
         formattedEndDate,
+        groupSpecies,
       );
 
       if ('chart_images' in result && Array.isArray(result.chart_images)) {
@@ -161,6 +164,11 @@ export default function TimeExport() {
             onPredefinedPeriodChange={setPredefinedPeriod}
             onCustomPeriodValueChange={setCustomPeriodValue}
             onCustomPeriodUnitChange={setCustomPeriodUnit}
+          />
+
+          <ExportGroupTagsToggle
+            groupSpecies={groupSpecies}
+            onGroupSpeciesChange={setGroupSpecies}
           />
 
           <ExportSummary

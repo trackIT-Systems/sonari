@@ -47,6 +47,7 @@ async def export_passes(
     custom_period_unit: Annotated[str | None, Query()] = None,
     start_date: Annotated[str | None, Query()] = None,
     end_date: Annotated[str | None, Query()] = None,
+    group_species: bool = False,
 ):
     """Export passes analysis in CSV format or JSON with chart."""
     service = PassesService(session)
@@ -61,6 +62,7 @@ async def export_passes(
         custom_period_unit,
         start_date,
         end_date,
+        group_species,
     )
 
 
@@ -70,10 +72,11 @@ async def export_stats(
     annotation_project_uuids: Annotated[list[UUID], Query()],
     tags: Annotated[list[str], Query()],
     statuses: Annotated[list[str] | None, Query()] = None,
+    group_species: bool = False,
 ):
     """Export recording statistics grouped by annotation project, status badge, and tag."""
     service = StatsService(session)
-    return await service.export_stats(annotation_project_uuids, tags, statuses)
+    return await service.export_stats(annotation_project_uuids, tags, statuses, group_species)
 
 
 @export_router.get("/time/")
@@ -88,6 +91,7 @@ async def export_time(
     custom_period_unit: Annotated[str | None, Query()] = None,
     start_date: Annotated[str | None, Query()] = None,
     end_date: Annotated[str | None, Query()] = None,
+    group_species: bool = False,
 ):
     """Export time-based event counts in CSV format or JSON with chart."""
     service = TimeService(session)
@@ -101,4 +105,5 @@ async def export_time(
         custom_period_unit,
         start_date,
         end_date,
+        group_species,
     )

@@ -9,6 +9,7 @@ from uuid import UUID
 
 from fastapi.responses import StreamingResponse
 
+from ..constants import BAT_GROUPS
 from ..data import get_filtered_annotation_tasks
 from ..utils import create_csv_streaming_response, extract_tag_set, find_matching_tags
 from .base import BaseExportService
@@ -23,6 +24,7 @@ class StatsService(BaseExportService):
         annotation_project_uuids: List[UUID],
         tags: List[str],
         statuses: List[str] | None = None,
+        group_species: bool = False,
     ) -> StreamingResponse:
         """Export recording statistics grouped by annotation project, status badge, and tag."""
         logger = logging.getLogger(__name__)
@@ -50,7 +52,9 @@ class StatsService(BaseExportService):
                 yield output.getvalue()
 
                 # Get recording statistics
-                stats_data = await self._get_recording_statistics(project_ids, tags, statuses, projects_by_id)
+                stats_data = await self._get_recording_statistics(
+                    project_ids, tags, statuses, projects_by_id, group_species
+                )
 
                 # Generate CSV rows for all statistics
                 for stat in stats_data:
@@ -78,6 +82,7 @@ class StatsService(BaseExportService):
         tags: List[str],
         statuses: List[str] | None,
         projects_by_id: Dict[int, models.AnnotationProject],
+        group_species: bool = False,
     ) -> List[Dict[str, Any]]:
         """Get recording statistics grouped by project, status badge, and tag."""
         # Get annotation tasks with all necessary relationships
@@ -110,6 +115,15 @@ class StatsService(BaseExportService):
                 event_tags = extract_tag_set(sound_event_annotation.tags)
                 matching_tags = find_matching_tags(event_tags, tags)
                 found_tags.update(matching_tags)
+
+            # Apply species grouping if requested
+            if group_species:
+                grouped_tags = set()
+                for tag in found_tags:
+                    # Look up the species in BAT_GROUPS, default to original tag if not found
+                    category = BAT_GROUPS.get(tag, tag)
+                    grouped_tags.add(category)
+                found_tags = grouped_tags
 
             # If no matching tags found, use "no_tag"
             if not found_tags:

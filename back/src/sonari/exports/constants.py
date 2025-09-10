@@ -46,3 +46,30 @@ class ExportConstants:
         "task_status_badges",
         "geometry_type",
     ]
+
+
+BAT_GROUPS: dict[str, str] = {
+    "Pipistrellus pipistrellus": "Pipistrelloid",
+    "Pipistrellus pygmaeus": "Pipistrelloid",
+    "Pipistrellus nathusii": "Pipistrelloid",
+    "Eptesicus serotinus": "Nyctaloid",
+    "Myotis alcathoe": "Myotis",
+    "Myotis mystacinus/brandtii": "Myotis",
+    "Myotis brandtii": "Myotis",
+    "Myotis mystacinus": "Myotis",
+    "Myotis bechsteinii": "Myotis",
+    "Myotis daubentonii": "Myotis",
+    "Myotis myotis": "Myotis",
+    "Myotis nattereri": "Myotis",
+    "Nyctalus leisleri": "Nyctaloid",
+    "Nyctalus noctula": "Nyctaloid",
+    "Vespertilio murinus": "Nyctaloid",
+    "Myotis emarginatus": "Myotis",
+    "Myotis dasycneme": "Myotis",
+    "Rhinolophus ferrumequinum": "Rhinolophus",
+    "Rhinolophus hipposideros": "Rhinolophus",
+    "Eptesicus nilsonii": "Nyctaloid",
+    "Plecotus auritus": "Plecotus",
+    "Plecotus austriacus": "Plecotus",
+    "Plecotus auritus/austriacus": "Plecotus",
+}

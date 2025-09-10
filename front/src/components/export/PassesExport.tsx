@@ -18,6 +18,7 @@ import {
 import PassesChart from "./PassesChart";
 import api from "@/app/api";
 import Info from "@/components/Info";
+import ExportGroupTagsToggle from "./shared/ExportGroupTagsToggle";
 
 export default function PassesExport() {
   const exportSelection = useExportSelection();
@@ -29,6 +30,7 @@ export default function PassesExport() {
   const [predefinedPeriod, setPredefinedPeriod] = useState<PredefinedPeriod>('minute');
   const [customPeriodValue, setCustomPeriodValue] = useState<number>(1);
   const [customPeriodUnit, setCustomPeriodUnit] = useState<TimeUnit>('minutes');
+  const [groupSpecies, setGroupSpecies] = useState<boolean>(false);
 
   // Chart preview state
   const [chartData, setChartData] = useState<{
@@ -70,6 +72,7 @@ export default function PassesExport() {
         passesConfig.timePeriod,
         formattedStartDate,
         formattedEndDate,
+        groupSpecies,
       );
 
       if ('chart_images' in result && Array.isArray(result.chart_images)) {
@@ -96,7 +99,7 @@ export default function PassesExport() {
     if (chartData.csv_data) {
       const csvBlob = new Blob([chartData.csv_data], { type: 'text/csv' });
       downloadFile(csvBlob, `${chartData.filename}.csv`);
-      
+
       // Add a small delay to prevent browser blocking multiple downloads
       await new Promise(resolve => setTimeout(resolve, 100));
     }
@@ -106,7 +109,7 @@ export default function PassesExport() {
       for (let i = 0; i < chartData.chart_images.length; i++) {
         const chartImage = chartData.chart_images[i];
         const projectName = chartData.project_names[i];
-        
+
         try {
           const byteCharacters = atob(chartImage);
           const byteNumbers = new Array(byteCharacters.length);
@@ -115,11 +118,11 @@ export default function PassesExport() {
           }
           const byteArray = new Uint8Array(byteNumbers);
           const chartBlob = new Blob([byteArray], { type: 'image/png' });
-          
+
           // Clean project name for filename (remove special characters)
           const cleanProjectName = projectName.replace(/[^a-zA-Z0-9]/g, '_');
           downloadFile(chartBlob, `${chartData.filename}_${cleanProjectName}_chart.png`);
-          
+
           // Add a small delay between downloads to prevent browser blocking
           if (i < chartData.chart_images.length - 1) {
             await new Promise(resolve => setTimeout(resolve, 100));
@@ -163,6 +166,11 @@ export default function PassesExport() {
             onPredefinedPeriodChange={setPredefinedPeriod}
             onCustomPeriodValueChange={setCustomPeriodValue}
             onCustomPeriodUnitChange={setCustomPeriodUnit}
+          />
+
+          <ExportGroupTagsToggle
+            groupSpecies={groupSpecies}
+            onGroupSpeciesChange={setGroupSpecies}
           />
 
           <ExportSummary

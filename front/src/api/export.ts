@@ -122,6 +122,7 @@ export function registerExportAPI(
     timePeriod?: { type: 'predefined'; value: string } | { type: 'custom'; value: number; unit: string },
     startDate?: string,
     endDate?: string,
+    groupSpecies?: boolean,
   ): Promise<{ blob: Blob; filename: string } | { csv_data: string; chart_image: string; filename: string; passes_data: any[] }> {
     const params = buildCommonParams({
       annotationProjects,
@@ -146,6 +147,10 @@ export function registerExportAPI(
       }
     }
     
+    if (groupSpecies !== undefined) {
+      params.append('group_species', groupSpecies.toString());
+    }
+    
     const response = await instance.get(`${endpoints.passes}?${params.toString()}`, {
       responseType: 'json',
       withCredentials: true,
@@ -160,6 +165,7 @@ export function registerExportAPI(
     statuses?: string[],
     startDate?: string,
     endDate?: string,
+    groupSpecies?: boolean,
   ): Promise<{ blob: Blob; filename: string }> {
     const params = buildCommonParams({
       annotationProjects,
@@ -168,6 +174,10 @@ export function registerExportAPI(
       startDate,
       endDate,
     });
+    
+    if (groupSpecies !== undefined) {
+      params.append('group_species', groupSpecies.toString());
+    }
   
     const response = await instance.get(`${endpoints.stats}?${params.toString()}`, {
       responseType: 'blob',
@@ -187,6 +197,7 @@ export function registerExportAPI(
     timePeriod?: { type: 'predefined'; value: string } | { type: 'custom'; value: number; unit: string },
     startDate?: string,
     endDate?: string,
+    groupSpecies?: boolean,
   ): Promise<{ csv_data: string; chart_image: string; filename: string; time_data: any[] }> {
     const params = buildCommonParams({
       annotationProjects,
@@ -205,6 +216,10 @@ export function registerExportAPI(
         params.append('custom_period_value', timePeriod.value.toString());
         params.append('custom_period_unit', timePeriod.unit);
       }
+    }
+    
+    if (groupSpecies !== undefined) {
+      params.append('group_species', groupSpecies.toString());
     }
   
     const response = await instance.get(`${endpoints.time}?${params.toString()}`, {

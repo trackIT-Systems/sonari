@@ -9,6 +9,7 @@ from uuid import UUID
 
 from ..charts import generate_time_buckets, generate_time_series_chart
 from ..charts.chart_utils import convert_time_period_to_seconds
+from ..constants import BAT_GROUPS
 from ..data import extract_events_with_datetime
 from ..data.processors import group_events_by_species
 from .base import BaseExportService
@@ -28,6 +29,7 @@ class TimeService(BaseExportService):
         custom_period_unit: str | None = None,
         start_date: str | None = None,
         end_date: str | None = None,
+        group_species: bool = False,
     ):
         """Export time-based event counts in CSV format or JSON with chart."""
         logger = logging.getLogger(__name__)
@@ -65,6 +67,10 @@ class TimeService(BaseExportService):
                 # Group events by species tag
                 events_by_species = group_events_by_species(events_with_datetime, tags)
 
+                # Apply species grouping if requested
+                if group_species:
+                    events_by_species = self._group_species_by_category(events_by_species)
+
                 # Generate time buckets
                 time_buckets = generate_time_buckets(
                     events_with_datetime, period_seconds, time_period_type, predefined_period
@@ -79,7 +85,7 @@ class TimeService(BaseExportService):
             # Process events without datetime information
             if events_without_datetime:
                 time_without_datetime = self._calculate_time_events_without_datetime(
-                    events_without_datetime, tags, {project_id: project}, project_name
+                    events_without_datetime, tags, {project_id: project}, project_name, group_species
                 )
                 project_time_data.extend(time_without_datetime)
 
@@ -184,6 +190,7 @@ class TimeService(BaseExportService):
         selected_tags: List[str],
         projects_by_id: Dict[int, Any],
         project_name: str,
+        group_species: bool = False,
     ) -> List[Dict[str, Any]]:
         """Calculate event counts for events without date/time information, grouped by status."""
         if not events_without_datetime:
@@ -191,6 +198,10 @@ class TimeService(BaseExportService):
 
         # Group events by species tag
         events_by_species = group_events_by_species(events_without_datetime, selected_tags)
+
+        # Apply species grouping if requested
+        if group_species:
+            events_by_species = self._group_species_by_category(events_by_species)
 
         time_data = []
 
@@ -216,3 +227,16 @@ class TimeService(BaseExportService):
                 })
 
         return time_data
+
+    def _group_species_by_category(
+        self, events_by_species: Dict[str, List[Dict[str, Any]]]
+    ) -> Dict[str, List[Dict[str, Any]]]:
+        """Group species events by their category based on BAT_GROUPS mapping."""
+        grouped_events = defaultdict(list)
+
+        for species_tag, events in events_by_species.items():
+            # Look up the species in BAT_GROUPS, default to original species name if not found
+            category = BAT_GROUPS.get(species_tag, species_tag)
+            grouped_events[category].extend(events)
+
+        return dict(grouped_events)

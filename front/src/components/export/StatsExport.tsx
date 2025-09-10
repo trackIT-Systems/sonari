@@ -9,12 +9,14 @@ import {
   ExportDateRangeFilter,
   ExportSummary
 } from "./shared";
+import ExportGroupTagsToggle from "./shared/ExportGroupTagsToggle";
 import api from "@/app/api";
 import Info from "@/components/Info";
 
 export default function StatsExport() {
   const exportSelection = useExportSelection();
   const { downloadFile } = useExportDownload();
+  const [groupSpecies, setGroupSpecies] = useState<boolean>(false);
 
   const handleExport = async () => {
     if (exportSelection.selectedProjects.length === 0) return;
@@ -35,6 +37,7 @@ export default function StatsExport() {
         statusesToUse,
         formattedStartDate,
         formattedEndDate,
+        groupSpecies,
       );
 
       downloadFile(blob, filename);
@@ -65,6 +68,11 @@ export default function StatsExport() {
             allStatusOptions={exportSelection.allStatusOptions}
             selectedStatuses={exportSelection.selectedStatuses}
             onStatusToggle={exportSelection.handleStatusToggle}
+          />
+
+          <ExportGroupTagsToggle
+            groupSpecies={groupSpecies}
+            onGroupSpeciesChange={setGroupSpecies}
           />
 
           <ExportSummary
