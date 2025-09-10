@@ -39,11 +39,12 @@ def generate_time_series_chart(
     if not all_data:
         return ""
 
-    # Group data by species and time periods
-    species_data = defaultdict(lambda: {"periods": [], "counts": []})
+    # Group data by species, status, and time periods
+    species_status_data = defaultdict(lambda: defaultdict(lambda: {"periods": [], "counts": []}))
 
     for data_entry in all_data:
         species = data_entry["species_tag"]
+        status = data_entry.get("status", "no_status")
         time_period = data_entry["time_period_start"]
 
         if chart_type == "passes":
@@ -51,44 +52,62 @@ def generate_time_series_chart(
         else:  # events
             count = data_entry["event_count"]
 
-        species_data[species]["periods"].append(time_period)
-        species_data[species]["counts"].append(count)
+        species_status_data[species][status]["periods"].append(time_period)
+        species_status_data[species][status]["counts"].append(count)
 
     # Create the chart
     plt.style.use("default")
     fig, ax = plt.subplots(figsize=(14, 6))
 
-    # Get unique time periods and species
+    # Get unique time periods and species-status combinations
     # Separate datetime periods from "No Date" periods
     datetime_periods = []
     no_date_periods = []
 
-    for data in species_data.values():
-        for period in data["periods"]:
-            if period == "No Date":
-                if period not in no_date_periods:
-                    no_date_periods.append(period)
-            else:
-                if period not in datetime_periods:
-                    datetime_periods.append(period)
+    for species_data in species_status_data.values():
+        for status_data in species_data.values():
+            for period in status_data["periods"]:
+                if period == "No Date":
+                    if period not in no_date_periods:
+                        no_date_periods.append(period)
+                else:
+                    if period not in datetime_periods:
+                        datetime_periods.append(period)
 
     # Sort datetime periods, keep "No Date" periods at the end
     datetime_periods.sort()
     all_periods = datetime_periods + no_date_periods
 
-    species_list = list(species_data.keys())
+    # Create list of all species-status combinations
+    species_status_combinations = []
+    for species in sorted(species_status_data.keys()):
+        for status in sorted(species_status_data[species].keys()):
+            species_status_combinations.append((species, status))
+
+    # Define hatch patterns for different statuses
+    status_hatches = {
+        "no_status": None,
+        "completed": "///",
+        "assigned": "---",
+        "rejected": "...",
+        "verified": "xxx",
+    }
 
     # Set up colors for species using tab10 with rotation for more than 10 species
+    unique_species = list(set(species for species, _ in species_status_combinations))
     tab10_colors = plt.cm.tab10.colors
-    colors = [tab10_colors[i % len(tab10_colors)] for i in range(len(species_list))]
+    species_colors = {species: tab10_colors[i % len(tab10_colors)] for i, species in enumerate(unique_species)}
 
     # Bar width and positions
-    bar_width = 0.8 / len(species_list) if species_list else 0.8
+    bar_width = 0.8 / len(species_status_combinations) if species_status_combinations else 0.8
     x_positions = range(len(all_periods))
 
-    # Plot bars for each species
-    for i, (species, color) in enumerate(zip(species_list, colors, strict=True)):
-        data = species_data[species]
+    # Plot bars for each species-status combination
+    for i, (species, status) in enumerate(species_status_combinations):
+        data = species_status_data[species][status]
+        color = species_colors[species]
+        print(f"########### {status}")
+        hatch = status_hatches[status]  # Default to dots if status not recognized
 
         # Create counts array for all time periods (0 for missing periods)
         counts_for_periods = []
@@ -99,11 +118,12 @@ def generate_time_series_chart(
             else:
                 counts_for_periods.append(0)
 
-        # Calculate x positions for this species
-        species_x_positions = [x + i * bar_width for x in x_positions]
+        # Calculate x positions for this species-status combination
+        combo_x_positions = [x + i * bar_width for x in x_positions]
 
-        # Create bars
-        ax.bar(species_x_positions, counts_for_periods, bar_width, label=species, color=color, alpha=0.8)
+        # Create bars with hatching for status
+        label = f"{species} ({status.replace('assigned', 'unsure')})" if status != "no_status" else species
+        ax.bar(combo_x_positions, counts_for_periods, bar_width, label=label, color=color, alpha=0.8, hatch=hatch)
 
     # Customize the chart
     ax.set_xlabel("Time Period", fontsize=12)
@@ -118,7 +138,7 @@ def generate_time_series_chart(
         ax.set_title(title, fontsize=14)
 
     # Set x-axis labels
-    ax.set_xticks([x + bar_width * (len(species_list) - 1) / 2 for x in x_positions])
+    ax.set_xticks([x + bar_width * (len(species_status_combinations) - 1) / 2 for x in x_positions])
 
     # Format time period labels
     period_labels = []

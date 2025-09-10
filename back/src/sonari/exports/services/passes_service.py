@@ -113,6 +113,7 @@ class PassesService(BaseExportService):
                 "time_period_start",
                 "time_period_end",
                 "species_tag",
+                "status",
                 "event_count",
                 "pass_threshold",
                 "pass_count",
@@ -126,6 +127,7 @@ class PassesService(BaseExportService):
                     pass_data["time_period_start"],
                     pass_data["time_period_end"],
                     pass_data["species_tag"],
+                    pass_data["status"],
                     pass_data["event_count"],
                     pass_data["pass_threshold"],
                     pass_data["pass_count"],
@@ -154,7 +156,7 @@ class PassesService(BaseExportService):
         projects_by_id: Dict[int, Any],
         project_name: str,
     ) -> List[Dict[str, Any]]:
-        """Calculate bat passes for each species in each time bucket."""
+        """Calculate bat passes for each species in each time bucket, grouped by status."""
         passes_data = []
 
         for species_tag, species_events in events_by_species.items():
@@ -162,33 +164,37 @@ class PassesService(BaseExportService):
                 # Find events in this time bucket
                 bucket_events = [event for event in species_events if bucket_start <= event["datetime"] < bucket_end]
 
-                # Group events by recording/clip filename
-                events_by_recording = defaultdict(list)
+                # Group events by recording/clip filename and status
+                events_by_recording_status = defaultdict(lambda: defaultdict(list))
                 for event in bucket_events:
                     recording_filename = event["recording_filename"]
-                    events_by_recording[recording_filename].append(event)
+                    # Use the first status badge for grouping (events can have multiple status badges)
+                    primary_status = event["status_badges"][0] if event["status_badges"] else "no_status"
+                    events_by_recording_status[primary_status][recording_filename].append(event)
 
-                # Count bat passes: recordings with >= threshold events for this species
-                pass_count = 0
-                total_event_count = 0
+                # Calculate passes for each status
+                for status, recordings in events_by_recording_status.items():
+                    pass_count = 0
+                    total_event_count = 0
 
-                for _, recording_events in events_by_recording.items():
-                    event_count_in_recording = len(recording_events)
-                    total_event_count += event_count_in_recording
+                    for _, recording_events in recordings.items():
+                        event_count_in_recording = len(recording_events)
+                        total_event_count += event_count_in_recording
 
-                    # This recording constitutes a bat pass if it has >= threshold events
-                    if event_count_in_recording >= event_threshold:
-                        pass_count += 1
+                        # This recording constitutes a bat pass if it has >= threshold events
+                        if event_count_in_recording >= event_threshold:
+                            pass_count += 1
 
-                passes_data.append({
-                    "project_name": project_name,
-                    "time_period_start": bucket_start.strftime("%Y-%m-%d %H:%M:%S"),
-                    "time_period_end": bucket_end.strftime("%Y-%m-%d %H:%M:%S"),
-                    "species_tag": species_tag,
-                    "event_count": total_event_count,  # Total events in time period
-                    "pass_threshold": event_threshold,
-                    "pass_count": pass_count,  # Number of recordings that qualify as bat passes
-                })
+                    passes_data.append({
+                        "project_name": project_name,
+                        "time_period_start": bucket_start.strftime("%Y-%m-%d %H:%M:%S"),
+                        "time_period_end": bucket_end.strftime("%Y-%m-%d %H:%M:%S"),
+                        "species_tag": species_tag,
+                        "status": status,
+                        "event_count": total_event_count,  # Total events in time period
+                        "pass_threshold": event_threshold,
+                        "pass_count": pass_count,  # Number of recordings that qualify as bat passes
+                    })
 
         return passes_data
 
@@ -200,7 +206,7 @@ class PassesService(BaseExportService):
         projects_by_id: Dict[int, Any],
         project_name: str,
     ) -> List[Dict[str, Any]]:
-        """Calculate bat passes for events without date/time information."""
+        """Calculate bat passes for events without date/time information, grouped by status."""
         if not events_without_datetime:
             return []
 
@@ -210,31 +216,35 @@ class PassesService(BaseExportService):
         passes_data = []
 
         for species_tag, species_events in events_by_species.items():
-            # Group events by recording/clip filename
-            events_by_recording = defaultdict(list)
+            # Group events by recording/clip filename and status
+            events_by_recording_status = defaultdict(lambda: defaultdict(list))
             for event in species_events:
                 recording_filename = event["recording_filename"]
-                events_by_recording[recording_filename].append(event)
+                # Use the first status badge for grouping (events can have multiple status badges)
+                primary_status = event["status_badges"][0] if event["status_badges"] else "no_status"
+                events_by_recording_status[primary_status][recording_filename].append(event)
 
-            # Count bat passes: recordings with >= threshold events for this species
-            pass_count = 0
-            total_event_count = len(species_events)
+            # Calculate passes for each status
+            for status, recordings in events_by_recording_status.items():
+                pass_count = 0
+                total_event_count = sum(len(recording_events) for recording_events in recordings.values())
 
-            for _, recording_events in events_by_recording.items():
-                event_count_in_recording = len(recording_events)
+                for _, recording_events in recordings.items():
+                    event_count_in_recording = len(recording_events)
 
-                # This recording constitutes a bat pass if it has >= threshold events
-                if event_count_in_recording >= event_threshold:
-                    pass_count += 1
+                    # This recording constitutes a bat pass if it has >= threshold events
+                    if event_count_in_recording >= event_threshold:
+                        pass_count += 1
 
-            passes_data.append({
-                "project_name": project_name,
-                "time_period_start": "No Date",
-                "time_period_end": "No Time",
-                "species_tag": species_tag,
-                "event_count": total_event_count,  # Total events
-                "pass_threshold": event_threshold,
-                "pass_count": pass_count,  # Number of recordings that qualify as bat passes
-            })
+                passes_data.append({
+                    "project_name": project_name,
+                    "time_period_start": "No Date",
+                    "time_period_end": "No Time",
+                    "species_tag": species_tag,
+                    "status": status,
+                    "event_count": total_event_count,  # Total events
+                    "pass_threshold": event_threshold,
+                    "pass_count": pass_count,  # Number of recordings that qualify as bat passes
+                })
 
         return passes_data

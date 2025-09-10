@@ -147,11 +147,21 @@ async def extract_events_with_datetime(
                     else:
                         recording_datetime = datetime.datetime.combine(recording.date, datetime.time.min)
 
+                # Get status badges for this task
+                status_badges = []
+                for badge in task.status_badges:
+                    status_badges.append(badge.state.value)
+
+                # If no status badges, use "no_status"
+                if not status_badges:
+                    status_badges = ["no_status"]
+
                 event_data = {
                     "tags": list(event_tags),
                     "recording_filename": str(recording.path),
                     "project_id": task_project_id,
                     "sound_event_annotation": sound_event_annotation,
+                    "status_badges": status_badges,
                 }
 
                 if recording_datetime:

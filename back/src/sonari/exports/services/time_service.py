@@ -2,6 +2,7 @@
 
 import csv
 import logging
+from collections import defaultdict
 from io import StringIO
 from typing import Any, Dict, List, Tuple
 from uuid import UUID
@@ -109,6 +110,7 @@ class TimeService(BaseExportService):
                 "time_period_start",
                 "time_period_end",
                 "species_tag",
+                "status",
                 "event_count",
             ]
             writer.writerow(headers)
@@ -120,6 +122,7 @@ class TimeService(BaseExportService):
                     time_entry["time_period_start"],
                     time_entry["time_period_end"],
                     time_entry["species_tag"],
+                    time_entry["status"],
                     time_entry["event_count"],
                 ])
 
@@ -145,7 +148,7 @@ class TimeService(BaseExportService):
         projects_by_id: Dict[int, Any],
         project_name: str,
     ) -> List[Dict[str, Any]]:
-        """Calculate event counts for each species in each time bucket."""
+        """Calculate event counts for each species in each time bucket, grouped by status."""
         time_data = []
 
         for species_tag, species_events in events_by_species.items():
@@ -153,15 +156,25 @@ class TimeService(BaseExportService):
                 # Find events in this time bucket
                 bucket_events = [event for event in species_events if bucket_start <= event["datetime"] < bucket_end]
 
-                event_count = len(bucket_events)
+                # Group events by status
+                events_by_status = defaultdict(list)
+                for event in bucket_events:
+                    # Use the first status badge for grouping (events can have multiple status badges)
+                    primary_status = event["status_badges"][0] if event["status_badges"] else "no_status"
+                    events_by_status[primary_status].append(event)
 
-                time_data.append({
-                    "project_name": project_name,
-                    "time_period_start": bucket_start.strftime("%Y-%m-%d %H:%M:%S"),
-                    "time_period_end": bucket_end.strftime("%Y-%m-%d %H:%M:%S"),
-                    "species_tag": species_tag,
-                    "event_count": event_count,
-                })
+                # Create data entry for each status
+                for status, status_events in events_by_status.items():
+                    event_count = len(status_events)
+
+                    time_data.append({
+                        "project_name": project_name,
+                        "time_period_start": bucket_start.strftime("%Y-%m-%d %H:%M:%S"),
+                        "time_period_end": bucket_end.strftime("%Y-%m-%d %H:%M:%S"),
+                        "species_tag": species_tag,
+                        "status": status,
+                        "event_count": event_count,
+                    })
 
         return time_data
 
@@ -172,7 +185,7 @@ class TimeService(BaseExportService):
         projects_by_id: Dict[int, Any],
         project_name: str,
     ) -> List[Dict[str, Any]]:
-        """Calculate event counts for events without date/time information."""
+        """Calculate event counts for events without date/time information, grouped by status."""
         if not events_without_datetime:
             return []
 
@@ -182,14 +195,24 @@ class TimeService(BaseExportService):
         time_data = []
 
         for species_tag, species_events in events_by_species.items():
-            event_count = len(species_events)
+            # Group events by status
+            events_by_status = defaultdict(list)
+            for event in species_events:
+                # Use the first status badge for grouping (events can have multiple status badges)
+                primary_status = event["status_badges"][0] if event["status_badges"] else "no_status"
+                events_by_status[primary_status].append(event)
 
-            time_data.append({
-                "project_name": project_name,
-                "time_period_start": "No Date",
-                "time_period_end": "No Time",
-                "species_tag": species_tag,
-                "event_count": event_count,
-            })
+            # Create data entry for each status
+            for status, status_events in events_by_status.items():
+                event_count = len(status_events)
+
+                time_data.append({
+                    "project_name": project_name,
+                    "time_period_start": "No Date",
+                    "time_period_end": "No Time",
+                    "species_tag": species_tag,
+                    "status": status,
+                    "event_count": event_count,
+                })
 
         return time_data
