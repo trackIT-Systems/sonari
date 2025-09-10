@@ -14,11 +14,14 @@ const statusIcons: Record<AnnotationStatus | string, React.ReactNode> = {
 
 const statusTooltips: Record<AnnotationStatus | string, string> = {
   verified: "Verified",
-  rejected: "Reject",
+  rejected: "Rejected",
   assigned: "Unsure",
-  completed: "Accept",
+  completed: "Accepted",
   "no": "No State",
 };
+
+// Define the desired order for status display
+const statusOrder = ["completed", "assigned", "rejected", "verified", "no"] as const;
 
 interface ExportStatusSelectionProps {
   allStatusOptions: readonly (AnnotationStatus | string)[];
@@ -37,23 +40,32 @@ export default function ExportStatusSelection({
         <H3>Select Task Statuses</H3>
         <p className="text-stone-500">Select status badges that should be exported.</p>
         <div className="flex flex-row gap-4">
-          {allStatusOptions.map(status => (
-            <Tooltip
-              key={status}
-              tooltip={statusTooltips[status as keyof typeof statusTooltips]}
-              placement="bottom"
-            >
-              <button
-                className={`p-2 rounded-md ${selectedStatuses.includes(status)
-                  ? "bg-stone-200 dark:bg-stone-700"
-                  : "hover:bg-stone-100 dark:hover:bg-stone-800"
-                  }`}
-                onClick={() => onStatusToggle(status)}
+          {[...allStatusOptions]
+            .sort((a, b) => {
+              const indexA = statusOrder.indexOf(a as any);
+              const indexB = statusOrder.indexOf(b as any);
+              // If status is not in statusOrder, put it at the end
+              const orderA = indexA === -1 ? statusOrder.length : indexA;
+              const orderB = indexB === -1 ? statusOrder.length : indexB;
+              return orderA - orderB;
+            })
+            .map(status => (
+              <Tooltip
+                key={status}
+                tooltip={statusTooltips[status as keyof typeof statusTooltips]}
+                placement="bottom"
               >
-                {statusIcons[status as keyof typeof statusIcons]}
-              </button>
-            </Tooltip>
-          ))}
+                <button
+                  className={`p-2 rounded-md ${selectedStatuses.includes(status)
+                    ? "bg-stone-200 dark:bg-stone-700"
+                    : "hover:bg-stone-100 dark:hover:bg-stone-800"
+                    }`}
+                  onClick={() => onStatusToggle(status)}
+                >
+                  {statusIcons[status as keyof typeof statusIcons]}
+                </button>
+              </Tooltip>
+            ))}
         </div>
       </div>
     </Card>

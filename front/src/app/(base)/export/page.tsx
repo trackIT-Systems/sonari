@@ -35,7 +35,7 @@ export default function ExportPage() {
           </Card>
           <Card className="p-6 justify-between">
             <h2 className="text-2xl font-bold mb-4">
-              Time
+              Events per Time
             </h2>
             <p className="text-sm mb-4">
               Export event per configurable time periods. Count events per species

@@ -122,7 +122,11 @@ def generate_time_series_chart(
         combo_x_positions = [x + i * bar_width for x in x_positions]
 
         # Create bars with hatching for status
-        label = f"{species} ({status.replace('assigned', 'unsure')})" if status != "no_status" else species
+        label = (
+            f"{species} ({status.replace('assigned', 'unsure').replace('completed', 'accepted')})"
+            if status != "no_status"
+            else species
+        )
         ax.bar(combo_x_positions, counts_for_periods, bar_width, label=label, color=color, alpha=0.8, hatch=hatch)
 
     # Customize the chart
