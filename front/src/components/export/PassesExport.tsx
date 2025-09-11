@@ -138,7 +138,7 @@ export default function PassesExport() {
   return (
     <div className="space-y-8">
       <Info title="Passes:">
-        Passes: This export analyzes your recordings for passes, i.e., individual recordings containing a minimum number of echolocation calls (≥ threshold) for each species. The analysis counts how many such qualifying recordings occur within each time period.
+        This export analyzes your recordings for passes, i.e., individual recordings containing a minimum number of echolocation calls (≥ threshold) for each species. The analysis counts how many such qualifying recordings occur within each time period.
       </Info>
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         <div className="flex flex-col gap-y-6 min-w-0">

@@ -6,7 +6,7 @@ from uuid import UUID
 from fastapi import APIRouter, Query
 
 from .constants import ExportConstants
-from .services import DumpService, MultiBaseService, PassesService, StatsService, TimeService
+from .services import DumpService, MultiBaseService, PassesService, StatsService, TimeService, YearlyActivityService
 from sonari.routes.dependencies import Session
 
 export_router = APIRouter()
@@ -103,6 +103,28 @@ async def export_time(
         predefined_period,
         custom_period_value,
         custom_period_unit,
+        start_date,
+        end_date,
+        group_species,
+    )
+
+
+@export_router.get("/yearly-activity/")
+async def export_yearly_activity(
+    session: Session,
+    annotation_project_uuids: Annotated[list[UUID], Query()],
+    tags: Annotated[list[str], Query()],
+    statuses: Annotated[list[str] | None, Query()] = None,
+    start_date: Annotated[str | None, Query()] = None,
+    end_date: Annotated[str | None, Query()] = None,
+    group_species: bool = False,
+):
+    """Export yearly activity heatmap showing events by hour of day vs day of year."""
+    service = YearlyActivityService(session)
+    return await service.export_yearly_activity(
+        annotation_project_uuids,
+        tags,
+        statuses,
         start_date,
         end_date,
         group_species,
