@@ -6,7 +6,6 @@ import {
 
 import Header from "@/components/Header";
 import { H1 } from "@/components/Headings";
-import { DatasetIcon, EditIcon } from "@/components/icons";
 import Tabs from "@/components/Tabs";
 
 export default function ExportHeader() {
@@ -44,6 +43,14 @@ export default function ExportHeader() {
                             isActive: selectedLayoutSegment === "stats",
                             onClick: () => {
                                 router.push(`/export/stats/?${params.toString()}`);
+                            },
+                        },
+                        {
+                            id: "yearly-activity",
+                            title: "Activity",
+                            isActive: selectedLayoutSegment === "yearly-activity",
+                            onClick: () => {
+                                router.push(`/export/yearly-activity/?${params.toString()}`);
                             },
                         },
                         {

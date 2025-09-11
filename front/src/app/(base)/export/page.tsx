@@ -66,6 +66,22 @@ export default function ExportPage() {
           </Card>
           <Card className="p-6 justify-between">
             <h2 className="text-2xl font-bold mb-4">
+              Yearly Activity
+            </h2>
+            <p className="text-sm mb-4">
+              Export yearly activity heatmaps showing event distribution by hour of day vs day of year.
+              Visualize temporal patterns with color-coded intensity maps.
+            </p>
+            <Link
+              mode="text"
+              href="/export/yearly-activity/"
+              className="text-sm underline font-bold"
+            >
+              Export Yearly Activity
+            </Link>
+          </Card>
+          <Card className="p-6 justify-between">
+            <h2 className="text-2xl font-bold mb-4">
               MultiBase
             </h2>
             <p className="text-sm mb-4">

@@ -8,6 +8,7 @@ const DEFAULT_ENDPOINTS = {
   passes: "/api/v1/export/passes/",
   stats: "/api/v1/export/stats/",
   time: "/api/v1/export/time/",
+  yearlyActivity: "/api/v1/export/yearly-activity/",
 };
 
 interface CommonExportParams {
@@ -230,11 +231,40 @@ export function registerExportAPI(
     return response.data;
   }
 
+  async function exportYearlyActivity(
+    annotationProjects: AnnotationProject[],
+    tags: string[],
+    statuses?: string[],
+    startDate?: string,
+    endDate?: string,
+    groupSpecies?: boolean,
+  ): Promise<{ csv_data: string; chart_images: string[]; project_names: string[]; filename: string; yearly_activity_data: any[] }> {
+    const params = buildCommonParams({
+      annotationProjects,
+      tags,
+      statuses,
+      startDate,
+      endDate,
+    });
+    
+    if (groupSpecies !== undefined) {
+      params.append('group_species', groupSpecies.toString());
+    }
+  
+    const response = await instance.get(`${endpoints.yearlyActivity}?${params.toString()}`, {
+      responseType: 'json',
+      withCredentials: true,
+    });
+
+    return response.data;
+  }
+
   return {
     multibase: exportMultiBase,
     dump: exportDump,
     passes: exportPasses,
     stat: exportStats,
     time: exportTime,
+    yearlyActivity: exportYearlyActivity,
   } as const;
 }

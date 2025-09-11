@@ -103,11 +103,17 @@ async def extract_events_with_datetime(
     filters = [models.AnnotationTask.annotation_project_id.in_(project_ids)]
     filters.extend(build_status_filters(statuses))
 
-    # Get annotation tasks with annotation_project relationship loaded
+    # Get annotation tasks with all necessary relationships loaded
+
     query = (
         select(models.AnnotationTask)
         .where(and_(*filters))
-        .options(selectinload(models.AnnotationTask.annotation_project))
+        .options(
+            selectinload(models.AnnotationTask.annotation_project),
+            selectinload(models.AnnotationTask.clip_annotation)
+            .selectinload(models.ClipAnnotation.clip)
+            .selectinload(models.Clip.recording),
+        )
     )
     result = await session.execute(query)
     all_tasks = result.scalars().all()
@@ -162,6 +168,7 @@ async def extract_events_with_datetime(
                     "project_id": task_project_id,
                     "sound_event_annotation": sound_event_annotation,
                     "status_badges": status_badges,
+                    "recording": recording,  # Add recording directly for location data
                 }
 
                 if recording_datetime:
