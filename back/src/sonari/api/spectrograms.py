@@ -1,14 +1,14 @@
 """API functions to generate spectrograms."""
 
+from io import BytesIO
 from pathlib import Path
 
+import matplotlib.pyplot as plt
 import numpy as np
+from matplotlib import colormaps
+from PIL import Image
 from soundevent import arrays, audio
 
-import matplotlib.pyplot as plt
-from matplotlib import colormaps
-from io import BytesIO
-from PIL import Image 
 import sonari.api.audio as audio_api
 from sonari import schemas
 from sonari.core.spectrograms import normalize_spectrogram
@@ -60,7 +60,10 @@ def compute_spectrogram(
     )
 
     # Select channel. Do this early to avoid unnecessary computation.
-    wav = wav[dict(channel=[spectrogram_parameters.channel])]
+    # Handle channel mismatch gracefully - if requested channel doesn't exist, fall back to channel 0
+    available_channels = wav.sizes.get("channel", 1)
+    channel_to_use = spectrogram_parameters.channel if spectrogram_parameters.channel < available_channels else 0
+    wav = wav[dict(channel=[channel_to_use])]
 
     hop_size = spectrogram_parameters.hop_size * spectrogram_parameters.window_size
     window_size = spectrogram_parameters.window_size
@@ -103,16 +106,17 @@ def compute_spectrogram(
     # Remove unncecessary dimensions.
     return array.squeeze()
 
+
 def compute_waveform(
     recording: schemas.Recording,
     audio_parameters: schemas.AudioParameters,
     audio_dir: Path | None = None,
     return_image: bool = False,
-    cmap: str = "plasma", 
-    gamma: float = 1.0,  
+    cmap: str = "plasma",
+    gamma: float = 1.0,
 ) -> np.ndarray | bytes:
     """Compute waveform for a recording segment.
-    
+
     Parameters
     ----------
     recording : Recording
@@ -144,8 +148,8 @@ def compute_waveform(
         audio_dir=audio_dir,
     )
 
-    # Select channel
-    wav = wav[dict(channel=[0])]  # You might expose this as a parameter
+    # Select channel (always use channel 0 for waveform)
+    wav = wav[dict(channel=[0])]
     waveform = wav.data.squeeze()
 
     if return_image:
