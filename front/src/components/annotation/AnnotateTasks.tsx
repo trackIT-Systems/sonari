@@ -447,9 +447,6 @@ export default function AnnotateTasks({
             <div className="min-w-[63rem] flex flex-col gap-4">
               <RecordingTagBar
                 recording={data.clip.recording}
-                onCreateTag={(tag) => {
-                  onCreateTag?.(tag);
-                }}
               />
               <ClipAnnotationNotes
                 onCreateNote={addNote.mutate}
