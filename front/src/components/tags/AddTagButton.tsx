@@ -30,6 +30,7 @@ function TagBarPopover({
       onCreate={(tag) => {
         onCreate?.(tag);
         onAdd?.(tag);
+        onClose?.(); // Close the popover after tag creation
       }}
       autoFocus={true}
       onKeyDown={(e) => {

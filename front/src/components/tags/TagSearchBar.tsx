@@ -121,15 +121,16 @@ export default forwardRef<HTMLInputElement, TagSearchBarProps>(
               if (event.key === ACCEPT_SHORTCUT && event.shiftKey && canCreate) {
                 event.preventDefault();
                 if (key && value) {
-                  tags.create.mutate(
-                    { key, value },
-                    {
-                      onSuccess: (tag) => {
-                        onCreate?.(tag);
-                        onSelect?.(tag);
-                      },
-                    },
-                  );
+                  tags.create.mutateAsync({ key, value })
+                    .then((tag) => {
+                      setQuery(""); // Clear the input field
+                      onCreate?.(tag);
+                    })
+                    .catch((error) => {
+                      console.error("Tag creation failed:", error);
+                    });
+                } else {
+                  console.log("Cannot create tag: missing key or value", { key, value });
                 }
               }
               onKeyDown?.(event);

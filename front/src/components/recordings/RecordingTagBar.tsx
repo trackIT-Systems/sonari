@@ -14,12 +14,14 @@ export default function RecordingTagBar({
   onAddTag,
   onTagClick,
   onRemoveTag,
+  onCreateTag,
   disabled = false,
 }: {
   recording: Recording;
   onTagClick?: (tag: Tag) => void;
   onAddTag?: (data: Recording) => void;
   onRemoveTag?: (data: Recording) => void;
+  onCreateTag?: (tag: Tag) => void;
   disabled?: boolean;
 }) {
   const {
@@ -67,7 +69,15 @@ export default function RecordingTagBar({
             No tags
           </span>
         )}
-        {!disabled && <AddTagButton variant="primary" onAdd={handleAddTag} />}
+        {!disabled && (
+          <AddTagButton 
+            variant="primary" 
+            onAdd={handleAddTag} 
+            onCreate={(tag) => {
+              onCreateTag?.(tag);
+            }}
+          />
+        )}
       </div>
     </Card>
   );
