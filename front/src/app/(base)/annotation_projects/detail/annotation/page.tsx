@@ -8,6 +8,7 @@ import { HOST } from "@/api/common";
 import UserContext from "@/app/(base)/context";
 import AnnotateTasks from "@/components/annotation/AnnotateTasks";
 import Loading from "@/components/Loading";
+import { CompleteIcon, NeedsReviewIcon, HelpIcon, VerifiedIcon } from "@/components/icons";
 import useAnnotationTask from "@/hooks/api/useAnnotationTask";
 import useStore from "@/store";
 import { changeURLParam } from "@/utils/url";
@@ -76,19 +77,39 @@ export default function Page() {
   );
 
   const handleCompleteTask = useCallback(() => {
-    toast.success("Accepted");
+    toast(
+      <div className="flex items-center gap-2">
+        <CompleteIcon className="w-5 h-5 text-emerald-500" />
+        <span>Accepted</span>
+      </div>
+    );
   }, []);
 
   const handleUnsureTask = useCallback(() => {
-    toast.success("Marked as unsure");
+    toast(
+      <div className="flex items-center gap-2">
+        <HelpIcon className="w-5 h-5 text-amber-500" />
+        <span>Unsure</span>
+      </div>
+    );
   }, []);
 
   const handleRejectTask = useCallback(() => {
-    toast.success("Rejeced");
+    toast(
+      <div className="flex items-center gap-2">
+        <NeedsReviewIcon className="w-5 h-5 text-red-500" />
+        <span>Rejected</span>
+      </div>
+    );
   }, []);
 
   const handleVerifyTask = useCallback(() => {
-    toast.success("Verified");
+    toast(
+      <div className="flex items-center gap-2">
+        <VerifiedIcon className="w-5 h-5 text-blue-500" />
+        <span>Verified</span>
+      </div>
+    );
   }, []);
 
   const filter = useMemo(
