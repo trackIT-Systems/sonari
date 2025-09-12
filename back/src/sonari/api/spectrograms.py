@@ -80,7 +80,7 @@ def compute_spectrogram(
     )
 
     # De-noise spectrogram with PCEN
-    if spectrogram_parameters.pcen:
+    if not spectrogram_parameters.pcen:
         # NOTE: PCEN expects a spectrogram in amplitude scale so it should be
         # applied before scaling.
         spectrogram = audio.pcen(spectrogram)

@@ -22,16 +22,16 @@ export default function DeNoiseSettings({
             name="denoise"
             label="De-noise"
             help={
-              !field.value
-                ? "De-noising is being applied. Uncheck to disable de-noising."
-                : "Check to apply PCEN de-noising."
+              field.value
+                ? "PCEN de-noising is enabled. Uncheck to disable de-noising."
+                : "Check to enable PCEN de-noising."
             }
             error={fieldState.error?.message}
           >
             <Toggle
               label="De-noise"
               isSelected={field.value ?? false}
-              onChange={(denoise) => field.onChange(!denoise)}
+              onChange={field.onChange}
             />
           </InputGroup>
         )}
