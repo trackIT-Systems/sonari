@@ -39,12 +39,12 @@ const LOWEST_SAMPLE_RATE = 8000;
 const HIGHTEST_SAMPLE_RATE = 96000;
 
 const ALL_SPEED_OPTIONS: SpeedOption[] = [
-  { label: "1x", value: 1 },
   { label: "0.1x", value: 0.1 },
   { label: "0.25x", value: 0.25 },
   { label: "0.5x", value: 0.5 },
   { label: "0.75x", value: 0.75 },
   { label: "1.2x", value: 1.2 },
+  { label: "1x", value: 1 },
   { label: "1.5x", value: 1.5 },
   { label: "1.75x", value: 1.75 },
   { label: "2x", value: 2 },

@@ -179,7 +179,7 @@ function SelectSpeed({
             <ExpandIcon className="w-5 h-5" aria-hidden="true" />
           </span>
         </ListboxButton>
-        <ListboxOptions className="absolute bottom-full mb-1 overflow-auto py-1 w-full max-h-60 text-base rounded-md ring-1 ring-opacity-5 shadow-lg sm:text-sm focus:outline-none bg-stone-50 ring-stone-900 dark:bg-stone-700 dark:ring-stone-600 z-10 transition ease-in duration-100 data-[closed]:opacity-0">
+        <ListboxOptions className="absolute top-full mt-1 overflow-auto py-1 w-full max-h-60 text-base rounded-md ring-1 ring-opacity-5 shadow-lg sm:text-sm focus:outline-none bg-stone-50 ring-stone-900 dark:bg-stone-700 dark:ring-stone-600 z-10 transition ease-in duration-100 data-[closed]:opacity-0">
           {options.map((option) => (
             <ListboxOption
               key={option.value.toString()}
