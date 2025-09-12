@@ -51,6 +51,75 @@ function getWindowFromGeometry(annotation: SoundEventAnnotation, recording: Reco
     }
 }
 
+function getSoundEventCoordinates(annotation: SoundEventAnnotation) {
+    const { geometry, geometry_type } = annotation.sound_event;
+    switch (geometry_type) {
+        case "TimeInterval":
+            const ti_coordinates = geometry.coordinates as [number, number];
+            return {
+                time: {
+                    min: ti_coordinates[0],
+                    max: ti_coordinates[1],
+                },
+                freq: {
+                    min: 0,
+                    max: 0, // TimeInterval doesn't have frequency bounds
+                },
+            };
+
+        case "BoundingBox":
+            const bb_coordinates = geometry.coordinates as [number, number, number, number];
+            return {
+                time: {
+                    min: bb_coordinates[0],
+                    max: bb_coordinates[2],
+                },
+                freq: {
+                    min: bb_coordinates[1],
+                    max: bb_coordinates[3],
+                },
+            };
+
+        case "TimeStamp":
+            const time = geometry.coordinates as number;
+            return {
+                time: {
+                    min: time,
+                    max: time,
+                },
+                freq: {
+                    min: 0,
+                    max: 0,
+                },
+            };
+
+        case "Point":
+            const point_coordinates = geometry.coordinates as [number, number];
+            return {
+                time: {
+                    min: point_coordinates[0],
+                    max: point_coordinates[0],
+                },
+                freq: {
+                    min: point_coordinates[1],
+                    max: point_coordinates[1],
+                },
+            };
+
+        default:
+            return {
+                time: {
+                    min: 0,
+                    max: 0,
+                },
+                freq: {
+                    min: 0,
+                    max: 0,
+                },
+            };
+    }
+}
+
 function calculateSpectrogramDimensions(
     window: { time: { min: number; max: number }, freq: { min: number; max: number } },
     parameters: SpectrogramParameters,
@@ -104,6 +173,11 @@ export default function SoundEventSpectrogramView({
         [soundEventAnnotation, recording]
     );
 
+    const soundEventCoords = useMemo(
+        () => getSoundEventCoordinates(soundEventAnnotation),
+        [soundEventAnnotation]
+    );
+
     const dimensions = useMemo(
         () => calculateSpectrogramDimensions(window, parameters, recording.samplerate),
         [window, parameters, recording.samplerate]
@@ -141,8 +215,16 @@ export default function SoundEventSpectrogramView({
             </div>
             <div className="flex">
                 <div className="flex flex-col justify-between pr-2 text-right w-16">
-                    <span className="text-xs text-stone-600">{(window.freq.max / 1000).toFixed(2)} kHz</span>
-                    <span className="text-xs text-stone-600">{(window.freq.min / 1000).toFixed(2)} kHz</span>
+                    <span className="text-xs text-stone-600">
+                        {soundEventCoords.freq.max > 0 ? (soundEventCoords.freq.max / 1000).toFixed(2) + " kHz" : ""}
+                    </span>
+                    <span className="text-xs text-stone-600 text-center">
+                        {soundEventCoords.freq.max > soundEventCoords.freq.min ? 
+                            ((soundEventCoords.freq.max - soundEventCoords.freq.min) / 1000).toFixed(2) + " kHz" : ""}
+                    </span>
+                    <span className="text-xs text-stone-600">
+                        {soundEventCoords.freq.min > 0 ? (soundEventCoords.freq.min / 1000).toFixed(2) + " kHz" : ""}
+                    </span>
                 </div>
 
                 <div
@@ -164,8 +246,12 @@ export default function SoundEventSpectrogramView({
             </div>
 
             <div className="flex justify-between pl-16 pr-2 pt-2">
-                <span className="text-xs text-stone-600">{window.time.min.toFixed(2)}s</span>
-                <span className="text-xs text-stone-600">{window.time.max.toFixed(2)}s</span>
+                <span className="text-xs text-stone-600">{(soundEventCoords.time.min * 1000).toFixed(0)}ms</span>
+                <span className="text-xs text-stone-600 text-center">
+                    {soundEventCoords.time.max > soundEventCoords.time.min ? 
+                        ((soundEventCoords.time.max - soundEventCoords.time.min) * 1000).toFixed(0) + "ms" : ""}
+                </span>
+                <span className="text-xs text-stone-600">{(soundEventCoords.time.max * 1000).toFixed(0)}ms</span>
             </div>
         </div>
     );
