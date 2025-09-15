@@ -21,10 +21,16 @@ function safeParse<T>(raw: string | null, fallback: T): T {
   }
 }
 
+// Helper function to remove annotation_project from filter objects
+function stripAnnotationProject<T extends Object>(filter: T): T {
+  const { annotation_project, ...cleaned } = filter as any;
+  return cleaned as T;
+}
+
 export default function useFilterPresets<T extends Object>({
   storageKey,
   filter,
-  maxRecents = 10,
+  maxRecents = 3,
 }: {
   storageKey: string;
   filter: Filter<T>;
@@ -46,31 +52,66 @@ export default function useFilterPresets<T extends Object>({
     if (typeof window === "undefined") return;
     // Do not record empty filter
     if (debouncedFilter == null || Object.keys(debouncedFilter).length === 0) return;
+    
+    // Strip annotation_project from the filter before processing
+    const cleanedFilter = stripAnnotationProject(debouncedFilter);
+    
+    // Check if cleaned filter has any meaningful values
+    const hasActiveFilters = Object.entries(cleanedFilter).some(([key, value]) => {
+      // Skip prototype fields and null/undefined/empty values
+      if (key.startsWith('__') || value == null || value === '') return false;
+      
+      if (typeof value === 'boolean') {
+        return true; // Booleans are always meaningful
+      } else if (Array.isArray(value)) {
+        return value.length > 0;
+      } else if (typeof value === 'object') {
+        // For objects, check if they have meaningful display value
+        if ('name' in value && value.name) return true;
+        if ('start_date' in value || 'end_date' in value) {
+          return Object.values(value).some(v => v != null && v !== '');
+        }
+        if ('uuid' in value && value.uuid) return true;
+        // For other objects, check if they have meaningful content
+        return Object.values(value).some(v => v != null && v !== '');
+      }
+      return true; // Strings and other primitive values
+    });
+    
+    if (!hasActiveFilters) return;
 
     const now = Date.now();
     // Avoid duplicating identical consecutive entries
     const last = recents[0]?.filter;
-    if (last && JSON.stringify(last) === JSON.stringify(debouncedFilter)) return;
+    if (last && JSON.stringify(last) === JSON.stringify(cleanedFilter)) return;
 
-    const updated = [{ filter: debouncedFilter, savedAt: now }, ...recents]
+    // Don't add to recent if it matches an existing saved preset
+    const filterString = JSON.stringify(cleanedFilter);
+    const isAlreadySaved = saved.some(savedPreset => 
+      JSON.stringify(savedPreset.filter) === filterString
+    );
+    if (isAlreadySaved) return;
+
+    const updated = [{ filter: cleanedFilter, savedAt: now }, ...recents]
       .slice(0, maxRecents);
     setRecents(updated);
     try {
       localStorage.setItem(recentKey, JSON.stringify(updated));
     } catch {}
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [JSON.stringify(debouncedFilter)]);
+  }, [JSON.stringify(debouncedFilter), saved]);
 
   const savePreset = useCallback(
     (name: string) => {
       if (typeof window === "undefined") return;
       const now = Date.now();
+      const cleanedFilter = stripAnnotationProject(debouncedFilter);
       const existingIndex = saved.findIndex((p) => p.name === name);
       let updated: SavedPreset<T>[];
       if (existingIndex >= 0) {
-        updated = saved.map((p, i) => (i === existingIndex ? { name, filter: debouncedFilter, savedAt: now } : p));
+        updated = saved.map((p, i) => (i === existingIndex ? { name, filter: cleanedFilter, savedAt: now } : p));
       } else {
-        updated = [...saved, { name, filter: debouncedFilter, savedAt: now }];
+        updated = [...saved, { name, filter: cleanedFilter, savedAt: now }];
       }
       setSaved(updated);
       try {
