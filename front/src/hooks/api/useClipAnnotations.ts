@@ -20,6 +20,7 @@ export default function useClipAnnotations({
   const filter = useFilter<ClipAnnotationFilter>({
     defaults: initialFilter,
     fixed,
+    persistKey: "filters:clip_annotations",
   });
 
   const { query, pagination, items, total } = usePagedQuery({

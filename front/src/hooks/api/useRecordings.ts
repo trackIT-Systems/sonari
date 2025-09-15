@@ -26,7 +26,11 @@ export default function useRecordings({
   enabled?: boolean;
 } = {}) {
   const client = useQueryClient();
-  const filter = useFilter<RecordingFilter>({ defaults: initialFilter, fixed });
+  const filter = useFilter<RecordingFilter>({
+    defaults: initialFilter,
+    fixed,
+    persistKey: "filters:recordings",
+  });
 
   const { items, total, pagination, query, queryKey } = usePagedQuery({
     name: "dataset_recordings",

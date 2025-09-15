@@ -15,7 +15,11 @@ export default function useFeatures({
   fixed?: (keyof FeatureFilter)[];
   pageSize?: number;
 } = {}) {
-  const filter = useFilter<FeatureFilter>({ defaults: initialFilter, fixed });
+  const filter = useFilter<FeatureFilter>({
+    defaults: initialFilter,
+    fixed,
+    persistKey: "filters:features",
+  });
 
   const { query, pagination, items, total } = usePagedQuery({
     name: "features",
