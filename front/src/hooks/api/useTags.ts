@@ -23,6 +23,7 @@ export default function useTags({
     defaults: initialFilter,
     fixed: fixed,
     debounce: 50, // Lower debounce time for faster response
+    persistKey: "filters:tags",
   });
 
   const { items, total, query, pagination } = usePagedQuery({

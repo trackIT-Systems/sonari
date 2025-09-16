@@ -90,7 +90,11 @@ export default function AnnotateTasks({
   const [selectedAnnotation, setSelectedAnnotation] = useState<SoundEventAnnotation | null>(null);
   const onDeselectAnnotation = useCallback(() => {
     setSelectedAnnotation(null);
-  }, [setSelectedAnnotation])
+  }, [setSelectedAnnotation]);
+
+  const onUpdateSelectedAnnotation = useCallback((annotation: SoundEventAnnotation) => {
+    setSelectedAnnotation(annotation);
+  }, []);
 
   const [withSpectrogram, setWithSpectrogram] = useState(true);
   const onWithSpectrogramChange = useCallback(
@@ -436,6 +440,7 @@ export default function AnnotateTasks({
                 onAddTag={onAddSoundEventTag}
                 onCreateTag={onCreateTag}
                 onRemoveTag={onRemoveSoundEventTag}
+                onUpdate={onUpdateSelectedAnnotation}
               />
             </div>
           )}

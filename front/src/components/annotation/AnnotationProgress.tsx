@@ -3,6 +3,7 @@ import { useMemo, useRef } from "react";
 import Button, { getButtonClassName } from "@/components/Button";
 import FilterBar from "@/components/filters/FilterBar";
 import FilterMenu from "@/components/filters/FilterMenu";
+import FilterPresets from "@/components/filters/FilterPresets";
 import taskFilterDefs from "@/components/filters/tasks";
 import { FilterIcon, NextIcon, PreviousIcon } from "@/components/icons";
 import Tooltip from "@/components/Tooltip";
@@ -89,6 +90,7 @@ export default function AnnotationProgress({
   return (
     <div className="inline-flex gap-4 items-center h-full w-[63rem]">
       <Tooltip
+        portal={true}
         tooltip={
           <div className="inline-flex gap-2 items-center">
             Previous Task
@@ -135,6 +137,13 @@ export default function AnnotationProgress({
                 padding: "p-1",
               })}
               button={filterBtn}
+            />
+          )}
+          {!isLoading && (
+            <FilterPresets
+              storageKey="filters:annotation_tasks"
+              filter={filter}
+              className="ml-2"
             />
           )}
           <FilterBar

@@ -18,6 +18,7 @@ export default function useSoundEventAnnotations({
   const filter = useFilter<SoundEventAnnotationFilter>({
     defaults: initialFilter,
     fixed,
+    persistKey: "filters:sound_event_annotations",
   });
 
   const { items, total, pagination, query } = usePagedQuery({
