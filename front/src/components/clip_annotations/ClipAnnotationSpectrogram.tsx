@@ -454,7 +454,7 @@ export default function ClipAnnotationSpectrogram({
         )}
         {withPlayer && <Player {...audio} />}
       </div>
-      <div className="relative overflow-hidden rounded-md" style={{ height }}>
+      <div className="relative overflow-visible rounded-md" style={{ height }}>
         <SpectrogramTags
           disabled={disabled}
           tags={annotate.tags}
