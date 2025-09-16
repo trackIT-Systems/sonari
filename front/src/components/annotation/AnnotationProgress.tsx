@@ -90,6 +90,7 @@ export default function AnnotationProgress({
   return (
     <div className="inline-flex gap-4 items-center h-full w-[63rem]">
       <Tooltip
+        portal={true}
         tooltip={
           <div className="inline-flex gap-2 items-center">
             Previous Task

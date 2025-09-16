@@ -24,6 +24,7 @@ export default function DisableSpectrogramButton({
   return (
     <div className="flex space-x-2">
       <Tooltip
+        portal={true}
         tooltip={
           <div className="inline-flex gap-2 items-center">
             Disable spectrogram
