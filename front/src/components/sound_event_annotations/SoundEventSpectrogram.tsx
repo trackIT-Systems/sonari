@@ -157,12 +157,12 @@ function calculateSpectrogramDimensions(
 export default function SoundEventSpectrogramView({
     soundEventAnnotation,
     recording,
-    parameters = DEFAULT_SPECTROGRAM_PARAMETERS,
+    parameters,
     withSpectrogram,
 }: {
     soundEventAnnotation: SoundEventAnnotation;
     recording: Recording;
-    parameters?: SpectrogramParameters;
+    parameters: SpectrogramParameters;
     withSpectrogram: boolean;
 }) {
     const containerRef = useRef<HTMLDivElement>(null);

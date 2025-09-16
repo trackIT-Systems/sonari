@@ -27,7 +27,7 @@ export default function SelectedSoundEventAnnotation({
   /** The tag filter to apply in case more tags want to be added */
   tagFilter?: TagFilter;
   withSpectrogram: boolean;
-  parameters?: SpectrogramParameters;
+  parameters: SpectrogramParameters;
   onAddTag?: (annotation: SoundEventAnnotation) => void;
   onRemoveTag?: (annotation: SoundEventAnnotation) => void;
   onCreateTag?: (tag: Tag) => void;
