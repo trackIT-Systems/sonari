@@ -18,6 +18,7 @@ export default function SelectedSoundEventAnnotation({
   onAddTag,
   onRemoveTag,
   onCreateTag,
+  onUpdate,
 }: {
   //* The sound event annotation to display */
   soundEventAnnotation: SoundEventAnnotation;
@@ -30,6 +31,7 @@ export default function SelectedSoundEventAnnotation({
   onAddTag?: (annotation: SoundEventAnnotation) => void;
   onRemoveTag?: (annotation: SoundEventAnnotation) => void;
   onCreateTag?: (tag: Tag) => void;
+  onUpdate?: (annotation: SoundEventAnnotation) => void;
 }) {
   const soundEventAnnotation = useSoundEventAnnotation({
     uuid: data.uuid,
@@ -37,12 +39,25 @@ export default function SelectedSoundEventAnnotation({
     soundEventAnnotation: data,
     onAddTag,
     onRemoveTag,
+    onUpdate,
   });
 
-  // Use the latest data by combining prop and hook data
+  // Find the current annotation in the clip's sound events (this is reactive to cache changes)
+  const annotationFromClip = useMemo(() => {
+    return clipAnnotation.sound_events?.find(annotation => annotation.uuid === data.uuid);
+  }, [clipAnnotation.sound_events, data.uuid]);
+
+  // Use the clip annotation data if available (reactive), otherwise use hook or prop data
   const currentAnnotation = useMemo(() => {
-    return soundEventAnnotation.data || data;
-  }, [soundEventAnnotation.data, data]);
+    return annotationFromClip || soundEventAnnotation.data || data;
+  }, [annotationFromClip, soundEventAnnotation.data, data]);
+
+  // Update parent component when annotation data changes
+  useEffect(() => {
+    if (currentAnnotation && onUpdate && currentAnnotation !== data) {
+      onUpdate(currentAnnotation);
+    }
+  }, [currentAnnotation, onUpdate, data]);
 
   return (
     <div className="w-full flex flex-col gap-4 py-4">
