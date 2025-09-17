@@ -26,9 +26,16 @@ async def extract_batch(
             joinedload(models.SoundEventAnnotation.sound_event)
             .joinedload(models.SoundEvent.recording)
             .selectinload(models.Recording.recording_tags),
+            joinedload(models.SoundEventAnnotation.sound_event)
+            .joinedload(models.SoundEvent.recording)
+            .selectinload(models.Recording.recording_datasets)
+            .joinedload(models.DatasetRecording.dataset),
             selectinload(models.SoundEventAnnotation.tags),
             joinedload(models.SoundEventAnnotation.created_by),
-            joinedload(models.SoundEventAnnotation.clip_annotation).selectinload(models.ClipAnnotation.annotation_task),
+            joinedload(models.SoundEventAnnotation.clip_annotation)
+            .selectinload(models.ClipAnnotation.annotation_task)
+            .selectinload(models.AnnotationTask.status_badges)
+            .joinedload(models.AnnotationStatusBadge.user),
         )
         .offset(offset)
         .limit(batch_size)
