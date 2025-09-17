@@ -31,13 +31,11 @@ class PendingFilter(base.Filter):
             not_(
                 models.AnnotationTask.status_badges.any(
                     and_(
-                        models.AnnotationStatusBadge.state.in_(
-                            [
-                                data.AnnotationState.completed,
-                                data.AnnotationState.rejected,
-                                data.AnnotationState.verified,
-                            ]
-                        ),
+                        models.AnnotationStatusBadge.state.in_([
+                            data.AnnotationState.completed,
+                            data.AnnotationState.rejected,
+                            data.AnnotationState.verified,
+                        ]),
                     )
                 )
             )
@@ -199,17 +197,18 @@ class SearchRecordingsFilter(base.Filter):
             return query
 
         # Use specific aliases for both Recording and Clip tables
+        ClipAnnotation = models.ClipAnnotation.__table__.alias("search_clip_annotation")
         Recording = models.Recording.__table__.alias("search_recording")
         Clip = models.Clip.__table__.alias("search_clip")
 
         query = (
             query.join(
-                models.ClipAnnotation,
-                models.AnnotationTask.clip_annotation_id == models.ClipAnnotation.id,
+                ClipAnnotation,
+                models.AnnotationTask.clip_annotation_id == ClipAnnotation.c.id,
             )
             .join(
                 Clip,
-                models.ClipAnnotation.clip_id == Clip.c.id,
+                ClipAnnotation.c.clip_id == Clip.c.id,
             )
             .join(
                 Recording,
@@ -237,6 +236,7 @@ class SoundEventAnnotationTagFilter(base.Filter):
         values = self.values.split(",")
 
         # Create aliases for needed tables
+        ClipAnnotation = models.ClipAnnotation.__table__.alias("sound_event_tag_clip_annotation")
         Recording = models.Recording.__table__.alias("sound_event_tag_recording")
         Clip = models.Clip.__table__.alias("sound_event_tag_clip")
 
@@ -277,7 +277,7 @@ class SoundEventAnnotationTagFilter(base.Filter):
             *(
                 exists(
                     select(1).where(
-                        models.SoundEventAnnotation.clip_annotation_id == models.AnnotationTask.clip_annotation_id,
+                        models.SoundEventAnnotation.clip_annotation_id == ClipAnnotation.c.id,
                         models.SoundEventAnnotation.id.in_(subquery),
                     )
                 )
@@ -288,12 +288,12 @@ class SoundEventAnnotationTagFilter(base.Filter):
         # Join the query with Recording table
         query = (
             query.join(
-                models.ClipAnnotation,
-                models.AnnotationTask.clip_annotation_id == models.ClipAnnotation.id,
+                ClipAnnotation,
+                models.AnnotationTask.clip_annotation_id == ClipAnnotation.c.id,
             )
             .join(
                 Clip,
-                models.ClipAnnotation.clip_id == Clip.c.id,
+                ClipAnnotation.c.clip_id == Clip.c.id,
             )
             .join(
                 Recording,
@@ -363,17 +363,18 @@ class DateRangeFilter(base.Filter):
             return query
 
         # Should use aliases
+        ClipAnnotation = models.ClipAnnotation.__table__.alias("date_range_clip_annotation")
         Recording = models.Recording.__table__.alias("date_range_recording")
         Clip = models.Clip.__table__.alias("date_range_clip")
 
         query = (
             query.join(
-                models.ClipAnnotation,
-                models.AnnotationTask.clip_annotation_id == models.ClipAnnotation.id,
+                ClipAnnotation,
+                models.AnnotationTask.clip_annotation_id == ClipAnnotation.c.id,
             )
             .join(
                 Clip,
-                models.ClipAnnotation.clip_id == Clip.c.id,
+                ClipAnnotation.c.clip_id == Clip.c.id,
             )
             .join(
                 Recording,
@@ -481,6 +482,7 @@ class DetectionConfidenceFilter(base.Filter):
             return query
 
         # Create aliases for needed tables
+        ClipAnnotation = models.ClipAnnotation.__table__.alias("detection_confidence_clip_annotation")
         Recording = models.Recording.__table__.alias("detection_confidence_recording")
         Clip = models.Clip.__table__.alias("detection_confidence_clip")
 
@@ -511,12 +513,12 @@ class DetectionConfidenceFilter(base.Filter):
         # Join with main query and use not exists to ensure no violations exist
         query = (
             query.join(
-                models.ClipAnnotation,
-                models.AnnotationTask.clip_annotation_id == models.ClipAnnotation.id,
+                ClipAnnotation,
+                models.AnnotationTask.clip_annotation_id == ClipAnnotation.c.id,
             )
             .join(
                 Clip,
-                models.ClipAnnotation.clip_id == Clip.c.id,
+                ClipAnnotation.c.clip_id == Clip.c.id,
             )
             .join(
                 Recording,
@@ -544,6 +546,7 @@ class SpeciesConfidenceFilter(base.Filter):
             return query
 
         # Create aliases for needed tables
+        ClipAnnotation = models.ClipAnnotation.__table__.alias("species_confidence_clip_annotation")
         Recording = models.Recording.__table__.alias("species_confidence_recording")
         Clip = models.Clip.__table__.alias("species_confidence_clip")
 
@@ -574,12 +577,12 @@ class SpeciesConfidenceFilter(base.Filter):
         # Join with main query and use not exists to ensure no violations exist
         query = (
             query.join(
-                models.ClipAnnotation,
-                models.AnnotationTask.clip_annotation_id == models.ClipAnnotation.id,
+                ClipAnnotation,
+                models.AnnotationTask.clip_annotation_id == ClipAnnotation.c.id,
             )
             .join(
                 Clip,
-                models.ClipAnnotation.clip_id == Clip.c.id,
+                ClipAnnotation.c.clip_id == Clip.c.id,
             )
             .join(
                 Recording,
