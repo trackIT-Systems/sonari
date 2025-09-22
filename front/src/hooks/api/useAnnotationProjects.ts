@@ -17,8 +17,7 @@ export default function useAnnotationProjects({
 } = {}) {
   const filter = useFilter<AnnotationProjectFilter>({
     defaults: initialFilter,
-    fixed,
-    persistKey: "filters:annotation_projects",
+    fixed
   });
 
   const { query, pagination, items, total } = usePagedQuery({

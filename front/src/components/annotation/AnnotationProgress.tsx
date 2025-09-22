@@ -141,7 +141,7 @@ export default function AnnotationProgress({
           )}
           {!isLoading && (
             <FilterPresets
-              storageKey="filters:annotation_tasks"
+              storageKey="presets:annotation_tasks"
               filter={filter}
               className="ml-2"
             />

@@ -19,8 +19,7 @@ export default function useAnnotationTasks({
 } = {}) {
   const filter = useFilter<AnnotationTaskFilter>({
     defaults: initialFilter,
-    fixed,
-    persistKey: "filters:annotation_tasks",
+    fixed
   });
 
   const { query, pagination, items, total, queryKey } = usePagedQuery({

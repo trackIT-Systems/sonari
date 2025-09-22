@@ -22,6 +22,7 @@ function safeParse<T>(raw: string | null, fallback: T): T {
 }
 
 // Helper function to remove annotation_project from filter objects
+// annotation_project should never be saved in presets as it's context-dependent
 function stripAnnotationProject<T extends Object>(filter: T): T {
   const { annotation_project, ...cleaned } = filter as any;
   return cleaned as T;
@@ -135,17 +136,19 @@ export default function useFilterPresets<T extends Object>({
 
   const applyPreset = useCallback(
     (preset: T) => {
-      // Clear keys not present in preset
+      // Clear keys not present in preset (except annotation_project which should never be cleared)
       const current = debouncedFilter as T;
       for (const key of Object.keys(current) as (keyof T)[]) {
-        if (!(key in preset)) {
+        if (!(key in preset) && key !== 'annotation_project') {
           filter.clear(key);
         }
       }
-      // Set keys from preset
+      // Set keys from preset (but never set annotation_project)
       for (const key of Object.keys(preset) as (keyof T)[]) {
-        // @ts-ignore
-        filter.set(key, preset[key]);
+        if (key !== 'annotation_project') {
+          // @ts-ignore
+          filter.set(key, preset[key]);
+        }
       }
       filter.submit();
     },
