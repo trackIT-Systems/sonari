@@ -147,6 +147,8 @@ export default function TimeExport() {
             selectedProjectTags={exportSelection.selectedProjectTags}
             onProjectSelect={exportSelection.handleProjectSelect}
             onProjectDeselect={exportSelection.handleProjectDeselect}
+            isLoadingProjects={exportSelection.isLoadingProjects}
+            totalProjects={exportSelection.totalProjects}
           />
 
           <ExportStatusSelection

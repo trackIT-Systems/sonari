@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { AnnotationStatusSchema } from "@/schemas";
 import type { Tag, AnnotationStatus, AnnotationProject } from "@/types";
 import api from "@/app/api";
@@ -27,6 +27,8 @@ export interface ExportSelectionState {
   
   // Loading state
   isExporting: boolean;
+  isLoadingProjects: boolean;
+  totalProjects: number;
 }
 
 export interface ExportSelectionActions {
@@ -63,6 +65,10 @@ export function useExportSelection(options: UseExportSelectionOptions = {}) {
     includeDateRange = true
   } = options;
 
+  // State for loading all projects
+  const [allProjects, setAllProjects] = useState<AnnotationProject[]>([]);
+  const [isLoadingProjects, setIsLoadingProjects] = useState(false);
+
   // Project selection state
   const [selectedProjects, setSelectedProjects] = useState<AnnotationProject[]>([]);
   const [availableProjects, setAvailableProjects] = useState<Option<AnnotationProject>[]>([]);
@@ -82,25 +88,44 @@ export function useExportSelection(options: UseExportSelectionOptions = {}) {
   // Export state
   const [isExporting, setIsExporting] = useState(false);
 
-  // Fetch projects on mount
-  useEffect(() => {
-    async function fetchProjects() {
-      try {
-        const page = await api.annotationProjects.getMany({});
-        const projects = page.items;
-        const options = projects.map(project => ({
-          id: project.uuid,
-          label: project.name,
-          value: project,
-        }));
-        setAvailableProjects(options);
-      } catch (err) {
-        console.error("Failed to fetch projects", err);
-      }
-    }
+  // Function to load all projects progressively
+  const loadAllProjects = useCallback(async () => {
+    setIsLoadingProjects(true);
+    try {
+      const allProjects: AnnotationProject[] = [];
+      let offset = 0;
+      const pageSize = 100;
+      let hasMore = true;
 
-    fetchProjects();
+      while (hasMore) {
+        const page = await api.annotationProjects.getMany({ limit: pageSize, offset });
+        allProjects.push(...page.items);
+        offset += pageSize;
+        hasMore = page.items.length === pageSize; // Continue if we got a full page
+      }
+
+      setAllProjects(allProjects);
+    } catch (err) {
+      console.error("Failed to fetch all projects", err);
+    } finally {
+      setIsLoadingProjects(false);
+    }
   }, []);
+
+  // Load all projects on mount
+  useEffect(() => {
+    loadAllProjects();
+  }, [loadAllProjects]);
+
+  // Convert projects to options when projects change
+  useEffect(() => {
+    const options = allProjects.map(project => ({
+      id: project.uuid,
+      label: project.name,
+      value: project,
+    }));
+    setAvailableProjects(options);
+  }, [allProjects]);
 
   // Update project tags when selected projects change
   useEffect(() => {
@@ -216,6 +241,8 @@ export function useExportSelection(options: UseExportSelectionOptions = {}) {
     startDate,
     endDate,
     isExporting,
+    isLoadingProjects,
+    totalProjects: allProjects.length,
   };
 
   const actions: ExportSelectionActions = {

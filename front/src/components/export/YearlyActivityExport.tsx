@@ -127,6 +127,8 @@ export default function YearlyActivityExport() {
             selectedProjectTags={exportSelection.selectedProjectTags}
             onProjectSelect={exportSelection.handleProjectSelect}
             onProjectDeselect={exportSelection.handleProjectDeselect}
+            isLoadingProjects={exportSelection.isLoadingProjects}
+            totalProjects={exportSelection.totalProjects}
           />
 
           <ExportStatusSelection

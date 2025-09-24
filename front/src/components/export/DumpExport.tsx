@@ -42,6 +42,8 @@ export default function DumpExport() {
             selectedProjectTags={exportSelection.selectedProjectTags}
             onProjectSelect={exportSelection.handleProjectSelect}
             onProjectDeselect={exportSelection.handleProjectDeselect}
+            isLoadingProjects={exportSelection.isLoadingProjects}
+            totalProjects={exportSelection.totalProjects}
           />
         </div>
         <div className="flex flex-col gap-y-6 min-w-0">
