@@ -21,6 +21,7 @@ function FloatField({
   name,
   onChangeValue,
   onSubmit,
+  showDecimals = false,
 }: {
   name: string;
   value: number;
@@ -28,6 +29,7 @@ function FloatField({
   onSubmit: () => void;
   operation: "gt" | "lt";
   onChangeOperation: (operation: "gt" | "lt") => void;
+  showDecimals?: boolean;
 }) {
   return (
     <div>
@@ -55,10 +57,11 @@ function FloatField({
         </div>
         <input
           type="number"
+          step={showDecimals ? "0.1" : undefined}
           id={name}
           name={name}
           className="block py-1 pr-14 pl-14 w-full rounded-md border-0 ring-1 ring-inset outline-none sm:text-sm sm:leading-6 focus:ring-2 focus:ring-inset focus:ring-emerald-600 bg-stone-50 text-stone-900 ring-stone-300 placeholder:text-stone-400 dark:bg-stone-900 dark:text-stone-300 dark:ring-stone-800"
-          value={value}
+          value={showDecimals ? value.toFixed(1) : value}
           onKeyDown={(e) => {
             if (e.key === ACCEPT_SHORTCUT) {
               onSubmit();
@@ -175,11 +178,13 @@ function IsNullField({
 export function FloatFilter({
   name = "field",
   onChange,
+  showDecimals = false,
 }: {
   name?: string;
   onChange: (filter: NumberFilter) => void;
+  showDecimals?: boolean;
 }) {
-  const [value, setValue] = useState(0);
+  const [value, setValue] = useState(0.0);
   const [operation, setOperation] = useState<"gt" | "lt">("gt");
 
   const handleSubmit = useCallback(() => {
@@ -197,6 +202,7 @@ export function FloatFilter({
         operation={operation}
         onChangeOperation={setOperation}
         onSubmit={handleSubmit}
+        showDecimals={showDecimals}
       />
     </div>
   );
@@ -232,9 +238,11 @@ export function FloatEqFilterFn({
 export function NullableFloatFilter({
   name,
   onChange,
+  showDecimals = false,
 }: {
   name: string;
   onChange: (filter: NumberFilter) => void;
+  showDecimals?: boolean;
 }) {
   const [value, setValue] = useState(0);
   const [operation, setOperation] = useState<"gt" | "lt">("gt");
@@ -256,6 +264,7 @@ export function NullableFloatFilter({
         operation={operation}
         onChangeOperation={setOperation}
         onSubmit={handleSubmit}
+        showDecimals={showDecimals}
       />
       <IsNullField
         name="is_null"

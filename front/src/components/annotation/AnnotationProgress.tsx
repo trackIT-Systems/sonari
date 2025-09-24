@@ -151,6 +151,11 @@ export default function AnnotationProgress({
             filter={filter}
             filterDef={taskFilterDefs}
           />
+          {filter.size > 0 && (
+            <Button mode="outline" className="text-xs" onClick={onNext}>
+            Apply filter
+          </Button>
+          )}
         </div>
       </div>
       <Tooltip
