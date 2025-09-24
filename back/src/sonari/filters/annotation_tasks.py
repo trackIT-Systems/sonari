@@ -486,7 +486,7 @@ class DetectionConfidenceFilter(base.Filter):
         Recording = models.Recording.__table__.alias("detection_confidence_recording")
         Clip = models.Clip.__table__.alias("detection_confidence_clip")
 
-        # Create subquery to find sound events with detection confidence that violate conditions
+        # Create subquery to find sound events with detection confidence that match conditions
         subquery = (
             select(1)
             .select_from(models.SoundEvent)
@@ -504,13 +504,13 @@ class DetectionConfidenceFilter(base.Filter):
             )
         )
 
-        # Add inverted confidence value conditions - looking for violations
+        # Add confidence value conditions - looking for matches
         if self.gt is not None:
-            subquery = subquery.where(models.SoundEventFeature.value <= self.gt)
+            subquery = subquery.where(models.SoundEventFeature.value > self.gt)
         if self.lt is not None:
-            subquery = subquery.where(models.SoundEventFeature.value >= self.lt)
+            subquery = subquery.where(models.SoundEventFeature.value < self.lt)
 
-        # Join with main query and use not exists to ensure no violations exist
+        # Join with main query and use exists to show only tasks with confidence data
         query = (
             query.join(
                 ClipAnnotation,
@@ -524,7 +524,7 @@ class DetectionConfidenceFilter(base.Filter):
                 Recording,
                 Recording.c.id == Clip.c.recording_id,
             )
-            .where(~exists(subquery))
+            .where(exists(subquery))
         )
 
         return query
@@ -550,7 +550,7 @@ class SpeciesConfidenceFilter(base.Filter):
         Recording = models.Recording.__table__.alias("species_confidence_recording")
         Clip = models.Clip.__table__.alias("species_confidence_clip")
 
-        # Create subquery to find sound events with species confidence that violate conditions
+        # Create subquery to find sound events with species confidence that match conditions
         subquery = (
             select(1)
             .select_from(models.SoundEvent)
@@ -568,13 +568,13 @@ class SpeciesConfidenceFilter(base.Filter):
             )
         )
 
-        # Add inverted confidence value conditions - looking for violations
+        # Add confidence value conditions - looking for matches
         if self.gt is not None:
-            subquery = subquery.where(models.SoundEventFeature.value <= self.gt)
+            subquery = subquery.where(models.SoundEventFeature.value > self.gt)
         if self.lt is not None:
-            subquery = subquery.where(models.SoundEventFeature.value >= self.lt)
+            subquery = subquery.where(models.SoundEventFeature.value < self.lt)
 
-        # Join with main query and use not exists to ensure no violations exist
+        # Join with main query and use exists to show only tasks with confidence data
         query = (
             query.join(
                 ClipAnnotation,
@@ -588,7 +588,7 @@ class SpeciesConfidenceFilter(base.Filter):
                 Recording,
                 Recording.c.id == Clip.c.recording_id,
             )
-            .where(~exists(subquery))
+            .where(exists(subquery))
         )
 
         return query
