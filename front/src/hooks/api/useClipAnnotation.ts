@@ -165,10 +165,41 @@ export default function useClipAnnotation({
     {
       soundEventAnnotation: SoundEventAnnotation;
       tag: Tag;
-    }
+    },
+    { previousData: ClipAnnotation | undefined }
   >({
     mutationFn: ({ soundEventAnnotation, tag }) => {
+      // Check if tag already exists before making API call
+      const hasTag = soundEventAnnotation.tags?.some(
+        existingTag => existingTag.key === tag.key && existingTag.value === tag.value
+      );
+      
+      if (hasTag) {
+        throw new Error("Tag already exists");
+      }
+      
       return api.soundEventAnnotations.addTag(soundEventAnnotation, tag);
+    },
+    onMutate: async ({ soundEventAnnotation, tag }) => {
+      // Optimistic update - update UI immediately
+      const previousData = query.data;
+      
+      setData((prev) => {
+        if (prev == null) return prev;
+        return {
+          ...prev,
+          sound_events: (prev.sound_events || []).map((soundEvent) =>
+            soundEvent.uuid === soundEventAnnotation.uuid
+              ? {
+                  ...soundEvent,
+                  tags: [...(soundEvent.tags || []), tag],
+                }
+              : soundEvent,
+          ),
+        };
+      });
+      
+      return { previousData };
     },
     onSuccess: (data) => {
       onAddTagToSoundEventAnnotation?.(data);
@@ -182,6 +213,17 @@ export default function useClipAnnotation({
         };
       });
     },
+    onError: (error, variables, context) => {
+      // Rollback optimistic update on error
+      if (context?.previousData) {
+        setData(context.previousData);
+      }
+      
+      // Don't call onError for duplicate tag errors (client-side check)
+      if (error.message !== "Tag already exists") {
+        onError?.(error);
+      }
+    },
   });
 
   const removeTagFromSoundEvent = useQueryMutation<
@@ -190,10 +232,43 @@ export default function useClipAnnotation({
     {
       soundEventAnnotation: SoundEventAnnotation;
       tag: Tag;
-    }
+    },
+    { previousData: ClipAnnotation | undefined }
   >({
     mutationFn: ({ soundEventAnnotation, tag }) => {
+      // Check if tag exists before making API call
+      const hasTag = soundEventAnnotation.tags?.some(
+        existingTag => existingTag.key === tag.key && existingTag.value === tag.value
+      );
+      
+      if (!hasTag) {
+        throw new Error("Tag does not exist");
+      }
+      
       return api.soundEventAnnotations.removeTag(soundEventAnnotation, tag);
+    },
+    onMutate: async ({ soundEventAnnotation, tag }) => {
+      // Optimistic update - remove tag from UI immediately
+      const previousData = query.data;
+      
+      setData((prev) => {
+        if (prev == null) return prev;
+        return {
+          ...prev,
+          sound_events: (prev.sound_events || []).map((soundEvent) =>
+            soundEvent.uuid === soundEventAnnotation.uuid
+              ? {
+                  ...soundEvent,
+                  tags: (soundEvent.tags || []).filter(
+                    existingTag => !(existingTag.key === tag.key && existingTag.value === tag.value)
+                  ),
+                }
+              : soundEvent,
+          ),
+        };
+      });
+      
+      return { previousData };
     },
     onSuccess: (data) => {
       onRemoveTagFromSoundEventAnnotation?.(data);
@@ -206,6 +281,17 @@ export default function useClipAnnotation({
           ),
         };
       });
+    },
+    onError: (error, variables, context) => {
+      // Rollback optimistic update on error
+      if (context?.previousData) {
+        setData(context.previousData);
+      }
+      
+      // Don't call onError for non-existent tag errors (client-side check)
+      if (error.message !== "Tag does not exist") {
+        onError?.(error);
+      }
     },
   });
 

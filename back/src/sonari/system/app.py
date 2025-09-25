@@ -15,6 +15,7 @@ from sonari import exceptions
 from sonari.plugins import add_plugin_pages, add_plugin_routes, load_plugins
 from sonari.shared_cache_global import set_shared_cache
 from sonari.system.boot import sonari_init
+from sonari.system.database import dispose_async_engine
 from sonari.system.settings import Settings
 from sonari.system.shared_cache import SharedTTLCache
 
@@ -40,6 +41,7 @@ async def lifespan(settings: Settings, app: FastAPI):
     yield
 
     # Cleanup on shutdown
+    await dispose_async_engine()
     cache_manager.shutdown()
 
 

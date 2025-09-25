@@ -23,6 +23,9 @@ from sonari.system.settings import Settings
 
 logger = logging.getLogger("sonari.database")
 
+# Global engine instance (singleton pattern)
+_async_engine: AsyncEngine | None = None
+
 __all__ = [
     "create_async_db_engine",
     "create_db",
@@ -33,6 +36,8 @@ __all__ = [
     "get_db_state",
     "init_database",
     "get_async_session",
+    "get_or_create_async_engine",
+    "dispose_async_engine",
     "models",
     "run_migrations",
     "validate_database_url",
@@ -145,7 +150,17 @@ def create_async_db_engine(database_url: str | URL) -> AsyncEngine:
     backend = database_url.get_backend_name()
     if backend == "sqlite":
         return create_async_engine(
-            database_url,)
+            database_url,
+            pool_size=5,
+            max_overflow=10,
+            pool_timeout=30,
+            pool_recycle=3600,
+            pool_pre_ping=True,
+            connect_args={
+                "check_same_thread": False,
+                "timeout": 30,
+            },
+        )
     
     if backend == "postgresql":
         return create_async_engine(
@@ -177,6 +192,31 @@ def create_sync_db_engine(database_url: str | URL) -> Engine:
         database_url = make_url(database_url)
     database_url = validate_database_url(database_url, is_async=False)
     return create_engine(database_url)
+
+
+def get_or_create_async_engine(database_url: str | URL) -> AsyncEngine:
+    """Get or create a singleton async database engine.
+    
+    This function ensures only one engine instance exists per database URL,
+    preventing connection leaks and file descriptor exhaustion.
+    """
+    global _async_engine
+    
+    if _async_engine is None:
+        logger.info("Creating new async database engine")
+        _async_engine = create_async_db_engine(database_url)
+    
+    return _async_engine
+
+
+async def dispose_async_engine() -> None:
+    """Dispose of the global async engine and reset it."""
+    global _async_engine
+    
+    if _async_engine is not None:
+        logger.info("Disposing async database engine")
+        await _async_engine.dispose()
+        _async_engine = None
 
 
 def create_alembic_config(db_url: str | URL, is_async: bool = True) -> Config:
