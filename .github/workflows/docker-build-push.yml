@@ -1,0 +1,62 @@
+name: Build and Push Docker Image
+
+on:
+  push:
+    tags: [ '*' ]
+
+env:
+  REGISTRY: registry.trackit.systems
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+
+    - name: Log in to Harbor Registry
+      uses: docker/login-action@v3
+      with:
+        registry: ${{ env.REGISTRY }}
+        username: ${{ secrets.HARBOR_ROBOT_USER }}
+        password: ${{ secrets.HARBOR_ROBOT_TOKEN }}
+
+    - name: Get tag name
+      id: tag
+      run: echo "tag=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+
+    - name: Set image tag
+      id: image
+      run: echo "full_name=${{ env.REGISTRY }}/backend/${{ github.event.repository.name }}:${{ steps.tag.outputs.tag }}" >> $GITHUB_OUTPUT
+
+    - name: Build and push Docker image
+      id: build
+      uses: docker/build-push-action@v6
+      with:
+        context: .
+        platforms: linux/amd64
+        push: true
+        tags: ${{ steps.image.outputs.full_name }}
+        labels: |
+          org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+          org.opencontainers.image.revision=${{ github.sha }}
+          org.opencontainers.image.version=${{ steps.tag.outputs.tag }}
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+        build-args: |
+          BUILDKIT_INLINE_CACHE=1
+        provenance: false
+        sbom: false
+
+    - name: Output image details
+      run: |
+        echo "Image pushed to: ${{ steps.image.outputs.full_name }}"
+        echo "Image digest: ${{ steps.build.outputs.digest }}"
+        echo "Git tag used: ${{ steps.tag.outputs.tag }}"
