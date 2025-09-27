@@ -32,9 +32,11 @@ jobs:
       id: tag
       run: echo "tag=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
 
-    - name: Set image tag
+    - name: Set image tags
       id: image
-      run: echo "full_name=${{ env.REGISTRY }}/backend/${{ github.event.repository.name }}:${{ steps.tag.outputs.tag }}" >> $GITHUB_OUTPUT
+      run: |
+        echo "tag_name=${{ env.REGISTRY }}/backend/${{ github.event.repository.name }}:${{ steps.tag.outputs.tag }}" >> $GITHUB_OUTPUT
+        echo "latest_name=${{ env.REGISTRY }}/backend/${{ github.event.repository.name }}:latest" >> $GITHUB_OUTPUT
 
     - name: Build and push Docker image
       id: build
@@ -43,7 +45,9 @@ jobs:
         context: .
         platforms: linux/amd64
         push: true
-        tags: ${{ steps.image.outputs.full_name }}
+        tags: |
+          ${{ steps.image.outputs.tag_name }}
+          ${{ steps.image.outputs.latest_name }}
         labels: |
           org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
           org.opencontainers.image.revision=${{ github.sha }}
@@ -52,11 +56,14 @@ jobs:
         cache-to: type=gha,mode=max
         build-args: |
           BUILDKIT_INLINE_CACHE=1
+          SONARI_FOLDER=${{ vars.SONARI_FOLDER || '/sonari' }}
         provenance: false
         sbom: false
 
     - name: Output image details
       run: |
-        echo "Image pushed to: ${{ steps.image.outputs.full_name }}"
+        echo "Images pushed to:"
+        echo "  - ${{ steps.image.outputs.tag_name }}"
+        echo "  - ${{ steps.image.outputs.latest_name }}"
         echo "Image digest: ${{ steps.build.outputs.digest }}"
         echo "Git tag used: ${{ steps.tag.outputs.tag }}"
