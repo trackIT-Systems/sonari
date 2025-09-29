@@ -455,6 +455,118 @@ const tasksFilterDefs: FilterDef<AnnotationTaskFilter>[] = [
       <SpectrogramIcon className="h-5 w-5 inline-block text-stone-500 mr-1 align-middle" />
     ),
   },
+  {
+    name: "Min Frequency",
+    field: "sound_event_min_frequency",
+    selector: ({ setFilter, filter }) => (
+      <FloatFilter
+        name="frequency (Hz)"
+        showDecimals={false}
+        onChange={(val) => {
+          const currentValue = filter.get("sound_event_min_frequency") || {};
+          if ('gt' in val) {
+            const newValue = {
+              ...currentValue,
+              gt: val.gt
+            };
+            setFilter("sound_event_min_frequency", newValue);
+          } else if ('lt' in val) {
+            const newValue = {
+              ...currentValue,
+              lt: val.lt
+            };
+            setFilter("sound_event_min_frequency", newValue);
+          }
+        }}
+      />
+    ),
+    render: ({ value, clear, setFilter }) => (
+      <>
+        {value?.gt !== undefined && (
+          <NumberFilterBadge
+            field="Min Frequency"
+            value={{ gt: value.gt }}
+            onRemove={() => {
+              const newValue = { ...value };
+              delete newValue.gt;
+              Object.keys(newValue).length === 0 ? clear() : setFilter("sound_event_min_frequency", newValue);
+            }}
+          />
+        )}
+        {value?.lt !== undefined && (
+          <NumberFilterBadge
+            field="Min Frequency"
+            value={{ lt: value.lt }}
+            onRemove={() => {
+              const newValue = { ...value };
+              delete newValue.lt;
+              Object.keys(newValue).length === 0 ? clear() : setFilter("sound_event_min_frequency", newValue);
+            }}
+          />
+        )}
+      </>
+    ),
+    description: "Filter by the minimum frequency of sound events. Only show tasks containing sound events with a minimum frequency within the specified range.",
+    icon: (
+      <SpectrogramIcon className="h-5 w-5 inline-block text-stone-500 mr-1 align-middle" />
+    ),
+  },
+  {
+    name: "Max Frequency",
+    field: "sound_event_max_frequency",
+    selector: ({ setFilter, filter }) => (
+      <FloatFilter
+        name="frequency (Hz)"
+        showDecimals={false}
+        onChange={(val) => {
+          const currentValue = filter.get("sound_event_max_frequency") || {};
+          if ('gt' in val) {
+            const newValue = {
+              ...currentValue,
+              gt: val.gt
+            };
+            setFilter("sound_event_max_frequency", newValue);
+          } else if ('lt' in val) {
+            const newValue = {
+              ...currentValue,
+              lt: val.lt
+            };
+            setFilter("sound_event_max_frequency", newValue);
+          }
+        }}
+      />
+    ),
+    render: ({ value, clear, setFilter }) => (
+      <>
+        {value?.gt !== undefined && (
+          <NumberFilterBadge
+            field="Max Frequency"
+            value={{ gt: value.gt }}
+            onRemove={() => {
+              const newValue = { ...value };
+              delete newValue.gt;
+              Object.keys(newValue).length === 0 ? clear() : setFilter("sound_event_max_frequency", newValue);
+            }}
+          />
+        )}
+        {value?.lt !== undefined && (
+          <NumberFilterBadge
+            field="Max Frequency"
+            value={{ lt: value.lt }}
+            onRemove={() => {
+              const newValue = { ...value };
+              delete newValue.lt;
+              Object.keys(newValue).length === 0 ? clear() : setFilter("sound_event_max_frequency", newValue);
+            }}
+          />
+        )}
+      </>
+    ),
+    description: "Filter by the maximum frequency of sound events. Only show tasks containing sound events with a maximum frequency within the specified range.",
+    icon: (
+      <SpectrogramIcon className="h-5 w-5 inline-block text-stone-500 mr-1 align-middle" />
+    ),
+  },
 ];
 
 export default tasksFilterDefs;

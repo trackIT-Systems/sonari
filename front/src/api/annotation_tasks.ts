@@ -78,6 +78,14 @@ export const AnnotationTaskFilterSchema = z.object({
     gt: z.number().optional(),
     lt: z.number().optional(),
   }).optional(),
+  sound_event_min_frequency: z.object({
+    gt: z.number().optional(),
+    lt: z.number().optional(),
+  }).optional(),
+  sound_event_max_frequency: z.object({
+    gt: z.number().optional(),
+    lt: z.number().optional(),
+  }).optional(),
 });
 
 export type AnnotationTaskFilter = z.input<typeof AnnotationTaskFilterSchema>;
@@ -181,6 +189,10 @@ export function registerAnnotationTasksAPI(
         detection_confidence__lt: params.detection_confidence?.lt,
         species_confidence__gt: params.species_confidence?.gt,
         species_confidence__lt: params.species_confidence?.lt,
+        sound_event_min_frequency__gt: params.sound_event_min_frequency?.gt,
+        sound_event_min_frequency__lt: params.sound_event_min_frequency?.lt,
+        sound_event_max_frequency__gt: params.sound_event_max_frequency?.gt,
+        sound_event_max_frequency__lt: params.sound_event_max_frequency?.lt,
         night__eq: params.night?.eq,
         night__tz: params.night?.timezone,
         day__eq: params.day?.eq,
