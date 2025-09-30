@@ -203,7 +203,6 @@ def get_or_create_async_engine(database_url: str | URL) -> AsyncEngine:
     global _async_engine
     
     if _async_engine is None:
-        logger.info("Creating new async database engine")
         _async_engine = create_async_db_engine(database_url)
     
     return _async_engine

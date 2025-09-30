@@ -8,12 +8,18 @@ import RecordingLocation from "@/components/recordings/RecordingLocation";
 import RecordingTime from "@/components/recordings/RecordingTime";
 import useRecording from "@/hooks/api/useRecording";
 
-import type { Recording, Tag } from "@/types";
+import type { Clip, Recording } from "@/types";
 
 export default function RecordingAnnotationContext({
   recording,
+  clip,
+  currentClipIndex,
+  totalClips,
 }: {
   recording: Recording;
+  clip?: Clip;
+  currentClipIndex?: number;
+  totalClips?: number;
 }) {
   const { path } = recording;
   const baseName = getBaseName(path) ?? "";
@@ -36,26 +42,25 @@ export default function RecordingAnnotationContext({
           >
             {baseName}
           </a>
+          {clip && currentClipIndex != null && totalClips != null && (
+            <span className="ml-2 text-stone-500 text-sm">
+              ({currentClipIndex}/{totalClips})
+            </span>
+          )}
         </div>
+        <RecordingDate date={recording.date} disabled />
+        <RecordingTime time={recording.time} disabled />
         <RecordingLocation
           latitude={recording.latitude}
           longitude={recording.longitude}
           disabled
         />
-        <RecordingTime time={recording.time} disabled />
-        <RecordingDate date={recording.date} disabled />
         <div className="text-stone-500 text-sm">
-          <span className="font-semibold">SR</span>{" "}
           {recording.samplerate.toLocaleString()} Hz
         </div>
         <div className="text-stone-500 text-sm">
-          <span className="font-semibold">C</span>{" "}
           {recording.channels.toLocaleString()}
         </div>
-        {/* <div className="text-stone-500 text-sm">
-          <span className="font-semibold">TE</span>{" "}
-          {recording.time_expansion.toLocaleString()}
-        </div> */}
       </div>
     </div>
   );

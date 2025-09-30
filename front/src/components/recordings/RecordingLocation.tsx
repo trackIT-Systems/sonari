@@ -1,6 +1,6 @@
 import Button from "@/components/Button";
 import Card from "@/components/Card";
-import { CloseIcon, LocationIcon } from "@/components/icons";
+import { CloseIcon } from "@/components/icons";
 import LocationInput, {
   type Location,
   formatLocation,
@@ -19,7 +19,6 @@ function LocationButton({
   const hasLocation = latitude != null && longitude != null;
   return (
     <Button mode="text" variant="secondary" padding="py-1" disabled={disabled}>
-      <LocationIcon className="inline-block mr-1 w-5 h-5 text-stone-500" />
       {hasLocation ? (
         formatLocation({ latitude, longitude })
       ) : (

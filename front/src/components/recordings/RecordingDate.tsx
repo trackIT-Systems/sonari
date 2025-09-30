@@ -4,7 +4,7 @@ import { z } from "zod";
 
 import Button from "@/components/Button";
 import Card from "@/components/Card";
-import { CloseIcon, DateIcon } from "@/components/icons";
+import { CloseIcon } from "@/components/icons";
 import { Input, InputGroup } from "@/components/inputs";
 import Popover from "@/components/Popover";
 import useDebounceSubmit from "@/hooks/forms/useDebounceSubmit";
@@ -18,7 +18,6 @@ function DateButton({
 }) {
   return (
     <Button mode="text" variant="secondary" padding="py-1" disabled={disabled}>
-      <DateIcon className="inline-block mr-1 w-5 h-5 text-stone-500" />
       {date != null ? (
         date.toLocaleDateString()
       ) : (

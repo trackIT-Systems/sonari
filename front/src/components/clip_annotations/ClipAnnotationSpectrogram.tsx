@@ -138,6 +138,18 @@ export default function ClipAnnotationSpectrogram({
     }
   }, [initialParameters, parameters, onParameterSave]);
 
+  // Create clip-constrained bounds to limit spectrogram to clip range only
+  const clipBounds = useMemo<SpectrogramWindow>(() => {
+    const effectiveSamplerate = initialParameters.resample
+      ? initialParameters.samplerate ?? recording.samplerate
+      : recording.samplerate;
+    
+    return {
+      time: { min: clip.start_time, max: clip.end_time },
+      freq: { min: 0, max: effectiveSamplerate / 2 },
+    };
+  }, [clip.start_time, clip.end_time, recording.samplerate, initialParameters.resample, initialParameters.samplerate]);
+
   const initial = useMemo(
     () => {
       if (withSpectrogram) {
@@ -231,6 +243,7 @@ export default function ClipAnnotationSpectrogram({
   const spectrogram = useSpectrogram({
     dimensions,
     recording,
+    bounds: clipBounds,
     initial,
     parameters: initialParameters,
     onDoubleClick: handleDoubleClick,
@@ -492,8 +505,8 @@ export default function ClipAnnotationSpectrogram({
       </div>
       {withBar && (
         <SpectrogramBar
-          bounds={spectrogram.bounds}
-          viewport={withSpectrogram ? spectrogram.viewport : spectrogram.bounds}
+          bounds={clipBounds}
+          viewport={withSpectrogram ? spectrogram.viewport : clipBounds}
           onMove={spectrogram.drag}
           recording={recording}
           parameters={spectrogram.parameters}

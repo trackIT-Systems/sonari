@@ -67,16 +67,46 @@ export default function useAnnotationTaskTable({
         accessorFn: (row) => row.clip?.recording,
         cell: ({ row }) => {
           const recording = row.getValue("recording") as Recording;
+          
           return (
             <TableCell>
               <Link
-                className="hover:font-bold hover:text-emerald-500 focus:ring focus:ring-emerald-500 focus:outline-none"
+                className="hover:font-bold hover:text-emerald-500 focus:ring focus:ring-emerald-500 focus:outline-none block break-words"
                 href={`/annotation_projects/` + getAnnotationTaskLink?.(row.original) || "#"}
               >
                 {pathFormatter(recording.path)}
               </Link>
             </TableCell>
           )
+        },
+      },
+      {
+        id: "clip",
+        header: () => <TableHeader>Clip</TableHeader>,
+        enableResizing: true,
+        size: 30,
+        accessorFn: (row) => row.clip,
+        cell: ({ row }) => {
+          const currentClip = row.original.clip;
+          if (!currentClip) return <TableCell>-</TableCell>;
+          
+          // Get all tasks and find clips from the same recording
+          const currentRecordingUuid = currentClip.recording.uuid;
+          const clipsFromSameRecording = data
+            .filter(task => task.clip?.recording.uuid === currentRecordingUuid)
+            .map(task => task.clip!)
+            .sort((a, b) => a.start_time - b.start_time);
+          
+          const clipIndex = clipsFromSameRecording.findIndex(c => c.uuid === currentClip.uuid);
+          const totalClips = clipsFromSameRecording.length;
+          
+          return (
+            <TableCell>
+              <span className="text-stone-500 text-sm">
+                {clipIndex >= 0 ? `${clipIndex + 1}/${totalClips}` : '-'}
+              </span>
+            </TableCell>
+          );
         },
       },
       {

@@ -12,6 +12,7 @@ import Empty from "@/components/Empty";
 import Loading from "@/components/Loading";
 import useAnnotationTasks from "@/hooks/annotation/useAnnotateTasks";
 import useClipAnnotation from "@/hooks/api/useClipAnnotation";
+import useClipAnnotations from "@/hooks/api/useClipAnnotations";
 import RecordingTagBar from "../recordings/RecordingTagBar";
 
 import { Popover, PopoverButton, PopoverPanel } from "@headlessui/react";
@@ -146,6 +147,26 @@ export default function AnnotateTasks({
     onRemoveTag: onRemoveClipTag,
     enabled: clipAnnotation != null,
   });
+
+  // Fetch all clip annotations for the current annotation project
+  // Then filter to only those from the current recording
+  const clipAnnotationsFilter = useMemo(() => {
+    return taskFilter?.annotation_project ? { annotation_project: taskFilter.annotation_project } : {};
+  }, [taskFilter?.annotation_project?.uuid]);
+
+  const { items: projectClipAnnotations, isLoading: isLoadingClipAnnotations } = useClipAnnotations({
+    filter: clipAnnotationsFilter,
+    pageSize: -1, // Get all clip annotations in the project
+    enabled: taskFilter?.annotation_project != null,
+  });
+
+  // Filter to clips from the current recording only
+  const recordingClips = useMemo(() => {
+    if (!data?.clip.recording || isLoadingClipAnnotations) return [];
+    return projectClipAnnotations
+      .filter((ca: ClipAnnotation) => ca.clip.recording.uuid === data.clip.recording.uuid)
+      .map((ca: ClipAnnotation) => ca.clip);
+  }, [projectClipAnnotations, data?.clip.recording?.uuid, isLoadingClipAnnotations]);
 
   const handleRemoveTagFromSoundEvents = useCallback(
     async (tagToRemove: Tag) => {
@@ -385,10 +406,21 @@ export default function AnnotateTasks({
               <Loading />
             ) : data == null ? (
               <NoClipSelected />
-            ) : (
+            ) : (() => {
+              // Calculate clip position among clips from the same recording
+              // Find the index of the current clip in the list of recording clips (sorted by start time)
+              const sortedClips = [...recordingClips].sort((a, b) => a.start_time - b.start_time);
+              const currentClipIndex = sortedClips.findIndex(
+                clip => clip.uuid === data.clip.uuid
+              );
+              
+              return (
               <div className="flex flex-col gap-2">
                 <RecordingAnnotationContext
                   recording={data.clip.recording}
+                  clip={data.clip}
+                  currentClipIndex={currentClipIndex >= 0 ? currentClipIndex + 1 : undefined}
+                  totalClips={recordingClips.length}
                 />
                 <div className="min-w-0 grow-0">
                   <ClipAnnotationSpectrogram
@@ -419,7 +451,8 @@ export default function AnnotateTasks({
                   />
                 </div>
               </div>
-            )}
+              );
+            })()}
           </div>
 
           {selectedAnnotation == null || data == null ? (
