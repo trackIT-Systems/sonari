@@ -1,3 +1,5 @@
+import { memo } from "react";
+
 import { RecordingIcon } from "@/components/icons";
 import Link from "@/components/Link";
 import RecordingDate from "@/components/recordings/RecordingDate";
@@ -10,7 +12,7 @@ import useRecording from "@/hooks/api/useRecording";
 
 import type { Clip, Recording } from "@/types";
 
-export default function RecordingAnnotationContext({
+const RecordingAnnotationContext = memo(function RecordingAnnotationContext({
   recording,
   clip,
   currentClipIndex,
@@ -64,4 +66,6 @@ export default function RecordingAnnotationContext({
       </div>
     </div>
   );
-}
+});
+
+export default RecordingAnnotationContext;

@@ -8,7 +8,7 @@
  */
 import { Listbox, ListboxButton, ListboxOptions, ListboxOption } from "@headlessui/react";
 import classNames from "classnames";
-import { useRef } from "react";
+import { useRef, memo } from "react";
 import {
   VisuallyHidden,
   mergeProps,
@@ -47,7 +47,7 @@ const COMMON_BUTTON_CLASSES =
  * @param {PlayerState} props.state - The state of the audio player.
  * @param {PlayerControls} props.controls - The controls for the audio player.
  */
-export default function Player(props: PlayerState & PlayerControls) {
+const Player = memo(function Player(props: PlayerState & PlayerControls) {
   const {
     currentTime,
     startTime,
@@ -122,7 +122,9 @@ export default function Player(props: PlayerState & PlayerControls) {
       />
     </div>
   );
-}
+});
+
+export default Player;
 
 /** Taken from https://stackoverflow.com/a/25279399 */
 function secondsToTimeStr(seconds?: number): string {

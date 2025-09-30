@@ -1,5 +1,5 @@
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useEffect, useMemo, useState } from "react";
+import { memo, useEffect, useMemo, useState } from "react";
 import { type Resolver, useForm } from "react-hook-form";
 
 import Button from "@/components/Button";
@@ -28,7 +28,7 @@ import useKeyFilter from "@/hooks/utils/useKeyFilter";
 import { useKeyPressEvent } from "react-use";
 import  FreqLineSettings  from "./settings/FreqLineSettings";
 
-export function SpectrogramSettingForm({
+export const SpectrogramSettingForm = memo(function SpectrogramSettingForm({
   settings,
   samplerate: recordingSamplerate,
   maxChannels = 1,
@@ -100,9 +100,9 @@ export function SpectrogramSettingForm({
       <FilteringSettings constraints={constraints} control={control} />
     </div>
   );
-}
+});
 
-export default function SpectrogramSettings({
+const SpectrogramSettings = memo(function SpectrogramSettings({
   settings,
   samplerate,
   maxChannels = 1,
@@ -165,4 +165,6 @@ export default function SpectrogramSettings({
       </SlideOver>
     </div>
   );
-}
+});
+
+export default SpectrogramSettings;

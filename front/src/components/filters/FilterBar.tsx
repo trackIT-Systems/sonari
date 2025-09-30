@@ -1,9 +1,28 @@
-import { useMemo } from "react";
+import { useMemo, useCallback, memo } from "react";
 
 import {  FilterIcon } from "@/components/icons";
 
 import type { FilterDef } from "@/components/filters/FilterMenu";
 import type { Filter } from "@/hooks/utils/useFilter";
+
+// Memoized component to prevent unnecessary re-renders of filter items
+function FilterItem<T extends Object>({
+  filterDef,
+  value,
+  onClear,
+  onSetFilter,
+}: {
+  filterDef: FilterDef<T>;
+  value: any;
+  onClear: () => void;
+  onSetFilter: (key: keyof T, value: any) => void;
+}) {
+  return filterDef.render({
+    value,
+    clear: onClear,
+    setFilter: onSetFilter,
+  });
+}
 
 export default function FilterBar<T extends Object>({
   filter,
@@ -51,13 +70,15 @@ export default function FilterBar<T extends Object>({
           .filter(([key, _]) => key in filterDefMapping)
           .map(([key, value]) => {
             const filterDef = filterDefMapping[key];
+            const handleClear = () => filter.clear(key as keyof T);
             return (
               <div key={key}>
-                {filterDef.render({
-                  value,
-                  clear: () => filter.clear(key as keyof T),
-                  setFilter: filter.set  // Pass setFilter to render
-                })}
+                <FilterItem
+                  filterDef={filterDef}
+                  value={value}
+                  onClear={handleClear}
+                  onSetFilter={filter.set}
+                />
               </div>
             );
           })}

@@ -1,4 +1,5 @@
 import React from 'react';
+import Image from 'next/image';
 
 interface YearlyActivityChartProps {
   chartImage: string;
@@ -15,7 +16,7 @@ export default function YearlyActivityChart({ chartImage }: YearlyActivityChartP
 
   return (
     <div className="w-full">
-      <img
+      <Image
         src={`data:image/png;base64,${chartImage}`}
         alt="Yearly Activity Heatmap"
         className="w-full h-auto rounded-lg shadow-sm"

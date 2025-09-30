@@ -1,5 +1,5 @@
 import classnames from "classnames";
-import { ForwardedRef, forwardRef } from "react";
+import { ForwardedRef, forwardRef, memo } from "react";
 
 import type { Mode, Variant } from "@/components/common";
 import type { ButtonHTMLAttributes, ReactNode } from "react";
@@ -67,7 +67,7 @@ export function getButtonClassName({
   );
 }
 
-const Button = forwardRef(function Button(
+const Button = memo(forwardRef(function Button(
   {
     children,
     variant = "primary",
@@ -89,6 +89,6 @@ const Button = forwardRef(function Button(
       {children}
     </button>
   );
-});
+}));
 
 export default Button;

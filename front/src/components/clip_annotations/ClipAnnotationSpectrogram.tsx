@@ -256,6 +256,10 @@ export default function ClipAnnotationSpectrogram({
     onSegmentsLoaded,
   });
 
+  const handleParameterSave = useCallback(() => {
+    onParameterSave?.(spectrogram.parameters);
+  }, [onParameterSave, spectrogram.parameters]);
+
   const waveform = useWaveform({
     recording,
     parameters: spectrogram.parameters,
@@ -462,7 +466,7 @@ export default function ClipAnnotationSpectrogram({
             settings={spectrogram.parameters}
             onChange={spectrogram.setParameters}
             onReset={spectrogram.resetParameters}
-            onSave={() => onParameterSave?.(spectrogram.parameters)}
+            onSave={handleParameterSave}
           />
         )}
         {withPlayer && <Player {...audio} />}

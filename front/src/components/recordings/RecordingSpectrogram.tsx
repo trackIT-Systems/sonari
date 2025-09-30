@@ -77,6 +77,10 @@ export default function RecordingSpectrogram({
     onSegmentsLoaded: () => null,
   });
 
+  const handleParameterSave = useCallback(() => {
+    onParameterSave?.(spectrogram.parameters);
+  }, [onParameterSave, spectrogram.parameters]);
+
   const { centerOn } = spectrogram;
   const handleTimeChange = useCallback(
     (time: number) => centerOn({ time }),
@@ -127,7 +131,7 @@ export default function RecordingSpectrogram({
             settings={spectrogram.parameters}
             onChange={spectrogram.setParameters}
             onReset={spectrogram.resetParameters}
-            onSave={() => onParameterSave?.(spectrogram.parameters)}
+            onSave={handleParameterSave}
           />
         )}
         {withPlayer && <Player {...audio} />}

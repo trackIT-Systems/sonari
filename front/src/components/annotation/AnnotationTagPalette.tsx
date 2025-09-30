@@ -1,3 +1,5 @@
+import { useCallback, memo } from "react";
+
 import Button from "@/components/Button";
 import Card from "@/components/Card";
 import { H4 } from "@/components/Headings";
@@ -8,6 +10,29 @@ import Tooltip from "@/components/Tooltip";
 
 import type { TagFilter } from "@/api/tags";
 import type { Tag } from "@/types";
+
+// Memoized tag item to prevent recreating callbacks on each render
+const MemoizedTagItem = memo(function MemoizedTagItem({
+  tag,
+  onClick,
+  onRemove,
+}: {
+  tag: Tag;
+  onClick?: (tag: Tag) => void;
+  onRemove?: (tag: Tag) => void;
+}) {
+  const handleClick = useCallback(() => onClick?.(tag), [onClick, tag]);
+  const handleClose = useCallback(() => onRemove?.(tag), [onRemove, tag]);
+
+  return (
+    <TagComponent
+      tag={tag}
+      onClick={handleClick}
+      onClose={handleClose}
+      count={null}
+    />
+  );
+});
 
 export default function AnnotationTagPalette({
   tags,
@@ -60,12 +85,11 @@ export default function AnnotationTagPalette({
       </div>
       <div className="flex flex-row flex-wrap gap-1">
         {tags.map((tag) => (
-          <TagComponent
+          <MemoizedTagItem
             key={getTagKey(tag)}
             tag={tag}
-            onClick={() => onClick?.(tag)}
-            onClose={() => onRemoveTag?.(tag)}
-            count={null}
+            onClick={onClick}
+            onRemove={onRemoveTag}
           />
         ))}
       </div>

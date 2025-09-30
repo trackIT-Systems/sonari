@@ -152,7 +152,7 @@ export default function AnnotateTasks({
   // Then filter to only those from the current recording
   const clipAnnotationsFilter = useMemo(() => {
     return taskFilter?.annotation_project ? { annotation_project: taskFilter.annotation_project } : {};
-  }, [taskFilter?.annotation_project?.uuid]);
+  }, [taskFilter?.annotation_project]);
 
   const { items: projectClipAnnotations, isLoading: isLoadingClipAnnotations } = useClipAnnotations({
     filter: clipAnnotationsFilter,
@@ -166,7 +166,7 @@ export default function AnnotateTasks({
     return projectClipAnnotations
       .filter((ca: ClipAnnotation) => ca.clip.recording.uuid === data.clip.recording.uuid)
       .map((ca: ClipAnnotation) => ca.clip);
-  }, [projectClipAnnotations, data?.clip.recording?.uuid, isLoadingClipAnnotations]);
+  }, [projectClipAnnotations, data?.clip.recording, isLoadingClipAnnotations]);
 
   const handleRemoveTagFromSoundEvents = useCallback(
     async (tagToRemove: Tag) => {

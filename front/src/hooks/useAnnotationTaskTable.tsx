@@ -201,7 +201,7 @@ export default function useAnnotationTaskTable({
         },
       },
     ],
-    [getAnnotationTaskLink, pathFormatter, pagination],
+    [getAnnotationTaskLink, pathFormatter, pagination, data],
   );
   return useReactTable<AnnotationTask>({
     data,

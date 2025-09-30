@@ -111,6 +111,10 @@ export default function SoundEventAnnotationSpectrogram(props: {
     onSegmentsLoaded: () => null,
   });
 
+  const handleParameterSave = useCallback(() => {
+    onParametersSave?.(spectrogram.parameters);
+  }, [onParametersSave, spectrogram.parameters]);
+
   const { centerOn } = spectrogram;
 
   const handleTimeChange = useCallback(
@@ -190,7 +194,7 @@ export default function SoundEventAnnotationSpectrogram(props: {
             settings={spectrogram.parameters}
             onChange={spectrogram.setParameters}
             onReset={spectrogram.resetParameters}
-            onSave={() => onParametersSave?.(spectrogram.parameters)}
+            onSave={handleParameterSave}
           />
         )}
         {withPlayer && <Player {...audio} />}

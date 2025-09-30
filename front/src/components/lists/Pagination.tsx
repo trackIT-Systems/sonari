@@ -1,3 +1,5 @@
+import { useMemo } from "react";
+
 import Button from "@/components/Button";
 import * as icons from "@/components/icons";
 import { Input } from "@/components/inputs/index";
@@ -6,6 +8,13 @@ import { type Pagination as PaginationType } from "@/hooks/utils/usePagedQuery";
 
 const pageSizeOptions = [1, 5, 10, 25, 50, 100];
 
+// Pre-compute options array to avoid recreation on every render
+const PAGE_SIZE_OPTIONS = pageSizeOptions.map((value) => ({
+  label: value.toString(),
+  value,
+  id: value,
+}));
+
 function SetPageSize({
   pageSize,
   setPageSize,
@@ -13,16 +22,17 @@ function SetPageSize({
   pageSize: number;
   setPageSize: (pageSize: number) => void;
 }) {
+  const selectedOption = useMemo(
+    () => ({ label: pageSize.toString(), value: pageSize, id: pageSize }),
+    [pageSize]
+  );
+
   return (
     <Select
       label="Page Size:"
-      selected={{ label: pageSize.toString(), value: pageSize, id: pageSize }}
+      selected={selectedOption}
       onChange={(value) => setPageSize(value)}
-      options={pageSizeOptions.map((value) => ({
-        label: value.toString(),
-        value,
-        id: value,
-      }))}
+      options={PAGE_SIZE_OPTIONS}
     />
   );
 }

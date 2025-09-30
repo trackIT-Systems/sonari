@@ -1,4 +1,5 @@
 import classnames from "classnames";
+import { useMemo } from "react";
 import { usePathname, useRouter } from "next/navigation";
 
 import {
@@ -191,7 +192,7 @@ export function SideMenu({
   const pathname = usePathname();
   const router = useRouter()
 
-  const shortcuts: ShortcutConfig[] = [
+  const shortcuts: ShortcutConfig[] = useMemo(() => [
     {
       key: GO_PROJECTS_SHORTCUT,
       shiftKey: true,
@@ -216,7 +217,7 @@ export function SideMenu({
       metaKey: true,
       action: () => { onLogout() },
     }
-  ];
+  ], [router, onLogout]);
 
   useSpecialKeyShortcuts(shortcuts);
 
