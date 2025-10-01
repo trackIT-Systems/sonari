@@ -2,4 +2,4 @@
 
 __author__ = """Artur Sterz"""
 __email__ = "sterz@trackit.systems"
-__version__ = "2025.6.3"
+__version__ = "2025.10.1"
