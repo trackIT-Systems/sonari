@@ -159,8 +159,8 @@ def compute_waveform(
         width_inches = 12
         height_inches = 1
 
-        fig, ax = plt.subplots(figsize=(width_inches, height_inches), dpi=150)
-        ax.plot(time, waveform, linewidth=0.5, color="white")
+        fig, ax = plt.subplots(figsize=(width_inches, height_inches), dpi=500)
+        ax.plot(time, waveform, linewidth=0.1, color="white")
 
         for spine in ax.spines.values():
             spine.set_visible(False)
@@ -177,7 +177,7 @@ def compute_waveform(
 
         # --- 2. Save to buffer (grayscale image) ---
         buf = BytesIO()
-        fig.savefig(buf, format="png", dpi=150, bbox_inches="tight", pad_inches=0)
+        fig.savefig(buf, format="png", dpi=500, bbox_inches="tight", pad_inches=0)
         plt.close(fig)
         buf.seek(0)
 
