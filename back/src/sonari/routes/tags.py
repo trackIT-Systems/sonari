@@ -66,7 +66,24 @@ async def create_tag(
     session: Session,
     data: schemas.TagCreate,
 ):
-    """Create a new tag."""
+    """Create a new tag and automatically add it to all annotation projects."""
+    # Create the tag
     tag = await api.tags.create(session, key=data.key, value=data.value)
+    
+    # Get all annotation projects
+    projects, _ = await api.annotation_projects.get_many(
+        session,
+        limit=None,  # Get all projects
+        offset=0,
+    )
+    
+    # Add the tag to all annotation projects
+    for project in projects:
+        try:
+            await api.annotation_projects.add_tag(session, project, tag)
+        except Exception:
+            # If tag already exists in project, skip (shouldn't happen with new tags)
+            pass
+    
     await session.commit()
     return tag

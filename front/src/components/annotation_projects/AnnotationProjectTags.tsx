@@ -48,7 +48,11 @@ export default function AnnotationProjectTags({
             <TagSearchBar
               autoFocus
               onSelect={project.addTag.mutate}
-              onCreate={project.addTag.mutate}
+              onCreate={() => {
+                // Tag is automatically added to all projects in the backend
+                // Just refetch to update the UI
+                project.refetch();
+              }}
             />
           </div>
           <small className="text-stone-500">
