@@ -61,8 +61,8 @@ export function getTagClassNames(color: string, level: number) {
   const background = `bg-${color}-${level}00 dark:bg-${color}-${10 - level}00`;
   const border = `border-${color}-${level + 2}00 dark:border-${color}-${10 - level - 2
     }00`;
-  const text = `text-${color}-${level + 3}00 dark:text-${color}-${10 - level - 3
-    }00`;
+  // Use much darker text for better contrast - always use 800+ for light mode, 100 for dark mode
+  const text = `text-${color}-800 dark:text-${color}-100`;
   return  {
     background,
     border,
@@ -100,7 +100,7 @@ export default function Tag({
   return (
     <div
       className={classnames(
-        "border rounded-md px-1 whitespace-nowrap tracking-tighter inline-flex w-fit max-w-full flex-nowrap",
+        "border rounded-md px-1 tracking-tighter inline-flex w-fit flex-nowrap",
         classNames.background,
         classNames.text,
         classNames.border,
@@ -119,7 +119,7 @@ export default function Tag({
         onClick={onClick}
       >
         <span className="font-thin min-w-fit shrink">{tag.key}</span>
-        <span className="ml-1 grow flex-1 font-bold italic group-hover:underline truncate group-hover:decoration-2 group-hover:underline-offset-2">
+        <span className="ml-1 grow flex-1 font-bold italic group-hover:underline group-hover:decoration-2 group-hover:underline-offset-2">
           {tag.value}
         </span>
         {count == null ? (
