@@ -24,6 +24,7 @@ def upgrade() -> None:
     """Major schema refactoring migration.
 
     Changes:
+    - Clean up orphaned clip_annotations that have no annotation_task (deletes associated sound_event_annotations)
     - Merge clip, clip_annotation, and annotation_task into single annotation_task table
     - Merge sound_event and sound_event_annotation into single sound_event_annotation table
     - Denormalize features (remove feature_name lookup table)
@@ -109,6 +110,62 @@ def upgrade() -> None:
     # Add annotation_task_id to note table
     with op.batch_alter_table("note", schema=None) as batch_op:
         batch_op.add_column(sa.Column("annotation_task_id", sa.Integer(), nullable=True))
+
+    # ==========================================================================
+    # PHASE 1.5: CLEAN UP ORPHANED DATA
+    # ==========================================================================
+
+    print("Phase 1.5: Cleaning up orphaned clip_annotations...")
+
+    # Count orphaned data before deletion
+    bind = op.get_bind()
+    result = bind.execute(
+        sa.text("""
+        SELECT COUNT(*) 
+        FROM clip_annotation ca
+        LEFT JOIN annotation_task at ON at.clip_annotation_id = ca.id
+        WHERE at.id IS NULL
+    """)
+    )
+    orphaned_clip_annotations = result.scalar()
+
+    result = bind.execute(
+        sa.text("""
+        SELECT COUNT(*) 
+        FROM sound_event_annotation sea
+        WHERE EXISTS (
+            SELECT 1 FROM clip_annotation ca
+            LEFT JOIN annotation_task at ON at.clip_annotation_id = ca.id
+            WHERE ca.id = sea.clip_annotation_id AND at.id IS NULL
+        )
+    """)
+    )
+    orphaned_sound_events = result.scalar()
+
+    print(f"  Found {orphaned_clip_annotations} orphaned clip_annotations")
+    print(f"  Found {orphaned_sound_events} sound_event_annotations that will be deleted")
+
+    # Delete clip_annotations that have no annotation_task
+    # This will CASCADE delete their sound_event_annotations
+    op.execute("""
+        DELETE FROM clip_annotation
+        WHERE NOT EXISTS (
+            SELECT 1 FROM annotation_task 
+            WHERE annotation_task.clip_annotation_id = clip_annotation.id
+        )
+    """)
+
+    # Log remaining counts
+    result = bind.execute(sa.text("SELECT COUNT(*) FROM clip_annotation"))
+    remaining_clip_annotations = result.scalar()
+    result = bind.execute(sa.text("SELECT COUNT(*) FROM sound_event_annotation"))
+    remaining_sound_events = result.scalar()
+
+    print(f"  Deleted {orphaned_clip_annotations} orphaned clip_annotations")
+    print(f"  Deleted {orphaned_sound_events} orphaned sound_event_annotations")
+    print(
+        f"  Remaining: {remaining_clip_annotations} clip_annotations, {remaining_sound_events} sound_event_annotations"
+    )
 
     # ==========================================================================
     # PHASE 2: MIGRATE DATA FROM OLD STRUCTURE TO NEW
@@ -430,6 +487,13 @@ def upgrade() -> None:
         batch_op.alter_column("start_time", nullable=False)
         batch_op.alter_column("end_time", nullable=False)
 
+        # Update unique constraint (must happen before dropping columns it references)
+        batch_op.drop_constraint("uq_annotation_task_annotation_project_id", type_="unique")
+        batch_op.create_unique_constraint(
+            batch_op.f("uq_annotation_task_annotation_project_id"),
+            ["annotation_project_id", "recording_id", "start_time", "end_time"],
+        )
+
         # Drop old columns (FKs and indexes already dropped in Phase 4)
         batch_op.drop_column("clip_annotation_id")
         batch_op.drop_column("clip_id")
@@ -444,13 +508,6 @@ def upgrade() -> None:
             ondelete="CASCADE",
         )
         batch_op.create_index(batch_op.f("ix_annotation_task_recording_id"), ["recording_id"], unique=False)
-
-        # Update unique constraint
-        batch_op.drop_constraint("uq_annotation_task_annotation_project_id", type_="unique")
-        batch_op.create_unique_constraint(
-            batch_op.f("uq_annotation_task_annotation_project_id"),
-            ["annotation_project_id", "recording_id", "start_time", "end_time"],
-        )
 
     # ==========================================================================
     # PHASE 8: UPDATE SOUND_EVENT_ANNOTATION TABLE STRUCTURE
@@ -501,6 +558,15 @@ def upgrade() -> None:
     # ==========================================================================
 
     print("Phase 9: Finalizing note structure...")
+
+    # Delete notes that couldn't be migrated (from recording_note and sound_event_annotation_note)
+    print("  - Cleaning up notes that couldn't be migrated...")
+    bind = op.get_bind()
+    result = bind.execute(sa.text("SELECT COUNT(*) FROM note WHERE annotation_task_id IS NULL"))
+    orphaned_notes = result.scalar()
+    print(f"    Found {orphaned_notes} notes without annotation_task (will be deleted)")
+
+    op.execute("DELETE FROM note WHERE annotation_task_id IS NULL")
 
     with op.batch_alter_table("note", schema=None) as batch_op:
         # Make annotation_task_id NOT NULL
@@ -622,15 +688,18 @@ def upgrade() -> None:
         batch_op.drop_column("uuid")
 
     print("Migration complete!")
-    print("⚠️  WARNING: Notes attached to recordings and sound_event_annotations have been lost.")
+    print("⚠️  WARNING: The following data has been lost:")
+    print("   - Notes attached to recordings and sound_event_annotations")
+    print("   - Orphaned clip_annotations (and their sound_event_annotations) that had no annotation_task")
     print("✓  All other data has been migrated successfully.")
 
 
 def downgrade() -> None:
     """Downgrade is NOT SUPPORTED for this migration due to data loss.
 
-    Notes attached to recordings and sound_event_annotations are dropped
-    during upgrade and cannot be recovered through downgrade.
+    The following data is deleted during upgrade and cannot be recovered:
+    - Notes attached to recordings and sound_event_annotations
+    - Orphaned clip_annotations (and their sound_event_annotations) that had no annotation_task
 
     To rollback, restore from backup using:
         cp sonari_backup_pre_migration_YYYYMMDD_HHMMSS.db sonari.db
