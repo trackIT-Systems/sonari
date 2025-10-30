@@ -5,7 +5,6 @@ import logging
 from collections import defaultdict
 from io import StringIO
 from typing import Any, Dict, List
-from uuid import UUID
 
 from fastapi.responses import StreamingResponse
 
@@ -21,7 +20,7 @@ class StatsService(BaseExportService):
 
     async def export_stats(
         self,
-        annotation_project_uuids: List[UUID],
+        annotation_project_ids: List[int],
         tags: List[str],
         statuses: List[str] | None = None,
         group_species: bool = False,
@@ -30,7 +29,7 @@ class StatsService(BaseExportService):
         logger = logging.getLogger(__name__)
 
         # Get the projects and their IDs
-        project_ids, projects_by_id = await self.resolve_projects(annotation_project_uuids)
+        project_ids, projects_by_id = await self.resolve_projects(annotation_project_ids)
 
         async def generate_stats_csv():
             """Generate statistics CSV data."""
@@ -92,11 +91,7 @@ class StatsService(BaseExportService):
         stats_dict = defaultdict(lambda: {"count": set(), "duration": 0.0})
 
         for task in tasks:
-            if not task.clip_annotation or not task.clip:
-                continue
-
-            clip_annotation = task.clip_annotation
-            recording = task.clip.recording
+            recording = task.recording
             project_name = projects_by_id[task.annotation_project_id].name
 
             # Get status badges for this task
@@ -111,7 +106,7 @@ class StatsService(BaseExportService):
 
             # Get tags from sound event annotations
             found_tags = set()
-            for sound_event_annotation in clip_annotation.sound_events:
+            for sound_event_annotation in task.sound_event_annotations:
                 event_tags = extract_tag_set(sound_event_annotation.tags)
                 matching_tags = find_matching_tags(event_tags, tags)
                 found_tags.update(matching_tags)

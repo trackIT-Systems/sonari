@@ -1,20 +1,12 @@
 """REST API routes for datasets."""
 
-import datetime
-import json
-from io import StringIO
-from typing import Annotated, Sequence
-from uuid import UUID
+from typing import Annotated
 
-from fastapi import APIRouter, Body, Depends, UploadFile
-from fastapi.responses import Response, StreamingResponse
-from pydantic import DirectoryPath
-from soundevent.io.aoef import DatasetObject, to_aeof
+from fastapi import APIRouter, Depends
 
-from sonari import api, models, schemas
-from sonari.api.io import aoef
+from sonari import api, schemas
 from sonari.filters.datasets import DatasetFilter
-from sonari.routes.dependencies import Session, SonariSettings
+from sonari.routes.dependencies import Session
 from sonari.routes.types import Limit, Offset
 
 __all__ = [
@@ -30,10 +22,10 @@ dataset_router = APIRouter()
 )
 async def get_dataset(
     session: Session,
-    dataset_uuid: UUID,
+    dataset_id: int,
 ):
-    """Get a dataset by UUID."""
-    return await api.datasets.get(session, dataset_uuid)
+    """Get a dataset by ID."""
+    return await api.datasets.get(session, dataset_id)
 
 
 @dataset_router.get(
@@ -90,11 +82,11 @@ async def create_dataset(
 )
 async def update_dataset(
     session: Session,
-    dataset_uuid: UUID,
+    dataset_id: int,
     data: schemas.DatasetUpdate,
 ):
     """Update a dataset."""
-    dataset = await api.datasets.get(session, dataset_uuid)
+    dataset = await api.datasets.get(session, dataset_id)
     updated = await api.datasets.update(session, dataset, data)
     await session.commit()
     return updated
@@ -106,10 +98,10 @@ async def update_dataset(
 )
 async def get_file_state(
     session: Session,
-    dataset_uuid: UUID,
+    dataset_id: int,
 ):
     """Get the status of the files in a dataset."""
-    dataset = await api.datasets.get(session, dataset_uuid)
+    dataset = await api.datasets.get(session, dataset_id)
     return await api.datasets.get_state(session, dataset)
 
 
@@ -119,80 +111,11 @@ async def get_file_state(
 )
 async def delete_dataset(
     session: Session,
-    dataset_uuid: UUID,
+    dataset_id: int,
 ):
     """Delete a dataset."""
-    dataset = await api.datasets.get(session, dataset_uuid)
+    dataset = await api.datasets.get(session, dataset_id)
 
     deleted = await api.datasets.delete(session, dataset)
     await session.commit()
     return deleted
-
-
-@dataset_router.get(
-    "/detail/download/json/",
-    response_model=DatasetObject,
-)
-async def download_dataset_json(
-    session: Session,
-    dataset_uuid: UUID,
-):
-    """Export a dataset."""
-    sonari_dataset = await api.datasets.get(session, dataset_uuid)
-    dataset = await api.datasets.to_soundevent(session, sonari_dataset)
-    obj = to_aeof(dataset)
-    filename = f"{dataset.name}_{obj.created_on.isoformat()}.json"
-    return Response(
-        obj.model_dump_json(),
-        media_type="application/json",
-        status_code=200,
-        headers={"Content-Disposition": f"attachment; filename={filename}"},
-    )
-
-
-@dataset_router.get(
-    "/detail/download/csv/",
-)
-async def download_dataset_csv(
-    session: Session,
-    dataset_uuid: UUID,
-):
-    """Export the dataset recordings in csv format."""
-    dataset = await api.datasets.get(session, dataset_uuid)
-    df = await api.datasets.to_dataframe(session, dataset)
-    buffer = StringIO()
-    df.to_csv(buffer, index=False)
-    buffer.seek(0)
-    filename = f"{dataset.name}_{datetime.datetime.now()}.csv"
-    return StreamingResponse(
-        buffer,
-        media_type="text/csv",
-        status_code=200,
-        headers={"Content-Disposition": f"attachment; filename={filename}"},
-    )
-
-
-@dataset_router.post(
-    "/import/",
-    response_model=schemas.Dataset,
-)
-async def import_dataset(
-    settings: SonariSettings,
-    session: Session,
-    dataset: UploadFile,
-    audio_dir: Annotated[DirectoryPath, Body()],
-):
-    """Import a dataset."""
-    if not audio_dir.exists():
-        raise FileNotFoundError(f"Audio directory {audio_dir} does not exist.")
-
-    obj = json.loads(dataset.file.read())
-    db_dataset = await aoef.import_dataset(
-        session,
-        obj,
-        dataset_dir=audio_dir,
-        audio_dir=settings.audio_dir,
-    )
-    await session.commit()
-    await session.refresh(db_dataset)
-    return schemas.Dataset.model_validate(db_dataset)

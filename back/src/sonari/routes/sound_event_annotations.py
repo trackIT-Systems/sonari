@@ -1,15 +1,10 @@
 """REST API routes for sound_event_annotations."""
 
 from typing import Annotated
-from uuid import UUID
 
 from fastapi import APIRouter, Depends
 
 from sonari import api, schemas
-from sonari.api.scatterplots.sound_event_annotations import (
-    ScatterPlotData,
-    get_scatterplot_data,
-)
 from sonari.filters.sound_event_annotations import SoundEventAnnotationFilter
 from sonari.routes.dependencies import Session, get_current_user_dependency
 from sonari.routes.dependencies.settings import SonariSettings
@@ -33,32 +28,26 @@ def get_sound_event_annotations_router(settings: SonariSettings) -> APIRouter:
     async def create_annotation(
         session: Session,
         user: Annotated[schemas.SimpleUser, Depends(active_user)],
-        clip_annotation_uuid: UUID,
+        annotation_task_id: int,
         data: schemas.SoundEventAnnotationCreate,
     ):
-        """Create annotation."""
-        clip_annotation = await api.clip_annotations.get(
+        """Create a sound event annotation."""
+        annotation_task = await api.annotation_tasks.get(
             session,
-            clip_annotation_uuid,
-        )
-
-        # Create the corresponding sound event
-        sound_event = await api.sound_events.create(
-            session,
-            recording=clip_annotation.clip.recording,
-            geometry=data.geometry,
+            annotation_task_id,
         )
 
         # Create the annotation
         sound_event_annotation = await api.sound_event_annotations.create(
             session,
-            sound_event=sound_event,
-            clip_annotation=clip_annotation,
+            annotation_task=annotation_task,
+            geometry=data.geometry,
             created_by=user,
         )
 
-        for tag in data.tags:
-            tag = await api.tags.get(session, (tag.key, tag.value))
+        # Add tags
+        for tag_data in data.tags:
+            tag = await api.tags.get(session, (tag_data.key, tag_data.value))
             sound_event_annotation = await api.sound_event_annotations.add_tag(
                 session,
                 sound_event_annotation,
@@ -73,20 +62,14 @@ def get_sound_event_annotations_router(settings: SonariSettings) -> APIRouter:
         "/detail/",
         response_model=schemas.SoundEventAnnotation,
     )
-    async def get_annotation(
-        session: Session,
-        sound_event_annotation_uuid: UUID,
-    ):
-        """Get an annotation."""
+    async def get_annotation(session: Session, sound_event_annotation_id: int):
+        """Get a sound event annotation."""
         return await api.sound_event_annotations.get(
             session,
-            sound_event_annotation_uuid,
+            sound_event_annotation_id,
         )
 
-    @sound_event_annotations_router.get(
-        "/",
-        response_model=schemas.Page[schemas.SoundEventAnnotation],
-    )
+    @sound_event_annotations_router.get("/", response_model=schemas.Page[schemas.SoundEventAnnotation])
     async def get_sound_event_annotations(
         session: Session,
         filter: Annotated[
@@ -97,7 +80,7 @@ def get_sound_event_annotations_router(settings: SonariSettings) -> APIRouter:
         offset: Offset = 0,
         sort_by: str = "-created_on",
     ):
-        """Get a page of annotation sound_event_annotations."""
+        """Get a page of sound event annotations."""
         (
             sound_event_annotations,
             total,
@@ -122,18 +105,20 @@ def get_sound_event_annotations_router(settings: SonariSettings) -> APIRouter:
     async def update_annotation(
         session: Session,
         user: Annotated[schemas.SimpleUser, Depends(active_user)],
-        sound_event_annotation_uuid: UUID,
-        data: schemas.SoundEventUpdate,
+        sound_event_annotation_id: int,
+        data: schemas.SoundEventAnnotationUpdate,
     ):
-        """Update an annotation."""
+        """Update a sound event annotation."""
         sound_event_annotation = await api.sound_event_annotations.get(
             session,
-            sound_event_annotation_uuid,
+            sound_event_annotation_id,
         )
-        sound_event_annotation.sound_event = await api.sound_events.update(
+
+        # Update geometry
+        sound_event_annotation = await api.sound_event_annotations.update_geometry(
             session,
-            sound_event_annotation.sound_event,
-            data,
+            sound_event_annotation,
+            data.geometry,
         )
 
         # Mark as edited by user (remove confidence and update ownership)
@@ -152,19 +137,19 @@ def get_sound_event_annotations_router(settings: SonariSettings) -> APIRouter:
     )
     async def delete_annotation(
         session: Session,
-        sound_event_annotation_uuid: UUID,
+        sound_event_annotation_id: int,
     ):
-        """Remove a clip from an annotation project."""
+        """Delete a sound event annotation."""
         sound_event_annotation = await api.sound_event_annotations.get(
             session,
-            sound_event_annotation_uuid,
+            sound_event_annotation_id,
         )
-        sound_event_annotaiton = await api.sound_event_annotations.delete(
+        sound_event_annotation = await api.sound_event_annotations.delete(
             session,
             sound_event_annotation,
         )
         await session.commit()
-        return sound_event_annotaiton
+        return sound_event_annotation
 
     @sound_event_annotations_router.post(
         "/detail/tags/",
@@ -172,15 +157,15 @@ def get_sound_event_annotations_router(settings: SonariSettings) -> APIRouter:
     )
     async def add_annotation_tag(
         session: Session,
-        sound_event_annotation_uuid: UUID,
+        sound_event_annotation_id: int,
         key: str,
         value: str,
         user: Annotated[schemas.SimpleUser, Depends(active_user)],
     ):
-        """Add a tag to an annotation annotation."""
+        """Add a tag to a sound event annotation."""
         sound_event_annotation = await api.sound_event_annotations.get(
             session,
-            sound_event_annotation_uuid,
+            sound_event_annotation_id,
         )
         tag = await api.tags.get(session, (key, value))
         sound_event_annotation = await api.sound_event_annotations.add_tag(
@@ -206,15 +191,15 @@ def get_sound_event_annotations_router(settings: SonariSettings) -> APIRouter:
     )
     async def remove_annotation_tag(
         session: Session,
-        sound_event_annotation_uuid: UUID,
+        sound_event_annotation_id: int,
         key: str,
         value: str,
         user: Annotated[schemas.SimpleUser, Depends(active_user)],
     ):
-        """Remove a tag from an annotation annotation."""
+        """Remove a tag from a sound event annotation."""
         sound_event_annotation = await api.sound_event_annotations.get(
             session,
-            sound_event_annotation_uuid,
+            sound_event_annotation_id,
         )
         tag = await api.tags.get(session, (key, value))
         sound_event_annotation = await api.sound_event_annotations.remove_tag(
@@ -232,84 +217,5 @@ def get_sound_event_annotations_router(settings: SonariSettings) -> APIRouter:
 
         await session.commit()
         return sound_event_annotation
-
-    @sound_event_annotations_router.post(
-        "/detail/notes/",
-        response_model=schemas.SoundEventAnnotation,
-    )
-    async def create_annotation_note(
-        session: Session,
-        sound_event_annotation_uuid: UUID,
-        data: schemas.NoteCreate,
-        user: Annotated[schemas.SimpleUser, Depends(active_user)],
-    ):
-        """Create a note for an annotation annotation."""
-        sound_event_annotation = await api.sound_event_annotations.get(
-            session,
-            sound_event_annotation_uuid,
-        )
-        note = await api.notes.create(
-            session,
-            message=data.message,
-            is_issue=data.is_issue,
-            created_by=user,
-        )
-        sound_event_annotation = await api.sound_event_annotations.add_note(
-            session,
-            sound_event_annotation,
-            note,
-        )
-        await session.commit()
-        return sound_event_annotation
-
-    @sound_event_annotations_router.delete(
-        "/detail/notes/",
-        response_model=schemas.SoundEventAnnotation,
-    )
-    async def delete_annotation_note(
-        session: Session,
-        sound_event_annotation_uuid: UUID,
-        note_uuid: UUID,
-    ):
-        """Delete a note from an annotation annotation."""
-        sound_event_annotation = await api.sound_event_annotations.get(
-            session,
-            sound_event_annotation_uuid,
-        )
-        note = await api.notes.get(session, note_uuid)
-        sound_event_annotation = await api.sound_event_annotations.remove_note(
-            session,
-            sound_event_annotation,
-            note,
-        )
-        await session.commit()
-        return sound_event_annotation
-
-    @sound_event_annotations_router.get(
-        "/scatter_plot/",
-        response_model=schemas.Page[ScatterPlotData],
-    )
-    async def get_scatter_plot_data(
-        session: Session,
-        filter: Annotated[
-            SoundEventAnnotationFilter,  # type: ignore
-            Depends(SoundEventAnnotationFilter),
-        ],
-        limit: Limit = 1000,
-        offset: Offset = 0,
-    ):
-        items, count = await get_scatterplot_data(
-            session,
-            limit=limit,
-            offset=offset,
-            filters=[filter],
-        )
-
-        return schemas.Page(
-            items=items,
-            total=count,
-            limit=limit,
-            offset=offset,
-        )
 
     return sound_event_annotations_router

@@ -1,23 +1,19 @@
 """Python API for annotation projects."""
 
-from pathlib import Path
 from typing import Sequence
-from uuid import UUID
 
-from soundevent import data
 from sqlalchemy import and_, select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from sonari import exceptions, models, schemas
 from sonari.api import common
 from sonari.api.annotation_tasks import annotation_tasks
-from sonari.api.clip_annotations import clip_annotations
 from sonari.api.common import BaseAPI
 from sonari.filters.annotation_tasks import (
-    AnnotationProjectFilter as AnnotationTaskAnnotationProjectFilter,
+    AnnotationProjectFilter,
 )
 from sonari.filters.base import Filter
-from sonari.filters.clip_annotations import AnnotationProjectFilter
 
 __all__ = [
     "AnnotationProjectAPI",
@@ -27,7 +23,7 @@ __all__ = [
 
 class AnnotationProjectAPI(
     BaseAPI[
-        UUID,
+        int,
         models.AnnotationProject,
         schemas.AnnotationProject,
         schemas.AnnotationProjectCreate,
@@ -79,6 +75,113 @@ class AnnotationProjectAPI(
             **kwargs,
         )
 
+    async def get_many_with_tags(
+        self,
+        session: AsyncSession,
+        *,
+        limit: int | None = 1000,
+        offset: int | None = 0,
+        filters: Sequence[Filter] | None = None,
+        sort_by: str | None = "-created_on",
+    ) -> tuple[Sequence[schemas.AnnotationProject], int]:
+        """Get many annotation projects with tags eagerly loaded.
+
+        This method is useful when you know you'll need to access the tags
+        relationship to avoid lazy loading issues.
+
+        Parameters
+        ----------
+        session
+            The SQLAlchemy AsyncSession of the database to use.
+        limit
+            The maximum number of objects to return, by default 1000
+        offset
+            The offset to use, by default 0
+        filters
+            A list of filters to apply, by default None
+        sort_by
+            The column to sort by, by default "-created_on"
+
+        Returns
+        -------
+        projects : Sequence[schemas.AnnotationProject]
+            The annotation projects with tags loaded.
+        count : int
+            The total number of projects matching the filters.
+        """
+        # Use get_many with noloads=[] to prevent any noload options,
+        # then manually add selectinload for tags
+        query = select(self._model).options(selectinload(models.AnnotationProject.tags))
+
+        # Apply filters
+        if filters:
+            for filter_ in filters:
+                query = filter_.filter(query)
+
+        # Get count before applying limit/offset
+        from sonari.api.common.utils import get_count
+
+        count = await get_count(session, self._model, query)
+
+        # Apply sorting
+        if sort_by:
+            if sort_by.startswith("-"):
+                column = getattr(self._model, sort_by[1:])
+                query = query.order_by(column.desc())
+            else:
+                column = getattr(self._model, sort_by)
+                query = query.order_by(column.asc())
+
+        # Apply pagination
+        if limit is not None:
+            query = query.limit(limit)
+        if offset is not None:
+            query = query.offset(offset)
+
+        result = await session.execute(query)
+        objs = result.unique().scalars().all()
+
+        return [self._schema.model_validate(obj) for obj in objs], count
+
+    async def get_with_tags(
+        self,
+        session: AsyncSession,
+        pk: int,
+    ) -> schemas.AnnotationProject:
+        """Get a single annotation project with tags eagerly loaded.
+
+        This method is useful when you know you'll need to access the tags
+        relationship to avoid lazy loading issues.
+
+        Parameters
+        ----------
+        session
+            The database session to use.
+        pk
+            The primary key (ID) of the annotation project.
+
+        Returns
+        -------
+        project : schemas.AnnotationProject
+            The annotation project with tags loaded.
+
+        Raises
+        ------
+        NotFoundError
+            If the annotation project could not be found.
+        """
+        query = select(self._model).where(self._model.id == pk).options(selectinload(models.AnnotationProject.tags))
+
+        result = await session.execute(query)
+        obj = result.unique().scalar_one_or_none()
+
+        if obj is None:
+            raise exceptions.NotFoundError(f"Annotation project with id {pk} not found")
+
+        data = self._schema.model_validate(obj)
+        self._update_cache(data)
+        return data
+
     async def add_tag(
         self,
         session: AsyncSession,
@@ -103,7 +206,7 @@ class AnnotationProjectAPI(
         """
         for t in obj.tags:
             if t.id == tag.id:
-                raise exceptions.DuplicateObjectError(f"Tag {tag.id} already exists in annotation " f"project {obj.id}")
+                raise exceptions.DuplicateObjectError(f"Tag {tag.id} already exists in annotation project {obj.id}")
 
         await common.create_object(
             session,
@@ -146,7 +249,7 @@ class AnnotationProjectAPI(
             if t.id == tag.id:
                 break
         else:
-            raise exceptions.NotFoundError(f"Tag {tag.id} does not exist in annotation " f"project {obj.id}")
+            raise exceptions.NotFoundError(f"Tag {tag.id} does not exist in annotation project {obj.id}")
 
         await common.delete_object(
             session,
@@ -165,7 +268,7 @@ class AnnotationProjectAPI(
         self._update_cache(obj)
         return obj
 
-    async def get_annotations(
+    async def get_annotation_tasks(
         self,
         session: AsyncSession,
         obj: schemas.AnnotationProject,
@@ -174,7 +277,7 @@ class AnnotationProjectAPI(
         offset: int = 0,
         filters: Sequence[Filter] | None = None,
         sort_by: str | None = "-created_on",
-    ) -> tuple[Sequence[schemas.ClipAnnotation], int]:
+    ) -> tuple[Sequence[schemas.AnnotationTask], int]:
         """Get a list of annotations for an annotation project.
 
         Parameters
@@ -195,7 +298,7 @@ class AnnotationProjectAPI(
 
         Returns
         -------
-        annotations : list[schemas.ClipAnnotation]
+        annotations : list[schemas.AnnotationTask]
             List of clip annotations.
         count : int
             Total number of annotations matching the given criteria.
@@ -203,116 +306,15 @@ class AnnotationProjectAPI(
             returned if limit is smaller than the total number of annotations
             matching the given criteria.
         """
-        return await clip_annotations.get_many(
+        return await annotation_tasks.get_many(
             session,
             limit=limit,
             offset=offset,
             filters=[
-                AnnotationProjectFilter(eq=obj.uuid),
+                AnnotationProjectFilter(eq=obj.id),
                 *(filters or []),
             ],
             sort_by=sort_by,
-        )
-
-    async def from_soundevent(
-        self,
-        session: AsyncSession,
-        data: data.AnnotationProject,
-    ) -> schemas.AnnotationProject:
-        """Convert a soundevent Annotation Project to a Sonari annotation project.
-
-        Parameters
-        ----------
-        session
-            SQLAlchemy AsyncSession.
-        data
-            soundevent annotation project.
-
-        Returns
-        -------
-        schemas.AnnotationProject
-            Sonari annotation project.
-        """
-        try:
-            annotation_project = await self.get(session, data.uuid)
-        except exceptions.NotFoundError:
-            annotation_project = await self.create(
-                session,
-                name=data.name,
-                description=data.description or "",
-                annotation_instructions=data.instructions or "",
-                uuid=data.uuid,
-                created_on=data.created_on,
-            )
-
-        for clip_annotation in data.clip_annotations:
-            await clip_annotations.from_soundevent(session, clip_annotation)
-
-        return annotation_project
-
-    async def to_soundevent(
-        self,
-        session: AsyncSession,
-        obj: schemas.AnnotationProject,
-        audio_dir: Path | None = None,
-    ) -> data.AnnotationProject:
-        """Convert a Sonari annotation project to a soundevent annotation project.
-
-        Parameters
-        ----------
-        session
-            SQLAlchemy AsyncSession.
-        obj
-            Sonari annotation project.
-
-        Returns
-        -------
-        data.AnnotationProject
-            soundevent annotation project.
-        """
-        tasks, _ = await annotation_tasks.get_many(
-            session,
-            limit=-1,
-            filters=[AnnotationTaskAnnotationProjectFilter(eq=obj.uuid)],
-        )
-
-        stmt = (
-            select(models.Clip, models.AnnotationTask.id)
-            .join(
-                models.AnnotationTask,
-                models.Clip.id == models.AnnotationTask.clip_id,
-            )
-            .where(
-                models.AnnotationTask.id.in_({t.id for t in tasks}),
-            )
-        )
-        results = await session.execute(stmt)
-        mapping = {r[1]: r[0] for r in results.unique().all()}
-
-        se_tasks = [
-            await annotation_tasks.to_soundevent(
-                session,
-                task,
-                audio_dir=audio_dir,
-                clip=mapping[task.id],
-            )
-            for task in tasks
-            if task.id in mapping
-        ]
-
-        annotations, _ = await self.get_annotations(session, obj, limit=-1)
-        se_clip_annotations = [
-            await clip_annotations.to_soundevent(session, ca, audio_dir=audio_dir) for ca in annotations
-        ]
-
-        return data.AnnotationProject(
-            uuid=obj.uuid,
-            name=obj.name,
-            description=obj.description,
-            instructions=obj.annotation_instructions,
-            created_on=obj.created_on,
-            clip_annotations=se_clip_annotations,
-            tasks=se_tasks,
         )
 
 

@@ -25,8 +25,6 @@ annotations. Therefore, maintaining a high level of quality control is
 essential, including outlier detection.
 """
 
-from uuid import UUID, uuid4
-
 import sqlalchemy.orm as orm
 from sqlalchemy import ForeignKey, UniqueConstraint
 
@@ -47,8 +45,6 @@ class AnnotationProject(Base):
     ----------
     id
         The database id of the annotation project.
-    uuid
-        The UUID of the annotation project.
     name
         The name of the annotation project.
     description
@@ -71,18 +67,11 @@ class AnnotationProject(Base):
         The description of the annotation project.
     annotation_instructions : str, optional
         The instructions for annotators.
-    uuid : UUID, optional
-        The UUID of the annotation project.
     """
 
     __tablename__ = "annotation_project"
 
     id: orm.Mapped[int] = orm.mapped_column(primary_key=True, init=False)
-    uuid: orm.Mapped[UUID] = orm.mapped_column(
-        default_factory=uuid4,
-        kw_only=True,
-        unique=True,
-    )
     name: orm.Mapped[str] = orm.mapped_column(unique=True)
     description: orm.Mapped[str]
     annotation_instructions: orm.Mapped[str | None] = orm.mapped_column(default=None)
@@ -94,18 +83,9 @@ class AnnotationProject(Base):
         viewonly=True,
         default_factory=list,
         repr=False,
-        lazy="selectin",
     )
     annotation_tasks: orm.Mapped[list["AnnotationTask"]] = orm.relationship(
         back_populates="annotation_project",
-        default_factory=list,
-        cascade="all, delete-orphan",
-        passive_deletes=True,
-    )
-
-    # Secondary relationships
-    annotation_project_tags: orm.Mapped[list["AnnotationProjectTag"]] = orm.relationship(
-        "AnnotationProjectTag",
         default_factory=list,
         cascade="all, delete-orphan",
         passive_deletes=True,
@@ -154,12 +134,10 @@ class AnnotationProjectTag(Base):
     # Relationships
     annotation_project: orm.Mapped[AnnotationProject] = orm.relationship(
         "AnnotationProject",
-        back_populates="annotation_project_tags",
         init=False,
     )
     tag: orm.Mapped[Tag] = orm.relationship(
         "Tag",
         back_populates="annotation_project_tags",
         init=False,
-        lazy="joined",
     )

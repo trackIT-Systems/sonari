@@ -1,7 +1,5 @@
 """Filters for Notes."""
 
-from uuid import UUID
-
 from sqlalchemy import Select
 
 from sonari import models
@@ -31,7 +29,7 @@ IssueFilter = base.boolean_filter(models.Note.is_issue)
 class AnnotationProjectFilter(base.Filter):
     """Get notes created within a specific annotation project."""
 
-    eq: UUID | None = None
+    eq: int | None = None
 
     def filter(self, query: Select) -> Select:
         """Filter the query."""
@@ -40,31 +38,15 @@ class AnnotationProjectFilter(base.Filter):
 
         return (
             query.join(
-                models.SoundEventAnnotationNote,
-                models.SoundEventAnnotationNote.note_id == models.Note.id,
-            )
-            .join(
-                models.SoundEventAnnotation,
-                models.SoundEventAnnotation.id == models.SoundEventAnnotationNote.sound_event_annotation_id,
-            )
-            .join(
-                models.ClipAnnotation,
-                models.ClipAnnotation.id == models.SoundEventAnnotation.clip_annotation_id,
-            )
-            .join(
-                models.ClipAnnotationNote,
-                models.ClipAnnotationNote.note_id == models.Note.id,
-            )
-            .join(
                 models.AnnotationTask,
-                models.AnnotationTask.clip_id == models.ClipAnnotation.clip_id,
+                models.AnnotationTask.id == models.Note.annotation_task_id,
             )
             .join(
                 models.AnnotationProject,
                 models.AnnotationProject.id == models.AnnotationTask.annotation_project_id,
             )
             .where(
-                models.AnnotationProject.uuid == self.eq,
+                models.AnnotationProject.id == self.eq,
             )
         )
 
@@ -72,7 +54,7 @@ class AnnotationProjectFilter(base.Filter):
 class RecordingFilter(base.Filter):
     """Get notes created within a specific recording."""
 
-    eq: UUID | None = None
+    eq: int | None = None
 
     def filter(self, query: Select) -> Select:
         """Filter the query."""
@@ -81,23 +63,23 @@ class RecordingFilter(base.Filter):
 
         return (
             query.join(
-                models.RecordingNote,
-                models.RecordingNote.note_id == models.Note.id,
+                models.AnnotationTask,
+                models.AnnotationTask.id == models.Note.annotation_task_id,
             )
             .join(
                 models.Recording,
-                models.Recording.id == models.RecordingNote.recording_id,
+                models.Recording.id == models.AnnotationTask.recording_id,
             )
             .where(
-                models.Recording.uuid == self.eq,
+                models.Recording.id == self.eq,
             )
         )
 
 
 class SoundEventAnnotationFilter(base.Filter):
-    """Get notes created within a specific sound event annotation."""
+    """Get notes for annotation tasks containing a specific sound event annotation."""
 
-    eq: UUID | None = None
+    eq: int | None = None
 
     def filter(self, query: Select) -> Select:
         """Filter the query."""
@@ -106,70 +88,59 @@ class SoundEventAnnotationFilter(base.Filter):
 
         return (
             query.join(
-                models.SoundEventAnnotationNote,
-                models.SoundEventAnnotationNote.note_id == models.Note.id,
+                models.AnnotationTask,
+                models.AnnotationTask.id == models.Note.annotation_task_id,
             )
             .join(
                 models.SoundEventAnnotation,
-                models.SoundEventAnnotation.id == models.SoundEventAnnotationNote.sound_event_annotation_id,
+                models.SoundEventAnnotation.annotation_task_id == models.AnnotationTask.id,
             )
             .where(
-                models.SoundEventAnnotation.uuid == self.eq,
+                models.SoundEventAnnotation.id == self.eq,
             )
         )
 
 
-class ClipAnnotationFilter(base.Filter):
-    """Get notes created within a specific clip annotation."""
+class AnnotationTaskFilter(base.Filter):
+    """Get notes created within a specific annotation task."""
 
-    eq: UUID | None = None
+    eq: int | None = None
 
     def filter(self, query: Select) -> Select:
         """Filter the query."""
         if not self.eq:
             return query
 
-        return (
-            query.join(
-                models.SoundEventAnnotationNote,
-                models.SoundEventAnnotationNote.note_id == models.Note.id,
-            )
-            .join(
-                models.SoundEventAnnotation,
-                models.SoundEventAnnotation.id == models.SoundEventAnnotationNote.sound_event_annotation_id,
-            )
-            .join(
-                models.ClipAnnotation,
-                models.ClipAnnotation.id == models.SoundEventAnnotation.clip_annotation_id,
-            )
-            .where(
-                models.ClipAnnotation.uuid == self.eq,
-            )
+        return query.join(
+            models.AnnotationTask,
+            models.AnnotationTask.id == models.Note.annotation_task_id,
+        ).where(
+            models.AnnotationTask.id == self.eq,
         )
 
 
 class DatasetFilter(base.Filter):
-    """Get notes of recordings within a specific dataset."""
+    """Get notes of annotation tasks within a specific dataset."""
 
-    eq: UUID | None = None
+    eq: int | None = None
 
     def filter(self, query: Select) -> Select:
         """Apply the filter.
 
-        Will filter the query to only include notes of recordings within the
-        specified dataset.
+        Will filter the query to only include notes of annotation tasks
+        whose recordings are within the specified dataset.
         """
         if self.eq is None:
             return query
 
         return (
             query.join(
-                models.RecordingNote,
-                models.RecordingNote.note_id == models.Note.id,
+                models.AnnotationTask,
+                models.AnnotationTask.id == models.Note.annotation_task_id,
             )
             .join(
                 models.Recording,
-                models.Recording.id == models.RecordingNote.recording_id,
+                models.Recording.id == models.AnnotationTask.recording_id,
             )
             .join(
                 models.DatasetRecording,
@@ -179,7 +150,7 @@ class DatasetFilter(base.Filter):
                 models.Dataset,
                 models.Dataset.id == models.DatasetRecording.dataset_id,
             )
-            .where(models.Dataset.uuid == self.eq)
+            .where(models.Dataset.id == self.eq)
         )
 
 
@@ -191,6 +162,6 @@ NoteFilter = base.combine(
     annotation_project=AnnotationProjectFilter,
     recording=RecordingFilter,
     sound_event_annotation=SoundEventAnnotationFilter,
-    clip_annotation=ClipAnnotationFilter,
+    annotation_task=AnnotationTaskFilter,
     dataset=DatasetFilter,
 )

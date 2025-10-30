@@ -4,7 +4,6 @@ import csv
 from collections import defaultdict
 from io import StringIO
 from typing import Any, Dict, List
-from uuid import UUID
 
 from ..charts.yearly_activity_chart import generate_yearly_activity_heatmap
 from ..constants import BAT_GROUPS
@@ -18,7 +17,7 @@ class YearlyActivityService(BaseExportService):
 
     async def export_yearly_activity(
         self,
-        annotation_project_uuids: List[UUID],
+        annotation_project_ids: List[int],
         tags: List[str],
         statuses: List[str] | None = None,
         start_date: str | None = None,
@@ -27,7 +26,7 @@ class YearlyActivityService(BaseExportService):
     ):
         """Export yearly activity analysis in CSV format or JSON with chart."""
         # Get the projects and their IDs
-        project_ids, projects_by_id = await self.resolve_projects(annotation_project_uuids)
+        project_ids, projects_by_id = await self.resolve_projects(annotation_project_ids)
 
         # Parse date range if provided
         parsed_start_date, parsed_end_date = self.parse_date_range(start_date, end_date)

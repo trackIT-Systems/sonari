@@ -37,12 +37,14 @@ these objects, users can more easily organize, filter, and analyze audio data,
 making it simpler to extract meaningful insights and information.
 """
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Optional
+from uuid import UUID
 
 import sqlalchemy.orm as orm
-from sqlalchemy import UniqueConstraint
+from sqlalchemy import ForeignKey, UniqueConstraint
 
 from sonari.models.base import Base
+from sonari.models.user import User
 
 __all__ = [
     "Tag",
@@ -61,6 +63,8 @@ class Tag(Base):
         coherent categories, similar to a namespace.
     value
         The value of the tag, the actual content of the tag.
+    created_by
+        The user who created the tag.
 
     Parameters
     ----------
@@ -68,6 +72,8 @@ class Tag(Base):
         The key of the tag.
     value : str
         The value of the tag.
+    created_by_id : UUID, optional
+        The database id of the user who created the tag.
     """
 
     __tablename__ = "tag"
@@ -76,6 +82,17 @@ class Tag(Base):
     id: orm.Mapped[int] = orm.mapped_column(primary_key=True, init=False)
     key: orm.Mapped[str] = orm.mapped_column(nullable=False)
     value: orm.Mapped[str] = orm.mapped_column(nullable=False)
+    created_by_id: orm.Mapped[Optional[UUID]] = orm.mapped_column(
+        ForeignKey("user.id"),
+        nullable=True,
+        index=True,
+    )
+
+    # Relationships
+    created_by: orm.Mapped[Optional[User]] = orm.relationship(
+        init=False,
+        repr=False,
+    )
 
     # ========================================================================
     # Relationships (backrefs)
@@ -85,20 +102,14 @@ class Tag(Base):
             AnnotationProject,
             AnnotationProjectTag,
         )
-        from sonari.models.clip import Clip
-        from sonari.models.clip_annotation import (
-            ClipAnnotation,
-            ClipAnnotationTag,
-        )
+        from sonari.models.annotation_task import AnnotationTask
         from sonari.models.recording import Recording, RecordingTag
-        from sonari.models.sound_event import SoundEvent
         from sonari.models.sound_event_annotation import (
             SoundEventAnnotation,
             SoundEventAnnotationTag,
         )
 
     recordings: orm.Mapped[list["Recording"]] = orm.relationship(
-        back_populates="tags",
         secondary="recording_tag",
         init=False,
         repr=False,
@@ -114,7 +125,6 @@ class Tag(Base):
         cascade="all, delete-orphan",
     )
     sound_event_annotations: orm.Mapped[list["SoundEventAnnotation"]] = orm.relationship(
-        back_populates="tags",
         secondary="sound_event_annotation_tag",
         init=False,
         repr=False,
@@ -129,23 +139,14 @@ class Tag(Base):
         cascade="all, delete-orphan",
         passive_deletes=True,
     )
-    clip_annotations: orm.Mapped[list["ClipAnnotation"]] = orm.relationship(
-        back_populates="tags",
-        secondary="clip_annotation_tag",
+    annotation_tasks: orm.Mapped[list["AnnotationTask"]] = orm.relationship(
+        secondary="annotation_task_tag",
         init=False,
         repr=False,
         viewonly=True,
         default_factory=list,
-        cascade="all, delete-orphan",
-    )
-    clip_annotation_tags: orm.Mapped[list["ClipAnnotationTag"]] = orm.relationship(
-        back_populates="tag",
-        init=False,
-        repr=False,
-        default_factory=list,
     )
     annotation_projects: orm.Mapped[list["AnnotationProject"]] = orm.relationship(
-        back_populates="tags",
         secondary="annotation_project_tag",
         init=False,
         repr=False,

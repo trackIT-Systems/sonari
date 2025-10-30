@@ -1,9 +1,11 @@
 """Schemas for handling Notes."""
 
+from typing import Optional
 from uuid import UUID
 
 from pydantic import BaseModel, Field
 
+from sonari.schemas.annotation_tasks import AnnotationTask
 from sonari.schemas.base import BaseSchema
 from sonari.schemas.users import SimpleUser
 
@@ -25,10 +27,7 @@ class NoteCreate(BaseModel):
 class Note(BaseSchema):
     """Schema for Note objects returned to the user."""
 
-    uuid: UUID
-    """The uuid of the note."""
-
-    id: int = Field(..., exclude=True)
+    id: int
     """The database id of the note."""
 
     message: str
@@ -37,12 +36,21 @@ class Note(BaseSchema):
     is_issue: bool
     """Whether the note is an issue."""
 
+    annotation_task_id: int
+    """The id of the annotation task this note belongs to."""
+
+    created_by_id: UUID
+    """User ID of the user that created this node"""
+
     created_by: SimpleUser | None
     """The user who created the note."""
 
+    annotation_task: Optional[AnnotationTask] = None
+    """Annotation task the note is attached to"""
+
     def __hash__(self):
         """Hash the Note object."""
-        return hash(self.uuid)
+        return hash(self.id)
 
 
 class NoteUpdate(BaseModel):

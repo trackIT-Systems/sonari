@@ -1,9 +1,8 @@
 """REST API routes for spectrograms."""
 
 from typing import Annotated
-from uuid import UUID
 
-from fastapi import APIRouter, Depends, Request, Response
+from fastapi import APIRouter, Depends, Response
 
 from sonari import api, schemas
 from sonari.core import images
@@ -20,7 +19,7 @@ spectrograms_router = APIRouter()
 async def get_spectrogram(
     session: Session,
     settings: SonariSettings,
-    recording_uuid: UUID,
+    recording_id: int,
     start_time: float,
     end_time: float,
     low_res: bool,
@@ -29,7 +28,6 @@ async def get_spectrogram(
         schemas.SpectrogramParameters,
         Depends(schemas.SpectrogramParameters),
     ],
-    request: Request,
 ) -> Response:
     """Get a spectrogram for a recording.
 
@@ -52,7 +50,7 @@ async def get_spectrogram(
         Spectrogram image.
 
     """
-    recording = await api.recordings.get(session, recording_uuid)
+    recording = await api.recordings.get(session, recording_id)
 
     # Close session BEFORE expensive computation
     await session.close()

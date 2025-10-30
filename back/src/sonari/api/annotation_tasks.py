@@ -1,8 +1,11 @@
-"""Python API for interacting with Tasks."""
+"""Python API for interacting with Annotation Tasks.
+
+Since Clip, ClipAnnotation, and AnnotationTask have been merged into a single
+AnnotationTask model, this API handles all clip and annotation functionality.
+"""
 
 from pathlib import Path
 from typing import Any, Sequence
-from uuid import UUID
 
 from soundevent import data
 from sqlalchemy import and_, select, tuple_
@@ -11,38 +14,31 @@ from sqlalchemy.sql._typing import _ColumnExpressionArgument
 
 from sonari import exceptions, models, schemas
 from sonari.api import common
-from sonari.api.clip_annotations import clip_annotations
-from sonari.api.clips import clips
 from sonari.api.common import BaseAPI
+from sonari.api.recordings import recordings
 from sonari.api.users import users
 from sonari.filters.base import Filter
 
 __all__ = [
     "AnnotationTaskAPI",
     "annotation_tasks",
+    "compute_duration",
 ]
-
-
-class AnnotationTaskFilter(Filter):
-    eq: int
-
-    def filter(self, query):
-        return query.join(
-            models.AnnotationTask,
-            models.Clip.id == models.AnnotationTask.clip_id,
-        ).filter(models.AnnotationTask.annotation_project_id == self.eq)
 
 
 class AnnotationTaskAPI(
     BaseAPI[
-        UUID,
+        int,
         models.AnnotationTask,
         schemas.AnnotationTask,
         schemas.AnnotationTaskCreate,
         schemas.AnnotationTaskUpdate,
     ]
 ):
-    """API for tasks."""
+    """API for annotation tasks.
+
+    Annotation tasks now include all clip and annotation data.
+    """
 
     _model = models.AnnotationTask
     _schema = schemas.AnnotationTask
@@ -75,48 +71,16 @@ class AnnotationTaskAPI(
         objs = result.scalars().all()
         return [self._schema.model_validate(obj) for obj in objs], count
 
-    async def get_clip_annotation(
-        self,
-        session: AsyncSession,
-        obj: schemas.AnnotationTask,
-    ) -> schemas.ClipAnnotation:
-        """Get clip annotations for a task.
-
-        Parameters
-        ----------
-        session
-            SQLAlchemy AsyncSession.
-        obj
-            Task for which to get the annotations.
-
-        Returns
-        -------
-        list[schemas.Annotation]
-            Annotations for the task.
-        """
-        stmt = (
-            select(models.ClipAnnotation.uuid)
-            .select_from(models.ClipAnnotation)
-            .join(
-                models.AnnotationTask,
-                models.ClipAnnotation.id == models.AnnotationTask.clip_annotation_id,
-            )
-            .filter(models.AnnotationTask.id == obj.id)
-        )
-        results = await session.execute(stmt)
-        uuid = results.scalars().first()
-        if not uuid:
-            raise exceptions.NotFoundError("No clip annotation found for task {obj}")
-        return await clip_annotations.get(session, uuid)
-
     async def create(
         self,
         session: AsyncSession,
         annotation_project: schemas.AnnotationProject,
-        clip: schemas.Clip,
+        recording: schemas.Recording,
+        start_time: float,
+        end_time: float,
         **kwargs,
     ) -> schemas.AnnotationTask:
-        """Create a task.
+        """Create an annotation task.
 
         Parameters
         ----------
@@ -124,23 +88,193 @@ class AnnotationTaskAPI(
             SQLAlchemy AsyncSession.
         annotation_project
             Annotation project to which the task belongs.
-        clip
-            Clip to annotate.
+        recording
+            Recording from which to extract the audio segment.
+        start_time
+            Start time of the audio segment in seconds.
+        end_time
+            End time of the audio segment in seconds.
         **kwargs
-            Additional keyword arguments to pass to the creation
-            (e.g. `uuid`).
+            Additional keyword arguments.
 
         Returns
         -------
         schemas.AnnotationTask
             Created task.
         """
-        return await self.create_from_data(
+        task = await self.create_from_data(
             session,
             annotation_project_id=annotation_project.id,
-            clip_id=clip.id,
+            recording_id=recording.id,
+            start_time=start_time,
+            end_time=end_time,
             **kwargs,
         )
+
+        # Compute and add default features
+        features = await self._create_task_features(session, [task])
+        task = task.model_copy(update=dict(features=features[0]))
+        self._update_cache(task)
+        return task
+
+    async def create_many_without_duplicates(
+        self,
+        session: AsyncSession,
+        data: Sequence[dict],
+        return_all: bool = False,
+    ) -> Sequence[schemas.AnnotationTask]:
+        """Create annotation tasks without duplicates.
+
+        Parameters
+        ----------
+        session
+            Database session.
+        data
+            List of tasks to create.
+        return_all
+            Whether to return all tasks or only the created ones.
+
+        Returns
+        -------
+        list[schemas.AnnotationTask]
+            Created tasks.
+        """
+        tasks = await super().create_many_without_duplicates(
+            session,
+            data,
+            return_all=return_all,
+        )
+
+        if not tasks:
+            return tasks
+
+        # Compute features for all tasks
+        task_features = await self._create_task_features(session, tasks)
+        return [
+            task.model_copy(update=dict(features=features))
+            for task, features in zip(tasks, task_features, strict=False)
+        ]
+
+    async def add_feature(
+        self,
+        session: AsyncSession,
+        obj: schemas.AnnotationTask,
+        feature: schemas.Feature,
+    ) -> schemas.AnnotationTask:
+        """Add feature to annotation task.
+
+        Parameters
+        ----------
+        session
+            Database session.
+        obj
+            Task to add feature to.
+        feature
+            Feature to add.
+
+        Returns
+        -------
+        schemas.AnnotationTask
+            Updated task.
+        """
+        for f in obj.features:
+            if f.name == feature.name:
+                raise exceptions.DuplicateObjectError(f"Task {obj.id} already has a feature with name {feature.name}.")
+
+        await common.create_object(
+            session,
+            models.AnnotationTaskFeature,
+            annotation_task_id=obj.id,
+            name=feature.name,
+            value=feature.value,
+        )
+
+        obj = obj.model_copy(update=dict(features=[*obj.features, feature]))
+        self._update_cache(obj)
+        return obj
+
+    async def update_feature(
+        self,
+        session: AsyncSession,
+        obj: schemas.AnnotationTask,
+        feature: schemas.Feature,
+    ) -> schemas.AnnotationTask:
+        """Update a feature value for a task.
+
+        Parameters
+        ----------
+        session
+            Database session.
+        obj
+            Task to update feature for.
+        feature
+            Feature to update.
+
+        Returns
+        -------
+        schemas.AnnotationTask
+            The updated task.
+        """
+        for f in obj.features:
+            if f.name == feature.name:
+                break
+        else:
+            raise ValueError(f"Task {obj} does not have a feature with name {feature.name}.")
+
+        await common.update_object(
+            session,
+            models.AnnotationTaskFeature,
+            and_(
+                models.AnnotationTaskFeature.annotation_task_id == obj.id,
+                models.AnnotationTaskFeature.name == feature.name,
+            ),
+            value=feature.value,
+        )
+
+        obj = obj.model_copy(update=dict(features=[f if f.name != feature.name else feature for f in obj.features]))
+        self._update_cache(obj)
+        return obj
+
+    async def remove_feature(
+        self,
+        session: AsyncSession,
+        obj: schemas.AnnotationTask,
+        feature: schemas.Feature,
+    ) -> schemas.AnnotationTask:
+        """Remove feature from task.
+
+        Parameters
+        ----------
+        session
+            Database session.
+        obj
+            Task to remove feature from.
+        feature
+            Feature to remove.
+
+        Returns
+        -------
+        schemas.AnnotationTask
+            The updated task.
+        """
+        for f in obj.features:
+            if f.name == feature.name:
+                break
+        else:
+            raise ValueError(f"Task {obj} does not have a feature with name {feature.name}.")
+
+        await common.delete_object(
+            session,
+            models.AnnotationTaskFeature,
+            and_(
+                models.AnnotationTaskFeature.annotation_task_id == obj.id,
+                models.AnnotationTaskFeature.name == feature.name,
+            ),
+        )
+
+        obj = obj.model_copy(update=dict(features=[f for f in obj.features if f.name != feature.name]))
+        self._update_cache(obj)
+        return obj
 
     async def add_status_badge(
         self,
@@ -205,8 +339,10 @@ class AnnotationTaskAPI(
             SQLAlchemy AsyncSession.
         obj
             Task to remove the status badge from.
-        badge
-            Status badge to remove.
+        state
+            State of the status badge to remove.
+        user_id
+            Optional user ID to filter by.
 
         Returns
         -------
@@ -262,44 +398,23 @@ class AnnotationTaskAPI(
         schemas.AnnotationTask
             The created task.
         """
-        try:
-            obj = await self.get(session, data.uuid)
-        except exceptions.NotFoundError:
-            obj = await self._create_from_soundevent(
-                session,
-                data,
-                annotation_project,
-            )
+        # Note: UUIDs have been removed, so we can't look up by UUID anymore
+        # We'll need to create a new task or find by other means
+        recording = await recordings.from_soundevent(session, data.clip.recording)
 
-        return await self._update_from_soundevent(session, obj, data)
-
-    async def get_clip(
-        self,
-        session: AsyncSession,
-        obj: schemas.AnnotationTask,
-    ) -> schemas.Clip:
-        """Get the clip of a task.
-
-        Parameters
-        ----------
-        obj
-            The task.
-
-        Returns
-        -------
-        schemas.Clip
-            The clip of the task.
-        """
-        return await clips.find(
+        task = await self.create(
             session,
-            filters=[AnnotationTaskFilter(eq=obj.id)],
+            annotation_project=annotation_project,
+            recording=recording,
+            start_time=data.clip.start_time,
+            end_time=data.clip.end_time,
         )
 
-    async def to_soundevent(
+        return await self._update_from_soundevent(session, task, data)
+
+    def to_soundevent(
         self,
-        session: AsyncSession,
         task: schemas.AnnotationTask,
-        clip: schemas.Clip | None = None,
         audio_dir: Path | None = None,
     ) -> data.AnnotationTask:
         """Convert a task to a `soundevent` task.
@@ -308,17 +423,23 @@ class AnnotationTaskAPI(
         ----------
         task
             The task to convert.
+        audio_dir
+            Optional audio directory path.
 
         Returns
         -------
         data.AnnotationTask
             The converted task.
         """
-        if clip is None:
-            clip = await self.get_clip(session, task)
+        # Create clip data from task
+        clip = data.Clip(
+            recording=recordings.to_soundevent(task.recording, audio_dir=audio_dir),
+            start_time=task.start_time,
+            end_time=task.end_time,
+        )
+
         return data.AnnotationTask(
-            uuid=task.uuid,
-            clip=clips.to_soundevent(clip, audio_dir=audio_dir),
+            clip=clip,
             status_badges=[
                 data.StatusBadge(
                     owner=users.to_soundevent(sb.user) if sb.user else None,
@@ -329,6 +450,58 @@ class AnnotationTaskAPI(
             ],
             created_on=task.created_on,
         )
+
+    async def _create_task_features(
+        self,
+        session: AsyncSession,
+        tasks: Sequence[schemas.AnnotationTask],
+    ) -> Sequence[list[schemas.Feature]]:
+        """Create features for tasks.
+
+        Parameters
+        ----------
+        session
+            Database session.
+        tasks
+            List of tasks to create features for.
+
+        Returns
+        -------
+        list[list[schemas.Feature]]
+            List of features created for each task.
+        """
+        task_features = [
+            [schemas.Feature(name=name, value=value) for name, value in compute_task_features(task).items()]
+            for task in tasks
+        ]
+
+        create_values = [
+            (task.id, feature.name, feature.value)
+            for task, features in zip(tasks, task_features, strict=False)
+            for feature in features
+        ]
+
+        data = [
+            dict(
+                annotation_task_id=task_id,
+                name=name,
+                value=value,
+            )
+            for task_id, name, value in create_values
+        ]
+
+        await common.create_objects_without_duplicates(
+            session,
+            models.AnnotationTaskFeature,
+            data,
+            key=lambda obj: (obj["annotation_task_id"], obj["name"]),
+            key_column=tuple_(
+                models.AnnotationTaskFeature.annotation_task_id,
+                models.AnnotationTaskFeature.name,
+            ),
+            return_all=True,
+        )
+        return task_features
 
     async def _update_from_soundevent(
         self,
@@ -373,47 +546,65 @@ class AnnotationTaskAPI(
 
         return obj
 
-    async def _create_from_soundevent(
-        self,
-        session: AsyncSession,
-        data: data.AnnotationTask,
-        annotation_project: schemas.AnnotationProject,
-        clip: schemas.Clip | None = None,
-    ) -> schemas.AnnotationTask:
-        """Create a task from a `soundevent` task.
-
-        Parameters
-        ----------
-        session
-            An async database session.
-        data
-            The `soundevent` task.
-        annotation_project_id
-            The ID of the annotation project to which the task belongs.
-
-        Returns
-        -------
-        schemas.AnnotationTask
-            The created task.
-        """
-        if clip is None:
-            clip = await clips.from_soundevent(session, data.clip)
-        return await self.create(
-            session,
-            clip=clip,
-            annotation_project=annotation_project,
-            uuid=data.uuid,
-            created_on=data.created_on,
-        )
-
     def _key_fn(self, obj: dict):
-        return (obj.get("annotation_project_id"), obj.get("clip_id"))
+        return (
+            obj.get("annotation_project_id"),
+            obj.get("recording_id"),
+            obj.get("start_time"),
+            obj.get("end_time"),
+        )
 
     def _get_key_column(self):
         return tuple_(
             models.AnnotationTask.annotation_project_id,
-            models.AnnotationTask.clip_id,
+            models.AnnotationTask.recording_id,
+            models.AnnotationTask.start_time,
+            models.AnnotationTask.end_time,
         )
+
+
+# Feature computation functions
+DURATION = "duration"
+"""Name of duration feature."""
+
+
+def compute_duration(task: schemas.AnnotationTask | models.AnnotationTask) -> float:
+    """Compute duration of task's audio segment.
+
+    Parameters
+    ----------
+    task
+        Task to compute duration for.
+
+    Returns
+    -------
+    float
+        Duration in seconds.
+    """
+    return task.end_time - task.start_time
+
+
+TASK_FEATURES = {
+    DURATION: compute_duration,
+}
+
+
+def compute_task_features(
+    task: schemas.AnnotationTask | models.AnnotationTask,
+) -> dict[str, float]:
+    """Compute features for task.
+
+    Parameters
+    ----------
+    task
+        Task to compute features for.
+
+    Returns
+    -------
+    dict[str, float]
+        Dictionary of feature names and values.
+    """
+    return {name: func(task) for name, func in TASK_FEATURES.items()}
 
 
 annotation_tasks = AnnotationTaskAPI()

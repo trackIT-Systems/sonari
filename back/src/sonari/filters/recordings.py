@@ -1,7 +1,5 @@
 """Filters for Recordings."""
 
-from uuid import UUID
-
 from sqlalchemy import Select, select
 
 from sonari import models
@@ -12,19 +10,19 @@ __all__ = [
     "DatasetFilter",
     "DateFilter",
     "DurationFilter",
-    "TimeExpansionFilter",
+    "IDFilter",
     "IssuesFilter",
     "LatitudeFilter",
     "LongitudeFilter",
     "RecordingFilter",
-    "RecordingFilter",
     "SamplerateFilter",
     "SearchFilter",
     "TagFilter",
+    "TimeExpansionFilter",
     "TimeFilter",
 ]
 
-UUIDFilter = base.uuid_filter(models.Recording.uuid)
+IDFilter = base.integer_filter(models.Recording.id)
 
 DurationFilter = base.float_filter(models.Recording.duration)
 """Filter recordings by duration."""
@@ -53,34 +51,25 @@ TimeExpansionFilter = base.float_filter(models.Recording.time_expansion)
 HashFilter = base.string_filter(models.Recording.hash)
 """Filter recordings by hash."""
 
-SearchFilter = base.search_filter(
-    [
-        models.Recording.path,
-    ]
-)
+SearchFilter = base.search_filter([
+    models.Recording.path,
+])
 
 
 class DatasetFilter(base.Filter):
     """Filter recordings by the dataset they are in."""
 
-    eq: UUID | None = None
+    eq: int | None = None
 
     def filter(self, query: Select) -> Select:
         """Filter the query."""
         if not self.eq:
             return query
 
-        return (
-            query.join(
-                models.DatasetRecording,
-                models.Recording.id == models.DatasetRecording.recording_id,
-            )
-            .join(
-                models.Dataset,
-                models.DatasetRecording.dataset_id == models.Dataset.id,
-            )
-            .where(models.Dataset.uuid == self.eq)
-        )
+        return query.join(
+            models.DatasetRecording,
+            models.Recording.id == models.DatasetRecording.recording_id,
+        ).where(models.DatasetRecording.dataset_id == self.eq)
 
 
 class IssuesFilter(base.Filter):

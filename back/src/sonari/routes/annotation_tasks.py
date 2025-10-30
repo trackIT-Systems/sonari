@@ -4,7 +4,6 @@ import math
 import random
 from datetime import datetime, timedelta, timezone
 from typing import Annotated, Any, Dict, Sequence
-from uuid import UUID
 
 from astral import LocationInfo
 from astral.sun import sun
@@ -12,9 +11,9 @@ from fastapi import APIRouter, Depends
 from soundevent.data import AnnotationState
 from sqlalchemy.orm.attributes import InstrumentedAttribute
 
-from sonari import api, models, schemas
+from sonari import api, schemas
 from sonari.filters.annotation_tasks import AnnotationTaskFilter
-from sonari.filters.clips import UUIDFilter as ClipUUIDFilter
+from sonari.filters.recordings import IDFilter as RecordingIDFilter
 from sonari.routes.dependencies import Session, get_current_user_dependency
 from sonari.routes.dependencies.settings import SonariSettings
 from sonari.routes.types import Limit, Offset
@@ -33,17 +32,7 @@ def _get_night_day_tasks(
     kept_tasks = []
 
     for task in tasks:
-        clip_annotation: schemas.ClipAnnotation | None = task.clip_annotation
-        if clip_annotation is None:
-            kept_tasks.append(task)
-            continue
-
-        clip: schemas.Clip | None = clip_annotation.clip
-        if clip is None:
-            kept_tasks.append(task)
-            continue
-
-        recording: schemas.Recording = clip.recording
+        recording: schemas.Recording = task.recording
         if recording.time is None or recording.date is None:
             kept_tasks.append(task)
             continue
@@ -88,37 +77,45 @@ def get_annotation_tasks_router(settings: SonariSettings) -> APIRouter:
     )
     async def create_tasks(
         session: Session,
-        annotation_project_uuid: UUID,
-        clip_uuids: list[UUID],
+        annotation_project_id: int,
+        data: list[tuple[int, schemas.AnnotationTaskCreate]],
     ):
-        """Create multiple annotation tasks."""
+        """Create multiple annotation tasks.
+
+        Parameters
+        ----------
+        annotation_project_id
+            The ID of the annotation project.
+        data
+            List of tuples (recording_id, task_create_data).
+        """
         annotation_project = await api.annotation_projects.get(
             session,
-            annotation_project_uuid,
+            annotation_project_id,
         )
-        clips, _ = await api.clips.get_many(
+
+        # Get all recordings
+        recording_ids = list(set(recording_id for recording_id, _ in data))
+        recordings, _ = await api.recordings.get_many(
             session,
-            limit=-1,
-            filters=[
-                ClipUUIDFilter(
-                    isin=clip_uuids,
-                ),
-            ],
+            filters=[RecordingIDFilter(isin=recording_ids)],
+            limit=None,
+            sort_by=None,
         )
-        # Create empty clip annotations
-        clip_annotations = await api.clip_annotations.create_many(
-            session,
-            data=[dict(clip_id=clip.id) for clip in clips],
-        )
+        recording_mapping = {recording.id: recording for recording in recordings}
+
+        # Create annotation tasks directly
         tasks = await api.annotation_tasks.create_many_without_duplicates(
             session,
             data=[
                 dict(
                     annotation_project_id=annotation_project.id,
-                    clip_annotation_id=clip_annotation.id,
-                    clip_id=clip_annotation.clip.id,
+                    recording_id=recording_mapping[recording_id].id,
+                    start_time=task_data.start_time,
+                    end_time=task_data.end_time,
                 )
-                for clip_annotation in clip_annotations
+                for recording_id, task_data in data
+                if recording_id in recording_mapping
             ],
             return_all=True,
         )
@@ -141,14 +138,7 @@ def get_annotation_tasks_router(settings: SonariSettings) -> APIRouter:
         day_filter = next((f for f in filter if f[0] == "day__tz" and f[1] is not None), None)
         sample_filter = next((f for f in filter if f[0] == "sample__eq" and f[1] is not None), None)
 
-        if limit == -1:
-            noloads: list[InstrumentedAttribute[Any]] | None = [models.AnnotationTask.clip]
-
-            if nigh_filter is None and day_filter is None:
-                noloads.append(models.AnnotationTask.clip_annotation)
-
-        else:
-            noloads = None
+        noloads: list[InstrumentedAttribute[Any]] | None = None
 
         tasks, total = await api.annotation_tasks.get_many(
             session,
@@ -182,12 +172,12 @@ def get_annotation_tasks_router(settings: SonariSettings) -> APIRouter:
     )
     async def delete_task(
         session: Session,
-        annotation_task_uuid: UUID,
+        annotation_task_id: int,
     ):
-        """Remove a clip from an annotation project."""
+        """Delete an annotation task."""
         annotation_task = await api.annotation_tasks.get(
             session,
-            annotation_task_uuid,
+            annotation_task_id,
         )
         annotation_task = await api.annotation_tasks.delete(
             session,
@@ -202,25 +192,99 @@ def get_annotation_tasks_router(settings: SonariSettings) -> APIRouter:
     )
     async def get_task(
         session: Session,
-        annotation_task_uuid: UUID,
+        annotation_task_id: int,
     ):
         """Get an annotation task."""
-        return await api.annotation_tasks.get(session, annotation_task_uuid)
+        return await api.annotation_tasks.get(session, annotation_task_id)
 
-    @annotation_tasks_router.get(
-        "/detail/clip_annotation/",
-        response_model=schemas.ClipAnnotation,
+    @annotation_tasks_router.post(
+        "/detail/tags/",
+        response_model=schemas.AnnotationTask,
     )
-    async def get_task_annotations(
+    async def add_tag_to_task(
         session: Session,
-        annotation_task_uuid: UUID,
-    ) -> schemas.ClipAnnotation:
-        """Get an annotation task."""
-        annotation_task = await api.annotation_tasks.get(
+        annotation_task_id: int,
+        tag: schemas.TagCreate,
+        user: Annotated[schemas.SimpleUser, Depends(active_user)],
+    ):
+        """Add a tag to an annotation task."""
+        annotation_task = await api.annotation_tasks.get(session, annotation_task_id)
+        tag_obj = await api.tags.from_name(session, key=tag.key, value=tag.value)
+        updated = await api.annotation_tasks.add_tag(
             session,
-            annotation_task_uuid,
+            annotation_task,
+            tag_obj,
+            user=user,
         )
-        return await api.annotation_tasks.get_clip_annotation(session, annotation_task)
+        await session.commit()
+        return updated
+
+    @annotation_tasks_router.delete(
+        "/detail/tags/",
+        response_model=schemas.AnnotationTask,
+    )
+    async def remove_tag_from_task(
+        session: Session,
+        annotation_task_id: int,
+        key: str,
+        value: str,
+    ):
+        """Remove a tag from an annotation task."""
+        annotation_task = await api.annotation_tasks.get(session, annotation_task_id)
+        tag = await api.tags.from_name(session, key=key, value=value)
+        updated = await api.annotation_tasks.remove_tag(
+            session,
+            annotation_task,
+            tag,
+        )
+        await session.commit()
+        return updated
+
+    @annotation_tasks_router.post(
+        "/detail/notes/",
+        response_model=schemas.AnnotationTask,
+    )
+    async def add_note_to_task(
+        session: Session,
+        annotation_task_id: int,
+        note: schemas.NoteCreate,
+        user: Annotated[schemas.SimpleUser, Depends(active_user)],
+    ):
+        """Add a note to an annotation task."""
+        annotation_task = await api.annotation_tasks.get(session, annotation_task_id)
+        note_obj = await api.notes.create(
+            session,
+            message=note.message,
+            is_issue=note.is_issue,
+            created_by=user,
+        )
+        updated = await api.annotation_tasks.add_note(
+            session,
+            annotation_task,
+            note_obj,
+        )
+        await session.commit()
+        return updated
+
+    @annotation_tasks_router.delete(
+        "/detail/notes/",
+        response_model=schemas.AnnotationTask,
+    )
+    async def remove_note_from_task(
+        session: Session,
+        annotation_task_id: int,
+        note_id: int,
+    ):
+        """Remove a note from an annotation task."""
+        annotation_task = await api.annotation_tasks.get(session, annotation_task_id)
+        note = await api.notes.get(session, note_id)
+        updated = await api.annotation_tasks.remove_note(
+            session,
+            annotation_task,
+            note,
+        )
+        await session.commit()
+        return updated
 
     @annotation_tasks_router.post(
         "/detail/badges/",
@@ -228,14 +292,14 @@ def get_annotation_tasks_router(settings: SonariSettings) -> APIRouter:
     )
     async def add_annotation_status_badge(
         session: Session,
-        annotation_task_uuid: UUID,
+        annotation_task_id: int,
         state: AnnotationState,
         user: Annotated[schemas.SimpleUser, Depends(active_user)],
     ):
         """Add a badge to an annotation task."""
         annotation_task = await api.annotation_tasks.get(
             session,
-            annotation_task_uuid,
+            annotation_task_id,
         )
         updated = await api.annotation_tasks.add_status_badge(
             session,
@@ -252,14 +316,14 @@ def get_annotation_tasks_router(settings: SonariSettings) -> APIRouter:
     )
     async def remove_annotation_status_badge(
         session: Session,
-        annotation_task_uuid: UUID,
+        annotation_task_id: int,
         state: AnnotationState,
         user_id: str | None = None,
     ):
         """Remove a badge from an annotation task."""
         annotation_task = await api.annotation_tasks.get(
             session,
-            annotation_task_uuid,
+            annotation_task_id,
         )
         updated = await api.annotation_tasks.remove_status_badge(
             session,

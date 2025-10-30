@@ -16,24 +16,18 @@ async def extract_batch(
     # Query sound event annotations that belong to the specified projects
     stmt = (
         select(models.SoundEventAnnotation)
-        .join(models.ClipAnnotation)
         .join(models.AnnotationTask)
         .filter(models.AnnotationTask.annotation_project_id.in_(project_ids))
         .options(
             # Essential relationships with optimized eager loading
-            joinedload(models.SoundEventAnnotation.sound_event).selectinload(models.SoundEvent.features),
-            joinedload(models.SoundEventAnnotation.sound_event).joinedload(models.SoundEvent.recording),
-            joinedload(models.SoundEventAnnotation.sound_event)
-            .joinedload(models.SoundEvent.recording)
-            .selectinload(models.Recording.recording_tags),
-            joinedload(models.SoundEventAnnotation.sound_event)
-            .joinedload(models.SoundEvent.recording)
+            selectinload(models.SoundEventAnnotation.features),
+            joinedload(models.SoundEventAnnotation.recording).selectinload(models.Recording.recording_tags),
+            joinedload(models.SoundEventAnnotation.recording)
             .selectinload(models.Recording.recording_datasets)
             .joinedload(models.DatasetRecording.dataset),
             selectinload(models.SoundEventAnnotation.tags),
             joinedload(models.SoundEventAnnotation.created_by),
-            joinedload(models.SoundEventAnnotation.clip_annotation)
-            .selectinload(models.ClipAnnotation.annotation_task)
+            joinedload(models.SoundEventAnnotation.annotation_task)
             .selectinload(models.AnnotationTask.status_badges)
             .joinedload(models.AnnotationStatusBadge.user),
         )
@@ -52,15 +46,8 @@ async def load_status_badges_for_batch(session: Session, annotations: List[model
     # Get all annotation task IDs from the batch
     task_ids = []
     for annotation in annotations:
-        if annotation.clip_annotation and annotation.clip_annotation.annotation_task:
-            annotation_tasks = annotation.clip_annotation.annotation_task
-            if hasattr(annotation_tasks, "__iter__") and not isinstance(annotation_tasks, str):
-                # It's a collection
-                for task in annotation_tasks:
-                    task_ids.append(task.id)
-            else:
-                # It's a single task
-                task_ids.append(annotation_tasks.id)
+        if annotation.annotation_task:
+            task_ids.append(annotation.annotation_task.id)
 
     if not task_ids:
         return
@@ -77,8 +64,7 @@ async def load_status_badges_for_batch(session: Session, annotations: List[model
 
 async def extract_annotation_data(annotation: models.SoundEventAnnotation) -> Dict[str, Any]:
     """Extract data from a single sound event annotation."""
-    sound_event = annotation.sound_event
-    recording = sound_event.recording
+    recording = annotation.recording
 
     if recording.recording_datasets:
         # Get the first dataset (or you could get all and choose)
@@ -101,8 +87,8 @@ async def extract_annotation_data(annotation: models.SoundEventAnnotation) -> Di
         "species_confidence": None,
     }
 
-    for feature_rel in sound_event.features:
-        feature_name = feature_rel.feature_name.name.lower().replace(" ", "_")
+    for feature_rel in annotation.features:
+        feature_name = feature_rel.name
         feature_value = feature_rel.value
 
         # Map feature names to our standardized column names
@@ -116,7 +102,7 @@ async def extract_annotation_data(annotation: models.SoundEventAnnotation) -> Di
     # Extract bounding box coordinates from geometry
     from .processors import extract_bounding_box_coordinates
 
-    geometry = sound_event.geometry
+    geometry = annotation.geometry
     bbox_coords = extract_bounding_box_coordinates(geometry)
 
     # Extract user who created the sound event
@@ -130,20 +116,10 @@ async def extract_annotation_data(annotation: models.SoundEventAnnotation) -> Di
 
     # Extract task status badges per user
     status_badges = {}
-    if annotation.clip_annotation and annotation.clip_annotation.annotation_task:
-        # Handle both single task and list of tasks
-        annotation_tasks = annotation.clip_annotation.annotation_task
-        if hasattr(annotation_tasks, "__iter__") and not isinstance(annotation_tasks, str):
-            # It's a collection
-            tasks_to_process = annotation_tasks
-        else:
-            # It's a single task
-            tasks_to_process = [annotation_tasks]
-
-        for task in tasks_to_process:
-            for badge in task.status_badges:
-                username = badge.user.username if badge.user else "system"
-                status_badges[username] = badge.state.value
+    if annotation.annotation_task:
+        for badge in annotation.annotation_task.status_badges:
+            username = badge.user.username if badge.user else "system"
+            status_badges[username] = badge.state.value
 
     status_badges_str = ", ".join([f"{user}:{status}" for user, status in status_badges.items()])
 
@@ -171,5 +147,5 @@ async def extract_annotation_data(annotation: models.SoundEventAnnotation) -> Di
         "user": created_by_user,
         "recording_tags": recording_tags_str,
         "task_status_badges": status_badges_str,
-        "geometry_type": sound_event.geometry_type,
+        "geometry_type": annotation.geometry_type,
     }

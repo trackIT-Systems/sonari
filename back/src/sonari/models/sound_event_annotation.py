@@ -1,97 +1,106 @@
-"""Annotation model."""
+"""Sound Event Annotation model.
+
+Sound events are the heart of the app, as they are the primary objects
+of annotation. A sound event is any distinguishable sound within a
+recording that is of interest to users.
+
+This model merges the previous SoundEvent and SoundEventAnnotation models
+into a single entity, as they were always used in a 1:1 relationship.
+"""
 
 from typing import TYPE_CHECKING, Optional
-from uuid import UUID, uuid4
+from uuid import UUID
 
 import sqlalchemy.orm as orm
+from soundevent import Geometry
 from sqlalchemy import ForeignKey, UniqueConstraint
 
 from sonari.models.base import Base
-from sonari.models.note import Note
-from sonari.models.sound_event import SoundEvent
 from sonari.models.tag import Tag
 from sonari.models.user import User
 
 if TYPE_CHECKING:
-    from sonari.models.clip_annotation import ClipAnnotation
-
+    from sonari.models.annotation_task import AnnotationTask
+    from sonari.models.recording import Recording
 
 __all__ = [
     "SoundEventAnnotation",
-    "SoundEventAnnotationNote",
+    "SoundEventAnnotationFeature",
     "SoundEventAnnotationTag",
 ]
 
 
 class SoundEventAnnotation(Base):
-    """Annotation model.
+    """Sound Event Annotation model.
+
+    This model combines what were previously separate SoundEvent and
+    SoundEventAnnotation models.
 
     Attributes
     ----------
     id
-        The database id of the annotation.
-    uuid
-        The UUID of the annotation.
+        The database id of the sound event annotation.
+    annotation_task_id
+        The ID of the annotation task this sound event belongs to.
+    recording_id
+        The ID of the recording this sound event is in.
+    geometry_type
+        The type of geometry used to mark the RoI of the sound event.
+    geometry
+        The geometry of the mark used to mark the RoI of the sound event.
     created_by
         The user who created the annotation.
-    sound_event
-        The sound event annotated by the annotation.
     tags
         A list of tags associated with the annotation.
-
-    Notes
-    -----
-        A list of notes associated with the annotation.
-    clip_annotation
-        The clip annotation to which the annotation belongs.
+    features
+        A list of features associated with the sound event.
 
     Parameters
     ----------
-    sound_event_id : int
-        The id of the sound event annotated by the annotation.
-    clip_annotation_id : int
-        The id of the clip annotation to which the annotation belongs.
-    created_by_id : int, optional
+    annotation_task_id : int
+        The id of the annotation task to which the sound event annotation belongs.
+    recording_id : int
+        The id of the recording to which the sound event belongs.
+    geometry : Geometry
+        The geometry of the mark used to mark the RoI of the sound event.
+    created_by_id : UUID, optional
         The id of the user who created the annotation.
-    uuid : UUID, optional
-        The UUID of the annotation. If not provided, a new UUID will be
-        generated.
+
+    Notes
+    -----
+    The geometry attribute is stored as a JSON string in the database.
     """
 
     __tablename__ = "sound_event_annotation"
 
     id: orm.Mapped[int] = orm.mapped_column(primary_key=True, init=False)
-    uuid: orm.Mapped[UUID] = orm.mapped_column(
-        default_factory=uuid4,
-        unique=True,
-        kw_only=True,
-    )
-    clip_annotation_id: orm.Mapped[int] = orm.mapped_column(
-        ForeignKey("clip_annotation.id", ondelete="CASCADE"),
+    annotation_task_id: orm.Mapped[int] = orm.mapped_column(
+        ForeignKey("annotation_task.id", ondelete="CASCADE"),
         nullable=False,
         index=True,
     )
-    created_by_id: orm.Mapped[Optional[int]] = orm.mapped_column(
+    recording_id: orm.Mapped[int] = orm.mapped_column(
+        ForeignKey("recording.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    geometry_type: orm.Mapped[str] = orm.mapped_column(nullable=False)
+    geometry: orm.Mapped[Geometry] = orm.mapped_column(nullable=False)
+    created_by_id: orm.Mapped[Optional[UUID]] = orm.mapped_column(
         ForeignKey("user.id"),
-        index=True,
-    )
-    sound_event_id: orm.Mapped[int] = orm.mapped_column(
-        ForeignKey("sound_event.id", ondelete="CASCADE"),
-        nullable=False,
         index=True,
     )
 
     # Relationships
-    clip_annotation: orm.Mapped["ClipAnnotation"] = orm.relationship(
+    annotation_task: orm.Mapped["AnnotationTask"] = orm.relationship(
+        init=False,
+        repr=False,
+    )
+    recording: orm.Mapped["Recording"] = orm.relationship(
         init=False,
         repr=False,
     )
     created_by: orm.Mapped[Optional[User]] = orm.relationship(
-        init=False,
-        repr=False,
-        lazy="joined",
-    )
-    sound_event: orm.Mapped[SoundEvent] = orm.relationship(
         init=False,
         repr=False,
         lazy="joined",
@@ -104,21 +113,7 @@ class SoundEventAnnotation(Base):
         init=False,
         lazy="selectin",
     )
-    notes: orm.Mapped[list[Note]] = orm.relationship(
-        back_populates="sound_event_annotation",
-        secondary="sound_event_annotation_note",
-        cascade="all, delete-orphan",
-        init=False,
-        repr=False,
-        viewonly=True,
-        default_factory=list,
-        order_by=Note.created_on.desc(),
-        lazy="selectin",
-    )
-
-    # =====================
-    # Secondary relationships
-    sound_event_annotation_notes: orm.Mapped[list["SoundEventAnnotationNote"]] = orm.relationship(
+    features: orm.Mapped[list["SoundEventAnnotationFeature"]] = orm.relationship(
         back_populates="sound_event_annotation",
         cascade="all, delete-orphan",
         passive_deletes=True,
@@ -127,84 +122,77 @@ class SoundEventAnnotation(Base):
         default_factory=list,
         lazy="selectin",
     )
-    sound_event_annotation_tags: orm.Mapped[list["SoundEventAnnotationTag"]] = orm.relationship(
-        default_factory=list,
-        cascade="all, delete-orphan",
-        passive_deletes=True,
-        repr=False,
-        init=False,
-        lazy="selectin",
-    )
 
 
-class SoundEventAnnotationNote(Base):
-    """Sound Event Annotation Note Model.
+class SoundEventAnnotationFeature(Base):
+    """Sound Event Annotation Feature model.
 
     Attributes
     ----------
-    note
-        The note associated with the annotation.
-    created_on
-        The date and time when the note was created.
+    name
+        The name of the feature.
+    value
+        The value of the feature.
 
     Parameters
     ----------
     sound_event_annotation_id : int
-        The id of the annotation to which the note belongs.
-    note_id : int
-        The id of the note associated with the annotation.
+        The id of the sound event annotation to which the feature belongs.
+    name : str
+        The name of the feature.
+    value : float
+        The value of the feature.
     """
 
-    __tablename__ = "sound_event_annotation_note"
-    __table_args__ = (UniqueConstraint("sound_event_annotation_id", "note_id"),)
+    __tablename__ = "sound_event_annotation_feature"
+    __table_args__ = (
+        UniqueConstraint(
+            "sound_event_annotation_id",
+            "name",
+        ),
+    )
 
     sound_event_annotation_id: orm.Mapped[int] = orm.mapped_column(
         ForeignKey("sound_event_annotation.id", ondelete="CASCADE"),
-        primary_key=True,
         nullable=False,
+        primary_key=True,
         index=True,
     )
-    note_id: orm.Mapped[int] = orm.mapped_column(
-        ForeignKey("note.id", ondelete="CASCADE"),
-        primary_key=True,
-        nullable=False,
-        index=True,
-    )
+    name: orm.Mapped[str] = orm.mapped_column(nullable=False, primary_key=True)
+    value: orm.Mapped[float] = orm.mapped_column(nullable=False)
+
+    # Relations
     sound_event_annotation: orm.Mapped[SoundEventAnnotation] = orm.relationship(
-        back_populates="sound_event_annotation_notes",
+        back_populates="features",
+        cascade="all",
+        passive_deletes=True,
         init=False,
         repr=False,
-    )
-    note: orm.Mapped[Note] = orm.relationship(
-        back_populates="sound_event_annotation_note",
-        init=False,
-        repr=False,
-        lazy="joined",
     )
 
 
 class SoundEventAnnotationTag(Base):
-    """Annotation tag model.
+    """Sound Event Annotation tag model.
+
+    Tracks which user attached which tag to a sound event annotation.
 
     Attributes
     ----------
-    id
-        The database id of the annotation tag.
     sound_event_annotation
-        The annotation to which the annotation tag belongs.
+        The annotation to which the tag belongs.
     tag
         The tag attached to the annotation.
     created_by
-        The user who created the annotation tag.
+        The user who attached the tag.
 
     Parameters
     ----------
     sound_event_annotation_id : int
-        The id of the annotation to which the annotation tag belongs.
+        The id of the annotation to which the tag belongs.
     tag_id : int
         The id of the tag attached to the annotation.
-    created_by_id : int, optional
-        The id of the user who created the annotation tag.
+    created_by_id : UUID, optional
+        The id of the user who attached the tag.
     """
 
     __tablename__ = "sound_event_annotation_tag"
@@ -218,14 +206,13 @@ class SoundEventAnnotationTag(Base):
         ForeignKey("tag.id", ondelete="CASCADE"),
         index=True,
     )
-    created_by_id: orm.Mapped[Optional[int]] = orm.mapped_column(
+    created_by_id: orm.Mapped[Optional[UUID]] = orm.mapped_column(
         ForeignKey("user.id"),
         index=True,
     )
 
     # Relationships
     sound_event_annotation: orm.Mapped[SoundEventAnnotation] = orm.relationship(
-        back_populates="sound_event_annotation_tags",
         init=False,
         repr=False,
     )
@@ -233,11 +220,9 @@ class SoundEventAnnotationTag(Base):
         back_populates="sound_event_annotation_tags",
         init=False,
         repr=False,
-        lazy="joined",
     )
     created_by: orm.Mapped[Optional[User]] = orm.relationship(
         back_populates="sound_event_annotation_tags",
         init=False,
         repr=False,
-        lazy="joined",
     )

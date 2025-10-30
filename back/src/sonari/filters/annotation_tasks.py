@@ -1,7 +1,6 @@
 """Filters for Annotation Tasks."""
 
 from datetime import datetime, time
-from uuid import UUID
 
 from soundevent import data
 from sqlalchemy import Select, and_, exists, func, not_, or_, select
@@ -118,7 +117,7 @@ class IsAssignedFilter(base.Filter):
 class AssignedToFilter(base.Filter):
     """Filter for tasks by assigned user."""
 
-    eq: UUID | None = None
+    eq: int | None = None
 
     def filter(self, query: Select) -> Select:
         """Filter the query."""
@@ -136,18 +135,15 @@ class AssignedToFilter(base.Filter):
 class AnnotationProjectFilter(base.Filter):
     """Filter for tasks by project."""
 
-    eq: UUID | None = None
+    eq: int | None = None
 
     def filter(self, query: Select) -> Select:
         """Filter the query."""
         if self.eq is None:
             return query
 
-        return query.join(
-            models.AnnotationProject,
-            models.AnnotationProject.id == models.AnnotationTask.annotation_project_id,
-        ).where(
-            models.AnnotationProject.uuid == self.eq,
+        return query.where(
+            models.AnnotationTask.annotation_project_id == self.eq,
         )
 
 
@@ -160,19 +156,14 @@ class DatasetFilter(base.Filter):
         if not self.lst:
             return query
 
-        uuids: list[str] = self.lst.split(",")
+        ids: list[str] = self.lst.split(",")
 
         Recording = models.Recording.__table__.alias("dataset_recording")
-        Clip = models.Clip.__table__.alias("dataset_clip")
 
         return (
             query.join(
-                Clip,
-                Clip.c.id == models.AnnotationTask.clip_id,
-            )
-            .join(
                 Recording,
-                Recording.c.id == Clip.c.recording_id,
+                Recording.c.id == models.AnnotationTask.recording_id,
             )
             .join(
                 models.DatasetRecording,
@@ -182,7 +173,7 @@ class DatasetFilter(base.Filter):
                 models.Dataset,
                 models.Dataset.id == models.DatasetRecording.dataset_id,
             )
-            .where(models.Dataset.uuid.in_(uuids))
+            .where(models.Dataset.id.in_(ids))
         )
 
 
@@ -196,24 +187,12 @@ class SearchRecordingsFilter(base.Filter):
         if not self.search_recordings:
             return query
 
-        # Use specific aliases for both Recording and Clip tables
-        ClipAnnotation = models.ClipAnnotation.__table__.alias("search_clip_annotation")
+        # Use specific alias for Recording table
         Recording = models.Recording.__table__.alias("search_recording")
-        Clip = models.Clip.__table__.alias("search_clip")
 
-        query = (
-            query.join(
-                ClipAnnotation,
-                models.AnnotationTask.clip_annotation_id == ClipAnnotation.c.id,
-            )
-            .join(
-                Clip,
-                ClipAnnotation.c.clip_id == Clip.c.id,
-            )
-            .join(
-                Recording,
-                Recording.c.id == Clip.c.recording_id,
-            )
+        query = query.join(
+            Recording,
+            Recording.c.id == models.AnnotationTask.recording_id,
         )
 
         term = f"%{self.search_recordings}%"
@@ -235,10 +214,8 @@ class SoundEventAnnotationTagFilter(base.Filter):
         keys = self.keys.split(",")
         values = self.values.split(",")
 
-        # Create aliases for needed tables
-        ClipAnnotation = models.ClipAnnotation.__table__.alias("sound_event_tag_clip_annotation")
+        # Create alias for Recording table
         Recording = models.Recording.__table__.alias("sound_event_tag_recording")
-        Clip = models.Clip.__table__.alias("sound_event_tag_clip")
 
         # Create subqueries for each key-value pair for sound event annotations
         sound_event_subqueries = []
@@ -277,7 +254,7 @@ class SoundEventAnnotationTagFilter(base.Filter):
             *(
                 exists(
                     select(1).where(
-                        models.SoundEventAnnotation.clip_annotation_id == ClipAnnotation.c.id,
+                        models.SoundEventAnnotation.annotation_task_id == models.AnnotationTask.id,
                         models.SoundEventAnnotation.id.in_(subquery),
                     )
                 )
@@ -286,19 +263,9 @@ class SoundEventAnnotationTagFilter(base.Filter):
         )
 
         # Join the query with Recording table
-        query = (
-            query.join(
-                ClipAnnotation,
-                models.AnnotationTask.clip_annotation_id == ClipAnnotation.c.id,
-            )
-            .join(
-                Clip,
-                ClipAnnotation.c.clip_id == Clip.c.id,
-            )
-            .join(
-                Recording,
-                Recording.c.id == Clip.c.recording_id,
-            )
+        query = query.join(
+            Recording,
+            Recording.c.id == models.AnnotationTask.recording_id,
         )
 
         # Combine recording conditions with OR
@@ -319,17 +286,17 @@ class EmptyFilter(base.Filter):
 
         sound_event_count = (
             select(
-                models.SoundEventAnnotation.clip_annotation_id,
+                models.SoundEventAnnotation.annotation_task_id,
                 func.count(models.SoundEventAnnotation.id).label("count"),
             )
-            .group_by(models.SoundEventAnnotation.clip_annotation_id)
+            .group_by(models.SoundEventAnnotation.annotation_task_id)
             .subquery()
         )
 
         # Join with our query
         query = query.outerjoin(
             sound_event_count,
-            models.AnnotationTask.clip_annotation_id == sound_event_count.c.clip_annotation_id,
+            models.AnnotationTask.id == sound_event_count.c.annotation_task_id,
         )
 
         # Filter based on eq parameter
@@ -362,24 +329,12 @@ class DateRangeFilter(base.Filter):
         if not any([self.start_dates, self.end_dates, self.start_times, self.end_times]):
             return query
 
-        # Should use aliases
-        ClipAnnotation = models.ClipAnnotation.__table__.alias("date_range_clip_annotation")
+        # Use alias for Recording table
         Recording = models.Recording.__table__.alias("date_range_recording")
-        Clip = models.Clip.__table__.alias("date_range_clip")
 
-        query = (
-            query.join(
-                ClipAnnotation,
-                models.AnnotationTask.clip_annotation_id == ClipAnnotation.c.id,
-            )
-            .join(
-                Clip,
-                ClipAnnotation.c.clip_id == Clip.c.id,
-            )
-            .join(
-                Recording,
-                Recording.c.id == Clip.c.recording_id,
-            )
+        query = query.join(
+            Recording,
+            Recording.c.id == models.AnnotationTask.recording_id,
         )
 
         # Split the comma-separated strings into lists
@@ -481,51 +436,34 @@ class DetectionConfidenceFilter(base.Filter):
         if self.gt is None and self.lt is None:
             return query
 
-        # Create aliases for needed tables
-        ClipAnnotation = models.ClipAnnotation.__table__.alias("detection_confidence_clip_annotation")
+        # Create alias for Recording table
         Recording = models.Recording.__table__.alias("detection_confidence_recording")
-        Clip = models.Clip.__table__.alias("detection_confidence_clip")
 
-        # Create subquery to find sound events with detection confidence that match conditions
+        # Create subquery to find sound event annotations with detection confidence that match conditions
         subquery = (
             select(1)
-            .select_from(models.SoundEvent)
+            .select_from(models.SoundEventAnnotation)
             .join(
-                models.SoundEventFeature,
-                models.SoundEvent.id == models.SoundEventFeature.sound_event_id,
-            )
-            .join(
-                models.FeatureName,
-                models.SoundEventFeature.feature_name_id == models.FeatureName.id,
+                models.SoundEventAnnotationFeature,
+                models.SoundEventAnnotation.id == models.SoundEventAnnotationFeature.sound_event_annotation_id,
             )
             .where(
-                models.FeatureName.name == "detection_confidence",
-                models.SoundEvent.recording_id == Recording.c.id,
+                models.SoundEventAnnotationFeature.name == "detection_confidence",
+                models.SoundEventAnnotation.recording_id == Recording.c.id,
             )
         )
 
         # Add confidence value conditions - looking for matches
         if self.gt is not None:
-            subquery = subquery.where(models.SoundEventFeature.value > self.gt)
+            subquery = subquery.where(models.SoundEventAnnotationFeature.value > self.gt)
         if self.lt is not None:
-            subquery = subquery.where(models.SoundEventFeature.value < self.lt)
+            subquery = subquery.where(models.SoundEventAnnotationFeature.value < self.lt)
 
         # Join with main query and use exists to show only tasks with confidence data
-        query = (
-            query.join(
-                ClipAnnotation,
-                models.AnnotationTask.clip_annotation_id == ClipAnnotation.c.id,
-            )
-            .join(
-                Clip,
-                ClipAnnotation.c.clip_id == Clip.c.id,
-            )
-            .join(
-                Recording,
-                Recording.c.id == Clip.c.recording_id,
-            )
-            .where(exists(subquery))
-        )
+        query = query.join(
+            Recording,
+            Recording.c.id == models.AnnotationTask.recording_id,
+        ).where(exists(subquery))
 
         return query
 
@@ -545,51 +483,34 @@ class SpeciesConfidenceFilter(base.Filter):
         if self.gt is None and self.lt is None:
             return query
 
-        # Create aliases for needed tables
-        ClipAnnotation = models.ClipAnnotation.__table__.alias("species_confidence_clip_annotation")
+        # Create alias for Recording table
         Recording = models.Recording.__table__.alias("species_confidence_recording")
-        Clip = models.Clip.__table__.alias("species_confidence_clip")
 
-        # Create subquery to find sound events with species confidence that match conditions
+        # Create subquery to find sound event annotations with species confidence that match conditions
         subquery = (
             select(1)
-            .select_from(models.SoundEvent)
+            .select_from(models.SoundEventAnnotation)
             .join(
-                models.SoundEventFeature,
-                models.SoundEvent.id == models.SoundEventFeature.sound_event_id,
-            )
-            .join(
-                models.FeatureName,
-                models.SoundEventFeature.feature_name_id == models.FeatureName.id,
+                models.SoundEventAnnotationFeature,
+                models.SoundEventAnnotation.id == models.SoundEventAnnotationFeature.sound_event_annotation_id,
             )
             .where(
-                models.FeatureName.name == "species_confidence",
-                models.SoundEvent.recording_id == Recording.c.id,
+                models.SoundEventAnnotationFeature.name == "species_confidence",
+                models.SoundEventAnnotation.recording_id == Recording.c.id,
             )
         )
 
         # Add confidence value conditions - looking for matches
         if self.gt is not None:
-            subquery = subquery.where(models.SoundEventFeature.value > self.gt)
+            subquery = subquery.where(models.SoundEventAnnotationFeature.value > self.gt)
         if self.lt is not None:
-            subquery = subquery.where(models.SoundEventFeature.value < self.lt)
+            subquery = subquery.where(models.SoundEventAnnotationFeature.value < self.lt)
 
         # Join with main query and use exists to show only tasks with confidence data
-        query = (
-            query.join(
-                ClipAnnotation,
-                models.AnnotationTask.clip_annotation_id == ClipAnnotation.c.id,
-            )
-            .join(
-                Clip,
-                ClipAnnotation.c.clip_id == Clip.c.id,
-            )
-            .join(
-                Recording,
-                Recording.c.id == Clip.c.recording_id,
-            )
-            .where(exists(subquery))
-        )
+        query = query.join(
+            Recording,
+            Recording.c.id == models.AnnotationTask.recording_id,
+        ).where(exists(subquery))
 
         return query
 

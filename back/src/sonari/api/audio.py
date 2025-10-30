@@ -61,7 +61,7 @@ def load_audio(
 
     clip = data.Clip(
         recording=data.Recording(
-            uuid=recording.uuid,
+            id=recording.id,
             path=audio_dir / recording.path,
             duration=recording.duration,
             samplerate=recording.samplerate,

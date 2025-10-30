@@ -1,7 +1,5 @@
 """Filters for tags."""
 
-from uuid import UUID
-
 from sqlalchemy import Select
 
 from sonari import models
@@ -29,7 +27,7 @@ SearchFilter = base.search_filter([models.Tag.key, models.Tag.value])
 class AnnotationProjectFilter(base.Filter):
     """Get tags for an annotation project."""
 
-    eq: UUID | None = None
+    eq: int | None = None
 
     def filter(self, query: Select) -> Select:
         """Filter tags by project."""
@@ -45,14 +43,14 @@ class AnnotationProjectFilter(base.Filter):
                 models.AnnotationProject,
                 models.AnnotationProject.id == models.AnnotationProjectTag.annotation_project_id,
             )
-            .where(models.AnnotationProject.uuid == self.eq)
+            .where(models.AnnotationProject.id == self.eq)
         )
 
 
 class RecordingFilter(base.Filter):
     """Get tags for a recording."""
 
-    eq: UUID | None = None
+    eq: int | None = None
 
     def filter(self, query: Select) -> Select:
         """Filter tags by recording."""
@@ -68,14 +66,14 @@ class RecordingFilter(base.Filter):
                 models.Recording,
                 models.Recording.id == models.RecordingTag.recording_id,
             )
-            .where(models.Recording.uuid == self.eq)
+            .where(models.Recording.id == self.eq)
         )
 
 
 class SoundEventAnnotationFilter(base.Filter):
     """Get tags for a sound event annotation."""
 
-    eq: UUID | None = None
+    eq: int | None = None
 
     def filter(self, query: Select) -> Select:
         """Filter tags by sound event annotation."""
@@ -91,36 +89,37 @@ class SoundEventAnnotationFilter(base.Filter):
                 models.SoundEventAnnotation,
                 models.SoundEventAnnotation.id == models.SoundEventAnnotationTag.sound_event_annotation_id,
             )
-            .where(models.SoundEventAnnotation.uuid == self.eq)
+            .where(models.SoundEventAnnotation.id == self.eq)
         )
 
 
-class ClipAnnotationFilter(base.Filter):
-    """Get tags for a clip annotation."""
+class AnnotationTaskFilter(base.Filter):
+    """Get tags for an annotation task."""
 
-    eq: UUID | None = None
+    eq: int | None = None
 
     def filter(self, query: Select) -> Select:
-        """Filter tags by clip annotation."""
+        """Filter tags by annotation task."""
         if self.eq is None:
             return query
 
         return (
             query.join(
-                models.ClipAnnotationTag,
-                models.ClipAnnotationTag.tag_id == models.Tag.id,
+                models.AnnotationTaskTag,
+                models.AnnotationTaskTag.tag_id == models.Tag.id,
             )
             .join(
-                models.ClipAnnotation,
-                models.ClipAnnotation.id == models.ClipAnnotationTag.clip_annotation_id,
+                models.AnnotationTask,
+                models.AnnotationTask.id == models.AnnotationTaskTag.annotation_task_id,
             )
-            .where(models.ClipAnnotation.uuid == self.eq)
+            .where(models.AnnotationTask.id == self.eq)
         )
+
 
 class DatasetFilter(base.Filter):
     """Get tags of recordings in a dataset."""
 
-    eq: UUID | None = None
+    eq: int | None = None
 
     def filter(self, query: Select) -> Select:
         """Filter tags by dataset."""
@@ -144,7 +143,7 @@ class DatasetFilter(base.Filter):
                 models.Dataset,
                 models.Dataset.id == models.DatasetRecording.dataset_id,
             )
-            .where(models.Dataset.uuid == self.eq)
+            .where(models.Dataset.id == self.eq)
         )
 
 
@@ -155,6 +154,6 @@ TagFilter = base.combine(
     annotation_project=AnnotationProjectFilter,
     recording=RecordingFilter,
     sound_event_annotation=SoundEventAnnotationFilter,
-    clip_annotation=ClipAnnotationFilter,
+    annotation_task=AnnotationTaskFilter,
     dataset=DatasetFilter,
 )

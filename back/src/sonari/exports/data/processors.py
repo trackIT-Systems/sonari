@@ -110,9 +110,8 @@ async def extract_events_with_datetime(
         .where(and_(*filters))
         .options(
             selectinload(models.AnnotationTask.annotation_project),
-            selectinload(models.AnnotationTask.clip_annotation)
-            .selectinload(models.ClipAnnotation.clip)
-            .selectinload(models.Clip.recording),
+            selectinload(models.AnnotationTask.recording),
+            selectinload(models.AnnotationTask.sound_event_annotations),
         )
     )
     result = await session.execute(query)
@@ -123,18 +122,13 @@ async def extract_events_with_datetime(
     events_without_datetime = []
 
     for task in tasks[0]:
-        if not task.clip_annotation:
-            continue
-
-        clip_annotation = task.clip_annotation
-
-        for sound_event_annotation in clip_annotation.sound_events:
+        for sound_event_annotation in task.sound_event_annotations:
             # Check if this event has any of the requested tags
             event_tags = extract_tag_set(sound_event_annotation.tags)
             matching_tags = find_matching_tags(event_tags, tags)
 
-            if matching_tags and task.clip:
-                recording = task.clip.recording
+            if matching_tags:
+                recording = task.recording
 
                 # Access the project_id through the loaded relationship
                 task_project_id = task.annotation_project.id

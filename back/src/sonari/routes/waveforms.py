@@ -1,17 +1,16 @@
 """REST API routes for spectrograms."""
 
 from typing import Annotated
-from uuid import UUID
 
-from fastapi import APIRouter, Depends, Request, Response
+from fastapi import APIRouter, Depends, Response
 
 from sonari import api, schemas
-from sonari.core import images
 from sonari.routes.dependencies import Session, SonariSettings
 
 __all__ = ["waveform_router"]
 
 waveform_router = APIRouter()
+
 
 @waveform_router.get(
     "/",
@@ -19,11 +18,10 @@ waveform_router = APIRouter()
 async def get_waveform(
     session: Session,
     settings: SonariSettings,
-    recording_uuid: UUID,
+    recording_id: int,
     cmap: str,
     gamma: float,
     audio_parameters: Annotated[schemas.AudioParameters, Depends(schemas.AudioParameters)],
-    request: Request,
 ) -> Response:
     """Get a waveform image for a recording segment.
 
@@ -31,8 +29,8 @@ async def get_waveform(
     ----------
     session : Session
         SQLAlchemy session.
-    recording_uuid : UUID
-        Recording UUID.
+    recording_id : int
+        Recording ID.
     start_time : float
         Start time in seconds.
     end_time : float
@@ -45,7 +43,7 @@ async def get_waveform(
     Response
         Waveform image.
     """
-    recording = await api.recordings.get(session, recording_uuid)
+    recording = await api.recordings.get(session, recording_id)
 
     # Close session BEFORE expensive computation
     await session.close()

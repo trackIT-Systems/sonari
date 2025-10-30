@@ -376,13 +376,13 @@ class BaseAPI(
         cache.pop(pk, None)
 
     def _get_pk_condition(self, pk: PrimaryKey) -> _ColumnExpressionArgument:
-        column = getattr(self._model, "uuid", None)
+        column = getattr(self._model, "id", None)
         if not column:
-            raise NotImplementedError(f"The model {self._model.__name__} does not have a column named uuid")
+            raise NotImplementedError(f"The model {self._model.__name__} does not have a column named id")
         return column == pk
 
     def _get_pk_from_obj(self, obj: SonariSchema) -> PrimaryKey:
-        pk = getattr(obj, "uuid", None)
+        pk = getattr(obj, "id", None)
         if not pk:
             raise NotImplementedError(
                 "The primary key could not be retrieved from the object. "

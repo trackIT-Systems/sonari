@@ -18,42 +18,37 @@ longitude coordinates to indicate where they were recorded.
 import datetime
 from pathlib import Path
 from typing import TYPE_CHECKING
-from uuid import UUID, uuid4
+from uuid import UUID
 
 import sqlalchemy.orm as orm
 from sqlalchemy import ForeignKey, UniqueConstraint
-from sqlalchemy.ext.associationproxy import AssociationProxy, association_proxy
 
 from sonari.models.base import Base
-from sonari.models.feature import FeatureName
-from sonari.models.note import Note
 from sonari.models.tag import Tag
 from sonari.models.user import User
 
 if TYPE_CHECKING:
-    from sonari.models.clip import Clip
+    from sonari.models.annotation_task import AnnotationTask
     from sonari.models.dataset import DatasetRecording
 
 __all__ = [
     "Recording",
-    "RecordingNote",
     "RecordingTag",
     "RecordingFeature",
+    "RecordingOwner",
 ]
 
 
 class Recording(Base):
     """Recording model for recording table.
 
-    This model represents the recording table in the database. It contains the
+    This model represents the recording table in the database. It contains
     all the information about a recording.
 
     Attributes
     ----------
     id
         The database id of the recording.
-    uuid
-        The UUID of the recording.
     hash
         The md5 hash of the recording.
     path
@@ -76,10 +71,6 @@ class Recording(Base):
         The time expansion factor of the recording.
     rights
         A string describing the usage rights of the recording.
-
-    Notes
-    -----
-        A list of notes associated with the recording.
     tags
         A list of tags associated with the recording.
     features
@@ -112,28 +103,11 @@ class Recording(Base):
         The time expansion factor of the recording. Defaults to 1.0.
     rights : str, optional
         A string describing the usage rights of the recording.
-
-    Notes
-    -----
-    If the time expansion factor is not 1.0, the duration and samplerate are
-    the duration and samplerate of original recording, not the expanded
-    recording.
-
-    The path of the dataset is the path to the recording file relative to the
-    base audio directory. We dont store the absolute path to the recording file
-    in the database, as this may expose sensitive information, and it makes it
-    easier to share datasets between users.
-
-    The hash of the recording is used to uniquely identify it. It is computed
-    from the recording file, and is used to check if a recording has already
-    been registered in the database. If the hash of a recording is already in
-    the database, the recording is not registered again.
     """
 
     __tablename__ = "recording"
 
     id: orm.Mapped[int] = orm.mapped_column(primary_key=True, init=False)
-    uuid: orm.Mapped[UUID] = orm.mapped_column(default_factory=uuid4, kw_only=True, unique=True)
     hash: orm.Mapped[str] = orm.mapped_column(unique=True, index=True)
     path: orm.Mapped[Path] = orm.mapped_column(unique=True, index=True)
     duration: orm.Mapped[float]
@@ -147,60 +121,25 @@ class Recording(Base):
     rights: orm.Mapped[str | None] = orm.mapped_column(default=None)
 
     # Relationships
-    notes: orm.Mapped[list[Note]] = orm.relationship(
-        Note,
-        secondary="recording_note",
-        viewonly=True,
-        back_populates="recording",
-        default_factory=list,
-        order_by=Note.created_on.desc(),
-        lazy="selectin",
-    )
     tags: orm.Mapped[list[Tag]] = orm.relationship(
         viewonly=True,
         secondary="recording_tag",
-        back_populates="recordings",
         default_factory=list,
-        lazy="selectin",
     )
     features: orm.Mapped[list["RecordingFeature"]] = orm.relationship(
         back_populates="recording",
         default_factory=list,
         cascade="all, delete-orphan",
         passive_deletes=True,
-        lazy="selectin",
     )
     owners: orm.Mapped[list[User]] = orm.relationship(
         viewonly=True,
         secondary="recording_owner",
-        back_populates="recordings",
-        default_factory=list,
-        lazy="selectin",
-    )
-
-    # Secondary relationships
-    recording_notes: orm.Mapped[list["RecordingNote"]] = orm.relationship(
-        cascade="all, delete-orphan",
-        passive_deletes=True,
-        back_populates="recording",
-        default_factory=list,
-        lazy="selectin",
-    )
-    recording_tags: orm.Mapped[list["RecordingTag"]] = orm.relationship(
-        cascade="all, delete-orphan",
-        passive_deletes=True,
-        back_populates="recording",
-        default_factory=list,
-    )
-    recording_owners: orm.Mapped[list["RecordingOwner"]] = orm.relationship(
-        cascade="all, delete-orphan",
-        passive_deletes=True,
-        back_populates="recording",
         default_factory=list,
     )
 
     # Backrefs
-    clips: orm.Mapped[list["Clip"]] = orm.relationship(
+    annotation_tasks: orm.Mapped[list["AnnotationTask"]] = orm.relationship(
         back_populates="recording",
         default_factory=list,
         init=False,
@@ -218,61 +157,19 @@ class Recording(Base):
     )
 
 
-class RecordingNote(Base):
-    """Recording Note Model.
-
-    Attributes
-    ----------
-    note
-        The note associated with the recording.
-    created_on
-        The date and time at which the note was created.
-
-    Parameters
-    ----------
-    recording_id : int
-        The database id of the recording to which the note belongs.
-    note_id : int
-        The database id of the note.
-    """
-
-    __tablename__ = "recording_note"
-    __table_args__ = (UniqueConstraint("recording_id", "note_id"),)
-
-    recording_id: orm.Mapped[int] = orm.mapped_column(
-        ForeignKey("recording.id", ondelete="CASCADE"),
-        nullable=False,
-        primary_key=True,
-        index=True,
-    )
-    note_id: orm.Mapped[int] = orm.mapped_column(
-        ForeignKey("note.id", ondelete="CASCADE"),
-        nullable=False,
-        primary_key=True,
-        index=True,
-    )
-    recording: orm.Mapped[Recording] = orm.relationship(
-        back_populates="recording_notes",
-        init=False,
-        repr=False,
-    )
-    note: orm.Mapped[Note] = orm.relationship(
-        back_populates="recording_note",
-        init=False,
-        repr=False,
-        lazy="joined",
-    )
-
-
 class RecordingTag(Base):
     """Recording Tag Model.
+
+    Tracks which user attached which tag to a recording.
 
     Attributes
     ----------
     tag
         The tag associated with the recording.
+    created_by
+        The user who attached the tag.
     created_on
-        The date and time at which the tag was created.
+        The date and time at which the tag was attached.
 
     Parameters
     ----------
@@ -280,25 +177,29 @@ class RecordingTag(Base):
         The database id of the recording to which the tag belongs.
     tag_id : int
         The database id of the tag.
+    created_by_id : UUID, optional
+        The database id of the user who attached the tag.
     """
 
     __tablename__ = "recording_tag"
-    __table_args__ = (UniqueConstraint("recording_id", "tag_id"),)
+    __table_args__ = (UniqueConstraint("recording_id", "tag_id", "created_by_id"),)
 
+    id: orm.Mapped[int] = orm.mapped_column(primary_key=True, init=False)
     recording_id: orm.Mapped[int] = orm.mapped_column(
         ForeignKey("recording.id", ondelete="CASCADE"),
         nullable=False,
-        primary_key=True,
         index=True,
     )
     tag_id: orm.Mapped[int] = orm.mapped_column(
         ForeignKey("tag.id", ondelete="CASCADE"),
         nullable=False,
-        primary_key=True,
+        index=True,
+    )
+    created_by_id: orm.Mapped[UUID | None] = orm.mapped_column(
+        ForeignKey("user.id"),
         index=True,
     )
     recording: orm.Mapped[Recording] = orm.relationship(
-        back_populates="recording_tags",
         init=False,
         repr=False,
     )
@@ -306,12 +207,10 @@ class RecordingTag(Base):
         back_populates="recording_tags",
         init=False,
         repr=False,
-        lazy="joined",
     )
-    recording_uuid: AssociationProxy[UUID] = association_proxy(
-        "recording",
-        "uuid",
+    created_by: orm.Mapped[User | None] = orm.relationship(
         init=False,
+        repr=False,
     )
 
 
@@ -320,7 +219,7 @@ class RecordingFeature(Base):
 
     Attributes
     ----------
-    feature_name
+    name
         The name of the feature.
     value
         The value of the feature.
@@ -331,8 +230,8 @@ class RecordingFeature(Base):
     ----------
     recording_id : int
         The database id of the recording to which the feature belongs.
-    feature_name_id : int
-        The database id of the feature name.
+    name : str
+        The name of the feature.
     value : float
         The value of the feature.
     """
@@ -341,7 +240,7 @@ class RecordingFeature(Base):
     __table_args__ = (
         UniqueConstraint(
             "recording_id",
-            "feature_name_id",
+            "name",
         ),
     )
 
@@ -351,18 +250,8 @@ class RecordingFeature(Base):
         primary_key=True,
         index=True,
     )
-    feature_name_id: orm.Mapped[int] = orm.mapped_column(
-        ForeignKey("feature_name.id", ondelete="CASCADE"),
-        nullable=False,
-        primary_key=True,
-        index=True,
-    )
+    name: orm.Mapped[str] = orm.mapped_column(nullable=False, primary_key=True)
     value: orm.Mapped[float] = orm.mapped_column(nullable=False)
-    name: AssociationProxy[str] = association_proxy(
-        "feature_name",
-        "name",
-        init=False,
-    )
 
     # Relationships
     recording: orm.Mapped[Recording] = orm.relationship(
@@ -371,12 +260,6 @@ class RecordingFeature(Base):
         repr=False,
         cascade="all",
         passive_deletes=True,
-    )
-    feature_name: orm.Mapped[FeatureName] = orm.relationship(
-        back_populates="recordings",
-        init=False,
-        repr=False,
-        lazy="joined",
     )
 
 
@@ -394,7 +277,7 @@ class RecordingOwner(Base):
     ----------
     recording_id : int
         The database id of the recording.
-    user_id : int
+    user_id : UUID
         The database id of the user.
     """
 
@@ -414,7 +297,6 @@ class RecordingOwner(Base):
         index=True,
     )
     recording: orm.Mapped[Recording] = orm.relationship(
-        back_populates="recording_owners",
         init=False,
         repr=False,
         cascade="all",
@@ -424,5 +306,4 @@ class RecordingOwner(Base):
         back_populates="recording_owner",
         init=False,
         repr=False,
-        lazy="joined",
     )

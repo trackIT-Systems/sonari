@@ -1,21 +1,25 @@
 """Schemas for handling Recordings."""
 
+from __future__ import annotations
+
 import datetime
 from pathlib import Path
-from uuid import UUID
+from typing import TYPE_CHECKING, Optional
 
 from pydantic import BaseModel, Field, FilePath, field_validator
 
 from sonari.core import files
 from sonari.schemas.base import BaseSchema
 from sonari.schemas.features import Feature
-from sonari.schemas.notes import Note
 from sonari.schemas.tags import Tag
-from sonari.schemas.users import SimpleUser
+
+if TYPE_CHECKING:
+    from sonari.schemas.annotation_tasks import AnnotationTask
 
 __all__ = [
     "Recording",
     "RecordingCreate",
+    "RecordingTag",
     "RecordingUpdate",
 ]
 
@@ -57,11 +61,11 @@ class RecordingCreate(BaseModel):
 class Recording(BaseSchema):
     """Schema for Recording objects returned to the user."""
 
-    uuid: UUID
-    """The UUID of the recording."""
-
-    id: int = Field(..., exclude=True)
+    id: int
     """The database id of the recording."""
+
+    hash: str
+    """The md5 hash of the audio file."""
 
     path: Path
     """The path to the audio file, relative to the audio directory."""
@@ -80,9 +84,6 @@ class Recording(BaseSchema):
 
     time_expansion: float
     """The time expansion factor of the recording."""
-
-    hash: str
-    """The md5 hash of the audio file."""
 
     duration: float
     """The duration of the audio file in seconds.
@@ -112,17 +113,14 @@ class Recording(BaseSchema):
     rights: str | None
     """A text describing the usage rights of the recording."""
 
-    tags: list[Tag] = Field(default_factory=list)
-    """The tags associated with the recording."""
+    tags: Optional[list[Tag]] = None
+    """Tags associated with the recording (lazy loaded)."""
 
-    features: list[Feature] = Field(default_factory=list)
-    """The features associated with the recording."""
+    features: Optional[list[Feature]] = None
+    """Features associated with the recording (lazy loaded)."""
 
-    notes: list[Note] = Field(default_factory=list)
-    """The notes associated with the recording."""
-
-    owners: list[SimpleUser] = Field(default_factory=list)
-    """The users that own the recording."""
+    annotation_tasks: Optional[list["AnnotationTask"]] = None
+    """All annotation tasks this recordings is used in"""
 
 
 class RecordingUpdate(BaseModel):
@@ -153,8 +151,8 @@ class RecordingUpdate(BaseModel):
 class RecordingTag(BaseSchema):
     """Schema for RecordingTag objects."""
 
-    recording_uuid: UUID
-    """The UUID of the recording."""
+    recording_id: int
+    """The ID of the recording."""
 
     tag: Tag
     """The tag associated with the recording."""

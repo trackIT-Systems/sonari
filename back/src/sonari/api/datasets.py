@@ -1,13 +1,10 @@
 """API functions for interacting with datasets."""
 
 import datetime
-import uuid
 import warnings
 from pathlib import Path
 from typing import Sequence
 
-import pandas as pd
-from soundevent import data
 from sqlalchemy import select, tuple_
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -28,7 +25,7 @@ __all__ = [
 
 class DatasetAPI(
     BaseAPI[
-        uuid.UUID,
+        int,
         models.Dataset,
         schemas.Dataset,
         schemas.DatasetCreate,
@@ -66,7 +63,7 @@ class DatasetAPI(
         Raises
         ------
         sonari.exceptions.NotFoundError
-            If no dataset with the given UUID exists.
+            If no dataset with the given ID exists.
         """
         if audio_dir is None:
             audio_dir = get_settings().audio_dir
@@ -372,7 +369,7 @@ class DatasetAPI(
             limit=limit,
             offset=offset,
             filters=[
-                DatasetFilter(eq=obj.uuid),
+                DatasetFilter(eq=obj.id),
                 *(filters or []),
             ],
             sort_by=sort_by,
@@ -458,95 +455,6 @@ class DatasetAPI(
             )
 
         return ret
-
-    async def from_soundevent(
-        self,
-        session: AsyncSession,
-        data: data.Dataset,
-        dataset_audio_dir: Path | None = None,
-        audio_dir: Path | None = None,
-    ) -> schemas.Dataset:
-        """Create a dataset from a soundevent dataset.
-
-        Parameters
-        ----------
-        session
-            The database session to use.
-        data
-            The soundevent dataset.
-        dataset_audio_dir
-            The audio directory of the dataset, by default None. If None, the
-            audio directory from the settings will be used.
-        audio_dir
-            The root audio directory, by default None. If None, the root audio
-            directory from the settings will be used.
-
-        Returns
-        -------
-        dataset : schemas.Dataset
-            The dataset.
-        """
-        if dataset_audio_dir is None:
-            dataset_audio_dir = get_settings().audio_dir
-
-        obj = await self.create_from_data(
-            session,
-            audio_dir=dataset_audio_dir,
-            name=data.name,
-            description=data.description,
-            uuid=data.uuid,
-            created_on=data.created_on,
-        )
-
-        for rec in data.recordings:
-            recording = await recordings.from_soundevent(
-                session,
-                rec.model_copy(update=dict(path=dataset_audio_dir / rec.path)),
-                audio_dir=audio_dir,
-            )
-            await self.add_recording(session, obj, recording)
-
-        obj = obj.model_copy(update=dict(recording_count=len(data.recordings)))
-        self._update_cache(obj)
-        return obj
-
-    async def to_soundevent(
-        self,
-        session: AsyncSession,
-        obj: schemas.Dataset,
-        audio_dir: Path | None = None,
-    ) -> data.Dataset:
-        """Create a soundevent dataset from a dataset.
-
-        Parameters
-        ----------
-        session
-            The database session to use.
-        obj
-            The dataset.
-        audio_dir
-            The root audio directory, by default None. If None, the root audio
-            directory from the settings will be used.
-
-        Returns
-        -------
-        dataset : soundevent.Dataset
-            The soundevent dataset.
-        """
-        if audio_dir is None:
-            audio_dir = get_settings().audio_dir
-
-        recs, _ = await self.get_recordings(session, obj, limit=-1)
-
-        soundevent_recordings = [recordings.to_soundevent(r, audio_dir=audio_dir) for r in recs]
-
-        return data.Dataset(
-            uuid=obj.uuid,
-            name=obj.name,
-            description=obj.description,
-            created_on=obj.created_on,
-            recordings=soundevent_recordings,
-        )
 
     async def create(
         self,
@@ -634,68 +542,6 @@ class DatasetAPI(
         obj = obj.model_copy(update=dict(recording_count=len(dataset_recordigns)))
         self._update_cache(obj)
         return obj
-
-    async def to_dataframe(
-        self,
-        session: AsyncSession,
-        dataset: schemas.Dataset,
-    ) -> pd.DataFrame:
-        """Convert a dataset to a pandas DataFrame.
-
-        Generates a DataFrame containing information about the recordings in
-        the dataset. The DataFrame includes the following columns: 'uuid',
-        'hash', 'path', 'samplerate', 'duration', 'channels', 'time_expansion',
-        'date', 'time', 'latitude', 'longitude', 'rights'.
-
-        Owners, tags, and features receive special treatment. Owners are
-        concatenated into a string with the format 'user1:user2:user3'. Each
-        tag is added as a column with the name 'tag_<key>', and features as
-        'feature_<name>'.
-
-        Parameters
-        ----------
-        session
-            The database session to use.
-        dataset
-            The dataset to convert to a DataFrame.
-
-        Returns
-        -------
-        df : pandas.DataFrame
-            The dataset as a DataFrame.
-
-        Notes
-        -----
-        The encoding of the dataset as a DataFrame is not lossless. Notes are
-        excluded from the DataFrame, and there is no way to recover all owner
-        information from the concatenated string of usernames. For full dataset
-        recovery, use the `to_soundevent` method instead, returning a sound
-        event dataset that can be exported to a JSON file and later imported,
-        recovering all information.
-        """
-        recordings, _ = await self.get_recordings(session, dataset, limit=-1)
-        return pd.DataFrame(
-            [
-                dict(
-                    uuid=rec.uuid,
-                    hash=rec.hash,
-                    path=rec.path.relative_to(dataset.audio_dir),
-                    samplerate=rec.samplerate,
-                    duration=rec.duration,
-                    channels=rec.channels,
-                    time_expansion=rec.time_expansion,
-                    date=rec.date,
-                    time=rec.time,
-                    latitude=rec.latitude,
-                    longitude=rec.longitude,
-                    rights=rec.rights,
-                    owners=":".join([owner.name if owner.name else owner.username for owner in rec.owners]),
-                    **{f"tag_{tag.key}": tag.value for tag in rec.tags},
-                    **{f"feature_{feature.name}": feature.value for feature in rec.features},
-                )
-                for rec in recordings
-            ]
-        )
 
 
 datasets = DatasetAPI()

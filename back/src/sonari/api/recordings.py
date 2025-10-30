@@ -6,11 +6,9 @@ from functools import partial
 from multiprocessing import Pool
 from pathlib import Path
 from typing import Sequence
-from uuid import UUID
 
 import cachetools
 import soundfile as sf
-from soundevent import data
 from soundevent.audio import MediaInfo, compute_md5_checksum, get_media_info
 from sqlalchemy import and_
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -18,10 +16,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sonari import exceptions, models, schemas
 from sonari.api import common
 from sonari.api.common import BaseAPI
-from sonari.api.features import features
-from sonari.api.notes import notes
-from sonari.api.tags import tags
-from sonari.api.users import users
 from sonari.core import files
 from sonari.core.common import remove_duplicates
 from sonari.system import get_settings
@@ -36,7 +30,7 @@ logger = logging.getLogger(__name__)
 
 class RecordingAPI(
     BaseAPI[
-        UUID,
+        int,
         models.Recording,
         schemas.Recording,
         schemas.RecordingCreate,
@@ -50,23 +44,127 @@ class RecordingAPI(
         super().__init__()
         self._media_info_cache = cachetools.LRUCache(maxsize=1000)
 
+    async def get_with_tags(
+        self,
+        session: AsyncSession,
+        pk: int,
+    ) -> schemas.Recording:
+        """Get a single recording with tags eagerly loaded.
+
+        This method is useful when you know you'll need to access the tags
+        relationship to avoid lazy loading issues.
+
+        Parameters
+        ----------
+        session
+            The database session to use.
+        pk
+            The primary key (ID) of the recording.
+
+        Returns
+        -------
+        recording : schemas.Recording
+            The recording with tags loaded.
+
+        Raises
+        ------
+        NotFoundError
+            If the recording could not be found.
+        """
+        from sqlalchemy import select
+        from sqlalchemy.orm import noload, selectinload
+
+        query = (
+            select(self._model)
+            .where(self._model.id == pk)
+            .options(
+                selectinload(models.Recording.tags),
+                noload(models.Recording.features),
+                noload(models.Recording.owners),
+                noload(models.Recording.annotation_tasks),
+                noload(models.Recording.recording_datasets),
+            )
+        )
+
+        result = await session.execute(query)
+        obj = result.unique().scalar_one_or_none()
+
+        if obj is None:
+            raise exceptions.NotFoundError(f"Recording with id {pk} not found")
+
+        data = self._schema.model_validate(obj)
+        self._update_cache(data)
+        return data
+
+    async def get_with_features(
+        self,
+        session: AsyncSession,
+        pk: int,
+    ) -> schemas.Recording:
+        """Get a single recording with tags eagerly loaded.
+
+        This method is useful when you know you'll need to access the tags
+        relationship to avoid lazy loading issues.
+
+        Parameters
+        ----------
+        session
+            The database session to use.
+        pk
+            The primary key (ID) of the recording.
+
+        Returns
+        -------
+        recording : schemas.Recording
+            The recording with features loaded.
+
+        Raises
+        ------
+        NotFoundError
+            If the recording could not be found.
+        """
+        from sqlalchemy import select
+        from sqlalchemy.orm import noload, selectinload
+
+        query = (
+            select(self._model)
+            .where(self._model.id == pk)
+            .options(
+                selectinload(models.Recording.features),
+                noload(models.Recording.tags),
+                noload(models.Recording.owners),
+                noload(models.Recording.annotation_tasks),
+                noload(models.Recording.recording_datasets),
+            )
+        )
+
+        result = await session.execute(query)
+        obj = result.unique().scalar_one_or_none()
+
+        if obj is None:
+            raise exceptions.NotFoundError(f"Recording with id {pk} not found")
+
+        data = self._schema.model_validate(obj)
+        self._update_cache(data)
+        return data
+
     async def get_media_info(
         self,
         session: AsyncSession,
-        recording_uuid: UUID,
+        recording_id: int,
         audio_dir: Path | None = None,
     ) -> MediaInfo:
         if audio_dir is None:
             audio_dir = get_settings().audio_dir
 
-        if recording_uuid in self._media_info_cache:
-            return self._media_info_cache[recording_uuid]
+        if recording_id in self._media_info_cache:
+            return self._media_info_cache[recording_id]
 
-        recording = await self.get(session, recording_uuid)
+        recording = await self.get(session, recording_id)
         full_path = audio_dir / recording.path
 
         media_info = get_media_info(full_path)
-        self._media_info_cache[recording_uuid] = media_info
+        self._media_info_cache[recording_id] = media_info
         return media_info
 
     async def get_by_hash(
@@ -172,7 +270,7 @@ class RecordingAPI(
             default to the value of `settings.audio_dir`.
         **kwargs
             Additional keyword arguments to use when creating the recording,
-            (e.g. `uuid` or `created_on`.)
+            (e.g. `id` or `created_on`.)
 
         Returns
         -------
@@ -306,7 +404,7 @@ class RecordingAPI(
             new_hash = compute_md5_checksum(data.path)
 
             if new_hash != obj.hash:
-                raise ValueError("File at the given path does not match the hash of the " "recording.")
+                raise ValueError("File at the given path does not match the hash of the recording.")
 
             if not data.path.is_relative_to(audio_dir):
                 raise ValueError(
@@ -361,48 +459,12 @@ class RecordingAPI(
         # - clips
         # - sound_events
 
-    async def add_note(
-        self,
-        session: AsyncSession,
-        obj: schemas.Recording,
-        note: schemas.Note,
-    ) -> schemas.Recording:
-        """Add a note to a recording.
-
-        Parameters
-        ----------
-        session
-            The database session to use.
-        obj
-            The recording to add the note to.
-        note
-            The note to add.
-
-        Returns
-        -------
-        recording : schemas.recordings.Recording
-            The updated recording.
-        """
-        for n in obj.notes:
-            if n.uuid == note.uuid:
-                raise exceptions.DuplicateObjectError(f"Recording already has a note with UUID {note.uuid}")
-
-        await common.create_object(
-            session,
-            models.RecordingNote,
-            recording_id=obj.id,
-            note_id=note.id,
-        )
-
-        obj = obj.model_copy(update=dict(notes=[*obj.notes, note]))
-        self._update_cache(obj)
-        return obj
-
     async def add_tag(
         self,
         session: AsyncSession,
         obj: schemas.Recording,
         tag: schemas.Tag,
+        created_by: schemas.SimpleUser,
     ) -> schemas.Recording:
         """Add a tag to a recording.
 
@@ -414,6 +476,8 @@ class RecordingAPI(
             The recording to add the tag to.
         tag
             The tag to add.
+        created_by
+            The user who is adding the tag.
 
         Returns
         -------
@@ -428,6 +492,7 @@ class RecordingAPI(
             models.RecordingTag,
             recording_id=obj.id,
             tag_id=tag.id,
+            created_by_id=created_by.id,
         )
 
         obj = obj.model_copy(update=dict(tags=[*obj.tags, tag]))
@@ -460,16 +525,11 @@ class RecordingAPI(
             if f.name == feature.name:
                 raise exceptions.DuplicateObjectError(f"Recording already has a feature with name {feature.name}")
 
-        feature_name = await features.get_or_create(
-            session,
-            feature.name,
-        )
-
         await common.create_object(
             session,
             models.RecordingFeature,
             recording_id=obj.id,
-            feature_name_id=feature_name.id,
+            name=feature.name,
             value=feature.value,
         )
 
@@ -542,14 +602,12 @@ class RecordingAPI(
         else:
             raise exceptions.NotFoundError(f"Recording does not have a feature with name {feature.name}")
 
-        feature_name = await features.get(session, feature.name)
-
         await common.update_object(
             session,
             models.RecordingFeature,
             and_(
                 models.RecordingFeature.recording_id == obj.id,
-                models.RecordingFeature.feature_name_id == feature_name.id,
+                models.RecordingFeature.name == feature.name,
             ),
             value=feature.value,
         )
@@ -558,52 +616,12 @@ class RecordingAPI(
         self._update_cache(obj)
         return obj
 
-    async def remove_note(
-        self,
-        session: AsyncSession,
-        obj: schemas.Recording,
-        note: schemas.Note,
-    ):
-        """Remove a note from a recording.
-
-        Parameters
-        ----------
-        session
-            The database session to use.
-        obj
-            The recording to remove the note from.
-        note
-            The note to remove.
-
-        Returns
-        -------
-        recording : schemas.recordings.Recording
-            The updated recording.
-        """
-        for n in obj.notes:
-            if n.uuid == note.uuid:
-                break
-        else:
-            raise exceptions.NotFoundError(f"Recording does not have a note with UUID {note.uuid}")
-
-        await common.delete_object(
-            session,
-            models.RecordingNote,
-            and_(
-                models.RecordingNote.recording_id == obj.id,
-                models.RecordingNote.note_id == note.id,
-            ),
-        )
-
-        obj = obj.model_copy(update=dict(notes=[n for n in obj.notes if n.uuid != note.uuid]))
-        self._update_cache(obj)
-        return obj
-
     async def remove_tag(
         self,
         session: AsyncSession,
         obj: schemas.Recording,
         tag: schemas.Tag,
+        created_by: schemas.SimpleUser,
     ) -> schemas.Recording:
         """Remove a tag from a recording.
 
@@ -615,6 +633,8 @@ class RecordingAPI(
             The recording to remove the tag from.
         tag
             The tag to remove.
+        created_by
+            The user who added the tag (to identify which tag association to remove).
 
         Returns
         -------
@@ -630,6 +650,7 @@ class RecordingAPI(
             and_(
                 models.RecordingTag.recording_id == obj.id,
                 models.RecordingTag.tag_id == tag.id,
+                models.RecordingTag.created_by_id == created_by.id,
             ),
         )
 
@@ -706,141 +727,18 @@ class RecordingAPI(
         else:
             raise exceptions.NotFoundError(f"Recording does not have a feature with name {feature.name}")
 
-        feature_name = await features.get(session, feature.name)
-
         await common.delete_object(
             session,
             models.RecordingFeature,
             and_(
                 models.RecordingFeature.recording_id == obj.id,
-                models.RecordingFeature.feature_name_id == feature_name.id,
+                models.RecordingFeature.name == feature.name,
             ),
         )
 
         obj = obj.model_copy(update=dict(features=[f for f in obj.features if f.name != feature.name]))
         self._update_cache(obj)
         return obj
-
-    async def from_soundevent(
-        self,
-        session: AsyncSession,
-        recording: data.Recording,
-        audio_dir: Path | None = None,
-    ) -> schemas.Recording:
-        """Create a recording from a soundevent.Recording.
-
-        Parameters
-        ----------
-        session
-            The database session to use.
-        recording
-            The soundevent.Recording to create the recording from.
-        audio_dir
-            The root directory for audio files. If not given, it will
-            default to the value of `settings.audio_dir`.
-
-        Returns
-        -------
-        recording : schemas.recordings.Recording
-            The created recording.
-        """
-        if audio_dir is None:
-            audio_dir = get_settings().audio_dir
-
-        path = recording.path
-        if not path.is_absolute():
-            path = audio_dir / recording.path
-
-        if not path.is_file():
-            raise FileNotFoundError(f"File {path} does not exist.")
-
-        created = await self.create_from_data(
-            session,
-            path=path.relative_to(audio_dir),
-            time_expansion=recording.time_expansion,
-            date=recording.date,
-            time=recording.time,
-            latitude=recording.latitude,
-            longitude=recording.longitude,
-            rights=recording.rights,
-            uuid=recording.uuid,
-            hash=recording.hash,
-            duration=recording.duration,
-            samplerate=recording.samplerate,
-            channels=recording.channels,
-        )
-        created.path = path
-
-        for owner in recording.owners:
-            owner = await users.from_soundevent(session, owner)
-            created = await self.add_owner(session, created, owner)
-
-        for se_tag in recording.tags:
-            tag = await tags.from_soundevent(session, se_tag)
-            created = await self.add_tag(session, created, tag)
-
-        for note in recording.notes:
-            note = await notes.from_soundevent(session, note)
-            created = await self.add_note(session, created, note)
-
-        for feature in recording.features:
-            feature = await features.from_soundevent(session, feature)
-            created = await self.add_feature(
-                session,
-                created,
-                feature,
-            )
-
-        return created
-
-    def to_soundevent(
-        self,
-        recording: schemas.Recording,
-        audio_dir: Path | None = None,
-    ) -> data.Recording:
-        """Create a soundevent.Recording from a recording.
-
-        Parameters
-        ----------
-        recording
-            The recording to create the soundevent.Recording from.
-        audio_dir
-            The root directory for audio files. If not given, it will
-            default to the value of `settings.audio_dir`.
-
-        Returns
-        -------
-        recording : soundevent.Recording
-            The created soundevent.Recording.
-        """
-        if audio_dir is None:
-            audio_dir = get_settings().audio_dir
-
-        rec_tags = [tags.to_soundevent(tag) for tag in recording.tags]
-
-        rec_notes = [notes.to_soundevent(note) for note in recording.notes]
-
-        rec_features = [features.to_soundevent(feature) for feature in recording.features]
-
-        rec_owners = [users.to_soundevent(owner) for owner in recording.owners]
-
-        return data.Recording(
-            uuid=recording.uuid,
-            path=audio_dir / recording.path,
-            time_expansion=recording.time_expansion,
-            channels=recording.channels,
-            samplerate=recording.samplerate,
-            duration=recording.duration,
-            date=recording.date,
-            time=recording.time,
-            latitude=recording.latitude,
-            longitude=recording.longitude,
-            rights=recording.rights,
-            tags=rec_tags,
-            notes=rec_notes,
-            features=rec_features,
-            owners=rec_owners,
-        )
 
 
 def validate_path(
@@ -872,7 +770,7 @@ def validate_path(
     """
     if path.is_absolute():
         if not path.is_relative_to(audio_dir):
-            raise ValueError(f"The path {path} is not relative to the audio directory " f"{audio_dir}.")
+            raise ValueError(f"The path {path} is not relative to the audio directory {audio_dir}.")
         path = path.relative_to(audio_dir)
 
     absolute_path = audio_dir / path
@@ -900,7 +798,7 @@ def _assemble_recording_data(
 
     if info.media_info is None:
         logger.warning(
-            f"Could not extract media info from file. {data.path}" "Skipping file.",
+            f"Could not extract media info from file. {data.path}Skipping file.",
         )
         return None
 
@@ -912,7 +810,7 @@ def _assemble_recording_data(
 
     if not data.path.is_relative_to(audio_dir):
         logger.warning(
-            f"File is not in audio directory. {data.path} Skipping file." f"Root audio directory: {audio_dir}",
+            f"File is not in audio directory. {data.path} Skipping file.Root audio directory: {audio_dir}",
         )
         return None
 

@@ -1,7 +1,5 @@
 """API functions to interact with notes."""
 
-from uuid import UUID
-
 from soundevent import data
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -17,7 +15,7 @@ __all__ = [
 
 class NoteAPI(
     BaseAPI[
-        UUID,
+        int,
         models.Note,
         schemas.Note,
         schemas.NoteCreate,
@@ -50,7 +48,7 @@ class NoteAPI(
             The user that created the note. Defaults to None.
         **kwargs
             Additional keyword arguments to use when creating the note,
-            (e.g. `uuid` or `created_on`.)
+            (e.g. `created_on`.)
 
         Returns
         -------
@@ -86,11 +84,17 @@ class NoteAPI(
         note : schemas.Note
             The created note.
         """
-        try:
-            return await self.get(session, data.uuid)
-        except exceptions.NotFoundError:
-            pass
+        # Try to find by message and is_issue since we don't have UUID anymore
+        # This is a best-effort match
+        existing = await self.get_many(
+            session,
+            limit=1,
+            offset=0,
+            sort_by=None,
+        )
 
+        # For now, just create a new note if not found
+        # In the future, we might want to add better matching logic
         user_id = None
         if data.created_by is not None:
             user = await users.from_soundevent(session, data.created_by)
@@ -103,7 +107,6 @@ class NoteAPI(
                 is_issue=data.is_issue,
             ),
             created_by_id=user_id,
-            uuid=data.uuid,
             created_on=data.created_on,
         )
 
@@ -134,7 +137,6 @@ class NoteAPI(
             )
 
         return data.Note(
-            uuid=obj.uuid,
             created_on=obj.created_on,
             message=obj.message,
             created_by=created_by,

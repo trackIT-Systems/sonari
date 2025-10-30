@@ -1,7 +1,6 @@
 """REST API routes for exports."""
 
 from typing import Annotated
-from uuid import UUID
 
 from fastapi import APIRouter, Query
 
@@ -15,29 +14,29 @@ export_router = APIRouter()
 @export_router.get("/multibase/")
 async def export_multibase(
     session: Session,
-    annotation_project_uuids: Annotated[list[UUID], Query()],
+    annotation_project_ids: Annotated[list[int], Query()],
     tags: Annotated[list[str], Query()],
     statuses: Annotated[list[str] | None, Query()] = None,
 ):
     """Export annotation projects in MultiBase format."""
     service = MultiBaseService(session)
-    return await service.export_multibase(annotation_project_uuids, tags, statuses)
+    return await service.export_multibase(annotation_project_ids, tags, statuses)
 
 
 @export_router.get("/dump/")
 async def export_dump(
     session: Session,
-    annotation_project_uuids: Annotated[list[UUID], Query()],
+    annotation_project_ids: Annotated[list[int], Query()],
 ):
     """Export sound event annotation data in CSV format with streaming."""
     service = DumpService(session)
-    return await service.export_dump(annotation_project_uuids)
+    return await service.export_dump(annotation_project_ids)
 
 
 @export_router.get("/passes/")
 async def export_passes(
     session: Session,
-    annotation_project_uuids: Annotated[list[UUID], Query()],
+    annotation_project_ids: Annotated[list[int], Query()],
     tags: Annotated[list[str], Query()],
     statuses: Annotated[list[str] | None, Query()] = None,
     event_count: int = ExportConstants.DEFAULT_EVENT_COUNT,
@@ -52,7 +51,7 @@ async def export_passes(
     """Export passes analysis in CSV format or JSON with chart."""
     service = PassesService(session)
     return await service.export_passes(
-        annotation_project_uuids,
+        annotation_project_ids,
         tags,
         statuses,
         event_count,
@@ -69,20 +68,20 @@ async def export_passes(
 @export_router.get("/stats/")
 async def export_stats(
     session: Session,
-    annotation_project_uuids: Annotated[list[UUID], Query()],
+    annotation_project_ids: Annotated[list[int], Query()],
     tags: Annotated[list[str], Query()],
     statuses: Annotated[list[str] | None, Query()] = None,
     group_species: bool = False,
 ):
     """Export recording statistics grouped by annotation project, status badge, and tag."""
     service = StatsService(session)
-    return await service.export_stats(annotation_project_uuids, tags, statuses, group_species)
+    return await service.export_stats(annotation_project_ids, tags, statuses, group_species)
 
 
 @export_router.get("/time/")
 async def export_time(
     session: Session,
-    annotation_project_uuids: Annotated[list[UUID], Query()],
+    annotation_project_ids: Annotated[list[int], Query()],
     tags: Annotated[list[str], Query()],
     statuses: Annotated[list[str] | None, Query()] = None,
     time_period_type: str = "predefined",
@@ -96,7 +95,7 @@ async def export_time(
     """Export time-based event counts in CSV format or JSON with chart."""
     service = TimeService(session)
     return await service.export_time(
-        annotation_project_uuids,
+        annotation_project_ids,
         tags,
         statuses,
         time_period_type,
@@ -112,7 +111,7 @@ async def export_time(
 @export_router.get("/yearly-activity/")
 async def export_yearly_activity(
     session: Session,
-    annotation_project_uuids: Annotated[list[UUID], Query()],
+    annotation_project_ids: Annotated[list[int], Query()],
     tags: Annotated[list[str], Query()],
     statuses: Annotated[list[str] | None, Query()] = None,
     start_date: Annotated[str | None, Query()] = None,
@@ -122,7 +121,7 @@ async def export_yearly_activity(
     """Export yearly activity heatmap showing events by hour of day vs day of year."""
     service = YearlyActivityService(session)
     return await service.export_yearly_activity(
-        annotation_project_uuids,
+        annotation_project_ids,
         tags,
         statuses,
         start_date,

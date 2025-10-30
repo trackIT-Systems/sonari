@@ -1,7 +1,5 @@
 """Filters for Recording Tags."""
 
-from uuid import UUID
-
 from sqlalchemy import Select
 
 from sonari import models
@@ -22,7 +20,7 @@ __all__ = [
 class DatasetFilter(base.Filter):
     """Filter recordings by the dataset they are in."""
 
-    eq: UUID | None = None
+    eq: int | None = None
 
     def filter(self, query: Select) -> Select:
         """Filter the query."""
@@ -38,7 +36,7 @@ class DatasetFilter(base.Filter):
                 models.Dataset,
                 models.DatasetRecording.dataset_id == models.Dataset.id,
             )
-            .where(models.Dataset.uuid == self.eq)
+            .where(models.Dataset.id == self.eq)
         )
 
 
@@ -95,16 +93,16 @@ class TagFilter(base.Filter):
 
 
 class RecordingFilter(base.Filter):
-    """Filter recordings by their UUID."""
+    """Filter recordings by their ID."""
 
-    eq: UUID | None = None
+    eq: int | None = None
 
     def filter(self, query: Select) -> Select:
         """Filter the query."""
         if not self.eq:
             return query
 
-        return query.where(models.Recording.uuid == self.eq)
+        return query.where(models.Recording.id == self.eq)
 
 
 RecordingTagFilter = base.combine(

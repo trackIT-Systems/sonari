@@ -2,13 +2,13 @@
 
 from typing import Any, Sequence
 
-from soundevent import data
 from sqlalchemy import and_, select, tuple_
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from sonari import exceptions, models, schemas
 from sonari.api.common import BaseAPI, get_objects_from_query
 from sonari.filters.base import Filter
+from sonari.schemas.users import SimpleUser
 
 __all__ = [
     "TagAPI",
@@ -33,6 +33,7 @@ class TagAPI(
         session: AsyncSession,
         key: str,
         value: str,
+        created_by: SimpleUser,
     ) -> schemas.Tag:
         """Create a tag.
 
@@ -52,10 +53,9 @@ class TagAPI(
         """
         return await self.create_from_data(
             session,
-            schemas.TagCreate(
-                key=key,
-                value=value,
-            ),
+            key=key,
+            value=value,
+            created_by_id=created_by.id,
         )
 
     async def get_or_create(
@@ -63,6 +63,7 @@ class TagAPI(
         session: AsyncSession,
         key: str,
         value: str,
+        created_by: SimpleUser,
     ) -> schemas.Tag:
         """Get a tag by its key and value, or create it if it does not exist.
 
@@ -83,55 +84,9 @@ class TagAPI(
         try:
             return await self.get(session, (key, value))
         except exceptions.NotFoundError:
-            obj = await self.create(session, key, value)
+            obj = await self.create(session, key, value, created_by)
             self._update_cache(obj)
             return obj
-
-    async def from_soundevent(
-        self,
-        session: AsyncSession,
-        tag: data.Tag,
-    ) -> schemas.Tag:
-        """Create a tag from a soundevent Tag object.
-
-        Parameters
-        ----------
-        session
-            The database session.
-        tag
-            The soundevent tag object.
-
-        Returns
-        -------
-        schemas.TagCreate
-            The tag.
-        """
-        return await self.get_or_create(
-            session=session,
-            key=tag.key,
-            value=tag.value,
-        )
-
-    def to_soundevent(
-        self,
-        tag: schemas.Tag,
-    ) -> data.Tag:
-        """Create a soundevent Tag object from a tag.
-
-        Parameters
-        ----------
-        tag
-            The tag.
-
-        Returns
-        -------
-        data.Tag
-            The soundevent tag object.
-        """
-        return data.Tag(
-            key=tag.key,
-            value=tag.value,
-        )
 
     def _get_pk_from_obj(self, obj: schemas.Tag) -> tuple[str, str]:
         return obj.key, obj.value
@@ -162,7 +117,6 @@ class TagAPI(
                 models.RecordingTag.recording_id,
                 models.RecordingTag.created_on,
                 models.Tag,
-                models.Recording.uuid.label("recording_uuid"),
             )
             .join(
                 models.Tag,
@@ -187,7 +141,7 @@ class TagAPI(
             schemas.RecordingTag(
                 created_on=obj.created_on,
                 tag=schemas.Tag.model_validate(obj.Tag),
-                recording_uuid=obj.recording_uuid,
+                recording_id=obj.recording_id,
             )
             for obj in tags.unique().all()
         ], count

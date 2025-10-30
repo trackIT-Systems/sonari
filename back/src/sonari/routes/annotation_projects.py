@@ -1,15 +1,12 @@
 """REST API routes for annotation projects."""
 
-import json
 from typing import Annotated
-from uuid import UUID
 
-from fastapi import APIRouter, Depends, UploadFile
+from fastapi import APIRouter, Depends
 
 from sonari import api, schemas
-from sonari.api.io import aoef
 from sonari.filters.annotation_projects import AnnotationProjectFilter
-from sonari.routes.dependencies import Session, SonariSettings
+from sonari.routes.dependencies import Session
 from sonari.routes.types import Limit, Offset
 
 __all__ = [
@@ -72,10 +69,10 @@ async def create_annotation_project(
 )
 async def get_annotation_project(
     session: Session,
-    annotation_project_uuid: UUID,
+    annotation_project_id: int,
 ):
     """Get an annotation project."""
-    return await api.annotation_projects.get(session, annotation_project_uuid)
+    return await api.annotation_projects.get(session, annotation_project_id)
 
 
 @annotation_projects_router.patch(
@@ -84,13 +81,13 @@ async def get_annotation_project(
 )
 async def update_annotation_project(
     session: Session,
-    annotation_project_uuid: UUID,
+    annotation_project_id: int,
     data: schemas.AnnotationProjectUpdate,
 ):
     """Update an annotation project."""
     annotation_project = await api.annotation_projects.get(
         session,
-        annotation_project_uuid,
+        annotation_project_id,
     )
     annotation_project = await api.annotation_projects.update(
         session,
@@ -107,12 +104,12 @@ async def update_annotation_project(
 )
 async def delete_annotation_project(
     session: Session,
-    annotation_project_uuid: UUID,
+    annotation_project_id: int,
 ):
     """Delete an annotation project."""
     annotation_project = await api.annotation_projects.get(
         session,
-        annotation_project_uuid,
+        annotation_project_id,
     )
     project = await api.annotation_projects.delete(session, annotation_project)
     await session.commit()
@@ -125,14 +122,14 @@ async def delete_annotation_project(
 )
 async def add_tag_to_annotation_project(
     session: Session,
-    annotation_project_uuid: UUID,
+    annotation_project_id: int,
     key: str,
     value: str,
 ):
     """Add a tag to an annotation project."""
-    annotation_project = await api.annotation_projects.get(
+    annotation_project = await api.annotation_projects.get_with_tags(
         session,
-        annotation_project_uuid,
+        annotation_project_id,
     )
     tag = await api.tags.get(session, (key, value))
     project = await api.annotation_projects.add_tag(
@@ -150,14 +147,14 @@ async def add_tag_to_annotation_project(
 )
 async def remove_tag_from_annotation_project(
     session: Session,
-    annotation_project_uuid: UUID,
+    annotation_project_id: int,
     key: str,
     value: str,
 ):
     """Remove a tag from an annotation project."""
-    annotation_project = await api.annotation_projects.get(
+    annotation_project = await api.annotation_projects.get_with_tags(
         session,
-        annotation_project_uuid,
+        annotation_project_id,
     )
     tag = await api.tags.get(session, (key, value))
     project = await api.annotation_projects.remove_tag(
@@ -167,26 +164,3 @@ async def remove_tag_from_annotation_project(
     )
     await session.commit()
     return project
-
-
-@annotation_projects_router.post(
-    "/import/",
-    response_model=schemas.AnnotationProject,
-)
-async def import_annotation_project(
-    settings: SonariSettings,
-    session: Session,
-    annotation_project: UploadFile,
-):
-    """Import an annotation project."""
-    obj = json.loads(annotation_project.file.read())
-
-    db_dataset = await aoef.import_annotation_project(
-        session,
-        obj,
-        audio_dir=settings.audio_dir,
-        base_audio_dir=settings.audio_dir,
-    )
-    await session.commit()
-    await session.refresh(db_dataset)
-    return schemas.AnnotationProject.model_validate(db_dataset)
