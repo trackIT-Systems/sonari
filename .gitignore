@@ -152,3 +152,4 @@ sonari.db
 back/src/sonari/statics/*
 back/.build_venv
 .DS_STORE
+back/settings.json
