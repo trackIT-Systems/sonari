@@ -1,0 +1,129 @@
+"""Tests for spectrogram endpoints."""
+
+import pytest
+from httpx import AsyncClient
+
+
+@pytest.mark.asyncio
+async def test_get_spectrogram_not_found(auth_client: AsyncClient):
+    """Test getting spectrogram for non-existent recording."""
+    response = await auth_client.get(
+        "/api/v1/spectrograms/",
+        params={
+            "recording_id": 999999,
+            "start_time": 0.0,
+            "end_time": 1.0,
+            "low_res": False,
+            "conf_preset": "hsr",
+            # Audio parameters (defaults)
+            "resample": False,
+            "samplerate": 44100,
+            "filter_order": 5,
+            # Spectrogram parameters (defaults)
+            "window_size": 0.025,
+            "hop_size": 0.5,
+            "window": "hann",
+            "scale": "dB",
+            "clamp": False,
+            "min_dB": -100.0,
+            "max_dB": 0.0,
+            "normalize": True,
+            "channel": 0,
+            "pcen": True,
+            "cmap": "gray",
+            "gamma": 1.0,
+            "freqLines": None,
+        },
+    )
+    # Should return 404 or 500 for non-existent recording
+    assert response.status_code in [404, 500]
+
+
+@pytest.mark.asyncio
+async def test_get_spectrogram(auth_client: AsyncClient):
+    """Test getting spectrogram for a valid recording."""
+    response = await auth_client.get(
+        "/api/v1/spectrograms/",
+        params={
+            "recording_id": 1,
+            "start_time": 0.0,
+            "end_time": 1.0,
+            "low_res": False,
+            # Audio parameters (defaults)
+            "resample": False,
+            "samplerate": 200000,
+            "filter_order": 5,
+            # Spectrogram parameters (defaults)
+            "window_size": 0.00319,
+            "hop_size": 0.03125,
+            "window": "blackmanharris",
+            "scale": "dB",
+            "clamp": True,
+            "min_dB": -140.0,
+            "max_dB": 0.0,
+            "normalize": False,
+            "channel": 0,
+            "pcen": False,
+            "cmap": "plasma",
+            "gamma": 1.0,
+        },
+    )
+    assert response.status_code == 200
+    # Check that response is an image
+    assert response.headers["content-type"] in ["image/webp", "image/jpeg"]
+    # Check that there's content
+    assert len(response.content) > 0
+    # Check cache control headers
+    assert "no-store" in response.headers.get("cache-control", "")
+
+    # Write image to file in current directory
+    content_type = response.headers["content-type"]
+    extension = "webp" if "webp" in content_type else "jpg"
+    output_file = f"test_spectrogram.{extension}"
+    with open(output_file, "wb") as f:
+        f.write(response.content)
+
+
+@pytest.mark.asyncio
+async def test_get_spectrogram_low_res(auth_client: AsyncClient):
+    """Test getting low-resolution spectrogram."""
+    response = await auth_client.get(
+        "/api/v1/spectrograms/",
+        params={
+            "recording_id": 1,
+            "start_time": 0.0,
+            "end_time": 1.0,
+            "low_res": True,
+            # Audio parameters (defaults)
+            "resample": False,
+            "samplerate": 200000,
+            "filter_order": 5,
+            # Spectrogram parameters (defaults)
+            "window_size": 0.00319,
+            "hop_size": 0.03125,
+            "window": "blackmanharris",
+            "scale": "dB",
+            "clamp": True,
+            "min_dB": -140.0,
+            "max_dB": 0.0,
+            "normalize": False,
+            "channel": 0,
+            "pcen": False,
+            "cmap": "plasma",
+            "gamma": 1.0,
+        },
+    )
+    assert response.status_code == 200
+    # Check that response is an image
+    assert response.headers["content-type"] in ["image/webp", "image/jpeg"]
+    # Check that there's content
+    assert len(response.content) > 0
+    # Check cache control headers
+    assert "no-store" in response.headers.get("cache-control", "")
+
+    # Write image to file in current directory
+    content_type = response.headers["content-type"]
+    extension = "webp" if "webp" in content_type else "jpg"
+    output_file = f"test_spectrogram_low_res.{extension}"
+    with open(output_file, "wb") as f:
+        f.write(response.content)
