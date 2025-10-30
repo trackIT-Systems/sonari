@@ -151,3 +151,4 @@ sonari.db
 .pdm-python
 back/src/sonari/statics/*
 back/.build_venv
+.DS_STORE
