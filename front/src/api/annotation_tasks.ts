@@ -122,7 +122,7 @@ export function registerAnnotationTasksAPI(
       clips.map((clip) => clip.uuid),
       {
         params: {
-          annotation_project_uuid: annotationProject.id,
+          annotation_project_id: annotationProject.id,
         },
       },
     );

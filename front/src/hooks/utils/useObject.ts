@@ -5,7 +5,7 @@ import type { AxiosError } from "axios";
 import type { SetStateAction } from "react";
 
 export function useObjectDestruction<T>({
-  uuid,
+  id,
   query,
   client,
   mutationFn,
@@ -13,7 +13,7 @@ export function useObjectDestruction<T>({
   onSuccess,
   onError,
 }: {
-  uuid?: string;
+  id?: number;
   query: ReturnType<typeof useQuery<T>>;
   client: ReturnType<typeof useQueryClient>;
   mutationFn: (obj: T) => Promise<T>;
@@ -24,31 +24,31 @@ export function useObjectDestruction<T>({
   const { status, data } = query;
 
   const trueMutationFn = useCallback(async () => {
-    if (uuid == null) {
-      throw new Error(`No uuid provided for object of type ${name}`);
+    if (id == null) {
+      throw new Error(`No id provided for object of type ${name}`);
     }
 
     if (status === "pending") {
       throw new Error(
-        `No data for object of type ${name} (uuid=${uuid}). ` +
+        `No data for object of type ${name} (id=${id}). ` +
         "Either the query is not enabled or the query is still loading.",
       );
     }
 
     if (status === "error") {
       throw new Error(
-        `Error while loading object of type ${name} (uuid=${uuid}), cannot mutate`,
+        `Error while loading object of type ${name} (id=${id}), cannot mutate`,
       );
     }
 
     return await mutationFn(data);
-  }, [status, data, mutationFn, name, uuid]);
+  }, [status, data, mutationFn, name, id]);
 
   return useMutation<T, AxiosError>({
     mutationFn: trueMutationFn,
     onSuccess: (data) => {
       client.removeQueries({
-        queryKey: [name, uuid],
+        queryKey: [name, id],
       });
       onSuccess?.(data);
     },
@@ -57,7 +57,7 @@ export function useObjectDestruction<T>({
 }
 
 export function useObjectMutation<T, K, J = T>({
-  uuid,
+  id,
   query,
   client,
   mutationFn,
@@ -66,7 +66,7 @@ export function useObjectMutation<T, K, J = T>({
   onError,
   withUpdate = true,
 }: {
-  uuid?: string;
+  id?: number;
   query: ReturnType<typeof useQuery<T>>;
   client: ReturnType<typeof useQueryClient>;
   mutationFn: (obj: T, extra: K) => Promise<J>;
@@ -79,33 +79,33 @@ export function useObjectMutation<T, K, J = T>({
 
   const trueMutationFn = useCallback(
     async (extra: K) => {
-      if (uuid == null) {
-        throw new Error(`No uuid provided for object of type ${name}`);
+      if (id == null) {
+        throw new Error(`No id provided for object of type ${name}`);
       }
 
       if (status === "pending") {
         throw new Error(
-          `No data for object of type ${name} (uuid=${uuid}). ` +
+          `No data for object of type ${name} (id=${id}). ` +
           "Either the query is not enabled or the query is still loading.",
         );
       }
 
       if (status === "error") {
         throw new Error(
-          `Error while loading object of type ${name} (uuid=${uuid}), cannot mutate`,
+          `Error while loading object of type ${name} (id=${id}), cannot mutate`,
         );
       }
 
       return await mutationFn(data, extra);
     },
-    [status, data, mutationFn, name, uuid],
+    [status, data, mutationFn, name, id],
   );
 
   return useMutation<J, AxiosError, K>({
     mutationFn: trueMutationFn,
     onSuccess: (data) => {
       if (withUpdate) {
-        client.setQueryData([name, uuid], data);
+        client.setQueryData([name, id], data);
       }
       onSuccess?.(data);
     },
@@ -114,14 +114,14 @@ export function useObjectMutation<T, K, J = T>({
 }
 
 export function useObjectQuery<T, K>({
-  uuid,
+  id,
   query,
   queryFn,
   name,
   secondaryName,
   enabled = false,
 }: {
-  uuid?: string;
+  id?: number;
   query: ReturnType<typeof useQuery<T>>;
   queryFn: (obj: T) => Promise<K>;
   name: string;
@@ -133,22 +133,22 @@ export function useObjectQuery<T, K>({
   const trueQueryFn = useCallback(async () => {
     if (status === "pending") {
       throw new Error(
-        `No data for object of type ${name} (uuid=${uuid}). ` +
+        `No data for object of type ${name} (id=${id}). ` +
         "Either the query is not enabled or the query is still loading.",
       );
     }
 
     if (status === "error") {
       throw new Error(
-        `Error while loading object of type ${name} (uuid=${uuid}), cannot mutate`,
+        `Error while loading object of type ${name} (id=${id}), cannot mutate`,
       );
     }
     return await queryFn(data);
-  }, [status, data, queryFn, name, uuid]);
+  }, [status, data, queryFn, name, id]);
 
   return useQuery<K, AxiosError>({
     queryFn: trueQueryFn,
-    queryKey: [name, uuid, secondaryName],
+    queryKey: [name, id, secondaryName],
     enabled: status !== "pending" && status !== "error" && enabled,
     staleTime: Infinity,
     refetchOnWindowFocus: false,
@@ -157,15 +157,15 @@ export function useObjectQuery<T, K>({
 }
 
 export type UseObjectProps<T> = {
-  uuid?: string;
+  id?: number;
   name: string;
   enabled?: boolean;
-  getFn: (uuid: string) => Promise<T>;
+  getFn: (id: number) => Promise<T>;
   onError?: (error: AxiosError) => void;
 };
 
 export default function useObject<T>({
-  uuid,
+  id,
   initial,
   name,
   enabled = true,
@@ -177,14 +177,14 @@ export default function useObject<T>({
   const client = useQueryClient();
 
   const queryFn = useCallback(async () => {
-    if (uuid == null) {
-      throw new Error(`No uuid provided for object of type ${name}`);
+    if (id == null) {
+      throw new Error(`No id provided for object of type ${name}`);
     }
-    return await getFn(uuid);
-  }, [uuid, name, getFn]);
+    return await getFn(id);
+  }, [id, name, getFn]);
 
   const query = useQuery<T, AxiosError>({
-    queryKey: [name, uuid],
+    queryKey: [name, id],
     queryFn,
     retry: (failureCount, error) => {
       if (error == null) {
@@ -207,14 +207,14 @@ export default function useObject<T>({
     staleTime: Infinity,
     refetchOnWindowFocus: false,
     gcTime: 60 * 60 * 1000, // when the gcTime expires, react will re-fetch the data. This might lead to the problem that set filters in annotation task are lost. Therefore, we set a hopefully large enough time.
-    enabled: enabled && uuid != null,
+    enabled: enabled && id != null,
   });
 
   const setData = useCallback(
     (data: SetStateAction<T>) => {
-      client.setQueryData([name, uuid], data);
+      client.setQueryData([name, id], data);
     },
-    [client, uuid, name],
+    [client, id, name],
   );
 
   const { error, isError } = query;
@@ -238,7 +238,7 @@ export default function useObject<T>({
       enabled?: boolean;
     }) => {
       return useObjectQuery({
-        uuid,
+        id,
         query,
         queryFn,
         secondaryName,
@@ -258,7 +258,7 @@ export default function useObject<T>({
       withUpdate?: boolean;
     }) => {
       return useObjectMutation({
-        uuid,
+        id,
         query,
         client,
         mutationFn,
@@ -278,7 +278,7 @@ export default function useObject<T>({
       onError?: (error: AxiosError) => void;
     }) => {
       return useObjectDestruction({
-        uuid,
+        id,
         query,
         client,
         mutationFn,

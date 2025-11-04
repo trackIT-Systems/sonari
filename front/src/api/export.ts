@@ -24,7 +24,7 @@ function buildCommonParams(params: CommonExportParams): URLSearchParams {
   
   // Add annotation project UUIDs
   params.annotationProjects.forEach(project => {
-    urlParams.append('annotation_project_uuids', project.id.toString());
+    urlParams.append('annotation_project_ids', project.id.toString());
   });
   
   // Add tags if provided

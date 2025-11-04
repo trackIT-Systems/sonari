@@ -13,16 +13,17 @@ export default function Layout({ children }: { children: ReactNode }) {
   const params = useSearchParams();
   const router = useRouter();
 
-  const uuid = params.get("annotation_project_uuid");
+  const id = params.get("annotation_project_id");
 
-  if (uuid == null) {
-    toast.error("Annotation project uuid not specified.");
+  if (id == null) {
+    toast.error("Annotation project not specified.");
     router.push("/annotation_projects/");
+    return;
   }
 
   // Fetch the annotation project.
   const project = useAnnotationProject({
-    uuid: uuid as string,
+    id: parseInt(id) as number,
   });
 
   if (project.isLoading) {
