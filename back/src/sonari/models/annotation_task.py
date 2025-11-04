@@ -22,6 +22,7 @@ from sonari.models.user import User
 if TYPE_CHECKING:
     from sonari.models.annotation_project import AnnotationProject
     from sonari.models.recording import Recording
+    from sonari.models.note import Note
     from sonari.models.sound_event_annotation import SoundEventAnnotation
 
 __all__ = [
@@ -118,6 +119,13 @@ class AnnotationTask(Base):
         init=False,
     )
     features: orm.Mapped[list["AnnotationTaskFeature"]] = orm.relationship(
+        back_populates="annotation_task",
+        default_factory=list,
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+        repr=False,
+    )
+    notes: orm.Mapped[list["Note"]] = orm.relationship(
         back_populates="annotation_task",
         default_factory=list,
         cascade="all, delete-orphan",
@@ -293,8 +301,9 @@ class AnnotationStatusBadge(Base):
         back_populates="status_badges",
         init=False,
     )
-    user: orm.Mapped[Optional[User]] = orm.relationship(
+    user: orm.Mapped[User] = orm.relationship(
         User,
         init=False,
         repr=False,
+        lazy="selectin",
     )

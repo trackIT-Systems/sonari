@@ -53,7 +53,7 @@ class SoundEventAnnotation(BaseSchema):
     id: int
     """Database ID of this annotation."""
 
-    annotation_task_id: int = Field(exclude=True)
+    annotation_task_id: int
     """The ID of the annotation task to which this annotation belongs."""
 
     recording_id: int

@@ -20,14 +20,21 @@ export default function AnnotationProjectTaskClips({
       return `${url}&annotation_project_id=${annotationProject.id}`;
     };
   }, [getAnnotationTaskLinkFn, annotationProject.id]);
-  const filter = useMemo(() => ({ annotation_project: annotationProject }), [annotationProject]);
+  const filter = useMemo(() => (
+    {
+      annotation_project: annotationProject,
+      include_recording: true,
+      include_tags: true,
+      include_notes: true,
+      include_sound_event_annotations: true 
+    }
+  ), [annotationProject]);
 
   return (
     <AnnotationTaskTable
       filter={filter}
       fixed={["annotation_project"]}
       getAnnotationTaskLink={getAnnotationTaskLink}
-      // pathFormatter={pathFormatter}  TODO: if there was a dataset column, the path could be formatted as in the recordings table
     />
   );
 }

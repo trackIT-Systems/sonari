@@ -30,35 +30,85 @@ export const FeatureSchema = z.object({
   value: z.number(),
 });
 
-export const NoteSchema = z.object({
-  uuid: z.string().uuid(),
+// Base schema without circular reference
+const NoteBaseSchema = z.object({
+  id: z.number().int().positive(),
   message: z.string(),
   is_issue: z.boolean(),
+  annotation_task_id: z.number().int().positive(),
+  created_by_id: z.string().uuid(),
   created_by: UserSchema.nullish(),
   created_on: z.coerce.date(),
 });
 
+// Type inferred from base schema
+type NoteBase = z.infer<typeof NoteBaseSchema>;
+
+// Full type with circular reference
+type Note = NoteBase & {
+  annotation_task?: AnnotationTask | null;
+};
+
+// Full schema with circular reference and explicit type annotation
+export const NoteSchema: z.ZodType<Note> = z.object({
+  id: z.number().int().positive(),
+  message: z.string(),
+  is_issue: z.boolean(),
+  annotation_task_id: z.number().int().positive(),
+  created_by_id: z.string().uuid(),
+  created_by: UserSchema.nullish(),
+  annotation_task: z.lazy(() => AnnotationTaskSchema).nullish(),
+  created_on: z.coerce.date(),
+}) as z.ZodType<Note>;
+
 export const TimeStringSchema = z.string().regex(/^\d{2}:\d{2}:\d{2}(\.\d+)?$/);
 
-export const RecordingSchema = z.object({
-  uuid: z.string().uuid(),
-  path: z.string(),
+// Base schema without circular reference
+const RecordingBaseSchema = z.object({
+  id: z.number().int().positive(),
   hash: z.string(),
-  duration: z.number(),
-  channels: z.number().int(),
-  samplerate: z.number().int(),
-  time_expansion: z.number().default(1),
+  path: z.string(),
   date: z.coerce.date().nullish(),
   time: TimeStringSchema.nullish(),
   latitude: z.number().nullish(),
   longitude: z.number().nullish(),
+  time_expansion: z.number().default(1),
+  duration: z.number(),
+  channels: z.number().int(),
+  samplerate: z.number().int(),
   rights: z.string().nullish(),
   tags: z.array(TagSchema).optional(),
   features: z.array(FeatureSchema).optional(),
-  notes: z.array(NoteSchema).optional(),
-  owners: z.array(UserSchema).optional(),
   created_on: z.coerce.date(),
 });
+
+// Type inferred from base schema
+type RecordingBase = z.infer<typeof RecordingBaseSchema>;
+
+// Full type with circular reference
+type Recording = RecordingBase & {
+  annotation_tasks?: AnnotationTask[];
+};
+
+// Full schema with circular reference and explicit type annotation
+export const RecordingSchema: z.ZodType<Recording> = z.object({
+  id: z.number().int().positive(),
+  hash: z.string(),
+  path: z.string(),
+  date: z.coerce.date().nullish(),
+  time: TimeStringSchema.nullish(),
+  latitude: z.number().nullish(),
+  longitude: z.number().nullish(),
+  time_expansion: z.number().default(1),
+  duration: z.number(),
+  channels: z.number().int(),
+  samplerate: z.number().int(),
+  rights: z.string().nullish(),
+  tags: z.array(TagSchema).nullish(),
+  features: z.array(FeatureSchema).nullish(),
+  annotation_tasks: z.array(z.lazy(() => AnnotationTaskSchema)).nullish(),
+  created_on: z.coerce.date(),
+}) as z.ZodType<Recording>;
 
 export const FileStateSchema = z.enum([
   "missing",
@@ -72,11 +122,12 @@ export const RecordingStateSchema = z.object({
 });
 
 export const DatasetSchema = z.object({
-  uuid: z.string().uuid(),
+  id: z.number().int().positive(),
   name: z.string(),
-  audio_dir: z.string(),
   description: z.string(),
+  audio_dir: z.string(),
   recording_count: z.number().int().default(0),
+  recordings: z.array(RecordingSchema).nullish(),
   created_on: z.coerce.date(),
 });
 
@@ -149,47 +200,50 @@ export const GeometrySchema = z.discriminatedUnion("type", [
   MultiPolygonSchema,
 ]);
 
-export const SoundEventSchema = z.object({
-  uuid: z.string().uuid(),
-  geometry: GeometrySchema,
-  geometry_type: GeometryTypeSchema,
-  features: z.array(FeatureSchema).nullish(),
-  created_on: z.coerce.date(),
-});
-
-export const ClipSchema = z.object({
-  uuid: z.string().uuid(),
-  start_time: z.number(),
-  end_time: z.number(),
-  recording: RecordingSchema,
-  features: z.array(FeatureSchema).nullish(),
-  created_on: z.coerce.date(),
-});
-
 export const AnnotationTagSchema = z.object({
   tag: TagSchema,
   created_by: UserSchema.nullish(),
   created_on: z.coerce.date(),
 });
 
-export const SoundEventAnnotationSchema = z.object({
-  uuid: z.string().uuid(),
-  sound_event: SoundEventSchema,
-  created_by: UserSchema.nullish(),
-  notes: z.array(NoteSchema).nullish(),
+// Base schema without circular reference
+const SoundEventAnnotationBaseSchema = z.object({
+  id: z.number().int().positive(),
+  annotation_task_id: z.number().int().positive(),
+  recording_id: z.number().int().positive(),
+  geometry_type: GeometryTypeSchema,
+  geometry: GeometrySchema,
+  created_by_id: z.string().uuid(),
   tags: z.array(TagSchema).nullish(),
+  features: z.array(FeatureSchema).nullish(),
+  recording: RecordingSchema.nullish(),
+  created_by: UserSchema.nullish(),
   created_on: z.coerce.date(),
 });
 
-export const ClipAnnotationSchema = z.object({
-  uuid: z.string().uuid(),
-  clip: ClipSchema,
-  created_by: UserSchema.nullish(),
-  notes: z.array(NoteSchema).nullish(),
+// Type inferred from base schema
+type SoundEventAnnotationBase = z.infer<typeof SoundEventAnnotationBaseSchema>;
+
+// Full type with circular reference
+type SoundEventAnnotation = SoundEventAnnotationBase & {
+  annotation_task?: AnnotationTask | null;
+};
+
+// Full schema with circular reference and explicit type annotation
+export const SoundEventAnnotationSchema: z.ZodType<SoundEventAnnotation> = z.object({
+  id: z.number().int().positive(),
+  annotation_task_id: z.number().int().positive(),
+  recording_id: z.number().int().positive(),
+  geometry_type: GeometryTypeSchema,
+  geometry: GeometrySchema,
+  created_by_id: z.string().uuid(),
   tags: z.array(TagSchema).nullish(),
-  sound_events: z.array(SoundEventAnnotationSchema).nullish(),
+  features: z.array(FeatureSchema).nullish(),
+  annotation_task: z.lazy(() => AnnotationTaskSchema).nullish(),
+  recording: RecordingSchema.nullish(),
+  created_by: UserSchema.nullish(),
   created_on: z.coerce.date(),
-});
+}) as z.ZodType<SoundEventAnnotation>;
 
 export const AnnotationStatusSchema = z.enum([
   "assigned",
@@ -204,14 +258,6 @@ export const AnnotationStatusBadgeSchema = z.object({
   created_on: z.coerce.date(),
 });
 
-export const AnnotationTaskSchema = z.object({
-  id: z.number().int().positive(),
-  status_badges: z.array(AnnotationStatusBadgeSchema).nullish(),
-  created_on: z.coerce.date(),
-  clip: ClipSchema.nullish(),
-  clip_annotation: ClipAnnotationSchema.nullish(),
-});
-
 export const AnnotationProjectSchema = z.object({
   id: z.number().int().positive(),
   name: z.string(),
@@ -220,6 +266,48 @@ export const AnnotationProjectSchema = z.object({
   tags: z.array(TagSchema).nullish(),
   created_on: z.coerce.date(),
 });
+
+// Base schema without circular reference
+const AnnotationTaskBaseSchema = z.object({
+  id: z.number().int().positive(),
+  annotation_project_id: z.number().int().positive(),
+  recording_id: z.number().int().positive(),
+  start_time: z.number(),
+  end_time: z.number(),
+  annotation_project: AnnotationProjectSchema.nullish(),
+  tags: z.array(TagSchema).nullish(),
+  features: z.array(FeatureSchema).nullish(),
+  status_badges: z.array(AnnotationStatusBadgeSchema),
+  created_on: z.coerce.date(),
+});
+
+// Type inferred from base schema
+type AnnotationTaskBase = z.infer<typeof AnnotationTaskBaseSchema>;
+
+// Full type with circular reference
+type AnnotationTask = AnnotationTaskBase & {
+  recording?: Recording | null;
+  sound_event_annotations?: SoundEventAnnotation[] | null;
+  notes?: Note[] | null;
+};
+
+// Full schema with circular reference and explicit type annotation
+export const AnnotationTaskSchema: z.ZodType<AnnotationTask> = z.object({
+  id: z.number().int().positive(),
+  annotation_project_id: z.number().int().positive(),
+  recording_id: z.number().int().positive(),
+  start_time: z.number(),
+  end_time: z.number(),
+  annotation_project: AnnotationProjectSchema.nullish(),
+  recording: RecordingSchema.nullish(),
+  sound_event_annotations: z.array(z.lazy(() => SoundEventAnnotationSchema)).nullish(),
+  tags: z.array(TagSchema).nullish(),
+  notes: z.array(z.lazy(() => NoteSchema)).nullish(),
+  features: z.array(FeatureSchema).nullish(),
+  status_badges: z.array(AnnotationStatusBadgeSchema),
+  created_on: z.coerce.date(),
+}) as z.ZodType<AnnotationTask>;
+
 
 export const IntervalSchema = z.object({
   min: z.number(),

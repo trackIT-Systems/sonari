@@ -8,13 +8,12 @@ import {
   GeometrySchema,
   RecordingSchema,
   SoundEventAnnotationSchema,
-  SoundEventSchema,
   TagSchema,
   UserSchema,
   FeatureSchema,
 } from "@/schemas";
 
-import type { ClipAnnotation, Note, SoundEventAnnotation, Tag } from "@/types";
+import type { Note, SoundEventAnnotation, Tag } from "@/types";
 
 export const SoundEventAnnotationCreateSchema = z.object({
   geometry: GeometrySchema,
@@ -55,7 +54,6 @@ export type SoundEventAnnotationPage = z.infer<
 export const SoundEventAnnotationFilterSchema = z.object({
   annotation_project: AnnotationProjectSchema.optional(),
   recording: RecordingSchema.optional(),
-  sound_event: SoundEventSchema.optional(),
   created_by: UserSchema.optional(),
   tag: TagSchema.optional(),
 });

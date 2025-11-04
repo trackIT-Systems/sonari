@@ -2,7 +2,7 @@
 import axios from "axios";
 import { z } from "zod";
 
-const HOST = process.env.NEXT_PUBLIC_SONARI_FOLDER ?? "";
+const HOST = "http://localhost:5000"; // process.env.NEXT_PUBLIC_SONARI_FOLDER ?? "";
 const BASE_ROUTE = `/api/v1`;
 
 const instance = axios.create({

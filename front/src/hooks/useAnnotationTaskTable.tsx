@@ -1,4 +1,4 @@
-import type { AnnotationStatusBadge, AnnotationTask, Clip, Note, Recording, Tag } from "@/types";
+import type { AnnotationStatusBadge, AnnotationTask, Note, Recording, Tag } from "@/types";
 import { useMemo } from "react";
 import { ColumnDef, getCoreRowModel, useReactTable, createColumnHelper } from "@tanstack/react-table";
 import TableHeader from "@/components/tables/TableHeader";
@@ -64,7 +64,7 @@ export default function useAnnotationTaskTable({
         header: () => <TableHeader>Recording</TableHeader>,
         enableResizing: true,
         size: 100,
-        accessorFn: (row) => row.clip?.recording,
+        accessorFn: (row) => row.recording,
         cell: ({ row }) => {
           const recording = row.getValue("recording") as Recording;
           
@@ -85,25 +85,22 @@ export default function useAnnotationTaskTable({
         header: () => <TableHeader>Clip</TableHeader>,
         enableResizing: true,
         size: 30,
-        accessorFn: (row) => row.clip,
         cell: ({ row }) => {
-          const currentClip = row.original.clip;
-          if (!currentClip) return <TableCell>-</TableCell>;
+          const currentTask = row.original;
+          if (!currentTask) return <TableCell>-</TableCell>;
           
-          // Get all tasks and find clips from the same recording
-          const currentRecordingUuid = currentClip.recording.uuid;
-          const clipsFromSameRecording = data
-            .filter(task => task.clip?.recording.uuid === currentRecordingUuid)
-            .map(task => task.clip!)
+          const currentRecordingId = currentTask.recording_id;
+          const tasksFromSameRecording = data
+            .filter(task => task.recording_id === currentRecordingId)
             .sort((a, b) => a.start_time - b.start_time);
           
-          const clipIndex = clipsFromSameRecording.findIndex(c => c.uuid === currentClip.uuid);
-          const totalClips = clipsFromSameRecording.length;
+          const taskIndex = tasksFromSameRecording.findIndex(c => c.recording_id === currentRecordingId);
+          const totalTasks = tasksFromSameRecording.length;
           
           return (
             <TableCell>
               <span className="text-stone-500 text-sm">
-                {clipIndex >= 0 ? `${clipIndex + 1}/${totalClips}` : '-'}
+                {taskIndex >= 0 ? `${taskIndex + 1}/${totalTasks}` : '-'}
               </span>
             </TableCell>
           );
@@ -114,10 +111,8 @@ export default function useAnnotationTaskTable({
         header: () => <TableHeader>Duration</TableHeader>,
         enableResizing: true,
         size: 40,
-        accessorFn: (row) => row.clip,
         cell: ({ row }) => {
-          const { start_time, end_time } = row.getValue("duration") as Clip
-          const duration = ((end_time - start_time) as number).toFixed(2);
+          const duration = ((row.original.end_time - row.original.start_time) as number).toFixed(2);
           return <TableCell>{duration}</TableCell>;
         },
       },
@@ -126,9 +121,9 @@ export default function useAnnotationTaskTable({
         header: () => <TableHeader>Tags</TableHeader>,
         accessorFn: (row) => {
           // Get all sound event tags and count their occurrences
-          const soundEventtags = row.clip_annotation?.sound_events?.flatMap(event => event.tags || []) || [];
-          const recordingtags = row.clip_annotation?.clip?.recording.tags || [];
-          const tags = soundEventtags.concat(recordingtags);
+          const soundEventtags = row.sound_event_annotations?.flatMap(event => event.tags || []) || [];
+          const annotationTaskTags = row.tags || [];
+          const tags = soundEventtags.concat(annotationTaskTags);
           const tagCounts = new Map<string, TagCount>();
 
           tags.forEach(tag => {
@@ -159,19 +154,19 @@ export default function useAnnotationTaskTable({
         },
       },
       {
-        id: "clip_anno_notes",
+        id: "task_notes",
         header: () => <TableHeader>Notes</TableHeader>,
         enableResizing: true,
-        accessorFn: (row) => row.clip_annotation?.notes,
+        accessorFn: (row) => row.notes,
         cell: ({ row }) => {
-          const clip_anno_notes = row.getValue("clip_anno_notes") as Note[];
-          if ((clip_anno_notes || []).length == 0) return null;
+          const taskNotes = row.getValue("task_notes") as Note[];
+          if ((taskNotes || []).length == 0) return null;
 
           return <TableCell>
             <ul>
-              {clip_anno_notes.map((note) => (
+              {taskNotes.map((note) => (
                 <NoteOverview
-                  key={note.uuid}
+                  key={note.id}
                   note={note}
                 />
               ))}

@@ -42,6 +42,16 @@ class AnnotationTaskAPI(
 
     _model = models.AnnotationTask
     _schema = schemas.AnnotationTask
+    
+    # Map relationship names to model attributes
+    relationships = {
+        'recording': models.AnnotationTask.recording,
+        'annotation_project': models.AnnotationTask.annotation_project,
+        'sound_event_annotations': models.AnnotationTask.sound_event_annotations,
+        'tags': models.AnnotationTask.tags,
+        'notes': models.AnnotationTask.notes,
+        'features': models.AnnotationTask.features,
+    }
 
     async def get_many(
         self,
@@ -51,12 +61,70 @@ class AnnotationTaskAPI(
         offset: int | None = 0,
         filters: Sequence[Filter | _ColumnExpressionArgument] | None = None,
         sort_by: _ColumnExpressionArgument | str | None = "-created_on",
-        noloads: list[Any] | None = None,
+        include_recording: bool = False,
+        include_annotation_project: bool = False,
+        include_sound_event_annotations: bool = False,
+        include_tags: bool = False,
+        include_notes: bool = False,
+        include_features: bool = False,
     ) -> tuple[Sequence[schemas.AnnotationTask], int]:
-        """Get many annotation tasks without unique() to avoid duplicate removal after pagination."""
+        """Get many annotation tasks without unique() to avoid duplicate removal after pagination.
+        
+        Parameters
+        ----------
+        session
+            The database session to use.
+        limit
+            Maximum number of objects to return.
+        offset
+            Offset for pagination.
+        filters
+            List of filters to apply.
+        sort_by
+            Column to sort by.
+        include_recording
+            If True, eagerly load the recording relationship.
+        include_annotation_project
+            If True, eagerly load the annotation_project relationship.
+        include_sound_event_annotations
+            If True, eagerly load the sound_event_annotations relationship.
+        include_tags
+            If True, eagerly load the tags relationship.
+        include_notes
+            If True, eagerly load the notes relationship.
+        include_features
+            If True, eagerly load the features relationship.
+            
+        Returns
+        -------
+        tasks : Sequence[schemas.AnnotationTask]
+            The annotation tasks.
+        count : int
+            Total number of tasks matching filters.
+        """
+        from sqlalchemy.orm import noload, selectinload
         from sonari.api.common.utils import get_objects_from_query
 
         query = select(models.AnnotationTask)
+        
+            # Map include parameters
+        include_map = {
+            'recording': include_recording,
+            'annotation_project': include_annotation_project,
+            'sound_event_annotations': include_sound_event_annotations,
+            'tags': include_tags,
+            'notes': include_notes,
+            'features': include_features,
+        }
+        
+        # Build loading options dynamically
+        options = [
+            selectinload(rel) if include_map[name] else noload(rel)
+            for name, rel in self.relationships.items()
+        ]
+        
+        query = query.options(*options)
+        
         result, count = await get_objects_from_query(
             session,
             models.AnnotationTask,
@@ -65,11 +133,90 @@ class AnnotationTaskAPI(
             offset=offset,
             filters=filters,
             sort_by=sort_by,
-            noloads=noloads,
         )
         # Don't use unique() - just return the scalars directly
         objs = result.scalars().all()
         return [self._schema.model_validate(obj) for obj in objs], count
+
+    async def get(
+        self,
+        session: AsyncSession,
+        pk: int,
+        *,
+        include_recording: bool = False,
+        include_annotation_project: bool = False,
+        include_sound_event_annotations: bool = False,
+        include_tags: bool = False,
+        include_notes: bool = False,
+        include_features: bool = False,
+    ) -> schemas.AnnotationTask:
+        """Get an annotation task by primary key.
+        
+        Parameters
+        ----------
+        session
+            The database session to use.
+        pk
+            The primary key (ID) of the annotation task.
+        include_recording
+            If True, eagerly load the recording relationship.
+        include_annotation_project
+            If True, eagerly load the annotation_project relationship.
+        include_sound_event_annotations
+            If True, eagerly load the sound_event_annotations relationship.
+        include_tags
+            If True, eagerly load the tags relationship.
+        include_notes
+            If True, eagerly load the notes relationship.
+        include_features
+            If True, eagerly load the features relationship.
+            
+        Returns
+        -------
+        task : schemas.AnnotationTask
+            The annotation task.
+            
+        Raises
+        ------
+        NotFoundError
+            If the annotation task could not be found.
+        """
+        from sqlalchemy.orm import noload, selectinload
+
+        # Map include parameters
+        include_map = {
+            'recording': include_recording,
+            'annotation_project': include_annotation_project,
+            'sound_event_annotations': include_sound_event_annotations,
+            'tags': include_tags,
+            'notes': include_notes,
+            'features': include_features,
+        }
+
+        # Check cache first if no relationships are requested
+        if not any(include_map.values()):
+            if self._is_in_cache(pk):
+                return self._get_from_cache(pk)
+
+        query = select(self._model).where(self._model.id == pk)
+        
+        # Build loading options dynamically
+        options = [
+            selectinload(rel) if include_map[name] else noload(rel)
+            for name, rel in self.relationships.items()
+        ]
+        
+        query = query.options(*options)
+        
+        result = await session.execute(query)
+        obj = result.unique().scalar_one_or_none()
+        
+        if obj is None:
+            raise exceptions.NotFoundError(f"AnnotationTask with id {pk} not found")
+        
+        data = self._schema.model_validate(obj)
+        self._update_cache(data)
+        return data
 
     async def create(
         self,

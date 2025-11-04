@@ -34,6 +34,8 @@ export default function AnnotationTaskTable({
   const router = useRouter();
   const popoverButtonRef = useRef<HTMLButtonElement>(null);
 
+  console.log(JSON.stringify(annotationTasks))
+
   const table = useAnnotationTaskTable({
     data: annotationTasks.items,
     getAnnotationTaskLink: getAnnotationTaskLink,

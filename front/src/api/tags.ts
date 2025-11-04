@@ -4,7 +4,7 @@ import { z } from "zod";
 import { GetManySchema, Page } from "@/api/common";
 import {
   AnnotationProjectSchema,
-  ClipAnnotationSchema,
+  AnnotationTaskSchema,
   DatasetSchema,
   RecordingSchema,
   SoundEventAnnotationSchema,
@@ -43,7 +43,7 @@ export const TagFilterSchema = z.object({
   annotation_project: AnnotationProjectSchema.optional(),
   recording: RecordingSchema.optional(),
   sound_event_annotation: SoundEventAnnotationSchema.optional(),
-  clip_annotation: ClipAnnotationSchema.optional(),
+  annotation_tasks: AnnotationTaskSchema.optional(),
   dataset: DatasetSchema.optional(),
 });
 

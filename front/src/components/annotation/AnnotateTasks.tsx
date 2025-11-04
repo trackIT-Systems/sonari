@@ -5,7 +5,6 @@ import AnnotationProgress from "@/components/annotation/AnnotationProgress";
 import RecordingAnnotationContext from "@/components/annotation/RecordingAnnotationContext";
 import SelectedSoundEventAnnotation from "@/components/annotation/SelectedSoundEventAnnotation";
 import AnnotationTaskStatus from "@/components/annotation_tasks/AnnotationTaskStatus";
-import ClipAnnotationNotes from "@/components/clip_annotations/ClipAnnotationNotes";
 import ClipAnnotationSpectrogram from "@/components/clip_annotations/ClipAnnotationSpectrogram";
 import ClipAnnotationTags from "@/components/clip_annotations/ClipAnnotationTags";
 import Empty from "@/components/Empty";

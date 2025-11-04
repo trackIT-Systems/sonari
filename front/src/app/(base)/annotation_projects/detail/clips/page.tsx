@@ -10,7 +10,7 @@ import type { AnnotationTask } from "@/types";
 import "./page.css";
 
 function getAnnotationTaskLink(annotationTask: AnnotationTask): string {
-  return `detail/annotation/?annotation_task_uuid=${annotationTask.uuid}`;
+  return `detail/annotation/?annotation_task_id=${annotationTask.id}`;
 }
 
 export default function Page() {

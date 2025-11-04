@@ -7,8 +7,6 @@ import {
   AnnotationTagSchema,
   AnnotationTaskSchema,
   BoundingBoxSchema,
-  ClipAnnotationSchema,
-  ClipSchema,
   DatasetSchema,
   DateFilterSchema,
   FeatureSchema,
@@ -29,7 +27,6 @@ import {
   RecordingSchema,
   RecordingStateSchema,
   SoundEventAnnotationSchema,
-  SoundEventSchema,
   SpectrogramParametersSchema,
   SpectrogramWindowSchema,
   StringFilterSchema,
@@ -78,15 +75,9 @@ export type MultiPolygon = z.infer<typeof MultiPolygonSchema>;
 
 export type Geometry = z.infer<typeof GeometrySchema>;
 
-export type SoundEvent = z.infer<typeof SoundEventSchema>;
-
-export type Clip = z.infer<typeof ClipSchema>;
-
 export type AnnotationTag = z.infer<typeof AnnotationTagSchema>;
 
 export type SoundEventAnnotation = z.infer<typeof SoundEventAnnotationSchema>;
-
-export type ClipAnnotation = z.infer<typeof ClipAnnotationSchema>;
 
 export type AnnotationStatus = z.infer<typeof AnnotationStatusSchema>;
 
