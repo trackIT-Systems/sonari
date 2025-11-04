@@ -17,9 +17,9 @@ export default function AnnotationProjectTaskClips({
 
     return (annotationTask: AnnotationTask) => {
       const url = getAnnotationTaskLinkFn(annotationTask);
-      return `${url}&annotation_project_uuid=${annotationProject.uuid}`;
+      return `${url}&annotation_project_id=${annotationProject.id}`;
     };
-  }, [getAnnotationTaskLinkFn, annotationProject.uuid]);
+  }, [getAnnotationTaskLinkFn, annotationProject.id]);
   const filter = useMemo(() => ({ annotation_project: annotationProject }), [annotationProject]);
 
   return (

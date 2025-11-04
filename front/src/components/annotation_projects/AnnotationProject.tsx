@@ -60,7 +60,7 @@ export default function AnnotationProject({
             className="hover:font-bold hover:text-emerald-500"
             href={{
               pathname: "/annotation_projects/detail/",
-              query: { annotation_project_uuid: annotationProject.uuid },
+              query: { annotation_project_uuid: annotationProject.id },
             }}
           >
             {annotationProject.name}

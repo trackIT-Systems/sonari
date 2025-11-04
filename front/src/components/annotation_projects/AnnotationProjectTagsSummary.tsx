@@ -58,7 +58,7 @@ export default function ProjectTagsSummary({
           Project Tags
         </H4>
         <Link
-          href={`/annotation_projects/detail/tags/?annotation_project_uuid=${project.uuid}`}
+          href={`/annotation_projects/detail/tags/?annotation_project_id=${project.id}`}
         >
           <Button mode="text" variant="primary">
             <AddIcon className="inline-block mr-2 w-5 h-5" /> Add Tags

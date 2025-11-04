@@ -44,7 +44,6 @@ export type PasswordUpdate = z.input<typeof PasswordUpdateSchema>;
 const DEFAULT_ENDPOINTS = {
   me: "/api/v1/users/me",
   update: "/api/v1/users/me",
-  first: "/api/v1/users/first/",
 };
 
 export function registerUserAPI(
@@ -62,15 +61,8 @@ export function registerUserAPI(
     return UserSchema.parse(response.data);
   }
 
-  async function createFirstUser(data: UserCreate): Promise<User> {
-    let body = UserCreateSchema.parse(data);
-    let response = await instance.post<User>(endpoints.first, body);
-    return UserSchema.parse(response.data);
-  }
-
   return {
     me: getActiveUser,
     update: updateActiveUser,
-    first: createFirstUser,
   } as const;
 }

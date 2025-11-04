@@ -85,22 +85,6 @@ export default function LoginForm() {
           <Input type="submit" value="Sign in" />
         </div>
       </form>
-      <Info className="w-80">
-        <p>
-          Don&apos;t have an account? Ask your administrator to create one for
-          you.
-        </p>
-      </Info>
-      <Info className="w-80">
-        <p>
-          First time booting up Sonari? Click instead to create an account:
-        </p>
-        <div className="w-full flex flex-row justify-center">
-          <Link mode="text" href="/first/" variant="info">
-            Create account
-          </Link>
-        </div>
-      </Info>
     </div>
   );
 }

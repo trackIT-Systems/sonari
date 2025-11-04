@@ -122,7 +122,7 @@ export function registerAnnotationTasksAPI(
       clips.map((clip) => clip.uuid),
       {
         params: {
-          annotation_project_uuid: annotationProject.uuid,
+          annotation_project_uuid: annotationProject.id,
         },
       },
     );
@@ -144,7 +144,7 @@ export function registerAnnotationTasksAPI(
             ? params.dataset.map(d => d.uuid).join(',')
             : params.dataset.uuid)
           : undefined,
-        annotation_project__eq: params.annotation_project?.uuid,
+        annotation_project__eq: params.annotation_project?.id,
         recording_tag__key: params.recording_tag?.key,
         recording_tag__value: params.recording_tag?.value,
         sound_event_annotation_tag__keys: params.sound_event_annotation_tag

@@ -213,7 +213,7 @@ export const AnnotationTaskSchema = z.object({
 });
 
 export const AnnotationProjectSchema = z.object({
-  uuid: z.string().uuid(),
+  id: z.number().int().positive(),
   name: z.string(),
   description: z.string(),
   annotation_instructions: z.string().nullish(),

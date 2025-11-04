@@ -49,7 +49,7 @@ export default function AnnotationProjectList({
 
   useEffect(() => {
     if (shouldNavigate && selectedAnnotationProject) {
-      router.push(`/annotation_projects/detail/?annotation_project_uuid=${selectedAnnotationProject.uuid}`);
+      router.push(`/annotation_projects/detail/?annotation_project_id=${selectedAnnotationProject.id}`);
       setShouldNavigate(false);
     }
   }, [shouldNavigate, selectedAnnotationProject, router, setShouldNavigate]);
@@ -121,7 +121,7 @@ export default function AnnotationProjectList({
           <StackedList
             items={items.map((item) => (
               <AnnotationProjectComponent
-                key={item.uuid}
+                key={item.id}
                 annotationProject={item}
               />
             ))}

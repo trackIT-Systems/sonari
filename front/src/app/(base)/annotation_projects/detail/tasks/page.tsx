@@ -15,7 +15,7 @@ export default function Page() {
   const onCreateTasks = useCallback(() => {
     toast.success("Tasks created");
     router.push(
-      `/annotation_projects/detail/?annotation_project_uuid=${project.uuid}`,
+      `/annotation_projects/detail/?annotation_project_id=${project.id}`,
     );
   }, [project, router]);
 
