@@ -93,7 +93,7 @@ export function registerTagAPI(
         key__eq: params.key,
         value__eq: params.value?.eq,
         value__has: params.value?.has,
-        annotation_project__eq: params.annotation_project?.uuid,
+        annotation_project__eq: params.annotation_project?.id,
         recording__eq: params.recording?.uuid,
         sound_event_annotation__eq: params.sound_event_annotation?.uuid,
         clip_annotation__eq: params.clip_annotation?.uuid,

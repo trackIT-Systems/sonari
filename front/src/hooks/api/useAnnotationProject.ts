@@ -9,7 +9,7 @@ import useObject from "@/hooks/utils/useObject";
 import type { AnnotationProject, AnnotationTask, AnnotationStatus } from "@/types";
 
 export default function useAnnotationProject({
-  uuid,
+  id,
   annotationProject,
   onUpdate,
   onDelete,
@@ -19,7 +19,7 @@ export default function useAnnotationProject({
   onError,
   enabled = true,
 }: {
-  uuid: string;
+  id: number;
   annotationProject?: AnnotationProject;
   onUpdate?: (annotationProject: AnnotationProject) => void;
   onDelete?: (annotationProject: AnnotationProject) => void;
@@ -30,7 +30,7 @@ export default function useAnnotationProject({
   enabled?: boolean;
 }) {
   const { query, useMutation, client } = useObject<AnnotationProject>({
-    uuid,
+    id,
     initial: annotationProject,
     name: "annotation_project",
     enabled,
@@ -74,7 +74,7 @@ export default function useAnnotationProject({
       if (data == null) return;
       onAddAnnotationTasks?.(data);
       client.invalidateQueries({
-        queryKey: ["annotation_project", uuid],
+        queryKey: ["annotation_project", id],
       });
     },
   });

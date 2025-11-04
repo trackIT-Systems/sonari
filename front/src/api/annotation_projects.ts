@@ -8,14 +8,12 @@ import type { AnnotationProject, Tag } from "@/types";
 
 const DEFAULT_ENDPOINTS = {
   getMany: "/api/v1/annotation_projects/",
-  get: "/api/v1/annotation_projects/detail/",
   create: "/api/v1/annotation_projects/",
+  get: "/api/v1/annotation_projects/detail/",
   update: "/api/v1/annotation_projects/detail/",
   delete: "/api/v1/annotation_projects/detail/",
   addTag: "/api/v1/annotation_projects/detail/tags/",
   removeTag: "/api/v1/annotation_projects/detail/tags/",
-  export: "/api/v1/annotation_projects/detail/export/",
-  import: "/api/v1/annotation_projects/import/",
 };
 
 export const AnnotationProjectFilterSchema = z.object({
@@ -61,9 +59,9 @@ export function registerAnnotationProjectAPI(
     return AnnotationProjectPageSchema.parse(data);
   }
 
-  async function get(uuid: string): Promise<AnnotationProject> {
+  async function get(id: number): Promise<AnnotationProject> {
     const { data } = await instance.get(endpoints.get, {
-      params: { annotation_project_uuid: uuid },
+      params: { annotation_project_id: id },
     });
     return AnnotationProjectSchema.parse(data);
   }
@@ -77,7 +75,7 @@ export function registerAnnotationProjectAPI(
       endpoints.update,
       body,
       {
-        params: { annotation_project_uuid: annotationProject.uuid },
+        params: { annotation_project_id: annotationProject.id },
       },
     );
     return AnnotationProjectSchema.parse(responseData);
@@ -87,7 +85,7 @@ export function registerAnnotationProjectAPI(
     annotationProject: AnnotationProject,
   ): Promise<AnnotationProject> {
     const { data } = await instance.delete(endpoints.delete, {
-      params: { annotation_project_uuid: annotationProject.uuid },
+      params: { annotation_project_id: annotationProject.id },
     });
     return AnnotationProjectSchema.parse(data);
   }
@@ -101,7 +99,7 @@ export function registerAnnotationProjectAPI(
       {},
       {
         params: {
-          annotation_project_uuid: annotationProject.uuid,
+          annotation_project_id: annotationProject.id,
           key: tag.key,
           value: tag.value,
         },
@@ -116,45 +114,12 @@ export function registerAnnotationProjectAPI(
   ): Promise<AnnotationProject> {
     const { data } = await instance.delete(endpoints.removeTag, {
       params: {
-        annotation_project_uuid: annotationProject.uuid,
+        annotation_project_id: annotationProject.id,
         key: tag.key,
         value: tag.value,
       },
     });
     return AnnotationProjectSchema.parse(data);
-  }
-  async function exportProject(
-    annotationProjects: AnnotationProject[],
-    queryString: string
-  ): Promise<{ blob: Blob; filename: string }> {
-    const uuids = annotationProjects
-    .map(p => `annotation_project_uuids=${encodeURIComponent(p.uuid)}`)
-    .join('&');
-    const response = await instance.get(`${endpoints.export}?${uuids}&${queryString}`, {
-      responseType: 'blob',
-      withCredentials: true,
-    });
-    // Extract filename from Content-Disposition header
-    const contentDisposition = response.headers['content-disposition'];
-    let filename = 'export.xlsx'; // Default filename
-    if (contentDisposition) {
-      const filenameMatch = contentDisposition.match(/filename="?(.+)"?/i);
-      if (filenameMatch) {
-        filename = filenameMatch[1];
-      }
-    }
-  
-    // Create a Blob with the correct MIME type for XLSX
-    const blob = new Blob([response.data], { 
-      type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' 
-    });
-  
-    return { blob, filename };
-  }
-
-  async function importProject(data: FormData): Promise<AnnotationProject> {
-    const { data: res } = await instance.post(endpoints.import, data);
-    return AnnotationProjectSchema.parse(res);
   }
 
   return {
@@ -164,7 +129,5 @@ export function registerAnnotationProjectAPI(
     delete: deleteAnnotationProject,
     addTag,
     removeTag,
-    import: importProject,
-    download: exportProject,
   } as const;
 }

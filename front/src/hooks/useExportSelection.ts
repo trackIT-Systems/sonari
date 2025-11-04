@@ -120,7 +120,7 @@ export function useExportSelection(options: UseExportSelectionOptions = {}) {
   // Convert projects to options when projects change
   useEffect(() => {
     const options = allProjects.map(project => ({
-      id: project.uuid,
+      id: project.id,
       label: project.name,
       value: project,
     }));
@@ -157,7 +157,7 @@ export function useExportSelection(options: UseExportSelectionOptions = {}) {
 
   // Computed values
   const availableProjectOptions = availableProjects.filter(p =>
-    !selectedProjects.some(selected => selected.uuid === p.value.uuid)
+    !selectedProjects.some(selected => selected.id === p.value.id)
   );
 
   const projectTagList: Tag[] = availableProjectOptions.map(p => ({
@@ -177,7 +177,7 @@ export function useExportSelection(options: UseExportSelectionOptions = {}) {
   // Action handlers
   const handleProjectSelect = (tag: Tag) => {
     const project = availableProjects.find(p => p.label === tag.value)?.value;
-    if (project && !selectedProjects.some(p => p.uuid === project.uuid)) {
+    if (project && !selectedProjects.some(p => p.id === project.id)) {
       setSelectedProjects(prev => [...prev, project]);
     }
   };

@@ -71,7 +71,7 @@ export function registerClipAnnotationsAPI(
         clip__eq: params.clip?.uuid,
         tag__key: params.tag?.key,
         tag__value: params.tag?.value,
-        annotation_project__eq: params.annotation_project?.uuid,
+        annotation_project__eq: params.annotation_project?.id,
       },
     });
     return ClipAnnotationPageSchema.parse(response.data);

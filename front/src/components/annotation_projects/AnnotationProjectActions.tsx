@@ -66,7 +66,7 @@ export default function ProjectActions({
   const {
     delete: { mutateAsync: deleteProject },
   } = useAnnotationProject({
-    uuid: annotationProject.uuid,
+    id: annotationProject.id,
     annotationProject,
   });
 

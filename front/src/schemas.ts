@@ -205,7 +205,7 @@ export const AnnotationStatusBadgeSchema = z.object({
 });
 
 export const AnnotationTaskSchema = z.object({
-  uuid: z.string().uuid(),
+  id: z.number().int().positive(),
   status_badges: z.array(AnnotationStatusBadgeSchema).nullish(),
   created_on: z.coerce.date(),
   clip: ClipSchema.nullish(),
@@ -213,7 +213,7 @@ export const AnnotationTaskSchema = z.object({
 });
 
 export const AnnotationProjectSchema = z.object({
-  uuid: z.string().uuid(),
+  id: z.number().int().positive(),
   name: z.string(),
   description: z.string(),
   annotation_instructions: z.string().nullish(),
