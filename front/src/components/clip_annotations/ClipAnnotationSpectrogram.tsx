@@ -56,14 +56,8 @@ export default function ClipAnnotationSpectrogram({
   onWithSpectrogramChange,
   onWithSoundEventChange,
   onWithAutoplayChange,
-  onAddSoundEventTag,
-  onRemoveSoundEventTag,
-  onCreateSoundEventAnnotation,
-  onUpdateSoundEventAnnotation,
-  onDeleteSoundEventAnnotation,
   onParameterSave,
   onSelectAnnotation,
-  onCreateTag,
   onSegmentsLoaded,
 }: {
   clipAnnotation: ClipAnnotation;
@@ -91,12 +85,6 @@ export default function ClipAnnotationSpectrogram({
   onWithAutoplayChange: () => void;
   onParameterSave?: (params: SpectrogramParameters) => void;
   onSelectAnnotation?: (annotation: SoundEventAnnotation | null) => void;
-  onCreateSoundEventAnnotation?: (annotation: SoundEventAnnotation) => void;
-  onUpdateSoundEventAnnotation?: (annotation: SoundEventAnnotation) => void;
-  onDeleteSoundEventAnnotation?: (annotation: SoundEventAnnotation) => void;
-  onAddSoundEventTag?: (annotation: SoundEventAnnotation) => void;
-  onRemoveSoundEventTag?: (annotation: SoundEventAnnotation) => void;
-  onCreateTag?: (tag: Tag) => void;
   onSegmentsLoaded: () => void;
 }) {
   const [isAnnotating, setIsAnnotating] = useState(false);
@@ -307,11 +295,6 @@ export default function ClipAnnotationSpectrogram({
     onSelectAnnotation,
     disabled,
     withSoundEvent,
-    onAddAnnotationTag: onAddSoundEventTag,
-    onRemoveAnnotationTag: onRemoveSoundEventTag,
-    onCreateAnnotation: onCreateSoundEventAnnotation,
-    onUpdateAnnotation: onUpdateSoundEventAnnotation,
-    onDeleteAnnotation: onDeleteSoundEventAnnotation,
   });
 
   const {
@@ -476,7 +459,6 @@ export default function ClipAnnotationSpectrogram({
           disabled={disabled}
           tags={annotate.tags}
           filter={tagFilter}
-          onCreate={onCreateTag}
           withSoundEvent={withSoundEvent}
           onWithSoundEventChange={onWithSoundEventChange}
         >

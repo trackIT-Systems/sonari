@@ -14,6 +14,8 @@ import {
 import type {
   AnnotationStatus,
   AnnotationTask,
+  Note,
+  Tag,
 } from "@/types";
 
 import { formatDateForAPI } from "@/components/filters/DateRangeFilter";
@@ -108,6 +110,10 @@ const DEFAULT_ENDPOINTS = {
   delete: "/api/v1/annotation_tasks/detail/",
   addBadge: "/api/v1/annotation_tasks/detail/badges/",
   removeBadge: "/api/v1/annotation_tasks/detail/badges/",
+  addNote:  "/api/v1/annotation_tasks/detail/notes/",
+  removeNote:  "/api/v1/annotation_tasks/detail/notes/",
+  addTag:  "/api/v1/annotation_tasks/detail/tags/",
+  removeTag:  "/api/v1/annotation_tasks/detail/tags/",
 };
 
 export function registerAnnotationTasksAPI(
@@ -264,11 +270,69 @@ export function registerAnnotationTasksAPI(
     return AnnotationTaskSchema.parse(response.data);
   }
 
+
+  async function addNote(
+    annotationTask: AnnotationTask,
+    note: Note,
+  ): Promise<AnnotationTask> {
+    const response = await instance.post(endpoints.addNote, {
+      params: {
+        annotation_task_id: annotationTask.id,
+        note,
+      },
+    });
+    return AnnotationTaskSchema.parse(response.data);
+  }
+
+  async function removeNote(
+    annotationTask: AnnotationTask,
+    note: Note,
+  ): Promise<AnnotationTask> {
+    const response = await instance.delete(endpoints.removeNote, {
+      params: {
+        annotation_task_id: annotationTask.id,
+        note,
+      },
+    });
+    return AnnotationTaskSchema.parse(response.data);
+  }
+
+  async function addTag(
+    annotationTask: AnnotationTask,
+    tag: Tag,
+  ): Promise<AnnotationTask> {
+    const response = await instance.post(endpoints.addTag, {
+      params: {
+        annotation_task_id: annotationTask.id,
+        tag,
+      },
+    });
+    return AnnotationTaskSchema.parse(response.data);
+  }
+
+  async function removeTag(
+    annotationTask: AnnotationTask,
+    tag: Tag,
+  ): Promise<AnnotationTask> {
+    const response = await instance.delete(endpoints.removeTag, {
+      params: {
+        annotation_task_id: annotationTask.id,
+        tag,
+      },
+    });
+    return AnnotationTaskSchema.parse(response.data);
+  }
+  
+
   return {
     getMany,
     get: getAnnotationTask,
     delete: deleteAnnotationTask,
     addBadge,
     removeBadge,
+    addNote,
+    removeNote,
+    addTag,
+    removeTag,
   } as const;
 }

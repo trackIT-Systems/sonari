@@ -1,9 +1,9 @@
 "use client";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useContext, useMemo } from "react";
-import { useMutation } from "@tanstack/react-query";
 import toast from "react-hot-toast";
 import { HOST } from "@/api/common";
+import { AxiosError } from "axios";
 
 import UserContext from "@/app/(base)/context";
 import AnnotateTasks from "@/components/annotation/AnnotateTasks";
@@ -15,7 +15,6 @@ import { changeURLParam } from "@/utils/url";
 
 import AnnotationProjectContext from "../context";
 
-import api from "@/app/api";
 import type { AnnotationTask, SpectrogramParameters, Tag, SoundEventAnnotation } from "@/types";
 
 export default function Page() {
@@ -28,11 +27,26 @@ export default function Page() {
   const project = useContext(AnnotationProjectContext);
   const user = useContext(UserContext);
 
-  const annotationTaskUUID = search.get("annotation_task_uuid");
+  const annotationTaskID = search.get("annotation_task_id");
+
+  if (annotationTaskID == null) {
+    toast.error("Annotation task not found.");
+    router.back()
+    return;
+  }
+
+  const handleError = useCallback((error: AxiosError) => {
+    toast.error(error.message)
+  }, []);
 
   const annotationTask = useAnnotationTask({
-    uuid: annotationTaskUUID || "",
-    enabled: !!annotationTaskUUID,
+    id: parseInt(annotationTaskID),
+    enabled: !!annotationTaskID,
+    onError: handleError,
+    include_recording: true,
+    include_notes: true,
+    include_sound_event_annotations: true,
+    include_tags: true,
   });
 
   const parameters = useStore((state) => state.spectrogramSettings);
@@ -45,35 +59,13 @@ export default function Page() {
     [setParameters],
   );
 
-  // Tags are now automatically added to all projects in the backend
-  // No need to explicitly add them here anymore
-  const { mutate: handleTagCreate } = useMutation({
-    mutationFn: async (tag: Tag) => {
-      // Tag creation already adds to all projects in the backend
-      // This is just a no-op placeholder to satisfy the prop type
-      return tag;
-    },
-  });
-
-  const { mutateAsync: handleAddSoundEventTag } = useMutation({
-    mutationFn: async ({ annotation, tag }: { annotation: SoundEventAnnotation, tag: Tag }) => {
-      return await api.soundEventAnnotations.addTag(annotation, tag);
-    },
-  });
-
-  const { mutateAsync: handleRemoveSoundEventTag } = useMutation({
-    mutationFn: async ({ annotation, tag }: { annotation: SoundEventAnnotation, tag: Tag }) => {
-      return await api.soundEventAnnotations.removeTag(annotation, tag);
-    },
-  });
-
   const onChangeTask = useCallback(
     (task: AnnotationTask) => {
       const url = changeURLParam({
         pathname,
         search,
-        param: "annotation_task_uuid",
-        value: task.uuid,
+        param: "annotation_task_id",
+        value: task.id.toString(),
       });
       router.push(url);
     },
@@ -130,11 +122,10 @@ export default function Page() {
   return (
     <div className="w-full">
       <AnnotateTasks
-        instructions={project.annotation_instructions || ""}
         taskFilter={filter}
         tagFilter={filter}
         projectTags={project.tags == null ? [] : project.tags}
-        annotationTask={annotationTask.data}
+        annotationTask={annotationTask}
         parameters={parameters}
         onChangeTask={onChangeTask}
         currentUser={user}
@@ -143,7 +134,6 @@ export default function Page() {
         onUnsureTask={handleUnsureTask}
         onRejectTask={handleRejectTask}
         onVerifyTask={handleVerifyTask}
-        onCreateTag={handleTagCreate}
       />
     </div>
   );

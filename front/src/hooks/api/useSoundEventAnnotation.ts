@@ -15,8 +15,6 @@ export default function useSoundEventAnnotation({
   clipAnnotation,
   onDelete,
   onUpdate,
-  onAddTag,
-  onRemoveTag,
   onAddNote,
   onError,
   enabled = true,
@@ -27,8 +25,6 @@ export default function useSoundEventAnnotation({
   soundEventAnnotation?: SoundEventAnnotation;
   onDelete?: (annotation: SoundEventAnnotation) => void;
   onUpdate?: (annotation: SoundEventAnnotation) => void;
-  onAddTag?: (annotation: SoundEventAnnotation) => void;
-  onRemoveTag?: (annotation: SoundEventAnnotation) => void;
   onAddNote?: (annotation: SoundEventAnnotation) => void;
   onError?: (error: AxiosError) => void;
   enabled?: boolean;
@@ -117,10 +113,9 @@ export default function useSoundEventAnnotation({
 
   const handleAddTag = useCallback(
     (annotation: SoundEventAnnotation) => {
-      onAddTag?.(annotation);
       updateClipAnnotation(annotation);
     },
-    [onAddTag, updateClipAnnotation],
+    [updateClipAnnotation],
   );
 
   const addTag = useMutation({
@@ -130,10 +125,9 @@ export default function useSoundEventAnnotation({
 
   const handleRemoveTag = useCallback(
     (annotation: SoundEventAnnotation) => {
-      onRemoveTag?.(annotation);
       updateClipAnnotation(annotation);
     },
-    [onRemoveTag, updateClipAnnotation],
+    [updateClipAnnotation],
   );
 
   const removeTag = useMutation({

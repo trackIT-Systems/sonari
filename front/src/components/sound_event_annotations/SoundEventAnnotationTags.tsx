@@ -16,17 +16,11 @@ function NoTags() {
 export default function SoundEventAnnotationTags({
   soundEventAnnotation,
   tagFilter,
-  onAddTag,
-  onRemoveTag,
   onClickTag,
-  onCreateTag,
 }: {
   soundEventAnnotation: SoundEventAnnotation;
   tagFilter?: TagFilter;
-  onAddTag?: (tag: Tag) => void;
   onClickTag?: (tag: Tag) => void;
-  onRemoveTag?: (tag: Tag) => void;
-  onCreateTag?: (tag: Tag) => void;
 }) {
   const tags = useMemo(
     () => soundEventAnnotation.tags || [],
@@ -47,7 +41,6 @@ export default function SoundEventAnnotationTags({
             key={getTagKey(tag)}
             tag={tag}
             onClick={() => onClickTag?.(tag)}
-            onClose={() => onRemoveTag?.(tag)}
             count={null}
           />
         ))}
@@ -56,8 +49,6 @@ export default function SoundEventAnnotationTags({
       <div className="flex flex-row justify-center gap-4 items-center">
         <AddTagButton
           variant="primary"
-          onAdd={onAddTag}
-          onCreate={onCreateTag}
           filter={tagFilter}
           text="Add tags"
           placeholder="Add tags..."

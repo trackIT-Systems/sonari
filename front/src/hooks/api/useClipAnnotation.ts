@@ -23,11 +23,6 @@ export default function useClipAnnotation({
   onAddNote,
   onRemoveNote,
   onError,
-  onAddSoundEventAnnotation,
-  onDeleteSoundEventAnnotation,
-  onUpdateSoundEventAnnotation,
-  onAddTagToSoundEventAnnotation,
-  onRemoveTagFromSoundEventAnnotation,
   enabled = true,
 }: {
   uuid?: string;
@@ -37,10 +32,6 @@ export default function useClipAnnotation({
   onRemoveTag?: (annotation: ClipAnnotation) => void;
   onAddNote?: (annotation: ClipAnnotation) => void;
   onRemoveNote?: (annotation: ClipAnnotation) => void;
-  onAddSoundEventAnnotation?: (annotation: SoundEventAnnotation) => void;
-  onDeleteSoundEventAnnotation?: (annotation: SoundEventAnnotation) => void;
-  onUpdateSoundEventAnnotation?: (annotation: SoundEventAnnotation) => void;
-  onAddTagToSoundEventAnnotation?: (annotation: SoundEventAnnotation) => void;
   onRemoveTagFromSoundEventAnnotation?: (
     annotation: SoundEventAnnotation,
   ) => void;
@@ -98,7 +89,6 @@ export default function useClipAnnotation({
       });
     },
     onSuccess: (data) => {
-      onAddSoundEventAnnotation?.(data);
       setData((prev) => {
         if (prev == null) throw new Error("No clip annotation to add to.");
         return {
@@ -124,7 +114,6 @@ export default function useClipAnnotation({
     },
     onSuccess: (data) => {
       client.setQueryData(["sound_event_annotation", data.uuid], data);
-      onUpdateSoundEventAnnotation?.(data);
       setData((prev) => {
         if (prev == null) throw new Error("No clip annotation to add to.");
         return {
@@ -146,7 +135,6 @@ export default function useClipAnnotation({
       return api.soundEventAnnotations.delete(soundEventAnnotation);
     },
     onSuccess: (data) => {
-      onDeleteSoundEventAnnotation?.(data);
       setData((prev) => {
         if (prev == null) throw new Error("No clip annotation to add to.");
         return {
@@ -202,7 +190,6 @@ export default function useClipAnnotation({
       return { previousData };
     },
     onSuccess: (data) => {
-      onAddTagToSoundEventAnnotation?.(data);
       setData((prev) => {
         if (prev == null) throw new Error("No clip annotation to add to.");
         return {
@@ -271,7 +258,6 @@ export default function useClipAnnotation({
       return { previousData };
     },
     onSuccess: (data) => {
-      onRemoveTagFromSoundEventAnnotation?.(data);
       setData((prev) => {
         if (prev == null) throw new Error("No clip annotation to add to.");
         return {

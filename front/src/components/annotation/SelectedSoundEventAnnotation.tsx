@@ -15,9 +15,6 @@ export default function SelectedSoundEventAnnotation({
   tagFilter,
   withSpectrogram,
   parameters,
-  onAddTag,
-  onRemoveTag,
-  onCreateTag,
   onUpdate,
 }: {
   //* The sound event annotation to display */
@@ -28,17 +25,12 @@ export default function SelectedSoundEventAnnotation({
   tagFilter?: TagFilter;
   withSpectrogram: boolean;
   parameters: SpectrogramParameters;
-  onAddTag?: (annotation: SoundEventAnnotation) => void;
-  onRemoveTag?: (annotation: SoundEventAnnotation) => void;
-  onCreateTag?: (tag: Tag) => void;
   onUpdate?: (annotation: SoundEventAnnotation) => void;
 }) {
   const soundEventAnnotation = useSoundEventAnnotation({
     uuid: data.uuid,
     clipAnnotation,
     soundEventAnnotation: data,
-    onAddTag,
-    onRemoveTag,
     onUpdate,
   });
 
@@ -77,7 +69,6 @@ export default function SelectedSoundEventAnnotation({
               soundEventAnnotation={currentAnnotation}
               onAddTag={soundEventAnnotation.addTag.mutate}
               onRemoveTag={soundEventAnnotation.removeTag.mutate}
-              onCreateTag={onCreateTag}
             />
           </div>
           <div className="flex-1">

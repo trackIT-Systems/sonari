@@ -12,6 +12,7 @@ import Loading from "@/components/Loading";
 import useAnnotationTasks from "@/hooks/annotation/useAnnotateTasks";
 import useClipAnnotation from "@/hooks/api/useClipAnnotation";
 import useClipAnnotations from "@/hooks/api/useClipAnnotations";
+import type useAnnotationTask from "@/hooks/api/useAnnotationTask";
 import RecordingTagBar from "../recordings/RecordingTagBar";
 
 import { Popover, PopoverButton, PopoverPanel } from "@headlessui/react";
@@ -24,7 +25,6 @@ import type { AnnotationTaskFilter } from "@/api/annotation_tasks";
 import type { TagFilter } from "@/api/tags";
 import type {
   AnnotationTask,
-  ClipAnnotation,
   SoundEventAnnotation,
   SpectrogramParameters,
   Tag,
@@ -36,25 +36,15 @@ export default function AnnotateTasks({
   tagFilter,
   projectTags,
   parameters = DEFAULT_SPECTROGRAM_PARAMETERS,
-  annotationTask,
+  annotationTaskProps,
   currentUser,
-  instructions,
-  onCreateTag,
-  onCreateSoundEventAnnotation,
-  onUpdateSoundEventAnnotation,
-  onAddSoundEventTag,
-  onRemoveSoundEventTag,
-  onDeleteSoundEventAnnotation,
   onChangeTask,
-  onAddClipTag,
-  onRemoveClipTag,
   onParameterSave,
   onCompleteTask,
   onUnsureTask,
   onRejectTask,
   onVerifyTask,
 }: {
-  instructions: string;
   /** Filter to select which tasks are to be annotated */
   taskFilter?: AnnotationTaskFilter;
   /** Filter to select which tags are to be used for annotation */
@@ -64,18 +54,10 @@ export default function AnnotateTasks({
   /** Parameters to use for spectrogram rendering */
   parameters?: SpectrogramParameters;
   /** An optional annotation task to use initially */
-  annotationTask?: AnnotationTask;
+  annotationTaskProps: ReturnType<typeof useAnnotationTask>;
   /** The user who is annotating */
   currentUser: User;
-  onCreateTag?: (tag: Tag) => void;
-  onCreateSoundEventAnnotation?: (annotation: SoundEventAnnotation) => void;
-  onUpdateSoundEventAnnotation?: (annotation: SoundEventAnnotation) => void;
-  onAddSoundEventTag?: (annotation: SoundEventAnnotation) => void;
-  onRemoveSoundEventTag?: (annotation: SoundEventAnnotation) => void;
-  onDeleteSoundEventAnnotation?: (annotation: SoundEventAnnotation) => void;
   onChangeTask?: (annotationTask: AnnotationTask) => void;
-  onAddClipTag?: (annotation: ClipAnnotation) => void;
-  onRemoveClipTag?: (annotation: ClipAnnotation) => void;
   onAddStatusBadge?: (task: AnnotationTask) => void;
   onRemoveStatusBadge?: (task: AnnotationTask) => void;
   onParameterSave?: (parameters: SpectrogramParameters) => void;
@@ -125,6 +107,8 @@ export default function AnnotateTasks({
     setFixedAspectRatio(prev => !prev);
   }, []);
 
+  const {data: annotationTask, addNote, removeNote, removeTagFromSoundEvent, addTagToSoundEvent} = annotationTaskProps
+
   const tasks = useAnnotationTasks({
     filter: taskFilter,
     annotationTask: annotationTask,
@@ -134,17 +118,6 @@ export default function AnnotateTasks({
     onRejectTask,
     onVerifyTask,
     onDeselectAnnotation,
-  });
-
-  const { data: clipAnnotation, isLoading: isLoadingClipAnnotation } =
-    tasks.annotations;
-
-  const { data, addNote, removeNote, removeTagFromSoundEvent, addTagToSoundEvent } = useClipAnnotation({
-    uuid: clipAnnotation?.uuid,
-    clipAnnotation,
-    onAddTag: onAddClipTag,
-    onRemoveTag: onRemoveClipTag,
-    enabled: clipAnnotation != null,
   });
 
   // Fetch all clip annotations for the current annotation project
@@ -440,12 +413,6 @@ export default function AnnotateTasks({
                     onWithAutoplayChange={onWithAutoplayChange}
                     fixedAspectRatio={fixedAspectRatio}
                     toggleFixedAspectRatio={toggleFixedAspectRatio}
-                    onCreateTag={onCreateTag}
-                    onAddSoundEventTag={onAddSoundEventTag}
-                    onRemoveSoundEventTag={onRemoveSoundEventTag}
-                    onCreateSoundEventAnnotation={onCreateSoundEventAnnotation}
-                    onUpdateSoundEventAnnotation={onUpdateSoundEventAnnotation}
-                    onDeleteSoundEventAnnotation={onDeleteSoundEventAnnotation}
                     onSegmentsLoaded={tasks.handleCurrentSegmentsLoaded}
                   />
                 </div>
@@ -469,9 +436,6 @@ export default function AnnotateTasks({
                 soundEventAnnotation={selectedAnnotation}
                 parameters={parameters}
                 withSpectrogram={withSpectrogram}
-                onAddTag={onAddSoundEventTag}
-                onCreateTag={onCreateTag}
-                onRemoveTag={onRemoveSoundEventTag}
                 onUpdate={onUpdateSelectedAnnotation}
               />
             </div>

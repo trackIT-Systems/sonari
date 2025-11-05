@@ -124,12 +124,10 @@ export function AddTagButton({
 export function TagGroup({
   group,
   filter,
-  onCreate,
   disabled = false,
 }: {
   group: TagGroup;
   filter?: TagFilter;
-  onCreate?: (tag: TagType) => void;
   disabled?: boolean;
 }) {
   const { x, y } = group.position;
@@ -159,7 +157,6 @@ export function TagGroup({
         <AddTagButton
           filter={filter}
           onCreate={(tag) => {
-            onCreate?.(tag);
             group.onAdd?.(tag);
           }}
           onAdd={(tag) => {
@@ -175,7 +172,6 @@ export default function SpectrogramTags({
   tags,
   children,
   filter,
-  onCreate,
   disabled = false,
   withSoundEvent = true,
   onWithSoundEventChange,
@@ -183,7 +179,6 @@ export default function SpectrogramTags({
   tags: TagGroup[];
   children: ReactNode;
   filter?: TagFilter;
-  onCreate?: (tag: TagType) => void;
   disabled?: boolean;
   withSoundEvent?: boolean;
   onWithSoundEventChange?: () => void;
@@ -209,7 +204,6 @@ export default function SpectrogramTags({
           key={group.annotation.uuid}
           group={group}
           filter={filter}
-          onCreate={onCreate}
           disabled={disabled}
         />
       ))}

@@ -110,16 +110,6 @@ export default function useAnnotateClip(props: {
   withSoundEvent?: boolean;
   /** Callback when the selected annotation changes */
   onSelectAnnotation?: (annotation: SoundEventAnnotation | null) => void;
-  /** Callback when a new annotation is created */
-  onCreateAnnotation?: (annotation: SoundEventAnnotation) => void;
-  /** Callback when the geometry of an annotation is updated */
-  onUpdateAnnotation?: (annotation: SoundEventAnnotation) => void;
-  /** Callback when an annotation is deleted */
-  onDeleteAnnotation?: (annotation: SoundEventAnnotation) => void;
-  /** Callback when a tag is added to a sound event */
-  onAddAnnotationTag?: (annotation: SoundEventAnnotation) => void;
-  /** Callback when a tag is removed from a sound event */
-  onRemoveAnnotationTag?: (annotation: SoundEventAnnotation) => void;
   /** Callback when the annotation mode (idle, create, delete, select, draw)
    * changes */
   onModeChange?: (mode: AnnotateMode) => void;
@@ -139,11 +129,6 @@ export default function useAnnotateClip(props: {
     withSoundEvent = true,
     onModeChange,
     onSelectAnnotation,
-    onCreateAnnotation,
-    onAddAnnotationTag,
-    onRemoveAnnotationTag,
-    onUpdateAnnotation,
-    onDeleteAnnotation,
     onDeselect,
     onCenterOn,
   } = props;
@@ -172,11 +157,6 @@ export default function useAnnotateClip(props: {
   } = useClipAnnotation({
     uuid: data.uuid,
     clipAnnotation: data,
-    onAddSoundEventAnnotation: onCreateAnnotation,
-    onUpdateSoundEventAnnotation: onUpdateAnnotation,
-    onDeleteSoundEventAnnotation: onDeleteAnnotation,
-    onAddTagToSoundEventAnnotation: onAddAnnotationTag,
-    onRemoveTagFromSoundEventAnnotation: onRemoveAnnotationTag,
   });
 
   const soundEvents = useMemo(
