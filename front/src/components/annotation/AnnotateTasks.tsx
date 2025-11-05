@@ -10,8 +10,6 @@ import ClipAnnotationTags from "@/components/clip_annotations/ClipAnnotationTags
 import Empty from "@/components/Empty";
 import Loading from "@/components/Loading";
 import useAnnotationTasks from "@/hooks/annotation/useAnnotateTasks";
-import useClipAnnotation from "@/hooks/api/useClipAnnotation";
-import useClipAnnotations from "@/hooks/api/useClipAnnotations";
 import type useAnnotationTask from "@/hooks/api/useAnnotationTask";
 import RecordingTagBar from "../recordings/RecordingTagBar";
 
@@ -120,47 +118,26 @@ export default function AnnotateTasks({
     onDeselectAnnotation,
   });
 
-  // Fetch all clip annotations for the current annotation project
-  // Then filter to only those from the current recording
-  const clipAnnotationsFilter = useMemo(() => {
-    return taskFilter?.annotation_project ? { annotation_project: taskFilter.annotation_project } : {};
-  }, [taskFilter?.annotation_project]);
-
-  const { items: projectClipAnnotations, isLoading: isLoadingClipAnnotations } = useClipAnnotations({
-    filter: clipAnnotationsFilter,
-    pageSize: -1, // Get all clip annotations in the project
-    enabled: taskFilter?.annotation_project != null,
-  });
-
-  // Filter to clips from the current recording only
-  const recordingClips = useMemo(() => {
-    if (!data?.clip.recording || isLoadingClipAnnotations) return [];
-    return projectClipAnnotations
-      .filter((ca: ClipAnnotation) => ca.clip.recording.uuid === data.clip.recording.uuid)
-      .map((ca: ClipAnnotation) => ca.clip);
-  }, [projectClipAnnotations, data?.clip.recording, isLoadingClipAnnotations]);
-
   const handleRemoveTagFromSoundEvents = useCallback(
     async (tagToRemove: Tag) => {
-      if (!data?.sound_events) return;
-
+      if (!annotationTask?.sound_event_annotations) return;
       // For each sound event that has this tag
-      const promises = data.sound_events
-        .filter(soundEvent =>
-          soundEvent.tags?.some(
+      const promises = annotationTask.sound_event_annotations
+        .filter(soundEventAnnotation =>
+          soundEventAnnotation.tags?.some(
             tag => tag.key === tagToRemove.key && tag.value === tagToRemove.value
           )
         )
-        .map(soundEvent => {
+        .map(soundEventAnnotation => {
           return removeTagFromSoundEvent.mutateAsync({
-            soundEventAnnotation: soundEvent,
+            soundEventAnnotation: soundEventAnnotation,
             tag: tagToRemove
           });
         });
 
       await Promise.all(promises);
     },
-    [data?.sound_events, removeTagFromSoundEvent]
+    [annotationTask?.sound_event_annotations, removeTagFromSoundEvent]
   );
 
 
@@ -223,9 +200,9 @@ export default function AnnotateTasks({
   }, [isDeletePopoverOpen]);
 
   const tagsWithCount = useMemo(() => {
-    if (!data?.sound_events) return [];
+    if (!annotationTask?.sound_event_annotations) return [];
 
-    const allTags = data.sound_events.flatMap(event => event.tags || []);
+    const allTags = annotationTask.sound_event_annotations.flatMap(eventAnnotation => eventAnnotation.tags || []);
     const tagCounts = new Map<string, { tag: Tag; count: number }>();
 
     allTags.forEach(tag => {
@@ -239,7 +216,7 @@ export default function AnnotateTasks({
     });
 
     return Array.from(tagCounts.values());
-  }, [data?.sound_events]);
+  }, [annotationTask?.sound_event_annotations]);
 
   const handleDeleteTagFromAll = useCallback(
     async (tagWithCount: { tag: Tag; count: number }, shouldDelete: boolean) => {
@@ -271,45 +248,45 @@ export default function AnnotateTasks({
 
   const handleReplaceTagInSoundEvents = useCallback(
     async (oldTag: Tag | null, newTag: Tag | null, currentAnnotation?: SoundEventAnnotation | null) => {
-      if (!data?.sound_events) return;
+      if (!annotationTask?.sound_event_annotations) return;
 
-      let soundEventsToUpdate: SoundEventAnnotation[] = [];
+      let soundEventAnnotationsToUpdate: SoundEventAnnotation[] = [];
       if (currentAnnotation) {
-        soundEventsToUpdate = [currentAnnotation];
+        soundEventAnnotationsToUpdate = [currentAnnotation];
       } else {
         // If no specific annotation is selected, handle all sound events
         if (oldTag?.key === "all") {
           // If "all tags" is selected, get sound events that have any tags
-          soundEventsToUpdate = data.sound_events.filter(soundEvent =>
-            soundEvent.tags && soundEvent.tags.length > 0
+          soundEventAnnotationsToUpdate = annotationTask.sound_event_annotations.filter(soundEventAnnotation =>
+            soundEventAnnotation.tags && soundEventAnnotation.tags.length > 0
           );
         } else if (oldTag) {
           // If a specific tag is selected, get sound events with that tag
-          soundEventsToUpdate = data.sound_events.filter(soundEvent =>
-            soundEvent.tags?.some(
+          soundEventAnnotationsToUpdate = annotationTask.sound_event_annotations.filter(soundEventAnnotation =>
+            soundEventAnnotation.tags?.some(
               tag => tag.key === oldTag.key && tag.value === oldTag.value
             )
           );
         } else {
           // Otherwise, update all sound events
-          soundEventsToUpdate = data.sound_events;
+          soundEventAnnotationsToUpdate = annotationTask.sound_event_annotations;
         }
       }
 
-      const promises = soundEventsToUpdate.map(async soundEvent => {
+      const promises = soundEventAnnotationsToUpdate.map(async soundEventAnnotation => {
         try {
           // If replacing all tags, remove all existing tags first
-          if (oldTag?.key === "all" && soundEvent.tags) {
-            for (const tag of soundEvent.tags) {
+          if (oldTag?.key === "all" && soundEventAnnotation.tags) {
+            for (const tag of soundEventAnnotation.tags) {
               await removeTagFromSoundEvent.mutateAsync({
-                soundEventAnnotation: soundEvent,
+                soundEventAnnotation: soundEventAnnotation,
                 tag
               });
             }
           } else if (oldTag) {
             // Remove specific old tag
             await removeTagFromSoundEvent.mutateAsync({
-              soundEventAnnotation: soundEvent,
+              soundEventAnnotation: soundEventAnnotation,
               tag: oldTag
             });
           }
@@ -317,7 +294,7 @@ export default function AnnotateTasks({
           // Add new tag
           if (newTag) {
             await addTagToSoundEvent.mutateAsync({
-              soundEventAnnotation: soundEvent,
+              soundEventAnnotation: soundEventAnnotation,
               tag: newTag
             });
           }
@@ -328,7 +305,7 @@ export default function AnnotateTasks({
 
       await Promise.all(promises);
     },
-    [data?.sound_events, removeTagFromSoundEvent, addTagToSoundEvent]
+    [annotationTask?.sound_event_annotations, removeTagFromSoundEvent, addTagToSoundEvent]
   );
 
   const menuRef = useRef<HTMLDivElement>(null);
@@ -374,30 +351,28 @@ export default function AnnotateTasks({
       <div className="flex flex-col gap-4">
         <div className="flex flex-row gap-4">
           <div className="min-w-[63rem]">
-            {isLoadingClipAnnotation ? (
+            {annotationTaskProps.isLoading ? (
               <Loading />
-            ) : data == null ? (
-              <NoClipSelected />
+            ) : annotationTask == null ? (
+              <NoTaskSelected />
             ) : (() => {
               // Calculate clip position among clips from the same recording
               // Find the index of the current clip in the list of recording clips (sorted by start time)
-              const sortedClips = [...recordingClips].sort((a, b) => a.start_time - b.start_time);
-              const currentClipIndex = sortedClips.findIndex(
-                clip => clip.uuid === data.clip.uuid
+              const sortedTasks = [...tasks.tasks.filter(task => task.recording_id === annotationTask.recording_id)].sort((a, b) => a.start_time - b.start_time);
+              const currentTaskIndex = sortedTasks.findIndex(
+                task => task.id === annotationTask.id
               );
-              
               return (
               <div className="flex flex-col gap-2">
                 <RecordingAnnotationContext
-                  recording={data.clip.recording}
-                  clip={data.clip}
-                  currentClipIndex={currentClipIndex >= 0 ? currentClipIndex + 1 : undefined}
-                  totalClips={recordingClips.length}
+                  recording={annotationTask.recording!}
+                  currentTaskIndex={currentTaskIndex >= 0 ? currentTaskIndex + 1 : undefined}
+                  totalTasks={sortedTasks.length}
                 />
                 <div className="min-w-0 grow-0">
                   <ClipAnnotationSpectrogram
                     parameters={parameters}
-                    clipAnnotation={data}
+                    annotationTask={annotationTask}
                     defaultTags={tagPalette}
                     selectedTag={selectedTag}
                     onClearSelectedTag={setSelectedTag}
@@ -421,7 +396,7 @@ export default function AnnotateTasks({
             })()}
           </div>
 
-          {selectedAnnotation == null || data == null ? (
+          {selectedAnnotation == null || annotationTask == null ? (
             <div className="w-[35rem] flex-none mt-9">
               <Empty
                 padding="p-0">
@@ -431,7 +406,7 @@ export default function AnnotateTasks({
           ) : (
             <div className="w-[35rem] flex-none mt-5">
               <SelectedSoundEventAnnotation
-                clipAnnotation={data}
+                annotationTask={annotationTask}
                 tagFilter={tagFilter}
                 soundEventAnnotation={selectedAnnotation}
                 parameters={parameters}
@@ -443,13 +418,13 @@ export default function AnnotateTasks({
         </div>
 
 
-        {data && (
+        {annotationTask && (
           <div className="flex flex-row gap-4 w-full">
             <div className="min-w-[63rem] flex flex-col gap-4">
               <RecordingTagBar
-                recording={data.clip.recording}
+                recording={annotationTask.recording}
               />
-              <ClipAnnotationNotes
+              <AnnotationTaskNotes
                 onCreateNote={addNote.mutate}
                 onDeleteNote={removeNote.mutate}
                 clipAnnotation={data}
@@ -580,6 +555,6 @@ export default function AnnotateTasks({
   );
 }
 
-function NoClipSelected() {
-  return <Empty>No clip selected</Empty>;
+function NoTaskSelected() {
+  return <Empty>No task selected</Empty>;
 }

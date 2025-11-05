@@ -11,7 +11,7 @@ import type { ClipAnnotation, SoundEventAnnotation, Tag } from "@/types";
 
 export default function SelectedSoundEventAnnotation({
   soundEventAnnotation: data,
-  clipAnnotation,
+  annotationTask,
   tagFilter,
   withSpectrogram,
   parameters,
@@ -20,7 +20,7 @@ export default function SelectedSoundEventAnnotation({
   //* The sound event annotation to display */
   soundEventAnnotation: SoundEventAnnotation;
   /** The clip annotation to which the sound event annotation belongs */
-  clipAnnotation: ClipAnnotation;
+  annotationTask: AnnotationTask;
   /** The tag filter to apply in case more tags want to be added */
   tagFilter?: TagFilter;
   withSpectrogram: boolean;

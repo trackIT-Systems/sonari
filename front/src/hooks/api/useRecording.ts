@@ -7,7 +7,7 @@ import useObject from "@/hooks/utils/useObject";
 import type { Recording } from "@/types";
 
 export default function useRecording({
-  uuid,
+  id,
   recording,
   enabled = true,
   onUpdate,
@@ -20,7 +20,7 @@ export default function useRecording({
   onUpdateFeature,
   onError,
 }: {
-  uuid: string;
+  id: number;
   recording?: Recording;
   enabled?: boolean;
   onUpdate?: (recording: Recording) => void;
@@ -33,7 +33,7 @@ export default function useRecording({
   onUpdateFeature?: (recording: Recording) => void;
   onError?: (error: AxiosError) => void;
 }) {
-  if (recording !== undefined && recording.uuid !== uuid) {
+  if (recording !== undefined && recording.id !== id) {
     throw new Error("Recording uuid does not match");
   }
 
@@ -42,7 +42,7 @@ export default function useRecording({
     useMutation,
     setData: set,
   } = useObject<Recording>({
-    uuid,
+    id,
     initial: recording,
     name: "dataset",
     enabled,

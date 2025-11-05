@@ -10,24 +10,22 @@ import RecordingLocation from "@/components/recordings/RecordingLocation";
 import RecordingTime from "@/components/recordings/RecordingTime";
 import useRecording from "@/hooks/api/useRecording";
 
-import type { Clip, Recording } from "@/types";
+import type { Recording } from "@/types";
 
 const RecordingAnnotationContext = memo(function RecordingAnnotationContext({
   recording,
-  clip,
-  currentClipIndex,
-  totalClips,
+  currentTaskIndex,
+  totalTasks,
 }: {
   recording: Recording;
-  clip?: Clip;
-  currentClipIndex?: number;
-  totalClips?: number;
+  currentTaskIndex?: number;
+  totalTasks?: number;
 }) {
   const { path } = recording;
   const baseName = getBaseName(path) ?? "";
 
   const { downloadURL }  = useRecording({
-    uuid: recording.uuid,
+    id: recording.id,
     recording,
   });
 
@@ -44,9 +42,9 @@ const RecordingAnnotationContext = memo(function RecordingAnnotationContext({
           >
             {baseName}
           </a>
-          {clip && currentClipIndex != null && totalClips != null && (
+          {currentTaskIndex != null && totalTasks != null && (
             <span className="ml-2 text-stone-500 text-sm">
-              ({currentClipIndex}/{totalClips})
+              ({currentTaskIndex}/{totalTasks})
             </span>
           )}
         </div>

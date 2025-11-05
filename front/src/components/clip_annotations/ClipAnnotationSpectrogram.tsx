@@ -22,7 +22,7 @@ import type { TagFilter } from "@/api/tags";
 import type { AnnotateMode } from "@/hooks/annotation/useAnnotateClip";
 import type { MotionMode as SpectrogramMode } from "@/hooks/spectrogram/useSpectrogramMotions";
 import type {
-  ClipAnnotation,
+  AnnotationTask,
   Position,
   SoundEventAnnotation,
   SpectrogramParameters,
@@ -33,7 +33,7 @@ import useWaveform from "@/hooks/spectrogram/useWaveform";
 import useAnnotationDrawWaveform from "@/hooks/annotation/useAnnotationDrawWaveform";
 
 export default function ClipAnnotationSpectrogram({
-  clipAnnotation,
+  annotationTask,
   tagFilter,
   parameters = DEFAULT_SPECTROGRAM_PARAMETERS,
   disabled = false,
@@ -60,7 +60,7 @@ export default function ClipAnnotationSpectrogram({
   onSelectAnnotation,
   onSegmentsLoaded,
 }: {
-  clipAnnotation: ClipAnnotation;
+  annotationTask: AnnotationTask;
   parameters?: SpectrogramParameters;
   tagFilter?: TagFilter;
   disabled?: boolean;
