@@ -6,10 +6,11 @@ from contextlib import asynccontextmanager
 from multiprocessing import Manager
 from pathlib import Path
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
+from starlette.middleware.base import BaseHTTPMiddleware
 
 from sonari import exceptions
 from sonari.plugins import add_plugin_pages, add_plugin_routes, load_plugins
@@ -20,6 +21,37 @@ from sonari.system.settings import Settings
 from sonari.system.shared_cache import SharedTTLCache
 
 ROOT_DIR = Path(__file__).parent.parent
+
+
+class TrailingSlashNormalizationMiddleware(BaseHTTPMiddleware):
+    """Middleware to handle trailing slash inconsistencies between routes.
+
+    FastAPI has inconsistent trailing slash usage:
+    - fastapi-users routes (auth, most users) don't use trailing slashes
+    - Custom routes use trailing slashes
+
+    This middleware normalizes trailing slashes based on route conventions.
+    """
+
+    async def dispatch(self, request: Request, call_next):
+        path = request.url.path
+
+        # Only handle API routes
+        if path.startswith("/api/v1/"):
+            # fastapi-users routes don't use trailing slashes
+            # These include: /auth/* and /users/* (except /users/first/)
+            if path.startswith("/api/v1/auth/") or (
+                path.startswith("/api/v1/users/") and not path.startswith("/api/v1/users/first")
+            ):
+                # Remove trailing slash if present
+                if path.endswith("/") and path not in ("/api/v1/auth/", "/api/v1/users/"):
+                    request.scope["path"] = path.rstrip("/")
+            # All other API routes use trailing slashes (custom convention)
+            elif not path.endswith("/"):
+                # Add trailing slash to custom API routes
+                request.scope["path"] = path + "/"
+
+        return await call_next(request)
 
 
 @asynccontextmanager
@@ -64,6 +96,9 @@ def create_app(settings: Settings) -> FastAPI:
         allow_headers=["*"],
         expose_headers=["Content-Disposition"],
     )
+
+    # Add middleware to normalize trailing slashes across different route conventions
+    app.add_middleware(TrailingSlashNormalizationMiddleware)
 
     # Add default routes.
     main_router = get_main_router(settings)

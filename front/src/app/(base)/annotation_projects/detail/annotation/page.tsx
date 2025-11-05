@@ -45,9 +45,13 @@ export default function Page() {
     [setParameters],
   );
 
+  // Tags are now automatically added to all projects in the backend
+  // No need to explicitly add them here anymore
   const { mutate: handleTagCreate } = useMutation({
     mutationFn: async (tag: Tag) => {
-      return await api.annotationProjects.addTag(project, tag);
+      // Tag creation already adds to all projects in the backend
+      // This is just a no-op placeholder to satisfy the prop type
+      return tag;
     },
   });
 
