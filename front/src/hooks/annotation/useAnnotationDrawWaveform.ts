@@ -23,7 +23,7 @@ const EDIT_STYLE = {
 
 // Extract time bounds from annotation geometry
 function getAnnotationTimeBounds(annotation: SoundEventAnnotation): [number, number] {
-  const { geometry, geometry_type } = annotation.sound_event;
+  const { geometry, geometry_type } = annotation;
   
   switch (geometry_type) {
     case "TimeInterval":
@@ -97,7 +97,7 @@ export default function useAnnotationDrawWaveform({
         // Determine style based on annotation state and mode
         let style = IDLE_STYLE;
         
-        if (selectedAnnotation && selectedAnnotation.uuid === annotation.uuid) {
+        if (selectedAnnotation && selectedAnnotation.id === annotation.id) {
           style = EDIT_STYLE;
         }
         

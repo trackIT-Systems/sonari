@@ -14,7 +14,7 @@ export const DatasetFilterSchema = z.object({
 export type DatasetFilter = z.input<typeof DatasetFilterSchema>;
 
 export const DatasetCreateSchema = z.object({
-  uuid: z.string().uuid().optional(),
+  id: z.number().int().positive(),
   name: z.string().min(1),
   audio_dir: z.string(),
   description: z.string().optional(),
@@ -68,16 +68,16 @@ export function registerDatasetAPI(
     return DatasetSchema.parse(res);
   }
 
-  async function get(uuid: string): Promise<Dataset> {
+  async function get(id: number): Promise<Dataset> {
     const { data } = await instance.get(endpoints.get, {
-      params: { dataset_uuid: uuid },
+      params: { dataset_id: id },
     });
     return DatasetSchema.parse(data);
   }
 
-  async function getDatasetState(uuid: string): Promise<RecordingState[]> {
+  async function getDatasetState(id: number): Promise<RecordingState[]> {
     const { data } = await instance.get(endpoints.state, {
-      params: { dataset_uuid: uuid },
+      params: { dataset_id: id },
     });
     return z.array(RecordingStateSchema).parse(data);
   }
@@ -88,23 +88,23 @@ export function registerDatasetAPI(
   ): Promise<Dataset> {
     const body = DatasetUpdateSchema.parse(data);
     const { data: res } = await instance.patch(endpoints.update, body, {
-      params: { dataset_uuid: dataset.uuid },
+      params: { dataset_id: dataset.id },
     });
     return DatasetSchema.parse(res);
   }
 
   async function deleteDataset(dataset: Dataset): Promise<Dataset> {
     const { data } = await instance.delete(endpoints.delete, {
-      params: { dataset_uuid: dataset.uuid },
+      params: { dataset_id: dataset.id },
     });
     return DatasetSchema.parse(data);
   }
 
   function getDownloadUrl(dataset: Dataset, format: "json" | "csv"): string {
     if (format === "json") {
-      return `${endpoints.downloadJson}?dataset_uuid=${dataset.uuid}`;
+      return `${endpoints.downloadJson}?dataset_id=${dataset.id}`;
     } else {
-      return `${endpoints.downloadCsv}?dataset_uuid=${dataset.uuid}`;
+      return `${endpoints.downloadCsv}?dataset_id=${dataset.id}`;
     }
   }
 

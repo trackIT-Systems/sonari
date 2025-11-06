@@ -12,7 +12,7 @@ import type { Recording } from "@/types";
 import "./page.css";
 
 function getRecordingLink(recording: Recording): string {
-  return `detail/?recording_uuid=${recording.uuid}`;
+  return `detail/?recording_id=${recording.id}`;
 }
 
 export default function Page() {

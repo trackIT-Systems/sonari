@@ -7,7 +7,7 @@ import { H4 } from "../Headings";
 import { ExplorationIcon } from "../icons";
 
 function getWindowFromGeometry(annotation: SoundEventAnnotation, recording: Recording) {
-    const { geometry, geometry_type } = annotation.sound_event;
+    const { geometry, geometry_type } = annotation;
     switch (geometry_type) {
         case "TimeInterval":
             const ti_coordinates = geometry.coordinates as [number, number];
@@ -52,7 +52,7 @@ function getWindowFromGeometry(annotation: SoundEventAnnotation, recording: Reco
 }
 
 function getSoundEventCoordinates(annotation: SoundEventAnnotation) {
-    const { geometry, geometry_type } = annotation.sound_event;
+    const { geometry, geometry_type } = annotation;
     switch (geometry_type) {
         case "TimeInterval":
             const ti_coordinates = geometry.coordinates as [number, number];

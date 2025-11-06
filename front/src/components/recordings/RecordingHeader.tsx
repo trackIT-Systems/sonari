@@ -30,7 +30,7 @@ export default function RecordingHeader({
   const { path } = recording;
   const baseName = removeExtension(getBaseName(path) ?? "");
   const { data, update: updateRecording } = useRecording({
-    uuid: recording.uuid,
+    id: recording.id,
     recording,
     enabled: true,
   });

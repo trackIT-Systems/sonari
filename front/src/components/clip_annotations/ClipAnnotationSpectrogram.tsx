@@ -22,7 +22,6 @@ import type { TagFilter } from "@/api/tags";
 import type { AnnotateMode } from "@/hooks/annotation/useAnnotateClip";
 import type { MotionMode as SpectrogramMode } from "@/hooks/spectrogram/useSpectrogramMotions";
 import type {
-  AnnotationTask,
   Position,
   SoundEventAnnotation,
   SpectrogramParameters,
@@ -31,9 +30,11 @@ import type {
 } from "@/types";
 import useWaveform from "@/hooks/spectrogram/useWaveform";
 import useAnnotationDrawWaveform from "@/hooks/annotation/useAnnotationDrawWaveform";
+import useAnnotationTask from "@/hooks/api/useAnnotationTask";
+import { NoIcon } from "../icons";
 
 export default function ClipAnnotationSpectrogram({
-  annotationTask,
+  annotationTaskProps,
   tagFilter,
   parameters = DEFAULT_SPECTROGRAM_PARAMETERS,
   disabled = false,
@@ -60,7 +61,7 @@ export default function ClipAnnotationSpectrogram({
   onSelectAnnotation,
   onSegmentsLoaded,
 }: {
-  annotationTask: AnnotationTask;
+  annotationTaskProps: ReturnType<typeof useAnnotationTask>;
   parameters?: SpectrogramParameters;
   tagFilter?: TagFilter;
   disabled?: boolean;
@@ -94,8 +95,12 @@ export default function ClipAnnotationSpectrogram({
     width: 0,
     height: 0,
   };
-  const { clip } = clipAnnotation;
-  const { recording } = clip;
+  const {data: annotationTask} = annotationTaskProps;
+  if (!annotationTask) {
+    return (<NoIcon className="inline-block ms-2 stroke-inherit" />)
+  }
+
+  const recording  = annotationTask.recording!;
 
   const initialParameters = useMemo(() => {
     const shouldBeHSR = recording.samplerate > 96000;
@@ -133,40 +138,40 @@ export default function ClipAnnotationSpectrogram({
       : recording.samplerate;
     
     return {
-      time: { min: clip.start_time, max: clip.end_time },
+      time: { min: annotationTask.start_time, max: annotationTask.end_time },
       freq: { min: 0, max: effectiveSamplerate / 2 },
     };
-  }, [clip.start_time, clip.end_time, recording.samplerate, initialParameters.resample, initialParameters.samplerate]);
+  }, [annotationTask.start_time, annotationTask.end_time, recording.samplerate, initialParameters.resample, initialParameters.samplerate]);
 
   const initial = useMemo(
     () => {
       if (withSpectrogram) {
         return getInitialViewingWindow({
-          startTime: clip.start_time,
-          endTime: clip.end_time,
+          startTime: annotationTask.start_time,
+          endTime: annotationTask.end_time,
           samplerate: recording.samplerate,
           parameters,
         })
       } else {
         return {
-          time: { min: clip.start_time, max: clip.end_time },
+          time: { min: annotationTask.start_time, max: annotationTask.end_time },
           freq: { min: 0, max: recording.samplerate / 2 },
         }
       }
     },
-    [recording.samplerate, clip.start_time, clip.end_time, parameters, withSpectrogram],
+    [recording.samplerate, annotationTask.start_time, annotationTask.end_time, parameters, withSpectrogram],
   );
 
   const getPlaybackBounds = useCallback(() => {
     if (!selectedAnnotation) {
       return {
-        startTime: clip.start_time,
-        endTime: clip.end_time
+        startTime: annotationTask.start_time,
+        endTime: annotationTask.end_time
       };
     }
 
 
-    const { geometry, geometry_type } = selectedAnnotation.sound_event;
+    const { geometry, geometry_type } = selectedAnnotation;
     
     var start: number
     var end: number
@@ -192,11 +197,11 @@ export default function ClipAnnotationSpectrogram({
       
       default:
         return {
-          startTime: clip.start_time,
-          endTime: clip.end_time
+          startTime: annotationTask.start_time,
+          endTime: annotationTask.end_time
         };
     }
-  }, [selectedAnnotation, clip.start_time, clip.end_time]);
+  }, [selectedAnnotation, annotationTask.start_time, annotationTask.end_time]);
 
   const { startTime, endTime } = useMemo(() => getPlaybackBounds(), [getPlaybackBounds]);
 
@@ -283,7 +288,7 @@ export default function ClipAnnotationSpectrogram({
   }, [onSelectAnnotation]);
 
   const annotate = useAnnotateClip({
-    clipAnnotation,
+    annotationTaskProps,
     viewport: spectrogram.viewport,
     onCenterOn: handleTimeChange,
     dimensions,
@@ -303,7 +308,10 @@ export default function ClipAnnotationSpectrogram({
     isLoading: spectrogramIsLoading,
   } = spectrogram;
   
-  // Use separate props and draw functions from annotate
+  if (!annotate) {
+    return (<NoIcon className="inline-block ms-2 stroke-inherit" />)
+  }
+
   const { 
     spectrogramProps: annotateSpectrogramProps, 
     waveformProps: annotateWaveformProps,
@@ -311,14 +319,13 @@ export default function ClipAnnotationSpectrogram({
     drawWaveform: drawWaveformAnnotations,
   } = annotate;
 
-  // Get sound events from clip annotation
   const soundEvents = useMemo(() => {
     if (withSoundEvent) {
-      return clipAnnotation?.sound_events || []
+      return annotationTask.sound_event_annotations || []
     } else {
       return []
     }
-  }, [clipAnnotation, withSoundEvent]);
+  }, [annotationTask, withSoundEvent]);
 
   // Waveform annotation drawing for non-measurement annotations
   const drawWaveformAnnotationsLegacy = useAnnotationDrawWaveform({

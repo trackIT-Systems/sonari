@@ -3,7 +3,7 @@
  * Layout component for rendering the structure of a dataset detail page.
  *
  * This component fetches dataset information based on the provided dataset
- * UUID from the URL parameters. It displays a navigation header
+ * ID from the URL parameters. It displays a navigation header
  * (DatasetNavHeader) and wraps the content with the DatasetContext.Provider to
  * provide dataset-related context to its children components.
  */
@@ -20,12 +20,12 @@ import DatasetNavHeader from "./nav";
 export default function Layout({ children }: { children: ReactNode }) {
   const router = useRouter();
   const params = useSearchParams();
-  const uuid = params.get("dataset_uuid");
-
-  if (!uuid) notFound();
+  const id = params.get("dataset_id");
+  
+  if (!id) notFound();
 
   const dataset = useDataset({
-    uuid: uuid,
+    id: parseInt(id),
     onDelete: () => {
       toast.success("Dataset deleted");
       router.push("/datasets/");

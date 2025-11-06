@@ -59,8 +59,6 @@ export default function AnnotationProjectTagCounts({
             >();
 
             for (const task of tasks.items) {
-                const annotation = await api.annotationTasks.getAnnotations(task);
-
                 const latestBadge = task.status_badges
                     ?.slice()
                     .sort((a, b) => new Date(b.created_on).getTime() - new Date(a.created_on).getTime())[0];
@@ -68,8 +66,8 @@ export default function AnnotationProjectTagCounts({
                 const status = latestBadge?.state ?? "assigned"; // default fallback
 
                 const tags = [
-                    ...(annotation.tags ?? []),
-                    ...((annotation.sound_events ?? []).flatMap((se) => se.tags ?? [])),
+                    ...(task.tags ?? []),
+                    ...((task.sound_event_annotations ?? []).flatMap((se) => se.tags ?? [])),
                 ];
 
                 for (const tag of tags) {

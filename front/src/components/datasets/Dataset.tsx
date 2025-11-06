@@ -21,7 +21,7 @@ export default function Dataset({ dataset }: { dataset: DatasetType }) {
             className="hover:font-bold hover:text-emerald-500"
             href={{
               pathname: "/datasets/detail/",
-              query: { dataset_uuid: dataset.uuid },
+              query: { dataset_id: dataset.id },
             }}
           >
             {dataset.name}

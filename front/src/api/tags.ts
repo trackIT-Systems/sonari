@@ -27,7 +27,7 @@ export type TagCreate = z.input<typeof TagCreateSchema>;
 
 export const RecordingTagSchema = z.object({
   tag: TagSchema,
-  recording_uuid: z.string().uuid(),
+  recording_id: z.number().int().positive(),
 });
 
 export type RecordingTag = z.infer<typeof RecordingTagSchema>;
@@ -94,10 +94,9 @@ export function registerTagAPI(
         value__eq: params.value?.eq,
         value__has: params.value?.has,
         annotation_project__eq: params.annotation_project?.id,
-        recording__eq: params.recording?.uuid,
-        sound_event_annotation__eq: params.sound_event_annotation?.uuid,
-        clip_annotation__eq: params.clip_annotation?.uuid,
-        dataset__eq: params.dataset?.uuid,
+        recording__eq: params.recording?.id,
+        sound_event_annotation__eq: params.sound_event_annotation?.id,
+        dataset__eq: params.dataset?.id,
       },
     });
     return response.data;
@@ -112,8 +111,8 @@ export function registerTagAPI(
         limit: params.limit,
         offset: params.offset,
         sort_by: params.sort_by,
-        recording__eq: params.recording?.uuid,
-        dataset__eq: params.dataset?.uuid,
+        recording__eq: params.recording?.id,
+        dataset__eq: params.dataset?.id,
         tag__key: params.tag?.key,
         tag__value: params.tag?.value,
         issue__eq: params.issue,

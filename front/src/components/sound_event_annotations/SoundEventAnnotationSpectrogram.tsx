@@ -54,10 +54,10 @@ export default function SoundEventAnnotationSpectrogram(props: {
 
   const [startTime, endTime] = useMemo(() => {
     const [startTime, _, endTime] = computeGeometryBBox(
-      soundEventAnnotation.sound_event.geometry,
+      soundEventAnnotation.geometry,
     );
     return [startTime, endTime];
-  }, [soundEventAnnotation.sound_event]);
+  }, [soundEventAnnotation]);
 
   const bounds = useMemo(() => {
     const duration = Math.max((endTime - startTime) * 9, MIN_DURATION);

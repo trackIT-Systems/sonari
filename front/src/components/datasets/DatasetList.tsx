@@ -61,7 +61,7 @@ export default function DatasetList(props: {
 
   useEffect(() => {
     if (shouldNavigate && selectedDataset) {
-      router.push(`/datasets/detail/?dataset_uuid=${selectedDataset.uuid}`);
+      router.push(`/datasets/detail/?dataset_id=${selectedDataset.id}`);
       setShouldNavigate(false);
     }
   }, [shouldNavigate, selectedDataset, router, setShouldNavigate]);
@@ -129,7 +129,7 @@ export default function DatasetList(props: {
           {datasets.items.length === 0 && <NoDatasets />}
           <StackedList
             items={datasets.items.map((item) => (
-              <DatasetComponent key={item.uuid} dataset={item} />
+              <DatasetComponent key={item.id} dataset={item} />
             ))}
             onSelect={handleSelect}
             onHighlight={handleHighlight}

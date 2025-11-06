@@ -8,7 +8,7 @@ import SearchMenu from "../search/SearchMenu";
 import Button from "../Button";
 import { Popover, PopoverButton, PopoverPanel } from "@headlessui/react";
 import KeyboardKey from "../KeyboardKey";
-import type { ClipAnnotation, Tag, SoundEventAnnotation } from "@/types";
+import type { AnnotationTask, Tag, SoundEventAnnotation } from "@/types";
 import { ADD_TAG_SHORTCUT, REPLACE_TAG_SHORTCUT } from "@/utils/keyboard";
 
 function NoTags() {
@@ -168,13 +168,13 @@ function TagAddPanel({
 }
 
 
-export default function ClipAnnotationTags({
-  clipAnnotation,
+export default function AnnotationTaskTags({
+  annotationTask,
   projectTags,
   onReplaceTagInSoundEvents,
   selectedAnnotation,
 }: {
-  clipAnnotation?: ClipAnnotation;
+  annotationTask: AnnotationTask;
   projectTags: Tag[];
   onReplaceTagInSoundEvents?: (oldTag: Tag | null, newTag: Tag | null, selectedAnnotation?: SoundEventAnnotation | null) => void;
   selectedAnnotation?: SoundEventAnnotation | null;
@@ -220,9 +220,9 @@ export default function ClipAnnotationTags({
 
   // This always shows all tags in the task
   const tagsWithCount = useMemo(() => {
-    if (!clipAnnotation?.sound_events) return [];
+    if (!annotationTask.sound_event_annotations) return [];
 
-    const allTags = clipAnnotation.sound_events.flatMap(event => event.tags || []);
+    const allTags = annotationTask.sound_event_annotations.flatMap(event => event.tags || []);
     const tagCounts = new Map<string, TagCount>();
 
     allTags.forEach(tag => {
@@ -236,15 +236,15 @@ export default function ClipAnnotationTags({
     });
 
     return Array.from(tagCounts.values());
-  }, [clipAnnotation]);
+  }, [annotationTask]);
 
   // This shows tags for the popover menus - either all tags or just selected annotation tags
   const popoverTagsWithCount = useMemo(() => {
-    if (!clipAnnotation?.sound_events) return [];
+    if (!annotationTask.sound_event_annotations) return [];
 
     const relevantSoundEvents = selectedAnnotation
       ? [selectedAnnotation]
-      : clipAnnotation.sound_events;
+      : annotationTask.sound_event_annotations;
 
     const allTags = relevantSoundEvents.flatMap(event => event.tags || []);
     const tagCounts = new Map<string, TagCount>();
@@ -260,7 +260,7 @@ export default function ClipAnnotationTags({
     });
 
     return Array.from(tagCounts.values());
-  }, [clipAnnotation, selectedAnnotation]);
+  }, [annotationTask, selectedAnnotation]);
 
   const handleTagReplaceRemove = useCallback(
     async (oldTag: Tag | null, newTag: Tag | null) => {

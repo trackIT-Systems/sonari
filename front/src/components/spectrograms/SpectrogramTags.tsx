@@ -201,7 +201,7 @@ export default function SpectrogramTags({
       {children}
       {tags.map((group) => (
         <TagGroup
-          key={group.annotation.uuid}
+          key={group.annotation.id}
           group={group}
           filter={filter}
           disabled={disabled}

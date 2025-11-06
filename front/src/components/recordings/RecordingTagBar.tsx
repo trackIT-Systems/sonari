@@ -11,37 +11,24 @@ import Card from "../Card";
 
 export default function RecordingTagBar({
   recording: data,
-  onAddTag,
-  onTagClick,
-  onRemoveTag,
-  disabled = false,
 }: {
   recording: Recording;
-  onTagClick?: (tag: Tag) => void;
-  onAddTag?: (data: Recording) => void;
-  onRemoveTag?: (data: Recording) => void;
-  disabled?: boolean;
 }) {
   const {
     data: { tags } = {},
     addTag: { mutate: addTag },
     removeTag: { mutate: removeTag },
   } = useRecording({
-    uuid: data.uuid,
+    id: data.id,
     recording: data,
-    onAddTag,
-    onRemoveTag,
   });
 
   const { handleAddTag, handleRemoveTag } = useMemo(() => {
-    if (disabled) {
-      return {};
-    }
     return {
       handleAddTag: addTag,
       handleRemoveTag: removeTag,
     };
-  }, [addTag, disabled, removeTag]);
+  }, [addTag, removeTag]);
 
   return (
     <Card>
@@ -57,7 +44,6 @@ export default function RecordingTagBar({
           <TagComponent
             key={getTagKey(tag)}
             tag={tag}
-            onClick={() => onTagClick?.(tag)}
             onClose={() => handleRemoveTag?.(tag)}
             count={null}
           />
@@ -67,12 +53,11 @@ export default function RecordingTagBar({
             No tags
           </span>
         )}
-        {!disabled && (
-          <AddTagButton 
-            variant="primary" 
-            onAdd={handleAddTag} 
-          />
-        )}
+
+        <AddTagButton
+          variant="primary"
+          onAdd={handleAddTag}
+        />
       </div>
     </Card>
   );

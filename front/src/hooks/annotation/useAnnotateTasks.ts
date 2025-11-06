@@ -41,6 +41,7 @@ type AnnotationState = {
   /** Whether there is a previous annotation task */
   hasPrevTask: boolean;
   _filter: Filter<AnnotationTaskFilter>;
+  handleCurrentSegmentsLoaded: () => void;
 };
 
 type AnnotationControls = {
@@ -125,70 +126,70 @@ export default function useAnnotateTasks({
   }, [currentTask, items]);
 
 
-  // const parameters = useStore((state) => state.spectrogramSettings);
+  const parameters = useStore((state) => state.spectrogramSettings);
 
-  // const preloadSpectrogramSegments = useCallback(async (recording: Recording) => {
-  //   if (!recording) return;
+  const preloadSpectrogramSegments = useCallback(async (recording: Recording) => {
+    if (!recording) return;
 
-  //   // Calculate initial window to get segment size
-  //   const initial = getInitialViewingWindow({
-  //     startTime: 0,
-  //     endTime: recording.duration,
-  //     samplerate: recording.samplerate,
-  //     parameters,
-  //   });
+    // Calculate initial window to get segment size
+    const initial = getInitialViewingWindow({
+      startTime: 0,
+      endTime: recording.duration,
+      samplerate: recording.samplerate,
+      parameters,
+    });
 
-  //   // Calculate bounds
-  //   const bounds = {
-  //     time: { min: 0, max: recording.duration },
-  //     freq: { min: 0, max: recording.samplerate / 2 },
-  //   };
+    // Calculate bounds
+    const bounds = {
+      time: { min: 0, max: recording.duration },
+      freq: { min: 0, max: recording.samplerate / 2 },
+    };
 
-  //   // Get segment duration
-  //   const duration = getCoveringSegmentDuration(initial, false);
+    // Get segment duration
+    const duration = getCoveringSegmentDuration(initial, false);
 
-  //   // Get all segments
-  //   const segments = getSegments(bounds, duration, OVERLAP);
+    // Get all segments
+    const segments = getSegments(bounds, duration, OVERLAP);
 
-  //   // Load all segments
-  //   segments.forEach(async segment => {
-  //     // Skip if already cached
-  //     if (spectrogramCache.get(recording.uuid, segment, parameters, false)) {
-  //       return;
-  //     }
+    // Load all segments
+    segments.forEach(async segment => {
+      // Skip if already cached
+      if (spectrogramCache.get(recording.id, segment, parameters, false)) {
+        return;
+      }
 
-  //     const url = api.spectrograms.getUrl({
-  //       recording,
-  //       segment: { min: segment.time.min, max: segment.time.max },
-  //       parameters
-  //     });
+      const url = api.spectrograms.getUrl({
+        recording,
+        segment: { min: segment.time.min, max: segment.time.max },
+        parameters
+      });
 
-  //     try {
-  //       const response = await fetch(url);
-  //       const size = parseInt(response.headers.get('content-length') || '0', 10);
-  //       const blob = await response.blob();
-  //       const objectUrl = URL.createObjectURL(blob);
+      try {
+        const response = await fetch(url);
+        const size = parseInt(response.headers.get('content-length') || '0', 10);
+        const blob = await response.blob();
+        const objectUrl = URL.createObjectURL(blob);
 
-  //       const img = new Image();
-  //       img.onload = async () => {
-  //         try {
-  //           await img.decode();
-  //           await spectrogramCache.set(recording.uuid, segment, parameters, false, img, size);
-  //         } finally {
-  //           URL.revokeObjectURL(objectUrl);
-  //         }
-  //       };
+        const img = new Image();
+        img.onload = async () => {
+          try {
+            await img.decode();
+            await spectrogramCache.set(recording.id, segment, parameters, false, img, size);
+          } finally {
+            URL.revokeObjectURL(objectUrl);
+          }
+        };
 
-  //       img.onerror = () => {
-  //         URL.revokeObjectURL(objectUrl);
-  //       };
+        img.onerror = () => {
+          URL.revokeObjectURL(objectUrl);
+        };
 
-  //       img.src = objectUrl;
-  //     } catch (error) {
-  //       console.error('Failed to preload segment:', error);
-  //     }
-  //   });
-  // }, [parameters]);
+        img.src = objectUrl;
+      } catch (error) {
+        console.error('Failed to preload segment:', error);
+      }
+    });
+  }, [parameters]);
 
   const goToTask = useCallback(
     (task: AnnotationTask) => {
@@ -232,25 +233,25 @@ export default function useAnnotateTasks({
     }
   }, [index, items, hasPrevTask, goToTask]);
 
-  // const loadedTasksRef = useRef<Set<string>>(new Set());
-  // const handleCurrentSegmentsLoaded = useCallback(async () => {
-  //   if (!items || index === -1 || index >= items.length - 1) return;
-  //   if (!hasNextTask) return;
+  const loadedTasksRef = useRef<Set<number>>(new Set());
+  const handleCurrentSegmentsLoaded = useCallback(async () => {
+    if (!items || index === -1 || index >= items.length - 1) return;
+    if (!hasNextTask) return;
 
-  //   const nextTask = items[index + 1];
-  //   if (loadedTasksRef.current.has(nextTask.uuid)) return;
-  //   loadedTasksRef.current.add(nextTask.uuid);
+    const nextTask = items[index + 1];
+    if (loadedTasksRef.current.has(nextTask.id)) return;
+    loadedTasksRef.current.add(nextTask.id);
 
-  //   try {
-  //     const completeData = await api.annotationTasks.get(nextTask.uuid);
-  //     if (!completeData.clip?.recording) return;
+    try {
+      const completeData = await api.annotationTasks.get(nextTask.id);
+      if (!completeData.recording) return;
   
-  //     await preloadSpectrogramSegments(completeData.clip.recording);
-  //   } catch (error) {
-  //     console.error('Failed to preload next task:', error);
-  //   }
+      await preloadSpectrogramSegments(completeData.recording);
+    } catch (error) {
+      console.error('Failed to preload next task:', error);
+    }
 
-  // }, [items, index, preloadSpectrogramSegments, hasNextTask]);
+  }, [items, index, preloadSpectrogramSegments, hasNextTask]);
 
   const { set: setFilterKeyValue } = filter;
   const setFilter = useCallback(
@@ -412,6 +413,7 @@ export default function useAnnotateTasks({
     markVerified,
     removeBadge,
     getFirstTask,
+    handleCurrentSegmentsLoaded,
     _filter: filter,
   };
 }

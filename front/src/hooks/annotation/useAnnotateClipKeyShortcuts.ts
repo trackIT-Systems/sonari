@@ -19,7 +19,7 @@ export default function useAnnotateClipKeyShortcuts(props: {
   onGoNext: () => void;
   onGoPrev: () => void;
   enabled?: boolean;
-  selectedAnnotation?: { uuid: string } | null;
+  selectedAnnotation?: { id: number } | null;
   onDeleteSelectedAnnotation?: () => void;
 }) {
   const { 

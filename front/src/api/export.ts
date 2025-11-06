@@ -22,7 +22,7 @@ interface CommonExportParams {
 function buildCommonParams(params: CommonExportParams): URLSearchParams {
   const urlParams = new URLSearchParams();
   
-  // Add annotation project UUIDs
+  // Add annotation project IDs
   params.annotationProjects.forEach(project => {
     urlParams.append('annotation_project_ids', project.id.toString());
   });

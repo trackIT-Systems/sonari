@@ -44,7 +44,7 @@ export default function AnnotationProjectSearch({
       static={false}
       displayValue={(project) => project.name}
       renderOption={(option) => option.name}
-      getOptionKey={(option) => option.uuid}
+      getOptionKey={(option) => option.id}
     />
   );
 }

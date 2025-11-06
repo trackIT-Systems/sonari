@@ -7,7 +7,7 @@ import { SpectrogramParameters } from "@/types";
 import { useEffect, useMemo } from "react";
 
 import type { TagFilter } from "@/api/tags";
-import type { ClipAnnotation, SoundEventAnnotation, Tag } from "@/types";
+import type { AnnotationTask, SoundEventAnnotation, Tag } from "@/types";
 
 export default function SelectedSoundEventAnnotation({
   soundEventAnnotation: data,
@@ -28,16 +28,16 @@ export default function SelectedSoundEventAnnotation({
   onUpdate?: (annotation: SoundEventAnnotation) => void;
 }) {
   const soundEventAnnotation = useSoundEventAnnotation({
-    uuid: data.uuid,
-    clipAnnotation,
+    id: data.id,
+    annotationTask,
     soundEventAnnotation: data,
     onUpdate,
   });
 
   // Find the current annotation in the clip's sound events (this is reactive to cache changes)
   const annotationFromClip = useMemo(() => {
-    return clipAnnotation.sound_events?.find(annotation => annotation.uuid === data.uuid);
-  }, [clipAnnotation.sound_events, data.uuid]);
+    return annotationTask.sound_event_annotations?.find(annotation => annotation.id === data.id);
+  }, [annotationTask.sound_event_annotations, data.id]);
 
   // Use the clip annotation data if available (reactive), otherwise use hook or prop data
   const currentAnnotation = useMemo(() => {
@@ -56,7 +56,7 @@ export default function SelectedSoundEventAnnotation({
       <Card className="grow">
         <SoundEventSpectrogramView
           soundEventAnnotation={currentAnnotation}
-          recording={clipAnnotation.clip.recording}
+          recording={annotationTask.recording!}
           parameters={parameters}
           withSpectrogram={withSpectrogram}
         />

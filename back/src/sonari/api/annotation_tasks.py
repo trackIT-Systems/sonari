@@ -4,8 +4,7 @@ Since Clip, ClipAnnotation, and AnnotationTask have been merged into a single
 AnnotationTask model, this API handles all clip and annotation functionality.
 """
 
-from pathlib import Path
-from typing import Any, Sequence
+from typing import Sequence
 
 from soundevent import data
 from sqlalchemy import and_, select, tuple_
@@ -15,8 +14,6 @@ from sqlalchemy.sql._typing import _ColumnExpressionArgument
 from sonari import exceptions, models, schemas
 from sonari.api import common
 from sonari.api.common import BaseAPI
-from sonari.api.recordings import recordings
-from sonari.api.users import users
 from sonari.filters.base import Filter
 
 __all__ = [
@@ -42,15 +39,15 @@ class AnnotationTaskAPI(
 
     _model = models.AnnotationTask
     _schema = schemas.AnnotationTask
-    
+
     # Map relationship names to model attributes
     relationships = {
-        'recording': models.AnnotationTask.recording,
-        'annotation_project': models.AnnotationTask.annotation_project,
-        'sound_event_annotations': models.AnnotationTask.sound_event_annotations,
-        'tags': models.AnnotationTask.tags,
-        'notes': models.AnnotationTask.notes,
-        'features': models.AnnotationTask.features,
+        "recording": models.AnnotationTask.recording,
+        "annotation_project": models.AnnotationTask.annotation_project,
+        "sound_event_annotations": models.AnnotationTask.sound_event_annotations,
+        "tags": models.AnnotationTask.tags,
+        "notes": models.AnnotationTask.notes,
+        "features": models.AnnotationTask.features,
     }
 
     async def get_many(
@@ -69,7 +66,7 @@ class AnnotationTaskAPI(
         include_features: bool = False,
     ) -> tuple[Sequence[schemas.AnnotationTask], int]:
         """Get many annotation tasks without unique() to avoid duplicate removal after pagination.
-        
+
         Parameters
         ----------
         session
@@ -94,7 +91,7 @@ class AnnotationTaskAPI(
             If True, eagerly load the notes relationship.
         include_features
             If True, eagerly load the features relationship.
-            
+
         Returns
         -------
         tasks : Sequence[schemas.AnnotationTask]
@@ -103,28 +100,26 @@ class AnnotationTaskAPI(
             Total number of tasks matching filters.
         """
         from sqlalchemy.orm import noload, selectinload
+
         from sonari.api.common.utils import get_objects_from_query
 
         query = select(models.AnnotationTask)
-        
-            # Map include parameters
+
+        # Map include parameters
         include_map = {
-            'recording': include_recording,
-            'annotation_project': include_annotation_project,
-            'sound_event_annotations': include_sound_event_annotations,
-            'tags': include_tags,
-            'notes': include_notes,
-            'features': include_features,
+            "recording": include_recording,
+            "annotation_project": include_annotation_project,
+            "sound_event_annotations": include_sound_event_annotations,
+            "tags": include_tags,
+            "notes": include_notes,
+            "features": include_features,
         }
-        
+
         # Build loading options dynamically
-        options = [
-            selectinload(rel) if include_map[name] else noload(rel)
-            for name, rel in self.relationships.items()
-        ]
-        
+        options = [selectinload(rel) if include_map[name] else noload(rel) for name, rel in self.relationships.items()]
+
         query = query.options(*options)
-        
+
         result, count = await get_objects_from_query(
             session,
             models.AnnotationTask,
@@ -151,7 +146,7 @@ class AnnotationTaskAPI(
         include_features: bool = False,
     ) -> schemas.AnnotationTask:
         """Get an annotation task by primary key.
-        
+
         Parameters
         ----------
         session
@@ -170,12 +165,12 @@ class AnnotationTaskAPI(
             If True, eagerly load the notes relationship.
         include_features
             If True, eagerly load the features relationship.
-            
+
         Returns
         -------
         task : schemas.AnnotationTask
             The annotation task.
-            
+
         Raises
         ------
         NotFoundError
@@ -185,12 +180,12 @@ class AnnotationTaskAPI(
 
         # Map include parameters
         include_map = {
-            'recording': include_recording,
-            'annotation_project': include_annotation_project,
-            'sound_event_annotations': include_sound_event_annotations,
-            'tags': include_tags,
-            'notes': include_notes,
-            'features': include_features,
+            "recording": include_recording,
+            "annotation_project": include_annotation_project,
+            "sound_event_annotations": include_sound_event_annotations,
+            "tags": include_tags,
+            "notes": include_notes,
+            "features": include_features,
         }
 
         # Check cache first if no relationships are requested
@@ -199,21 +194,18 @@ class AnnotationTaskAPI(
                 return self._get_from_cache(pk)
 
         query = select(self._model).where(self._model.id == pk)
-        
+
         # Build loading options dynamically
-        options = [
-            selectinload(rel) if include_map[name] else noload(rel)
-            for name, rel in self.relationships.items()
-        ]
-        
+        options = [selectinload(rel) if include_map[name] else noload(rel) for name, rel in self.relationships.items()]
+
         query = query.options(*options)
-        
+
         result = await session.execute(query)
         obj = result.unique().scalar_one_or_none()
-        
+
         if obj is None:
             raise exceptions.NotFoundError(f"AnnotationTask with id {pk} not found")
-        
+
         data = self._schema.model_validate(obj)
         self._update_cache(data)
         return data

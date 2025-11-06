@@ -32,7 +32,7 @@ export default function useWaveformImage({ recording, window,parameters }: UseWa
       setIsError(true);
       setIsLoading(false);
     };
-  }, [recording.uuid, window.time.min, window.time.max,url]);
+  }, [recording.id, window.time.min, window.time.max,url]);
 
   const draw = useCallback((ctx: CanvasRenderingContext2D) => {
     if (!image) return;

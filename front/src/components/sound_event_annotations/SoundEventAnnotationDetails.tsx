@@ -17,7 +17,7 @@ export default function SoundEventAnnotationDetails({
         </H4>
       </div>
       <div className="flex flex-row flex-wrap gap-4">
-        {soundEventAnnotation.sound_event.features?.filter(feature => feature.name === "detection_confidence").map((feature) => (
+        {soundEventAnnotation.features?.filter(feature => feature.name === "detection_confidence").map((feature) => (
           <div key={feature.name}>
             <DescriptionTerm>Confidence</DescriptionTerm>
             <DescriptionData>{feature.value.toLocaleString()}</DescriptionData>

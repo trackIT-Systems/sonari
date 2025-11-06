@@ -6,7 +6,6 @@ import RecordingAnnotationContext from "@/components/annotation/RecordingAnnotat
 import SelectedSoundEventAnnotation from "@/components/annotation/SelectedSoundEventAnnotation";
 import AnnotationTaskStatus from "@/components/annotation_tasks/AnnotationTaskStatus";
 import ClipAnnotationSpectrogram from "@/components/clip_annotations/ClipAnnotationSpectrogram";
-import ClipAnnotationTags from "@/components/clip_annotations/ClipAnnotationTags";
 import Empty from "@/components/Empty";
 import Loading from "@/components/Loading";
 import useAnnotationTasks from "@/hooks/annotation/useAnnotateTasks";
@@ -28,6 +27,8 @@ import type {
   Tag,
   User,
 } from "@/types";
+import AnnotationNotes from "./AnnotationNotes";
+import AnnotationTaskTags from "@/components/annotation/AnnotationTaskTags";
 
 export default function AnnotateTasks({
   taskFilter,
@@ -372,7 +373,7 @@ export default function AnnotateTasks({
                 <div className="min-w-0 grow-0">
                   <ClipAnnotationSpectrogram
                     parameters={parameters}
-                    annotationTask={annotationTask}
+                    annotationTaskProps={annotationTaskProps}
                     defaultTags={tagPalette}
                     selectedTag={selectedTag}
                     onClearSelectedTag={setSelectedTag}
@@ -422,18 +423,18 @@ export default function AnnotateTasks({
           <div className="flex flex-row gap-4 w-full">
             <div className="min-w-[63rem] flex flex-col gap-4">
               <RecordingTagBar
-                recording={annotationTask.recording}
+                recording={annotationTask.recording!}
               />
-              <AnnotationTaskNotes
+              <AnnotationNotes
                 onCreateNote={addNote.mutate}
                 onDeleteNote={removeNote.mutate}
-                clipAnnotation={data}
+                annotationTask={annotationTask}
                 currentUser={currentUser}
               />
             </div>
             <div className="min-w-[35rem]">
-              <ClipAnnotationTags
-                clipAnnotation={data}
+              <AnnotationTaskTags
+                annotationTask={annotationTask}
                 projectTags={projectTags}
                 onReplaceTagInSoundEvents={handleReplaceTagInSoundEvents}
                 selectedAnnotation={selectedAnnotation}

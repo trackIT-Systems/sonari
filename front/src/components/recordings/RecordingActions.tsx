@@ -80,7 +80,7 @@ export default function RecordingActions({
   onDelete?: () => void;
 }) {
   const { downloadURL, delete: deleteRecording } = useRecording({
-    uuid: recording.uuid,
+    id: recording.id,
     recording,
     onDelete,
   });

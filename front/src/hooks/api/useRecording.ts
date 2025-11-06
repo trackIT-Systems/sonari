@@ -34,7 +34,7 @@ export default function useRecording({
   onError?: (error: AxiosError) => void;
 }) {
   if (recording !== undefined && recording.id !== id) {
-    throw new Error("Recording uuid does not match");
+    throw new Error("Recording id does not match");
   }
 
   const {

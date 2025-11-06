@@ -16,7 +16,7 @@ import type { AxiosError } from "axios";
  * additional dataset state if enabled.
  */
 export default function useDataset({
-  uuid,
+  id,
   dataset,
   enabled = true,
   withState = false,
@@ -24,7 +24,7 @@ export default function useDataset({
   onDelete,
   onError,
 }: {
-  uuid: string;
+  id: number;
   dataset?: Dataset;
   enabled?: boolean;
   withState?: boolean;
@@ -32,12 +32,12 @@ export default function useDataset({
   onDelete?: (deleted: Dataset) => void;
   onError?: (error: AxiosError) => void;
 }) {
-  if (dataset !== undefined && dataset.uuid !== uuid) {
-    throw new Error("Dataset uuid does not match");
+  if (dataset !== undefined && dataset.id !== id) {
+    throw new Error("Dataset id does not match");
   }
 
   const { query, useMutation } = useObject<Dataset>({
-    uuid,
+    id,
     initial: dataset,
     name: "dataset",
     enabled,
@@ -56,8 +56,8 @@ export default function useDataset({
   });
 
   const state = useQuery({
-    queryKey: ["dataset", uuid, "state"],
-    queryFn: async () => await api.datasets.getState(uuid),
+    queryKey: ["dataset", id, "state"],
+    queryFn: async () => await api.datasets.getState(id),
     enabled: withState,
   });
 

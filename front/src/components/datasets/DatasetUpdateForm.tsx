@@ -16,7 +16,7 @@ export default function DatasetUpdateForm({
   dataset: Dataset;
 }) {
   const dataset = useDataset({
-    uuid: data.uuid,
+    id: data.id,
     dataset: data,
     enabled: false,
   });

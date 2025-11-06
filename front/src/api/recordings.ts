@@ -81,7 +81,7 @@ export function registerRecordingAPI(
         offset: params.offset,
         sort_by: params.sort_by,
         search: params.search,
-        dataset__eq: params.dataset?.uuid,
+        dataset__eq: params.dataset?.id,
         duration__gt: params.duration?.gt,
         duration__lt: params.duration?.lt,
         latitude__gt: params.latitude?.gt,
@@ -107,9 +107,9 @@ export function registerRecordingAPI(
     return RecordingPageSchema.parse(data);
   }
 
-  async function get(uuid: string): Promise<Recording> {
+  async function get(id: number): Promise<Recording> {
     const { data } = await instance.get(endpoints.get, {
-      params: { recording_uuid: uuid },
+      params: { recording_id: id },
     });
     return RecordingSchema.parse(data);
   }
@@ -120,14 +120,14 @@ export function registerRecordingAPI(
   ): Promise<Recording> {
     const body = RecordingUpdateSchema.parse(data);
     const { data: res } = await instance.patch(endpoints.update, body, {
-      params: { recording_uuid: recording.uuid },
+      params: { recording_id: recording.id },
     });
     return RecordingSchema.parse(res);
   }
 
   async function deleteRecording(recording: Recording): Promise<Recording> {
     const { data: res } = await instance.delete(endpoints.delete, {
-      params: { recording_uuid: recording.uuid },
+      params: { recording_id: recording.id },
     });
     return RecordingSchema.parse(res);
   }
@@ -138,7 +138,7 @@ export function registerRecordingAPI(
       {},
       {
         params: {
-          recording_uuid: recording.uuid,
+          recording_id: recording.id,
           key: tag.key,
           value: tag.value,
         },
@@ -150,7 +150,7 @@ export function registerRecordingAPI(
   async function removeTag(recording: Recording, tag: Tag): Promise<Recording> {
     const { data } = await instance.delete(endpoints.removeTag, {
       params: {
-        recording_uuid: recording.uuid,
+        recording_id: recording.id,
         key: tag.key,
         value: tag.value,
       },
@@ -163,7 +163,7 @@ export function registerRecordingAPI(
     data: NoteCreate,
   ): Promise<Recording> {
     const { data: updated } = await instance.post(endpoints.addNote, data, {
-      params: { recording_uuid: recording.uuid },
+      params: { recording_id: recording.id },
     });
     return RecordingSchema.parse(updated);
   }
@@ -174,8 +174,8 @@ export function registerRecordingAPI(
   ): Promise<Recording> {
     const { data } = await instance.delete(endpoints.removeNote, {
       params: {
-        recording_uuid: recording.uuid,
-        note_uuid: note.uuid,
+        recording_id: recording.id,
+        note_id: note.id,
       },
     });
     return RecordingSchema.parse(data);
@@ -190,7 +190,7 @@ export function registerRecordingAPI(
       {},
       {
         params: {
-          recording_uuid: recording.uuid,
+          recording_id: recording.id,
           name: feature.name,
           value: feature.value,
         },
@@ -205,7 +205,7 @@ export function registerRecordingAPI(
   ): Promise<Recording> {
     const { data } = await instance.delete(endpoints.removeFeature, {
       params: {
-        recording_uuid: recording.uuid,
+        recording_id: recording.id,
         name: feature.name,
         value: feature.value,
       },
@@ -222,7 +222,7 @@ export function registerRecordingAPI(
       {},
       {
         params: {
-          recording_uuid: recording.uuid,
+          recording_id: recording.id,
           name: feature.name,
           value: feature.value,
         },

@@ -46,7 +46,7 @@ import { DEFAULT_SPECTROGRAM_PARAMETERS } from "./spectrograms";
       const { gamma, cmap } = parsed_params;
       // Construct query
       const query = {
-        recording_uuid: recording.uuid,
+        recording_id: recording.id,
         gamma,
         cmap
       };

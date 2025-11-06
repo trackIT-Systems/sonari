@@ -8,28 +8,26 @@ import { NotesIcon } from "@/components/icons";
 import CreateNote from "@/components/notes/CreateNote";
 import Feed from "@/components/notes/Feed";
 
-import RecordingTagBar from "../recordings/RecordingTagBar";
-
-import type { ClipAnnotation, Note, User } from "@/types";
+import type { AnnotationTask, Note, User } from "@/types";
 
 function NoNotes() {
   return <Empty padding="p-2">No notes</Empty>;
 }
 
-export default function ClipAnnotationNotes({
-  clipAnnotation,
+export default function AnnotationNotes({
+  annotationTask,
   currentUser,
   onCreateNote,
   onUpdateNote,
   onDeleteNote,
 }: {
-  clipAnnotation?: ClipAnnotation;
+  annotationTask: AnnotationTask;
   currentUser?: User;
   onCreateNote?: (note: NoteCreate) => void;
   onUpdateNote?: (note: Note) => void;
   onDeleteNote?: (note: Note) => void;
 }) {
-  const notes = useMemo(() => clipAnnotation?.notes || [], [clipAnnotation]);
+  const notes = useMemo(() => annotationTask.notes || [], [annotationTask]);
 
   return (
     <div>

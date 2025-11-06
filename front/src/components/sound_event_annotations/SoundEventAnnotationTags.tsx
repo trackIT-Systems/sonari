@@ -17,10 +17,14 @@ export default function SoundEventAnnotationTags({
   soundEventAnnotation,
   tagFilter,
   onClickTag,
+  onAddTag,
+  onRemoveTag,
 }: {
   soundEventAnnotation: SoundEventAnnotation;
   tagFilter?: TagFilter;
   onClickTag?: (tag: Tag) => void;
+  onAddTag?: (tag: Tag) => void;
+  onRemoveTag?: (tag: Tag) => void;
 }) {
   const tags = useMemo(
     () => soundEventAnnotation.tags || [],
@@ -41,6 +45,7 @@ export default function SoundEventAnnotationTags({
             key={getTagKey(tag)}
             tag={tag}
             onClick={() => onClickTag?.(tag)}
+            onClose={onRemoveTag ? () => onRemoveTag(tag) : undefined}
             count={null}
           />
         ))}
@@ -52,6 +57,7 @@ export default function SoundEventAnnotationTags({
           filter={tagFilter}
           text="Add tags"
           placeholder="Add tags..."
+          onAdd={onAddTag}
         />
       </div>
     </div>

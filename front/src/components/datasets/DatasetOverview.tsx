@@ -20,7 +20,7 @@ export default function DatasetOverview({ dataset }: { dataset: Dataset }) {
   const params = useSearchParams();
 
   const { state } = useDataset({
-    uuid: dataset.uuid,
+    id: dataset.id,
     dataset,
     enabled: false,
     withState: true,

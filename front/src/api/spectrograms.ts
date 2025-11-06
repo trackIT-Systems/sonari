@@ -70,7 +70,7 @@ export function registerSpectrogramAPI(
 
     // Construct query
     const query = {
-      recording_uuid: recording.uuid,
+      recording_id: recording.id,
       start_time: parsed_segment.min,
       end_time: parsed_segment.max,
       low_res: lowRes,

@@ -11,6 +11,7 @@ import {
   FloatEqFilterSchema,
 } from "@/schemas";
 
+import type { NoteCreate } from "@/api/notes";
 import type {
   AnnotationStatus,
   AnnotationTask,
@@ -273,12 +274,11 @@ export function registerAnnotationTasksAPI(
 
   async function addNote(
     annotationTask: AnnotationTask,
-    note: Note,
+    data: NoteCreate,
   ): Promise<AnnotationTask> {
-    const response = await instance.post(endpoints.addNote, {
+    const response = await instance.post(endpoints.addNote, data, {
       params: {
         annotation_task_id: annotationTask.id,
-        note,
       },
     });
     return AnnotationTaskSchema.parse(response.data);
@@ -291,7 +291,7 @@ export function registerAnnotationTasksAPI(
     const response = await instance.delete(endpoints.removeNote, {
       params: {
         annotation_task_id: annotationTask.id,
-        note,
+        note_id: note.id,
       },
     });
     return AnnotationTaskSchema.parse(response.data);

@@ -125,7 +125,7 @@ export default function Page() {
         taskFilter={filter}
         tagFilter={filter}
         projectTags={project.tags == null ? [] : project.tags}
-        annotationTask={annotationTask}
+        annotationTaskProps={annotationTask}
         parameters={parameters}
         onChangeTask={onChangeTask}
         currentUser={user}

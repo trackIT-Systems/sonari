@@ -188,12 +188,12 @@ const tasksFilterDefs: FilterDef<AnnotationTaskFilter>[] = [
       const datasets = Array.isArray(value) ? value : [value];
       return datasets.map(dataset => (
         <FilterBadge 
-          key={dataset.uuid}
+          key={dataset.id}
           field="Dataset" 
           value={dataset.name} 
           onRemove={() => {
             if (Array.isArray(value)) {
-              const newValue = value.filter(d => d.uuid !== dataset.uuid);
+              const newValue = value.filter(d => d.id !== dataset.id);
               if (newValue.length === 0) {
                 clear();
               } else {
@@ -457,25 +457,25 @@ const tasksFilterDefs: FilterDef<AnnotationTaskFilter>[] = [
   },
   {
     name: "Min Frequency",
-    field: "sound_event_min_frequency",
+    field: "sound_event_annotation_min_frequency",
     selector: ({ setFilter, filter }) => (
       <FloatFilter
         name="frequency (Hz)"
         showDecimals={false}
         onChange={(val) => {
-          const currentValue = filter.get("sound_event_min_frequency") || {};
+          const currentValue = filter.get("sound_event_annotation_min_frequency") || {};
           if ('gt' in val) {
             const newValue = {
               ...currentValue,
               gt: val.gt
             };
-            setFilter("sound_event_min_frequency", newValue);
+            setFilter("sound_event_annotation_min_frequency", newValue);
           } else if ('lt' in val) {
             const newValue = {
               ...currentValue,
               lt: val.lt
             };
-            setFilter("sound_event_min_frequency", newValue);
+            setFilter("sound_event_annotation_min_frequency", newValue);
           }
         }}
       />
@@ -489,7 +489,7 @@ const tasksFilterDefs: FilterDef<AnnotationTaskFilter>[] = [
             onRemove={() => {
               const newValue = { ...value };
               delete newValue.gt;
-              Object.keys(newValue).length === 0 ? clear() : setFilter("sound_event_min_frequency", newValue);
+              Object.keys(newValue).length === 0 ? clear() : setFilter("sound_event_annotation_min_frequency", newValue);
             }}
           />
         )}
@@ -500,7 +500,7 @@ const tasksFilterDefs: FilterDef<AnnotationTaskFilter>[] = [
             onRemove={() => {
               const newValue = { ...value };
               delete newValue.lt;
-              Object.keys(newValue).length === 0 ? clear() : setFilter("sound_event_min_frequency", newValue);
+              Object.keys(newValue).length === 0 ? clear() : setFilter("sound_event_annotation_min_frequency", newValue);
             }}
           />
         )}
@@ -513,25 +513,25 @@ const tasksFilterDefs: FilterDef<AnnotationTaskFilter>[] = [
   },
   {
     name: "Max Frequency",
-    field: "sound_event_max_frequency",
+    field: "sound_event_annotation_max_frequency",
     selector: ({ setFilter, filter }) => (
       <FloatFilter
         name="frequency (Hz)"
         showDecimals={false}
         onChange={(val) => {
-          const currentValue = filter.get("sound_event_max_frequency") || {};
+          const currentValue = filter.get("sound_event_annotation_max_frequency") || {};
           if ('gt' in val) {
             const newValue = {
               ...currentValue,
               gt: val.gt
             };
-            setFilter("sound_event_max_frequency", newValue);
+            setFilter("sound_event_annotation_max_frequency", newValue);
           } else if ('lt' in val) {
             const newValue = {
               ...currentValue,
               lt: val.lt
             };
-            setFilter("sound_event_max_frequency", newValue);
+            setFilter("sound_event_annotation_max_frequency", newValue);
           }
         }}
       />
@@ -545,7 +545,7 @@ const tasksFilterDefs: FilterDef<AnnotationTaskFilter>[] = [
             onRemove={() => {
               const newValue = { ...value };
               delete newValue.gt;
-              Object.keys(newValue).length === 0 ? clear() : setFilter("sound_event_max_frequency", newValue);
+              Object.keys(newValue).length === 0 ? clear() : setFilter("sound_event_annotation_max_frequency", newValue);
             }}
           />
         )}
@@ -556,7 +556,7 @@ const tasksFilterDefs: FilterDef<AnnotationTaskFilter>[] = [
             onRemove={() => {
               const newValue = { ...value };
               delete newValue.lt;
-              Object.keys(newValue).length === 0 ? clear() : setFilter("sound_event_max_frequency", newValue);
+              Object.keys(newValue).length === 0 ? clear() : setFilter("sound_event_annotation_max_frequency", newValue);
             }}
           />
         )}

@@ -7,7 +7,7 @@ const AnnotationProjectContext = createContext<AnnotationProject>({
   description: "",
   tags: [],
   created_on: new Date(),
-  uuid: "",
+  id: -1,
 });
 
 export default AnnotationProjectContext;

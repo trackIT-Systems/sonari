@@ -66,7 +66,7 @@ export default function useAnnotationDelete({
       ctx.canvas.style.cursor = "pointer";
       const geometry = scaleGeometryToViewport(
         { width: ctx.canvas.width, height: ctx.canvas.height },
-        hovered.sound_event.geometry,
+        hovered.geometry,
         viewport,
       );
 

@@ -6,7 +6,7 @@ import type { Dataset } from "@/types";
 
 export default function DatasetExport({ dataset }: { dataset: Dataset }) {
   const { download } = useDataset({
-    uuid: dataset.uuid,
+    id: dataset.id,
     dataset,
   });
   return (

@@ -22,7 +22,7 @@ export default function ProjectUpdateForm({
     update,
     isLoading,
   } = useAnnotationProject({
-    uuid: data.uuid,
+    id: data.id,
     annotationProject: data,
     onUpdate: onChange,
   });

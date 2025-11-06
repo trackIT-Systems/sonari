@@ -29,7 +29,7 @@ export default function Page() {
       });
 
       dataset.then((data) => {
-        router.push(`/datasets/detail/?dataset_uuid=${data.uuid}`);
+        router.push(`/datasets/detail/?dataset_id=${data.id}`);
       });
     },
     [router],

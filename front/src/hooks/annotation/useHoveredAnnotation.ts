@@ -33,7 +33,7 @@ export default function useHoveredAnnotations({
     const { min: startTime, max: endTime } = viewport.time;
     const { min: lowFreq, max: highFreq } = viewport.freq;
     return annotations.filter((annotation) => {
-      const { geometry } = annotation.sound_event;
+      const { geometry } = annotation;
 
       // Remove annotations without geometry
       if (geometry == null) return false;
@@ -70,7 +70,7 @@ export default function useHoveredAnnotations({
 
   const scaledGeometries = useMemo(() => {
     if (!enabled) return [];
-    return annotationsInWindow.map(({ sound_event: { geometry } }) => {
+    return annotationsInWindow.map(({ geometry }) => {
       return scaleGeometryToViewport(dimensions, geometry, viewport);
     });
   }, [enabled, annotationsInWindow, viewport, dimensions]);

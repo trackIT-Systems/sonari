@@ -65,7 +65,7 @@ export default function useAnnotationSelect({
       const geometry = scaleGeometryToViewport(
         { width: ctx.canvas.width, height: ctx.canvas.height },
         // @ts-ignore
-        hovered.sound_event.geometry,
+        hovered.geometry,
         viewport,
       );
 

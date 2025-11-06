@@ -5,7 +5,6 @@ import useAnnotationDelete from "@/hooks/annotation/useAnnotationDelete";
 import useAnnotationDraw from "@/hooks/annotation/useAnnotationDraw";
 import useAnnotationEdit from "@/hooks/annotation/useAnnotationEdit";
 import useAnnotationSelect from "@/hooks/annotation/useAnnotationSelect";
-import useClipAnnotation from "@/hooks/api/useClipAnnotation";
 import useSpectrogramTags from "@/hooks/spectrogram/useSpectrogramTags";
 import useAnnotateClipKeyShortcuts from "@/hooks/annotation/useAnnotateClipKeyShortcuts";
 import useCreateWaveformMeasurement from "@/hooks/draw/useCreateWaveformMeasurement";
@@ -13,7 +12,6 @@ import useCreateWaveformMeasurement from "@/hooks/draw/useCreateWaveformMeasurem
 import { ABORT_SHORTCUT } from "@/utils/keyboard";
 
 import type {
-  ClipAnnotation,
   Dimensions,
   Geometry,
   GeometryType,
@@ -22,6 +20,8 @@ import type {
   SpectrogramWindow,
   Tag,
 } from "@/types";
+import useAnnotationTask from "../api/useAnnotationTask";
+import toast from "react-hot-toast";
 
 export type AnnotateMode = "select" | "measure" | "draw" | "edit" | "delete" | "idle";
 
@@ -80,15 +80,15 @@ const getEndCoordinate = (geometry: Geometry) => {
 
 const sortSoundEvents = (soundEvents: SoundEventAnnotation[]) => {
   return [...soundEvents].sort((a, b) => {
-    const startA = getStartCoordinate(a.sound_event.geometry);
-    const startB = getStartCoordinate(b.sound_event.geometry);
+    const startA = getStartCoordinate(a.geometry);
+    const startB = getStartCoordinate(b.geometry);
     return startA - startB;
   });
 };
 
 export default function useAnnotateClip(props: {
   /** The clip annotation to annotate */
-  clipAnnotation: ClipAnnotation;
+  annotationTaskProps: ReturnType<typeof useAnnotationTask>;
   /** Current spectrogram viewport */
   viewport: SpectrogramWindow;
   /** Dimensions of the spectrogram canvas */
@@ -118,7 +118,7 @@ export default function useAnnotateClip(props: {
   onCenterOn: (time: number) => void;
 }) {
   const {
-    clipAnnotation: data,
+    annotationTaskProps,
     viewport,
     dimensions,
     defaultTags,
@@ -147,33 +147,27 @@ export default function useAnnotateClip(props: {
     onChangeMode: onModeChange,
   });
 
-  const {
-    data: clipAnnotation,
-    addSoundEvent: { mutate: addSoundEvent },
-    removeSoundEvent: { mutate: removeSoundEvent },
-    updateSoundEvent: { mutate: updateSoundEvent },
-    addTagToSoundEvent: { mutate: addTagToSoundEvent },
-    removeTagFromSoundEvent: { mutate: removeTagFromSoundEvent },
-  } = useClipAnnotation({
-    uuid: data.uuid,
-    clipAnnotation: data,
-  });
+  const {data: annotationTask, addSoundEvent, removeSoundEvent, addTagToSoundEvent, removeTagFromSoundEvent, updateSoundEvent} = annotationTaskProps;
+  if (!annotationTask) {
+    toast.error("Annotation task not found.")
+    return
+  }
 
   const soundEvents = useMemo(
     () => {
       if (withSoundEvent) {
-        return clipAnnotation?.sound_events || []
+        return annotationTask.sound_event_annotations || []
       } else {
         return []
       }
     },
-    [clipAnnotation, withSoundEvent],
+    [annotationTask, withSoundEvent],
   );
 
   const handleCreate = useCallback(
     (geometry: Geometry) => {
       if (disabled) return;
-      addSoundEvent(
+      addSoundEvent.mutate(
         {
           geometry,
           tags: defaultTags || [],
@@ -287,7 +281,7 @@ export default function useAnnotateClip(props: {
   const handleDelete = useCallback(
     (annotation: SoundEventAnnotation) => {
       if (disabled) return;
-      removeSoundEvent(annotation);
+      removeSoundEvent.mutate(annotation);
       setMode("idle");
     },
     [removeSoundEvent, setMode, disabled],
@@ -305,7 +299,7 @@ export default function useAnnotateClip(props: {
   const handleEdit = useCallback(
     (geometry: Geometry) => {
       if (selectedAnnotation == null || disabled) return;
-      updateSoundEvent(
+      updateSoundEvent.mutate(
         {
           soundEventAnnotation: selectedAnnotation,
           geometry,
@@ -323,7 +317,7 @@ export default function useAnnotateClip(props: {
   const handleCopy = useCallback(
     (annotation: SoundEventAnnotation, geometry: Geometry) => {
       if (disabled) return;
-      addSoundEvent(
+      addSoundEvent.mutate(
         {
           geometry,
           tags: annotation.tags || [],
@@ -353,7 +347,7 @@ export default function useAnnotateClip(props: {
     const sortedAnnotations = sortSoundEvents(filteredSoundEvents);
   
     const currentIndex = sortedAnnotations.findIndex(
-      (annotation) => annotation.uuid === selectedAnnotation?.uuid  // Use UUID for comparison
+      (annotation) => annotation.id === selectedAnnotation?.id
     );
   
     const nextIndex = currentIndex === -1 
@@ -366,8 +360,8 @@ export default function useAnnotateClip(props: {
   
     // Assume `centerOn` is a function provided by the spectrogram to adjust the viewport.
     if (viewport && nextAnnotation) {
-      const annotationStart = getStartCoordinate(nextAnnotation.sound_event.geometry);
-      const annotationEnd = getEndCoordinate(nextAnnotation.sound_event.geometry);
+      const annotationStart = getStartCoordinate(nextAnnotation.geometry);
+      const annotationEnd = getEndCoordinate(nextAnnotation.geometry);
   
       // Check if annotation is outside viewport:
       if (annotationStart < viewport.time.min || annotationEnd > viewport.time.max) {
@@ -384,7 +378,7 @@ export default function useAnnotateClip(props: {
     const sortedAnnotations = sortSoundEvents(filteredSoundEvents);
   
     const currentIndex = sortedAnnotations.findIndex(
-      (annotation) => annotation.uuid === selectedAnnotation?.uuid  // Use UUID for comparison
+      (annotation) => annotation.id === selectedAnnotation?.id
     );
   
     const prevIndex = currentIndex === -1 
@@ -397,8 +391,8 @@ export default function useAnnotateClip(props: {
   
     // Assume `centerOn` is a function provided by the spectrogram to adjust the viewport.
     if (viewport && nextAnnotation) {
-      const annotationStart = getStartCoordinate(nextAnnotation.sound_event.geometry);
-      const annotationEnd = getEndCoordinate(nextAnnotation.sound_event.geometry);
+      const annotationStart = getStartCoordinate(nextAnnotation.geometry);
+      const annotationEnd = getEndCoordinate(nextAnnotation.geometry);
   
       // Check if annotation is outside viewport:
       if (annotationStart < viewport.time.min || annotationEnd > viewport.time.max) {
@@ -422,7 +416,7 @@ export default function useAnnotateClip(props: {
   const handleOnClickTag = useCallback(
     (annotation: SoundEventAnnotation, tag: Tag) => {
       if (disabled) return;
-      removeTagFromSoundEvent({
+      removeTagFromSoundEvent.mutate({
         soundEventAnnotation: annotation,
         tag,
       });
@@ -433,7 +427,7 @@ export default function useAnnotateClip(props: {
   const handleOnAddTag = useCallback(
     (annotation: SoundEventAnnotation, tag: Tag) => {
       if (disabled) return;
-      addTagToSoundEvent({
+      addTagToSoundEvent.mutate({
         soundEventAnnotation: annotation,
         tag,
       });

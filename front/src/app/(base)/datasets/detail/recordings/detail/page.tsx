@@ -16,15 +16,15 @@ export default function Page() {
   const user = useContext(UserContext);
   const router = useRouter();
   const searchParams = useSearchParams();
-  const recordingUUID = searchParams.get("recording_uuid");
-  const datasetUUID = searchParams.get("dataset_uuid");
+  const recordingID = searchParams.get("recording_id");
+  const datasetID = searchParams.get("dataset_id");
   const parameters = useStore((state) => state.spectrogramSettings);
   const setParameters = useStore((state) => state.setSpectrogramSettings);
 
   const returnToRecordings = useCallback(() => {
-    if (datasetUUID == null) router.push("/datasets/");
-    router.push(`/datasets/detail/recordings/?dataset_uuid=${datasetUUID}`);
-  }, [router, datasetUUID]);
+    if (datasetID == null) router.push("/datasets/");
+    router.push(`/datasets/detail/recordings/?dataset_id=${datasetID}`);
+  }, [router, datasetID]);
 
   const handleError = useCallback(
     (error: AxiosError) => {
@@ -49,12 +49,12 @@ export default function Page() {
     returnToRecordings();
   }, [returnToRecordings]);
 
-  if (recordingUUID == null) {
+  if (recordingID == null) {
     notFound();
   }
 
   const recording = useRecording({
-    uuid: recordingUUID,
+    id: parseInt(recordingID),
     onError: handleError,
   });
 

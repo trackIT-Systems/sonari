@@ -28,9 +28,9 @@ export default function DatasetRecordings({
 
     return (recording: Recording) => {
       const url = getRecordingLinkFn(recording);
-      return `${url}&dataset_uuid=${dataset.uuid}`;
+      return `${url}&dataset_id=${dataset.id}`;
     };
-  }, [getRecordingLinkFn, dataset.uuid]);
+  }, [getRecordingLinkFn, dataset.id]);
   const filter = useMemo(() => ({ dataset }), [dataset]);
 
   return (
