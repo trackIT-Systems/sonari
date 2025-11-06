@@ -47,13 +47,13 @@ export type SoundEventAnnotationFilter = z.input<
   typeof SoundEventAnnotationFilterSchema
 >;
 
-export const GetAnnotationsQuerySchema = z.intersection(
+export const GetSoundEventAnnotationsQuerySchema = z.intersection(
   GetManySchema,
   SoundEventAnnotationFilterSchema,
 );
 
-export type GetAnnotationsQuerySchema = z.input<
-  typeof GetAnnotationsQuerySchema
+export type GetSoundEventAnnotationsQuery = z.input<
+  typeof GetSoundEventAnnotationsQuerySchema
 >;
 
 const DEFAULT_ENDPOINTS = {
@@ -64,8 +64,6 @@ const DEFAULT_ENDPOINTS = {
   delete: "/api/v1/sound_event_annotations/detail/",
   addTag: "/api/v1/sound_event_annotations/detail/tags/",
   removeTag: "/api/v1/sound_event_annotations/detail/tags/",
-  addNote: "/api/v1/sound_event_annotations/detail/notes/",
-  removeNote: "/api/v1/sound_event_annotations/detail/notes/",
 };
 
 export function registerSoundEventAnnotationsAPI(

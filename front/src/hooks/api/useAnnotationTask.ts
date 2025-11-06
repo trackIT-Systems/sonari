@@ -75,11 +75,11 @@ export default function useAnnotationTask({
   });
 
   const {
-    addSoundEvent,
-    updateSoundEvent,
-    removeSoundEvent,
-    addTagToSoundEvent,
-    removeTagFromSoundEvent
+    addSoundEventAnnotation,
+    updateSoundEventAnnotation,
+    removeSoundEventAnnotation,
+    addTagToSoundEventAnnotation,
+    removeTagFromSoundEventAnnotation
   } = useSoundEventMutations({getData: () => query.data, setData, client, onError})
 
   return {
@@ -91,10 +91,10 @@ export default function useAnnotationTask({
     delete: deleteTask,
     addTag,
     removeTag,
-    addSoundEvent,
-    updateSoundEvent,
-    removeSoundEvent,
-    addTagToSoundEvent,
-    removeTagFromSoundEvent,
+    addSoundEventAnnotation,
+    updateSoundEventAnnotation,
+    removeSoundEventAnnotation,
+    addTagToSoundEventAnnotation,
+    removeTagFromSoundEventAnnotation,
   } as const;
 }

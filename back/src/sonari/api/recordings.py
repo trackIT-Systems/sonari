@@ -455,10 +455,6 @@ class RecordingAPI(
             samplerate=samplerate,
         )
 
-        # TODO: Update time and frequency coordinates of associated objects:
-        # - clips
-        # - sound_events
-
     async def add_tag(
         self,
         session: AsyncSession,

@@ -76,9 +76,9 @@ export const REJECT_TASK_SHORTCUT = "3";
 export const VERIFY_TASK_SHORTCUT = "4";
 
 export const MEASURE_SHORTCUT = "M";
-export const CREATE_SOUND_EVENT_SHORTCUT = "c";
-export const SELECT_SOUND_EVENT_SHORTCUT = "s";
-export const DELETE_SOUND_EVENT_SHORTCUT = "x";
+export const CREATE_SOUND_EVENT_ANNOTATION_SHORTCUT = "c";
+export const SELECT_SOUND_EVENT_ANNOTATION_SHORTCUT = "s";
+export const DELETE_SOUND_EVENT_ANNOTATION_SHORTCUT = "x";
 
 export const ADD_TAG_SHORTCUT = "a";
 export const REPLACE_TAG_SHORTCUT = "r";
@@ -86,8 +86,8 @@ export const DELETE_TAG_SHORTCUT = "d";
 
 export const HELP_SHORTCUT = "?";
 
-export const NEXT_SOUND_EVENT_SHORTCUT = "n";
-export const PREVIOUS_SOUND_EVENT_SHORTCUT = "b";
+export const NEXT_SOUND_EVENT_ANNOTATION_SHORTCUT = "n";
+export const PREVIOUS_SOUND_EVENT_ANNOTATION_SHORTCUT = "b";
 export const SOUND_EVENT_CYCLE_FILTER_SHORTCUT = "m";
 
 export const NEXT_TASK_SHORTCUT = "ArrowRight";
@@ -110,8 +110,8 @@ export const FILTER_SHORTCUT = "f";
 export const DISABLE_SPECTROGRAM_SHORTCUT = "h";
 export const GEOMETRY_TYPE_SHORTCUT = "e";
 export const SETTINGS_SHORTCUT = "o";
-export const CLIP_NOTE_SHORTCUT = "q";
-export const SUBMIT_CLIP_NOTE_SHORTCUT = "Enter";
+export const ANNOTATION_TASK_NOTE_SHORTCUT = "q";
+export const SUBMIT_ANNOTATION_TASK_NOTE_SHORTCUT = "Enter";
 
 // General shortcuts
 export const ABORT_SHORTCUT = "Escape";
@@ -180,18 +180,18 @@ export const MISC_SHORTCUTS: KeyShortcut[] = [
         description: "Open the settings panel",
     },
     {
-        label: "New Clip Note",
-        shortcut: CLIP_NOTE_SHORTCUT,
-        description: "Add a new note to clips",
+        label: "New Annotation Task Note",
+        shortcut: ANNOTATION_TASK_NOTE_SHORTCUT,
+        description: "Add a new note to annotation tasks",
     },
     {
-        label: "Submit Clip Note",
-        shortcut: `${getSpecialKeyLabel("Shift")} ${SUBMIT_CLIP_NOTE_SHORTCUT}`,
+        label: "Submit Annotation Task Note",
+        shortcut: `${getSpecialKeyLabel("Shift")} ${SUBMIT_ANNOTATION_TASK_NOTE_SHORTCUT}`,
         description: "Submit a new note when done writing",
     },
     {
-        label: "Submit Clip Issue",
-        shortcut: `${getMetaKeyLabel()} ${SUBMIT_CLIP_NOTE_SHORTCUT}`,
+        label: "Submit Annotation Task Issue",
+        shortcut: `${getMetaKeyLabel()} ${SUBMIT_ANNOTATION_TASK_NOTE_SHORTCUT}`,
         description: "Submit a new issue when done writing",
     },
 ]
@@ -236,9 +236,9 @@ export const SPECTROGRAM_KEY_SHORTCUTS: KeyShortcut[] = [
         description: "Do not show spectrograms",
     },
     {
-        label: "Disable sound events",
+        label: "Disable sound event annotations",
         shortcut: `${getSpecialKeyLabel("Shift")} ${getSpecialKeyLabel(DISABLE_SPECTROGRAM_SHORTCUT)}`,
-        description: "Do not show sound events (bounding boxes, etc.)",
+        description: "Do not show sound event annotations (bounding boxes, etc.)",
     },
     {
         label: "Fix aspect ratio",
@@ -300,19 +300,19 @@ export const SPECTRGRAM_NAVIGATION_SHORTCUTS: KeyShortcut[] = [
         description: "Move down",
     },
     {
-        label: "Next Sound Event",
-        shortcut: NEXT_SOUND_EVENT_SHORTCUT,
-        description: "Select the next sound event",
+        label: "Next Sound Event Annotation",
+        shortcut: NEXT_SOUND_EVENT_ANNOTATION_SHORTCUT,
+        description: "Select the next sound event annotation",
     },
     {
-        label: "Previous Sound Event",
-        shortcut: PREVIOUS_SOUND_EVENT_SHORTCUT,
-        description: "Select the previous sound event",
+        label: "Previous Sound Event Annotation",
+        shortcut: PREVIOUS_SOUND_EVENT_ANNOTATION_SHORTCUT,
+        description: "Select the previous sound event annotation",
     },
     {
-        label: "Sound event navigation",
+        label: "Sound event annotation navigation",
         shortcut: SOUND_EVENT_CYCLE_FILTER_SHORTCUT,
-        description: "Set or remove tag for next and previous sound event navigation",
+        description: "Set or remove tag for next and previous sound event annotation navigation",
     },
 ]
 
@@ -323,18 +323,18 @@ export const ANNOTATION_KEY_SHORTCUTS: KeyShortcut[] = [
         description: "Add temporary measurement line",
     },
     {
-        label: "Add Annotation",
-        shortcut: CREATE_SOUND_EVENT_SHORTCUT,
-        description: "Add a new annotation",
+        label: "Add Sound Event Annotation",
+        shortcut: CREATE_SOUND_EVENT_ANNOTATION_SHORTCUT,
+        description: "Add a new sound event annotation",
     },
     {
-        label: "Select Annotation",
-        shortcut: SELECT_SOUND_EVENT_SHORTCUT,
-        description: "Select an annotation",
+        label: "Select Sound Event Annotation",
+        shortcut: SELECT_SOUND_EVENT_ANNOTATION_SHORTCUT,
+        description: "Select a sound event annotation",
     },
     {
         label: "Delete Annotation",
-        shortcut: DELETE_SOUND_EVENT_SHORTCUT,
+        shortcut: DELETE_SOUND_EVENT_ANNOTATION_SHORTCUT,
         description: "Delete an annotation. If annotation is selected it will be deleted.",
     },
     {
@@ -347,12 +347,12 @@ export const ANNOTATION_KEY_SHORTCUTS: KeyShortcut[] = [
 export const NAVIGATION_KEY_SHORTCUTS: KeyShortcut[] = [
     {
         label: "Select next",
-        shortcut: NEXT_SOUND_EVENT_SHORTCUT,
+        shortcut: NEXT_SOUND_EVENT_ANNOTATION_SHORTCUT,
         description: "Select next sound event annotation",
     },
     {
         label: "Select previous",
-        shortcut: PREVIOUS_SOUND_EVENT_SHORTCUT,
+        shortcut: PREVIOUS_SOUND_EVENT_ANNOTATION_SHORTCUT,
         description: "Select previous sound event annotation",
     },
     {

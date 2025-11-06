@@ -33,7 +33,7 @@ export default function useEditAnnotationGeometry({
   onDeselect?: () => void;
   style?: Style;
 }) {
-  const { geometry } = soundEventAnnotation?.sound_event ?? {};
+  const { geometry } = soundEventAnnotation ?? {};
 
   const scaledGeometry = useMemo(() => {
     if (geometry == null) return null;

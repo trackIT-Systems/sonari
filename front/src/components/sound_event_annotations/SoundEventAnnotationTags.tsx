@@ -36,7 +36,7 @@ export default function SoundEventAnnotationTags({
       <div className="flex justify-between items-center gap-2 mb-2">
         <H4 className="text-center whitespace-nowrap">
           <TagsIcon className="inline-block mr-1 w-5 h-5" />
-          Sound Event Tags
+          Sound Event Annotation Tags
         </H4>
       </div>
       <div className="flex flex-row items-center flex-wrap gap-1">

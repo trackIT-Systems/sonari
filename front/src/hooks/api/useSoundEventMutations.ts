@@ -8,7 +8,7 @@ import type { AnnotationTask, Geometry, SoundEventAnnotation, Tag } from "@/type
  * Shared hook for sound event annotation mutations.
  * 
  * This hook provides common mutation operations for sound event annotations
- * that can be used by any parent object (like AnnotationTask or ClipAnnotation)
+ * that can be used by any parent object (AnnotationTask)
  * that contains a list of sound_event_annotations.
  * 
  * @param params Configuration object
@@ -29,7 +29,7 @@ export default function useSoundEventMutations({
   client: QueryClient;
   onError?: (error: AxiosError) => void;
 }) {
-  const addSoundEvent = useQueryMutation<
+  const addSoundEventAnnotation = useQueryMutation<
     SoundEventAnnotation,
     AxiosError,
     {
@@ -61,7 +61,7 @@ export default function useSoundEventMutations({
     onError,
   });
 
-  const updateSoundEvent = useQueryMutation<
+  const updateSoundEventAnnotation = useQueryMutation<
     SoundEventAnnotation,
     AxiosError,
     {
@@ -95,7 +95,7 @@ export default function useSoundEventMutations({
     onError,
   });
 
-  const removeSoundEvent = useQueryMutation<
+  const removeSoundEventAnnotation = useQueryMutation<
     SoundEventAnnotation,
     AxiosError,
     SoundEventAnnotation
@@ -119,7 +119,7 @@ export default function useSoundEventMutations({
     onError,
   });
 
-  const addTagToSoundEvent = useQueryMutation<
+  const addTagToSoundEventAnnotation = useQueryMutation<
     SoundEventAnnotation,
     AxiosError,
     {
@@ -161,7 +161,7 @@ export default function useSoundEventMutations({
     },
   });
 
-  const removeTagFromSoundEvent = useQueryMutation<
+  const removeTagFromSoundEventAnnotation = useQueryMutation<
     SoundEventAnnotation,
     AxiosError,
     {
@@ -204,11 +204,11 @@ export default function useSoundEventMutations({
   });
 
   return {
-    addSoundEvent,
-    updateSoundEvent,
-    removeSoundEvent,
-    addTagToSoundEvent,
-    removeTagFromSoundEvent,
+    addSoundEventAnnotation,
+    updateSoundEventAnnotation,
+    removeSoundEventAnnotation,
+    addTagToSoundEventAnnotation,
+    removeTagFromSoundEventAnnotation,
   } as const;
 }
 

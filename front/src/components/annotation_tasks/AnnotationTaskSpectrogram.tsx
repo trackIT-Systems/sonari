@@ -1,8 +1,8 @@
 import { useCallback, useMemo, useRef, useState, useEffect } from "react";
 
 import { DEFAULT_SPECTROGRAM_PARAMETERS } from "@/api/spectrograms";
-import AnnotationControls from "@/components/annotation/AnnotationControls";
-import MeasurementControls from "../annotation/MeasurementControls";
+import AnnotationControls from "@/components/annotation_tasks/AnnotationControls";
+import MeasurementControls from "./MeasurementControls";
 import Player from "@/components/audio/Player";
 import Card from "@/components/Card";
 import SpectrogramBar from "@/components/spectrograms/SpectrogramBar";
@@ -33,7 +33,7 @@ import useAnnotationDrawWaveform from "@/hooks/annotation/useAnnotationDrawWavef
 import useAnnotationTask from "@/hooks/api/useAnnotationTask";
 import { NoIcon } from "../icons";
 
-export default function ClipAnnotationSpectrogram({
+export default function AnnotationTaskSpectrogram({
   annotationTaskProps,
   tagFilter,
   parameters = DEFAULT_SPECTROGRAM_PARAMETERS,

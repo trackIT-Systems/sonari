@@ -14,7 +14,7 @@ function NoNotes() {
   return <Empty padding="p-2">No notes</Empty>;
 }
 
-export default function AnnotationNotes({
+export default function AnnotationTaskNotes({
   annotationTask,
   currentUser,
   onCreateNote,
@@ -35,7 +35,7 @@ export default function AnnotationNotes({
         <div className="flex justify-between items-center gap-2 mb-2">
           <H4 className="text-center whitespace-nowrap">
             <NotesIcon className="inline-block mr-1 w-5 h-5" />
-            Clip Notes
+            Annotation Task Notes
           </H4>
         </div>
         <CreateNote onCreate={onCreateNote} />

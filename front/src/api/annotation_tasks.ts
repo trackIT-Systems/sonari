@@ -107,7 +107,6 @@ export type GetAnnotationTasksQuery = z.input<
 const DEFAULT_ENDPOINTS = {
   getMany: "/api/v1/annotation_tasks/",
   get: "/api/v1/annotation_tasks/detail/",
-  getAnnotations: "/api/v1/annotation_tasks/detail/clip_annotation/",
   delete: "/api/v1/annotation_tasks/detail/",
   addBadge: "/api/v1/annotation_tasks/detail/badges/",
   removeBadge: "/api/v1/annotation_tasks/detail/badges/",

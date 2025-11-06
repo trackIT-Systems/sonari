@@ -35,7 +35,7 @@ export default function RecordingTagBar({
       <div className="flex justify-between items-center gap-2 mb-2">
         <H4 className="text-center whitespace-nowrap pt-3">
           <TagsIcon className="inline-block mr-1 w-5 h-5" />
-          Clip Tags
+          Annotation Task Tags
         </H4>
       </div>
 

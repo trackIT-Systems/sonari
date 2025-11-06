@@ -1,12 +1,10 @@
 import { useMutation as useQueryMutation } from "@tanstack/react-query";
 import { type AxiosError } from "axios";
 import { useCallback, useMemo } from "react";
-
-import { type ClipCreateMany } from "@/api/clips";
 import api from "@/app/api";
 import useObject from "@/hooks/utils/useObject";
 
-import type { AnnotationProject, AnnotationTask, AnnotationStatus } from "@/types";
+import type { AnnotationProject, AnnotationTask } from "@/types";
 
 export default function useAnnotationProject({
   id,
@@ -15,7 +13,6 @@ export default function useAnnotationProject({
   onDelete,
   onAddTag,
   onRemoveTag,
-  onAddAnnotationTasks,
   onError,
   enabled = true,
 }: {
@@ -58,32 +55,10 @@ export default function useAnnotationProject({
     onSuccess: onDelete,
   });
 
-  const { data } = query;
-  const addTasks = useCallback(
-    async (clips: ClipCreateMany) => {
-      if (data == null) return;
-      const created_clips = await api.clips.createMany(clips);
-      return await api.annotationTasks.createMany(data, created_clips);
-    },
-    [data],
-  );
-
-  const addAnnotationTasks = useQueryMutation({
-    mutationFn: addTasks,
-    onSuccess: (data) => {
-      if (data == null) return;
-      onAddAnnotationTasks?.(data);
-      client.invalidateQueries({
-        queryKey: ["annotation_project", id],
-      });
-    },
-  });
-
   return {
     ...query,
     update,
     addTag,
-    addAnnotationTasks,
     removeTag,
     delete: delete_,
   } as const;

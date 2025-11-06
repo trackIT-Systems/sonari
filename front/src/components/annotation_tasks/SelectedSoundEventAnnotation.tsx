@@ -2,7 +2,7 @@ import Card from "@/components/Card";
 import SoundEventAnnotationDetails from "@/components/sound_event_annotations/SoundEventAnnotationDetails";
 import SoundEventAnnotationTags from "@/components/sound_event_annotations/SoundEventAnnotationTags";
 import useSoundEventAnnotation from "@/hooks/api/useSoundEventAnnotation";
-import SoundEventSpectrogramView from "../sound_event_annotations/SoundEventSpectrogram";
+import SoundEventAnnotationSpectrogramView from "../sound_event_annotations/SoundEventAnnotationSpectrogram";
 import { SpectrogramParameters } from "@/types";
 import { useEffect, useMemo } from "react";
 
@@ -19,7 +19,7 @@ export default function SelectedSoundEventAnnotation({
 }: {
   //* The sound event annotation to display */
   soundEventAnnotation: SoundEventAnnotation;
-  /** The clip annotation to which the sound event annotation belongs */
+  /** The annotation task to which the sound event annotation belongs */
   annotationTask: AnnotationTask;
   /** The tag filter to apply in case more tags want to be added */
   tagFilter?: TagFilter;
@@ -34,15 +34,15 @@ export default function SelectedSoundEventAnnotation({
     onUpdate,
   });
 
-  // Find the current annotation in the clip's sound events (this is reactive to cache changes)
-  const annotationFromClip = useMemo(() => {
+  // Find the current sound event annotation in the annotation task (this is reactive to cache changes)
+  const annotationFromAnnotationTask = useMemo(() => {
     return annotationTask.sound_event_annotations?.find(annotation => annotation.id === data.id);
   }, [annotationTask.sound_event_annotations, data.id]);
 
-  // Use the clip annotation data if available (reactive), otherwise use hook or prop data
+  // Use the sound event annotation data if available (reactive), otherwise use hook or prop data
   const currentAnnotation = useMemo(() => {
-    return annotationFromClip || soundEventAnnotation.data || data;
-  }, [annotationFromClip, soundEventAnnotation.data, data]);
+    return annotationFromAnnotationTask || soundEventAnnotation.data || data;
+  }, [annotationFromAnnotationTask, soundEventAnnotation.data, data]);
 
   // Update parent component when annotation data changes
   useEffect(() => {
@@ -54,7 +54,7 @@ export default function SelectedSoundEventAnnotation({
   return (
     <div className="w-full flex flex-col gap-4 py-4">
       <Card className="grow">
-        <SoundEventSpectrogramView
+        <SoundEventAnnotationSpectrogramView
           soundEventAnnotation={currentAnnotation}
           recording={annotationTask.recording!}
           parameters={parameters}

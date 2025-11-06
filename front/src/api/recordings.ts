@@ -13,8 +13,7 @@ import {
   TimeStringSchema,
 } from "@/schemas";
 
-import type { NoteCreate } from "@/api/notes";
-import type { Feature, Note, Recording, Tag } from "@/types";
+import type { Feature, Recording, Tag } from "@/types";
 
 export const RecordingPageSchema = Page(RecordingSchema);
 
@@ -62,8 +61,6 @@ const DEFAULT_ENDPOINTS = {
   delete: "/api/v1/recordings/detail/",
   addTag: "/api/v1/recordings/detail/tags/",
   removeTag: "/api/v1/recordings/detail/tags/",
-  addNote: "/api/v1/recordings/detail/notes/",
-  removeNote: "/api/v1/recordings/detail/notes/",
   addFeature: "/api/v1/recordings/detail/features/",
   removeFeature: "/api/v1/recordings/detail/features/",
   updateFeature: "/api/v1/recordings/detail/features/",
@@ -158,29 +155,6 @@ export function registerRecordingAPI(
     return RecordingSchema.parse(data);
   }
 
-  async function addNote(
-    recording: Recording,
-    data: NoteCreate,
-  ): Promise<Recording> {
-    const { data: updated } = await instance.post(endpoints.addNote, data, {
-      params: { recording_id: recording.id },
-    });
-    return RecordingSchema.parse(updated);
-  }
-
-  async function removeNote(
-    recording: Recording,
-    note: Note,
-  ): Promise<Recording> {
-    const { data } = await instance.delete(endpoints.removeNote, {
-      params: {
-        recording_id: recording.id,
-        note_id: note.id,
-      },
-    });
-    return RecordingSchema.parse(data);
-  }
-
   async function addFeature(
     recording: Recording,
     feature: Feature,
@@ -238,8 +212,6 @@ export function registerRecordingAPI(
     delete: deleteRecording,
     addTag,
     removeTag,
-    addNote,
-    removeNote,
     addFeature,
     removeFeature,
     updateFeature,

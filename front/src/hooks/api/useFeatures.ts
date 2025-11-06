@@ -24,6 +24,7 @@ export default function useFeatures({
   const { query, pagination, items, total } = usePagedQuery({
     name: "features",
     queryFn: api.datasets.getMany,
+    //TODO: update this to use the features API?
     pageSize: pageSize,
     filter: filter.filter,
   });

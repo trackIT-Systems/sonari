@@ -298,30 +298,6 @@ export default function useRecordingTable({
           );
         },
       },
-      {
-        id: "notes",
-        enableResizing: true,
-        header: () => {
-          return (
-            <TableHeader>
-              <NotesIcon className="inline-block mr-2 w-5 h-5 align-middle text-stone-500" />
-              Notes
-            </TableHeader>
-          );
-        },
-        accessorFn: (row) => row.notes,
-        cell: ({ row }) => {
-          const notes = row.getValue("notes") as Note[];
-          if ((notes || []).length == 0) return null;
-
-          return (
-            <span className="ms-2">
-              <SunIcon className="inline-block mr-2 w-5 h-5 text-blue-500 align-middle" />
-              {notes.length} notes
-            </span>
-          );
-        },
-      },
     ],
     [onAddTag, onRemoveTag, onUpdate, getRecordingLink, pathFormatter],
   );

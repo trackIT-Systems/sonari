@@ -4,9 +4,7 @@ import { z } from "zod";
 import { GetManySchema, Page } from "@/api/common";
 import {
   AnnotationTaskSchema,
-  DatasetSchema,
   NoteSchema,
-  RecordingSchema,
   UserSchema,
 } from "@/schemas";
 
@@ -34,9 +32,7 @@ export const NoteFilterSchema = z.object({
   is_issue: z.boolean().optional(),
   search: z.string().optional(),
   created_by: UserSchema.optional(),
-  recording: RecordingSchema.optional(),
   annotation_task: AnnotationTaskSchema.optional(),
-  dataset: DatasetSchema.optional(),
 });
 
 export type NoteFilter = z.input<typeof NoteFilterSchema>;

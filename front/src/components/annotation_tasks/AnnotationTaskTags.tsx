@@ -13,7 +13,7 @@ import { ADD_TAG_SHORTCUT, REPLACE_TAG_SHORTCUT } from "@/utils/keyboard";
 
 function NoTags() {
   return (
-    <Empty padding="p-2">No sound event tags in this clip.</Empty>
+    <Empty padding="p-2">No sound event annotation tags in this annotation task.</Empty>
   );
 }
 
@@ -171,12 +171,12 @@ function TagAddPanel({
 export default function AnnotationTaskTags({
   annotationTask,
   projectTags,
-  onReplaceTagInSoundEvents,
+  onReplaceTagInSoundEventAnnotations,
   selectedAnnotation,
 }: {
   annotationTask: AnnotationTask;
   projectTags: Tag[];
-  onReplaceTagInSoundEvents?: (oldTag: Tag | null, newTag: Tag | null, selectedAnnotation?: SoundEventAnnotation | null) => void;
+  onReplaceTagInSoundEventAnnotations?: (oldTag: Tag | null, newTag: Tag | null, selectedAnnotation?: SoundEventAnnotation | null) => void;
   selectedAnnotation?: SoundEventAnnotation | null;
 }) {
 
@@ -264,9 +264,9 @@ export default function AnnotationTaskTags({
 
   const handleTagReplaceRemove = useCallback(
     async (oldTag: Tag | null, newTag: Tag | null) => {
-      await onReplaceTagInSoundEvents?.(oldTag, newTag, selectedAnnotation);
+      await onReplaceTagInSoundEventAnnotations?.(oldTag, newTag, selectedAnnotation);
     },
-    [onReplaceTagInSoundEvents, selectedAnnotation]
+    [onReplaceTagInSoundEventAnnotations, selectedAnnotation]
   );
 
   return (
@@ -274,7 +274,7 @@ export default function AnnotationTaskTags({
       <div className="flex justify-between items-center gap-2 mb-2">
         <H4 className="text-center whitespace-nowrap">
           <TagsIcon className="inline-block mr-1 w-5 h-5" />
-          All Sound Event Tags
+          All Sound Event Annotation Tags
         </H4>
         <div className="flex items-center">
           <Popover as="div" className="relative inline-block text-left">
@@ -373,7 +373,7 @@ export default function AnnotationTaskTags({
             "
                     >
                       <div className="inline-flex gap-2 items-center">
-                        Add Tags to all Sound Events
+                        Add Tags to all Sound Event Annotations
                         <div className="text-xs">
                           <KeyboardKey code={ADD_TAG_SHORTCUT} />
                         </div>

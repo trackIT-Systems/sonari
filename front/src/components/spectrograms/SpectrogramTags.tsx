@@ -26,12 +26,14 @@ function TagBarPopover({
   onAdd?: (tag: TagType) => void;
   onCreate?: (tag: TagType) => void;
   filter?: TagFilter;
-} & Omit<HTMLProps<HTMLInputElement>, "value" | "onChange" | "onBlur">) {
+} & Omit<HTMLProps<HTMLInputElement>, "value" | "onChange" | "onBlur" | "onSelect">) {
   return (
     <TagSearchBar
-      // @ts-ignore
       onSelect={(tag) => {
-        onAdd?.(tag);
+        if (tag != null) {
+          onAdd?.(tag);
+          onClose?.();
+        }
       }}
       onCreate={onCreate}
       autoFocus={true}

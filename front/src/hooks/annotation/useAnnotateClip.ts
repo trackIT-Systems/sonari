@@ -87,7 +87,7 @@ const sortSoundEvents = (soundEvents: SoundEventAnnotation[]) => {
 };
 
 export default function useAnnotateClip(props: {
-  /** The clip annotation to annotate */
+  /** The annotation task to annotate */
   annotationTaskProps: ReturnType<typeof useAnnotationTask>;
   /** Current spectrogram viewport */
   viewport: SpectrogramWindow;
@@ -147,7 +147,7 @@ export default function useAnnotateClip(props: {
     onChangeMode: onModeChange,
   });
 
-  const {data: annotationTask, addSoundEvent, removeSoundEvent, addTagToSoundEvent, removeTagFromSoundEvent, updateSoundEvent} = annotationTaskProps;
+  const {data: annotationTask, addSoundEventAnnotation, removeSoundEventAnnotation, addTagToSoundEventAnnotation, removeTagFromSoundEventAnnotation, updateSoundEventAnnotation} = annotationTaskProps;
   if (!annotationTask) {
     toast.error("Annotation task not found.")
     return
@@ -167,7 +167,7 @@ export default function useAnnotateClip(props: {
   const handleCreate = useCallback(
     (geometry: Geometry) => {
       if (disabled) return;
-      addSoundEvent.mutate(
+      addSoundEventAnnotation.mutate(
         {
           geometry,
           tags: defaultTags || [],
@@ -179,7 +179,7 @@ export default function useAnnotateClip(props: {
         },
       );
     },
-    [defaultTags, addSoundEvent, disabled, setSelectedAnnotation],
+    [defaultTags, addSoundEventAnnotation, disabled, setSelectedAnnotation],
   );
 
   // State to track measurements from different sources
@@ -281,10 +281,10 @@ export default function useAnnotateClip(props: {
   const handleDelete = useCallback(
     (annotation: SoundEventAnnotation) => {
       if (disabled) return;
-      removeSoundEvent.mutate(annotation);
+      removeSoundEventAnnotation.mutate(annotation);
       setMode("idle");
     },
-    [removeSoundEvent, setMode, disabled],
+    [removeSoundEventAnnotation, setMode, disabled],
   );
 
   const { props: deleteProps, draw: drawDelete } = useAnnotationDelete({
@@ -299,7 +299,7 @@ export default function useAnnotateClip(props: {
   const handleEdit = useCallback(
     (geometry: Geometry) => {
       if (selectedAnnotation == null || disabled) return;
-      updateSoundEvent.mutate(
+      updateSoundEventAnnotation.mutate(
         {
           soundEventAnnotation: selectedAnnotation,
           geometry,
@@ -311,13 +311,13 @@ export default function useAnnotateClip(props: {
         },
       );
     },
-    [selectedAnnotation, updateSoundEvent, setSelectedAnnotation, disabled],
+    [selectedAnnotation, updateSoundEventAnnotation, setSelectedAnnotation, disabled],
   );
 
   const handleCopy = useCallback(
     (annotation: SoundEventAnnotation, geometry: Geometry) => {
       if (disabled) return;
-      addSoundEvent.mutate(
+      addSoundEventAnnotation.mutate(
         {
           geometry,
           tags: annotation.tags || [],
@@ -329,7 +329,7 @@ export default function useAnnotateClip(props: {
         },
       );
     },
-    [addSoundEvent, setSelectedAnnotation, disabled],
+    [addSoundEventAnnotation, setSelectedAnnotation, disabled],
   );
 
   const filteredSoundEvents = useMemo(() => {
@@ -416,23 +416,23 @@ export default function useAnnotateClip(props: {
   const handleOnClickTag = useCallback(
     (annotation: SoundEventAnnotation, tag: Tag) => {
       if (disabled) return;
-      removeTagFromSoundEvent.mutate({
+      removeTagFromSoundEventAnnotation.mutate({
         soundEventAnnotation: annotation,
         tag,
       });
     },
-    [removeTagFromSoundEvent, disabled],
+    [removeTagFromSoundEventAnnotation, disabled],
   );
 
   const handleOnAddTag = useCallback(
     (annotation: SoundEventAnnotation, tag: Tag) => {
       if (disabled) return;
-      addTagToSoundEvent.mutate({
+      addTagToSoundEventAnnotation.mutate({
         soundEventAnnotation: annotation,
         tag,
       });
     },
-    [addTagToSoundEvent, disabled],
+    [addTagToSoundEventAnnotation, disabled],
   );
 
   const tags = useSpectrogramTags({

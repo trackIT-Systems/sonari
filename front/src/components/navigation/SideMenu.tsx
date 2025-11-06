@@ -16,7 +16,6 @@ import {
 import KeyboardKey from "../KeyboardKey";
 import {
   AnnotationProjectIcon,
-  DatasetsIcon,
   LogOutIcon,
   UserIcon,
   SonariIcon,
