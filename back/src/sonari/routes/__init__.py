@@ -7,7 +7,7 @@ from sonari.routes.annotation_projects import annotation_projects_router
 from sonari.routes.annotation_tasks import get_annotation_tasks_router
 from sonari.routes.audio import audio_router
 from sonari.routes.auth import get_auth_router
-from sonari.routes.datasets import dataset_router
+from sonari.routes.datasets import get_dataset_router
 from sonari.routes.features import features_router
 from sonari.routes.notes import notes_router
 from sonari.routes.plugins import plugin_router
@@ -62,16 +62,17 @@ def get_main_router(settings: Settings):
     )
 
     # Audio Metadata
+    dataset_router = get_dataset_router(settings)
+    main_router.include_router(
+        dataset_router,
+        prefix="/datasets",
+        tags=["Datasets"],
+    )
     recording_router = get_recording_router(settings)
     main_router.include_router(
         recording_router,
         prefix="/recordings",
         tags=["Recordings"],
-    )
-    main_router.include_router(
-        dataset_router,
-        prefix="/datasets",
-        tags=["Datasets"],
     )
 
     # Audio Content

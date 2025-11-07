@@ -15,24 +15,6 @@ import type { Position, SpectrogramWindow } from "@/types";
 export type MotionMode = "drag" | "zoom" | "idle";
 
 /**
- * The state of the spectrogram motions.
- */
-export type MotionState = {
-  canDrag: boolean;
-  canZoom: boolean;
-  enabled: boolean;
-};
-
-/**
- * The controls for managing spectrogram motions.
- */
-export type MotionControls = {
-  enableDrag: () => void;
-  enableZoom: () => void;
-  disable: () => void;
-};
-
-/**
  * The `useSpectrogramMotions` hook manages different motion modes (drag, zoom)
  * for a spectrogram.
  */

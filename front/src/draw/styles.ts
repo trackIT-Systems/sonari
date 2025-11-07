@@ -69,10 +69,6 @@ export const MAYOR_TICK_STYLE_GRID = {
 
 export type Style = BorderStyle & FillStyle;
 
-export type Styler<T> = (obj: T) => Style;
-
-export type StyleModifier = (style: Style, properties: JSONObject) => Style;
-
 export const DEFAULT_FONT_STYLE = "normal";
 export const DEFAULT_FONT_WEIGHT = "normal";
 export const DEFAULT_FONT_FAMILY = "system-ui";

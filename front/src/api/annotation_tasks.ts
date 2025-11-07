@@ -5,34 +5,33 @@ import { GetManySchema, Page } from "@/api/common";
 import {
   AnnotationProjectSchema,
   AnnotationTaskSchema,
-  ClipAnnotationSchema,
   DatasetSchema,
   TagSchema,
   UserSchema,
   FloatEqFilterSchema,
 } from "@/schemas";
 
+import type { NoteCreate } from "@/api/notes";
 import type {
-  AnnotationProject,
   AnnotationStatus,
   AnnotationTask,
-  Clip,
-  ClipAnnotation,
+  Note,
+  Tag,
 } from "@/types";
 
 import { formatDateForAPI } from "@/components/filters/DateRangeFilter";
 
-export const AnnotationTaskPageSchema = Page(AnnotationTaskSchema);
+const AnnotationTaskPageSchema = Page(AnnotationTaskSchema);
 
 export type AnnotationTaskPage = z.infer<typeof AnnotationTaskPageSchema>;
 
-export const AnnotationTaskFilterSchema = z.object({
+const AnnotationTaskFilterSchema = z.object({
   dataset: z.union([
     DatasetSchema,
     z.array(DatasetSchema)
   ]).optional(),
   annotation_project: AnnotationProjectSchema.optional(),
-  recording_tag: TagSchema.optional(),
+  annotation_task_tag: TagSchema.optional(),
   sound_event_annotation_tag: z.union([
     TagSchema,
     z.array(TagSchema)
@@ -78,19 +77,25 @@ export const AnnotationTaskFilterSchema = z.object({
     gt: z.number().optional(),
     lt: z.number().optional(),
   }).optional(),
-  sound_event_min_frequency: z.object({
+  sound_event_annotation_min_frequency: z.object({
     gt: z.number().optional(),
     lt: z.number().optional(),
   }).optional(),
-  sound_event_max_frequency: z.object({
+  sound_event_annotation_max_frequency: z.object({
     gt: z.number().optional(),
     lt: z.number().optional(),
   }).optional(),
+  include_recording: z.boolean().optional(),
+  include_annotation_project: z.boolean().optional(),
+  include_sound_event_annotations: z.boolean().optional(),
+  include_tags: z.boolean().optional(),
+  include_notes: z.boolean().optional(),
+  include_features: z.boolean().optional(),
 });
 
 export type AnnotationTaskFilter = z.input<typeof AnnotationTaskFilterSchema>;
 
-export const GetAnnotationTasksQuerySchema = z.intersection(
+const GetAnnotationTasksQuerySchema = z.intersection(
   GetManySchema,
   AnnotationTaskFilterSchema,
 );
@@ -100,34 +105,21 @@ export type GetAnnotationTasksQuery = z.input<
 >;
 
 const DEFAULT_ENDPOINTS = {
-  createMany: "/api/v1/annotation_tasks/",
   getMany: "/api/v1/annotation_tasks/",
   get: "/api/v1/annotation_tasks/detail/",
-  getAnnotations: "/api/v1/annotation_tasks/detail/clip_annotation/",
   delete: "/api/v1/annotation_tasks/detail/",
   addBadge: "/api/v1/annotation_tasks/detail/badges/",
   removeBadge: "/api/v1/annotation_tasks/detail/badges/",
+  addNote:  "/api/v1/annotation_tasks/detail/notes/",
+  removeNote:  "/api/v1/annotation_tasks/detail/notes/",
+  addTag:  "/api/v1/annotation_tasks/detail/tags/",
+  removeTag:  "/api/v1/annotation_tasks/detail/tags/",
 };
 
 export function registerAnnotationTasksAPI(
   instance: AxiosInstance,
   endpoints: typeof DEFAULT_ENDPOINTS = DEFAULT_ENDPOINTS,
 ) {
-  async function createMany(
-    annotationProject: AnnotationProject,
-    clips: Clip[],
-  ): Promise<AnnotationTask[]> {
-    const response = await instance.post(
-      endpoints.createMany,
-      clips.map((clip) => clip.uuid),
-      {
-        params: {
-          annotation_project_uuid: annotationProject.id,
-        },
-      },
-    );
-    return z.array(AnnotationTaskSchema).parse(response.data);
-  }
 
   async function getMany(
     query: GetAnnotationTasksQuery,
@@ -141,12 +133,12 @@ export function registerAnnotationTasksAPI(
         sort_by: params.sort_by,
         dataset__lst: params.dataset
           ? (Array.isArray(params.dataset)
-            ? params.dataset.map(d => d.uuid).join(',')
-            : params.dataset.uuid)
+            ? params.dataset.map(d => d.id).join(',')
+            : params.dataset.id)
           : undefined,
         annotation_project__eq: params.annotation_project?.id,
-        recording_tag__key: params.recording_tag?.key,
-        recording_tag__value: params.recording_tag?.value,
+        annotation_task_tag__key: params.annotation_task_tag?.key,
+        annotation_task_tag__value: params.annotation_task_tag?.value,
         sound_event_annotation_tag__keys: params.sound_event_annotation_tag
           ? (Array.isArray(params.sound_event_annotation_tag)
             ? params.sound_event_annotation_tag.map(t => t.key).join(',')
@@ -189,36 +181,50 @@ export function registerAnnotationTasksAPI(
         detection_confidence__lt: params.detection_confidence?.lt,
         species_confidence__gt: params.species_confidence?.gt,
         species_confidence__lt: params.species_confidence?.lt,
-        sound_event_min_frequency__gt: params.sound_event_min_frequency?.gt,
-        sound_event_min_frequency__lt: params.sound_event_min_frequency?.lt,
-        sound_event_max_frequency__gt: params.sound_event_max_frequency?.gt,
-        sound_event_max_frequency__lt: params.sound_event_max_frequency?.lt,
+        sound_event_annotation_min_frequency__gt: params.sound_event_annotation_min_frequency?.gt,
+        sound_event_annotation_min_frequency__lt: params.sound_event_annotation_min_frequency?.lt,
+        sound_event_annotation_max_frequency__gt: params.sound_event_annotation_max_frequency?.gt,
+        sound_event_annotation_max_frequency__lt: params.sound_event_annotation_max_frequency?.lt,
         night__eq: params.night?.eq,
         night__tz: params.night?.timezone,
         day__eq: params.day?.eq,
         day__tz: params.day?.timezone,
         sample__eq: params.sample?.eq,
+        include_recording: params.include_recording,
+        include_annotation_project: params.include_annotation_project,
+        include_sound_event_annotations: params.include_sound_event_annotations,
+        include_tags: params.include_tags,
+        include_notes: params.include_notes,
+        include_features: params.include_features,
       },
     });
     return AnnotationTaskPageSchema.parse(response.data);
   }
 
-  async function getAnnotationTask(uuid: string): Promise<AnnotationTask> {
+  async function getAnnotationTask(
+    id: number,
+    includes?: {
+      recording?: boolean;
+      annotation_project?: boolean;
+      sound_event_annotations?: boolean;
+      tags?: boolean;
+      notes?: boolean;
+      features?: boolean;
+      status_badges?: boolean;
+    }
+  ): Promise<AnnotationTask> {
     const response = await instance.get(endpoints.get, {
-      params: { annotation_task_uuid: uuid },
-    });
-    return AnnotationTaskSchema.parse(response.data);
-  }
-
-  async function getTaskAnnotations(
-    annotationTask: AnnotationTask,
-  ): Promise<ClipAnnotation> {
-    const response = await instance.get(endpoints.getAnnotations, {
       params: {
-        annotation_task_uuid: annotationTask.uuid,
+        annotation_task_id: id,
+        include_recording: includes?.recording,
+        include_annotation_project: includes?.annotation_project,
+        include_sound_event_annotations: includes?.sound_event_annotations,
+        include_tags: includes?.tags,
+        include_notes: includes?.notes,
+        include_features: includes?.features,
       },
     });
-    return ClipAnnotationSchema.parse(response.data);
+    return AnnotationTaskSchema.parse(response.data);
   }
 
   async function deleteAnnotationTask(
@@ -226,7 +232,7 @@ export function registerAnnotationTasksAPI(
   ): Promise<AnnotationTask> {
     const response = await instance.delete(endpoints.delete, {
       params: {
-        annotation_task_uuid: annotationTask.uuid,
+        annotation_task_id: annotationTask.id,
       },
     });
     return AnnotationTaskSchema.parse(response.data);
@@ -241,7 +247,7 @@ export function registerAnnotationTasksAPI(
       {},
       {
         params: {
-          annotation_task_uuid: annotationTask.uuid,
+          annotation_task_id: annotationTask.id,
           state,
         },
       },
@@ -256,7 +262,7 @@ export function registerAnnotationTasksAPI(
   ): Promise<AnnotationTask> {
     const response = await instance.delete(endpoints.removeBadge, {
       params: {
-        annotation_task_uuid: annotationTask.uuid,
+        annotation_task_id: annotationTask.id,
         state,
         user_id: userId,
       },
@@ -264,13 +270,68 @@ export function registerAnnotationTasksAPI(
     return AnnotationTaskSchema.parse(response.data);
   }
 
+
+  async function addNote(
+    annotationTask: AnnotationTask,
+    data: NoteCreate,
+  ): Promise<AnnotationTask> {
+    const response = await instance.post(endpoints.addNote, data, {
+      params: {
+        annotation_task_id: annotationTask.id,
+      },
+    });
+    return AnnotationTaskSchema.parse(response.data);
+  }
+
+  async function removeNote(
+    annotationTask: AnnotationTask,
+    note: Note,
+  ): Promise<AnnotationTask> {
+    const response = await instance.delete(endpoints.removeNote, {
+      params: {
+        annotation_task_id: annotationTask.id,
+        note_id: note.id,
+      },
+    });
+    return AnnotationTaskSchema.parse(response.data);
+  }
+
+  async function addTag(
+    annotationTask: AnnotationTask,
+    tag: Tag,
+  ): Promise<AnnotationTask> {
+    const response = await instance.post(endpoints.addTag, {
+      params: {
+        annotation_task_id: annotationTask.id,
+        tag,
+      },
+    });
+    return AnnotationTaskSchema.parse(response.data);
+  }
+
+  async function removeTag(
+    annotationTask: AnnotationTask,
+    tag: Tag,
+  ): Promise<AnnotationTask> {
+    const response = await instance.delete(endpoints.removeTag, {
+      params: {
+        annotation_task_id: annotationTask.id,
+        tag,
+      },
+    });
+    return AnnotationTaskSchema.parse(response.data);
+  }
+  
+
   return {
-    createMany,
     getMany,
     get: getAnnotationTask,
-    getAnnotations: getTaskAnnotations,
     delete: deleteAnnotationTask,
     addBadge,
     removeBadge,
+    addNote,
+    removeNote,
+    addTag,
+    removeTag,
   } as const;
 }

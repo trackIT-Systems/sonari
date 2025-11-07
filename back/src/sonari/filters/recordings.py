@@ -1,6 +1,6 @@
 """Filters for Recordings."""
 
-from sqlalchemy import Select, select
+from sqlalchemy import Select
 
 from sonari import models
 from sonari.filters import base
@@ -11,7 +11,6 @@ __all__ = [
     "DateFilter",
     "DurationFilter",
     "IDFilter",
-    "IssuesFilter",
     "LatitudeFilter",
     "LongitudeFilter",
     "RecordingFilter",
@@ -72,33 +71,6 @@ class DatasetFilter(base.Filter):
         ).where(models.DatasetRecording.dataset_id == self.eq)
 
 
-class IssuesFilter(base.Filter):
-    """Filter recordings by their status.
-
-    A recording is considered to have issues if it has any notes that
-    are issues. This filter can be used to filter recordings that have
-    issues or that do not have issues.
-    """
-
-    eq: bool | None = None
-
-    def filter(self, query: Select) -> Select:
-        """Filter the query."""
-        if self.eq is None:
-            return query
-
-        subquery = (
-            select(models.RecordingNote.recording_id)
-            .join(models.RecordingNote.note)
-            .where(models.Note.is_issue == True)  # noqa: E712
-        )
-
-        if self.eq:
-            return query.where(models.Recording.id.in_(subquery))
-
-        return query.where(models.Recording.id.notin_(subquery))
-
-
 class TagFilter(base.Filter):
     """Filter recordings by tags.
 
@@ -139,6 +111,5 @@ RecordingFilter = base.combine(
     longitude=LongitudeFilter,
     date=DateFilter,
     time=TimeFilter,
-    has_issues=IssuesFilter,
     time_expansion=TimeExpansionFilter,
 )

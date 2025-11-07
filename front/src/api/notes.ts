@@ -4,46 +4,38 @@ import { z } from "zod";
 import { GetManySchema, Page } from "@/api/common";
 import {
   AnnotationTaskSchema,
-  DatasetSchema,
   NoteSchema,
-  RecordingSchema,
-  SoundEventSchema,
   UserSchema,
 } from "@/schemas";
 
 import type { Note } from "@/types";
 
-export const NotePageSchema = Page(NoteSchema);
+const NotePageSchema = Page(NoteSchema);
 
 export type NotePage = z.infer<typeof NotePageSchema>;
 
-export const NoteCreateSchema = z.object({
+const NoteCreateSchema = z.object({
   message: z.string(),
   is_issue: z.boolean(),
 });
 
 export type NoteCreate = z.input<typeof NoteCreateSchema>;
 
-export const NoteUpdateSchema = z.object({
+const NoteUpdateSchema = z.object({
   message: z.string().optional(),
   is_issue: z.boolean().optional(),
 });
 
 export type NoteUpdate = z.input<typeof NoteUpdateSchema>;
 
-export const NoteFilterSchema = z.object({
+const NoteFilterSchema = z.object({
   is_issue: z.boolean().optional(),
   search: z.string().optional(),
   created_by: UserSchema.optional(),
-  recording: RecordingSchema.optional(),
   annotation_task: AnnotationTaskSchema.optional(),
-  sound_event: SoundEventSchema.optional(),
-  dataset: DatasetSchema.optional(),
 });
 
-export type NoteFilter = z.input<typeof NoteFilterSchema>;
-
-export const GetNotesQuerySchema = z.intersection(
+const GetNotesQuerySchema = z.intersection(
   GetManySchema,
   NoteFilterSchema,
 );
@@ -61,8 +53,8 @@ export function registerNotesAPI(
   instance: AxiosInstance,
   endpoints: typeof DEFAULT_ENDPOINTS = DEFAULT_ENDPOINTS,
 ) {
-  async function getNote(uuid: string): Promise<Note> {
-    let response = await instance.get(endpoints.get, { params: { uuid } });
+  async function getNote(id: number): Promise<Note> {
+    let response = await instance.get(endpoints.get, { params: { id } });
     return NoteSchema.parse(response.data);
   }
 
@@ -76,10 +68,7 @@ export function registerNotesAPI(
         is_issue__eq: params.is_issue,
         search: params.search,
         created_by__eq: params.created_by?.id,
-        recording__eq: params.recording?.uuid,
-        annotation_task__eq: params.annotation_task?.uuid,
-        sound_event__eq: params.sound_event?.uuid,
-        dataset__eq: params.dataset?.uuid,
+        annotation_task__eq: params.annotation_task?.id,
       },
     });
     return NotePageSchema.parse(response.data);
@@ -88,14 +77,14 @@ export function registerNotesAPI(
   async function updateNote(note: Note, data: NoteUpdate): Promise<Note> {
     let body = NoteUpdateSchema.parse(data);
     let response = await instance.patch(endpoints.update, body, {
-      params: { note_uuid: note.uuid },
+      params: { note_id: note.id },
     });
     return NoteSchema.parse(response.data);
   }
 
   async function deleteNote(note: Note): Promise<Note> {
     let response = await instance.delete(endpoints.delete, {
-      params: { note_uuid: note.uuid },
+      params: { note_id: note.id },
     });
     return NoteSchema.parse(response.data);
   }

@@ -31,7 +31,7 @@ export default function useSpectrogramTags({
   const annotationsInWindow = useMemo(() => {
     return annotations.filter((annotation) => {
       // @ts-ignore
-      return isGeometryInWindow(annotation.sound_event.geometry, viewport);
+      return isGeometryInWindow(annotation.geometry, viewport);
     });
   }, [annotations, viewport]);
 

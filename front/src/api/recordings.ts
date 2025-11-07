@@ -3,7 +3,6 @@ import { z } from "zod";
 
 import { GetManySchema, Page } from "@/api/common";
 import {
-  DatasetSchema,
   DateFilterSchema,
   IntegerFilterSchema,
   NumberFilterSchema,
@@ -13,14 +12,13 @@ import {
   TimeStringSchema,
 } from "@/schemas";
 
-import type { NoteCreate } from "@/api/notes";
-import type { Feature, Note, Recording, Tag } from "@/types";
+import type { Feature, Recording, Tag } from "@/types";
 
-export const RecordingPageSchema = Page(RecordingSchema);
+const RecordingPageSchema = Page(RecordingSchema);
 
 export type RecordingPage = z.infer<typeof RecordingPageSchema>;
 
-export const RecordingUpdateSchema = z.object({
+const RecordingUpdateSchema = z.object({
   date: z.coerce.date().nullish(),
   time: TimeStringSchema.nullish(),
   latitude: z.number().nullish(),
@@ -31,9 +29,8 @@ export const RecordingUpdateSchema = z.object({
 
 export type RecordingUpdate = z.input<typeof RecordingUpdateSchema>;
 
-export const RecordingFilterSchema = z.object({
+const RecordingFilterSchema = z.object({
   search: z.string().optional(),
-  dataset: DatasetSchema.optional(),
   duration: NumberFilterSchema.optional(),
   samplerate: IntegerFilterSchema.optional(),
   channels: IntegerFilterSchema.optional(),
@@ -46,9 +43,7 @@ export const RecordingFilterSchema = z.object({
   time: TimeFilterSchema.optional(),
 });
 
-export type RecordingFilter = z.input<typeof RecordingFilterSchema>;
-
-export const GetRecordingsQuerySchema = z.intersection(
+const GetRecordingsQuerySchema = z.intersection(
   GetManySchema,
   RecordingFilterSchema,
 );
@@ -62,8 +57,6 @@ const DEFAULT_ENDPOINTS = {
   delete: "/api/v1/recordings/detail/",
   addTag: "/api/v1/recordings/detail/tags/",
   removeTag: "/api/v1/recordings/detail/tags/",
-  addNote: "/api/v1/recordings/detail/notes/",
-  removeNote: "/api/v1/recordings/detail/notes/",
   addFeature: "/api/v1/recordings/detail/features/",
   removeFeature: "/api/v1/recordings/detail/features/",
   updateFeature: "/api/v1/recordings/detail/features/",
@@ -81,7 +74,6 @@ export function registerRecordingAPI(
         offset: params.offset,
         sort_by: params.sort_by,
         search: params.search,
-        dataset__eq: params.dataset?.uuid,
         duration__gt: params.duration?.gt,
         duration__lt: params.duration?.lt,
         latitude__gt: params.latitude?.gt,
@@ -107,9 +99,9 @@ export function registerRecordingAPI(
     return RecordingPageSchema.parse(data);
   }
 
-  async function get(uuid: string): Promise<Recording> {
+  async function get(id: number): Promise<Recording> {
     const { data } = await instance.get(endpoints.get, {
-      params: { recording_uuid: uuid },
+      params: { recording_id: id },
     });
     return RecordingSchema.parse(data);
   }
@@ -120,14 +112,14 @@ export function registerRecordingAPI(
   ): Promise<Recording> {
     const body = RecordingUpdateSchema.parse(data);
     const { data: res } = await instance.patch(endpoints.update, body, {
-      params: { recording_uuid: recording.uuid },
+      params: { recording_id: recording.id },
     });
     return RecordingSchema.parse(res);
   }
 
   async function deleteRecording(recording: Recording): Promise<Recording> {
     const { data: res } = await instance.delete(endpoints.delete, {
-      params: { recording_uuid: recording.uuid },
+      params: { recording_id: recording.id },
     });
     return RecordingSchema.parse(res);
   }
@@ -138,7 +130,7 @@ export function registerRecordingAPI(
       {},
       {
         params: {
-          recording_uuid: recording.uuid,
+          recording_id: recording.id,
           key: tag.key,
           value: tag.value,
         },
@@ -150,32 +142,9 @@ export function registerRecordingAPI(
   async function removeTag(recording: Recording, tag: Tag): Promise<Recording> {
     const { data } = await instance.delete(endpoints.removeTag, {
       params: {
-        recording_uuid: recording.uuid,
+        recording_id: recording.id,
         key: tag.key,
         value: tag.value,
-      },
-    });
-    return RecordingSchema.parse(data);
-  }
-
-  async function addNote(
-    recording: Recording,
-    data: NoteCreate,
-  ): Promise<Recording> {
-    const { data: updated } = await instance.post(endpoints.addNote, data, {
-      params: { recording_uuid: recording.uuid },
-    });
-    return RecordingSchema.parse(updated);
-  }
-
-  async function removeNote(
-    recording: Recording,
-    note: Note,
-  ): Promise<Recording> {
-    const { data } = await instance.delete(endpoints.removeNote, {
-      params: {
-        recording_uuid: recording.uuid,
-        note_uuid: note.uuid,
       },
     });
     return RecordingSchema.parse(data);
@@ -190,7 +159,7 @@ export function registerRecordingAPI(
       {},
       {
         params: {
-          recording_uuid: recording.uuid,
+          recording_id: recording.id,
           name: feature.name,
           value: feature.value,
         },
@@ -205,7 +174,7 @@ export function registerRecordingAPI(
   ): Promise<Recording> {
     const { data } = await instance.delete(endpoints.removeFeature, {
       params: {
-        recording_uuid: recording.uuid,
+        recording_id: recording.id,
         name: feature.name,
         value: feature.value,
       },
@@ -222,7 +191,7 @@ export function registerRecordingAPI(
       {},
       {
         params: {
-          recording_uuid: recording.uuid,
+          recording_id: recording.id,
           name: feature.name,
           value: feature.value,
         },
@@ -238,8 +207,6 @@ export function registerRecordingAPI(
     delete: deleteRecording,
     addTag,
     removeTag,
-    addNote,
-    removeNote,
     addFeature,
     removeFeature,
     updateFeature,

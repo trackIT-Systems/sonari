@@ -62,7 +62,7 @@ export function registerAudioAPI(
   }) {
     // Get url
     const params: Record<string, string> = {
-      recording_uuid: recording.uuid,
+      recording_id: recording.id.toString(),
     };
 
     if (speed != null) {
@@ -97,7 +97,7 @@ export function registerAudioAPI(
 
     // Construct query
     const query = {
-      recording_uuid: recording.uuid,
+      recording_id: recording.id,
       start_time: segment?.min,
       end_time: segment?.max,
       ...parsed_params,

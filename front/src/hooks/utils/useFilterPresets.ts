@@ -72,7 +72,7 @@ export default function useFilterPresets<T extends Object>({
         if ('start_date' in value || 'end_date' in value) {
           return Object.values(value).some(v => v != null && v !== '');
         }
-        if ('uuid' in value && value.uuid) return true;
+        if ('id' in value && value.id) return true;
         // For other objects, check if they have meaningful content
         return Object.values(value).some(v => v != null && v !== '');
       }

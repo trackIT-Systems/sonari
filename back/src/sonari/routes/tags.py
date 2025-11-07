@@ -5,7 +5,6 @@ from typing import Annotated
 from fastapi import APIRouter, Depends
 
 from sonari import api, schemas
-from sonari.filters.recording_tags import RecordingTagFilter
 from sonari.filters.tags import TagFilter
 from sonari.routes.dependencies import Session, SonariSettings, get_current_user_dependency
 from sonari.routes.types import Limit, Offset
@@ -29,29 +28,6 @@ def get_tags_router(settings: SonariSettings) -> APIRouter:
     ):
         """Get all tags."""
         tags, total = await api.tags.get_many(
-            session,
-            limit=limit,
-            offset=offset,
-            filters=[filter],
-            sort_by=sort_by,
-        )
-        return schemas.Page(
-            items=tags,
-            total=total,
-            limit=limit,
-            offset=offset,
-        )
-
-    @tags_router.get("/recording_tags/", response_model=schemas.Page[schemas.RecordingTag])
-    async def get_recording_tags(
-        session: Session,
-        filter: Annotated[RecordingTagFilter, Depends(RecordingTagFilter)],  # type: ignore
-        limit: Limit = 100,
-        offset: Offset = 0,
-        sort_by: str | None = "recording_id",
-    ):
-        """Get all recording tags."""
-        tags, total = await api.tags.get_recording_tags(
             session,
             limit=limit,
             offset=offset,

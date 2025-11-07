@@ -16,7 +16,7 @@ const DEFAULT_ENDPOINTS = {
   removeTag: "/api/v1/annotation_projects/detail/tags/",
 };
 
-export const AnnotationProjectFilterSchema = z.object({
+const AnnotationProjectFilterSchema = z.object({
   search: z.string().optional(),
 });
 
@@ -24,21 +24,11 @@ export type AnnotationProjectFilter = z.input<
   typeof AnnotationProjectFilterSchema
 >;
 
-export const AnnotationProjectUpdateSchema = z.object({
-  name: z.string().optional(),
-  description: z.string().optional(),
-  annotation_instructions: z.string().optional(),
-});
-
-export type AnnotationProjectUpdate = z.input<
-  typeof AnnotationProjectUpdateSchema
->;
-
-export const AnnotationProjectPageSchema = Page(AnnotationProjectSchema);
+const AnnotationProjectPageSchema = Page(AnnotationProjectSchema);
 
 export type AnnotationProjectPage = z.infer<typeof AnnotationProjectPageSchema>;
 
-export const GetAnnotationProjectsQuerySchema = z.intersection(
+const GetAnnotationProjectsQuerySchema = z.intersection(
   GetManySchema,
   AnnotationProjectFilterSchema,
 );
@@ -64,21 +54,6 @@ export function registerAnnotationProjectAPI(
       params: { annotation_project_id: id },
     });
     return AnnotationProjectSchema.parse(data);
-  }
-
-  async function update(
-    annotationProject: AnnotationProject,
-    data: AnnotationProjectUpdate,
-  ): Promise<AnnotationProject> {
-    const body = AnnotationProjectUpdateSchema.parse(data);
-    const { data: responseData } = await instance.patch(
-      endpoints.update,
-      body,
-      {
-        params: { annotation_project_id: annotationProject.id },
-      },
-    );
-    return AnnotationProjectSchema.parse(responseData);
   }
 
   async function deleteAnnotationProject(
@@ -125,7 +100,6 @@ export function registerAnnotationProjectAPI(
   return {
     getMany,
     get,
-    update,
     delete: deleteAnnotationProject,
     addTag,
     removeTag,

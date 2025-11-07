@@ -55,7 +55,7 @@ class SpectrogramCache {
      * Generate a unique key for a spectrogram segment
      */
     generateKey(
-        recordingId: string,
+        recordingId: number,
         window: SpectrogramWindow,
         parameters: SpectrogramParameters,
         lowRes: boolean,
@@ -72,7 +72,7 @@ class SpectrogramCache {
      * Get an image from the cache. Updates last accessed time.
      */
     get(
-        recordingId: string,
+        recordingId: number,
         window: SpectrogramWindow,
         parameters: SpectrogramParameters,
         lowRes: boolean,
@@ -88,7 +88,7 @@ class SpectrogramCache {
     }
 
     async getOrLoad(
-        recordingId: string,
+        recordingId: number,
         window: SpectrogramWindow,
         parameters: SpectrogramParameters,
         lowRes: boolean,
@@ -128,7 +128,7 @@ class SpectrogramCache {
      * Add an image to the cache
      */
     async set(
-        recordingId: string,
+        recordingId: number,
         window: SpectrogramWindow,
         parameters: SpectrogramParameters,
         lowRes: boolean,
@@ -240,7 +240,7 @@ export function useSpectrogramCache({
         const loadImage = async () => {
             try {
                 const image = await spectrogramCache.getOrLoad(
-                    recording.uuid,
+                    recording.id,
                     window,
                     parameters,
                     lowRes,
@@ -283,7 +283,7 @@ export function useSpectrogramCache({
         return () => {
             isMounted = false;
         };
-    }, [recording.uuid, window, parameters, lowRes, withSpectrogram, url]);
+    }, [recording.id, window, parameters, lowRes, withSpectrogram, url]);
 
     return {
         image: currentImage,

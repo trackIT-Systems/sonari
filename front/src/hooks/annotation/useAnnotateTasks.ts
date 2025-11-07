@@ -14,11 +14,11 @@ import {
   type AnnotationTaskPage,
 } from "@/api/annotation_tasks";
 import api from "@/app/api";
-import useAnnotateTasksKeyShortcuts from "@/hooks/annotation/useAnnotateTasksKeyShortcuts";
+import useAnnotateTasksKeyShortcuts from "@/hooks/annotation/useTaskStatusKeyShortcuts";
 import useAnnotationTasks from "@/hooks/api/useAnnotationTasks";
 import { type Filter } from "@/hooks/utils/useFilter";
 
-import type { AnnotationStatus, Recording, AnnotationTask, ClipAnnotation } from "@/types";
+import type { AnnotationStatus, Recording, AnnotationTask } from "@/types";
 import { spectrogramCache } from "@/utils/spectrogram_cache";
 import { getInitialViewingWindow } from "@/utils/windows";
 import { getCoveringSegmentDuration, getSegments, OVERLAP } from "../spectrogram/useRecordingSegments";
@@ -28,8 +28,6 @@ type AnnotationState = {
   current: number | null;
   /** Currently selected annotation task */
   task: AnnotationTask | null;
-  /** Clip annotations for the current task */
-  annotations: UseQueryResult<ClipAnnotation, AxiosError>;
   /** Filter used to select which annotation tasks to show */
   filter: AnnotationTaskFilter;
   /** List of annotation tasks matching the filter */
@@ -82,7 +80,7 @@ export default function useAnnotateTasks({
   onUnsureTask,
   onRejectTask,
   onVerifyTask,
-  onDeselectAnnotation,
+  onDeselectSoundEventAnnotation,
 }: {
   /** Initial filter to select which annotation tasks to show */
   filter?: AnnotationTaskFilter;
@@ -99,7 +97,7 @@ export default function useAnnotateTasks({
   /** Callback when the current task is marked as verified */
   onVerifyTask?: (task: AnnotationTask) => void;
   /** Set current annotation to null */
-  onDeselectAnnotation: () => void;
+  onDeselectSoundEventAnnotation: () => void;
 }): AnnotationState & AnnotationControls {
   const [currentTask, setCurrentTask] = useState<AnnotationTask | null>(
     initialTask ?? null,
@@ -124,7 +122,7 @@ export default function useAnnotateTasks({
 
   const index = useMemo(() => {
     if (currentTask === null) return -1;
-    return items.findIndex((item) => item.uuid === currentTask.uuid);
+    return items.findIndex((item) => item.id === currentTask.id);
   }, [currentTask, items]);
 
 
@@ -156,7 +154,7 @@ export default function useAnnotateTasks({
     // Load all segments
     segments.forEach(async segment => {
       // Skip if already cached
-      if (spectrogramCache.get(recording.uuid, segment, parameters, false)) {
+      if (spectrogramCache.get(recording.id, segment, parameters, false)) {
         return;
       }
 
@@ -176,7 +174,7 @@ export default function useAnnotateTasks({
         img.onload = async () => {
           try {
             await img.decode();
-            await spectrogramCache.set(recording.uuid, segment, parameters, false, img, size);
+            await spectrogramCache.set(recording.id, segment, parameters, false, img, size);
           } finally {
             URL.revokeObjectURL(objectUrl);
           }
@@ -195,12 +193,12 @@ export default function useAnnotateTasks({
 
   const goToTask = useCallback(
     (task: AnnotationTask) => {
-      client.setQueryData(["annotation_task", task.uuid], task);
+      client.setQueryData(["annotation_task", task.id], task);
       setCurrentTask(task);
       onChangeTask?.(task);
-      onDeselectAnnotation();
+      onDeselectSoundEventAnnotation();
     },
-    [onChangeTask, client, onDeselectAnnotation],
+    [onChangeTask, client, onDeselectSoundEventAnnotation],
   );
 
   const hasNextTask = useMemo(() => {
@@ -235,20 +233,20 @@ export default function useAnnotateTasks({
     }
   }, [index, items, hasPrevTask, goToTask]);
 
-  const loadedTasksRef = useRef<Set<string>>(new Set());
+  const loadedTasksRef = useRef<Set<number>>(new Set());
   const handleCurrentSegmentsLoaded = useCallback(async () => {
     if (!items || index === -1 || index >= items.length - 1) return;
     if (!hasNextTask) return;
 
     const nextTask = items[index + 1];
-    if (loadedTasksRef.current.has(nextTask.uuid)) return;
-    loadedTasksRef.current.add(nextTask.uuid);
+    if (loadedTasksRef.current.has(nextTask.id)) return;
+    loadedTasksRef.current.add(nextTask.id);
 
     try {
-      const completeData = await api.annotationTasks.get(nextTask.uuid);
-      if (!completeData.clip?.recording) return;
+      const completeData = await api.annotationTasks.get(nextTask.id);
+      if (!completeData.recording) return;
   
-      await preloadSpectrogramSegments(completeData.clip.recording);
+      await preloadSpectrogramSegments(completeData.recording);
     } catch (error) {
       console.error('Failed to preload next task:', error);
     }
@@ -266,31 +264,16 @@ export default function useAnnotateTasks({
     [setFilterKeyValue],
   );
 
-  const queryFn = useCallback(async () => {
-    if (currentTask == null) {
-      throw new Error("No selected task");
-    }
-    return api.annotationTasks.getAnnotations(currentTask);
-  }, [currentTask]);
-
-  const annotations = useQuery<ClipAnnotation, AxiosError>({
-    queryKey: ["annotation_task", currentTask?.uuid, "annotations"],
-    queryFn,
-    enabled: currentTask != null,
-    refetchOnWindowFocus: false,
-    staleTime: Infinity,
-    gcTime: 60 * 60 * 1000, // when the gcTime expires, react will re-fetch the data. This might lead to the problem that set filters in annotation task are lost. Therefore, we set a hopefully large enough time.
-  });
 
   const updateTaskData = useCallback(
     (task: AnnotationTask) => {
-      client.setQueryData(["annotation_task", task.uuid], task);
+      client.setQueryData(["annotation_task", task.id], task);
       client.setQueryData(queryKey, (old: AnnotationTaskPage) => {
         if (old == null) return old;
         return {
           ...old,
           items: old.items.map((item) => {
-            if (item.uuid === task.uuid) {
+            if (item.id === task.id) {
               return task;
             }
             return item;
@@ -424,7 +407,6 @@ export default function useAnnotateTasks({
     nextTask,
     prevTask,
     setFilter,
-    annotations,
     markCompleted,
     markUnsure,
     markRejected,

@@ -235,47 +235,6 @@ export function FloatEqFilterFn({
   );
 }
 
-export function NullableFloatFilter({
-  name,
-  onChange,
-  showDecimals = false,
-}: {
-  name: string;
-  onChange: (filter: NumberFilter) => void;
-  showDecimals?: boolean;
-}) {
-  const [value, setValue] = useState(0);
-  const [operation, setOperation] = useState<"gt" | "lt">("gt");
-  const [isNull, setIsNull] = useState<boolean | null>(null);
-
-  const handleSubmit = useCallback(() => {
-    onChange({
-      is_null: isNull || undefined,
-      [operation]: value,
-    });
-  }, [onChange, isNull, operation, value]);
-
-  return (
-    <div className="flex relative flex-col gap-4 w-full">
-      <FloatField
-        name={name}
-        value={value}
-        onChangeValue={setValue}
-        operation={operation}
-        onChangeOperation={setOperation}
-        onSubmit={handleSubmit}
-        showDecimals={showDecimals}
-      />
-      <IsNullField
-        name="is_null"
-        value={isNull}
-        onChange={setIsNull}
-        onSubmit={handleSubmit}
-      />
-    </div>
-  );
-}
-
 export function BooleanFilter({
   onChange,
 }: {

@@ -2,7 +2,7 @@
 
 Tags are used throughout the app to attach special meaning to objects. They
 provide a flexible way for users to add additional information and metadata to
-recordings, clips, and sound events.
+annotation tasks, recordings, and sound event annotations.
 
 Tags can be attached to recordings to provide extra information about the
 recording, such as the vegetation type of the surrounding recording site, the
@@ -10,9 +10,9 @@ device used to generate the recording, or the name of the protocol used to
 record. This information can be used to organize recordings and make it easier
 to find and filter specific recordings within a dataset.
 
-Tags can also be attached to recording clips to highlight different aspects of
+Tags can also be attached to annotation tasks to highlight different aspects of
 the acoustic content. For example, they can be used to list all the species
-that were found within a clip, to indicate that the clip is noisy, or to
+that were found within an annotation task, to indicate that the annotation task is noisy, or to
 classify the soundscape into a single category.
 
 Finally, tags can also be attached to individual sound events within a

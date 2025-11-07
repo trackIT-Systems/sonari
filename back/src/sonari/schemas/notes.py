@@ -1,13 +1,16 @@
 """Schemas for handling Notes."""
 
-from typing import Optional
+from typing import TYPE_CHECKING, Optional
 from uuid import UUID
 
 from pydantic import BaseModel, Field
 
-from sonari.schemas.annotation_tasks import AnnotationTask
 from sonari.schemas.base import BaseSchema
 from sonari.schemas.users import SimpleUser
+
+if TYPE_CHECKING:
+    from sonari.schemas.annotation_tasks import AnnotationTask
+    
 
 __all__ = ["Note", "NoteUpdate", "NoteCreate"]
 
@@ -45,7 +48,7 @@ class Note(BaseSchema):
     created_by: SimpleUser | None
     """The user who created the note."""
 
-    annotation_task: Optional[AnnotationTask] = None
+    annotation_task: Optional["AnnotationTask"] = None
     """Annotation task the note is attached to"""
 
     def __hash__(self):

@@ -1,28 +1,9 @@
 """Annotation Project model.
 
 An annotation project is a focused effort to label specific sound events
-or audio features in a set of recordings. These projects have clear
-goals, such as identifying all sound events of a certain species or
-tagging all 3-second audio clips with the correct labels. Each project
-has a unique name and includes detailed instructions on how to perform
-the annotations. The project is divided into individual tasks, each
-consisting of a single clip from the registered recordings. Annotators
-are assigned to each task to complete the annotations according to the
-project criteria, ensuring that all relevant sound events or audio
-features are accurately identified and labeled.
-
-When building an annotation project, users can specify the set of tags
-they wish to use within the project, and add any number of clips from
-the registered recordings. The annotation process then proceeds by
-distributing tasks to annotators. Once the user is satisfied that the
-annotation criteria have been met, they should indicate that the task
-has been completed. Other users can review the completed tasks and add
-notes or raise issues with the existing annotations.
-
-It's worth noting that some annotation projects are created with the
-purpose of automatically generating machine learning models from the
-annotations. Therefore, maintaining a high level of quality control is
-essential, including outlier detection.
+in a set of recordings. Each project
+has a unique name and is divided into individual tasks, each
+consisting of a part of audio from the recordings.
 """
 
 import sqlalchemy.orm as orm

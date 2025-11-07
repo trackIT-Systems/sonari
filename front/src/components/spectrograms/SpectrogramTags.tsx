@@ -26,12 +26,14 @@ function TagBarPopover({
   onAdd?: (tag: TagType) => void;
   onCreate?: (tag: TagType) => void;
   filter?: TagFilter;
-} & Omit<HTMLProps<HTMLInputElement>, "value" | "onChange" | "onBlur">) {
+} & Omit<HTMLProps<HTMLInputElement>, "value" | "onChange" | "onBlur" | "onSelect">) {
   return (
     <TagSearchBar
-      // @ts-ignore
       onSelect={(tag) => {
-        onAdd?.(tag);
+        if (tag != null) {
+          onAdd?.(tag);
+          onClose?.();
+        }
       }}
       onCreate={onCreate}
       autoFocus={true}
@@ -124,12 +126,10 @@ export function AddTagButton({
 export function TagGroup({
   group,
   filter,
-  onCreate,
   disabled = false,
 }: {
   group: TagGroup;
   filter?: TagFilter;
-  onCreate?: (tag: TagType) => void;
   disabled?: boolean;
 }) {
   const { x, y } = group.position;
@@ -159,7 +159,6 @@ export function TagGroup({
         <AddTagButton
           filter={filter}
           onCreate={(tag) => {
-            onCreate?.(tag);
             group.onAdd?.(tag);
           }}
           onAdd={(tag) => {
@@ -175,7 +174,6 @@ export default function SpectrogramTags({
   tags,
   children,
   filter,
-  onCreate,
   disabled = false,
   withSoundEvent = true,
   onWithSoundEventChange,
@@ -183,7 +181,6 @@ export default function SpectrogramTags({
   tags: TagGroup[];
   children: ReactNode;
   filter?: TagFilter;
-  onCreate?: (tag: TagType) => void;
   disabled?: boolean;
   withSoundEvent?: boolean;
   onWithSoundEventChange?: () => void;
@@ -206,10 +203,9 @@ export default function SpectrogramTags({
       {children}
       {tags.map((group) => (
         <TagGroup
-          key={group.annotation.uuid}
+          key={group.annotation.id}
           group={group}
           filter={filter}
-          onCreate={onCreate}
           disabled={disabled}
         />
       ))}

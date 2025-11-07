@@ -11,26 +11,30 @@ import type { HTMLProps } from "react";
 
 function TagBarPopover({
   onClose,
-  onCreate,
-  onAdd,
   filter,
+  onAdd,
+  onCreate,
   ...props
 }: {
   onClose?: () => void;
-  onCreate?: (tag: TagType) => void;
   filter?: TagFilter;
   onAdd?: (tag: TagType) => void;
-} & Omit<HTMLProps<HTMLInputElement>, "value" | "onChange" | "onBlur">) {
+  onCreate?: (tag: TagType) => void;
+} & Omit<HTMLProps<HTMLInputElement>, "value" | "onChange" | "onBlur" | "onSelect">) {
   return (
     <TagSearchBar
-      // @ts-ignore
       onSelect={(tag) => {
-        onAdd?.(tag);
+        if (tag != null) {
+          onAdd?.(tag);
+          onClose?.();
+        }
       }}
       onCreate={(tag) => {
-        onCreate?.(tag);
-        onAdd?.(tag);
-        onClose?.(); // Close the popover after tag creation
+        if (tag != null) {
+          onCreate?.(tag);
+          onAdd?.(tag);  // Also call onAdd when creating a new tag
+          onClose?.();
+        }
       }}
       autoFocus={true}
       onKeyDown={(e) => {
@@ -76,9 +80,9 @@ export default function AddTagButton({
         {({ close }) => (
           <TagBarPopover
             onClose={close}
+            filter={filter}
             onAdd={onAdd}
             onCreate={onCreate}
-            filter={filter}
             {...props}
           />
         )}

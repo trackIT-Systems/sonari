@@ -6,7 +6,7 @@ import { InputGroup, TextArea } from "@/components/inputs/index";
 
 import { useKeyPressEvent } from "react-use";
 import useKeyFilter from "@/hooks/utils/useKeyFilter";
-import { CLIP_NOTE_SHORTCUT, SUBMIT_CLIP_NOTE_SHORTCUT } from "@/utils/keyboard";
+import { ANNOTATION_TASK_NOTE_SHORTCUT, SUBMIT_ANNOTATION_TASK_NOTE_SHORTCUT } from "@/utils/keyboard";
 
 import type { NoteCreate } from "@/api/notes";
 
@@ -20,7 +20,7 @@ export default function CreateNoteForm({
   const textAreaRef = useRef<HTMLTextAreaElement>(null);
 
   useKeyPressEvent(
-    useKeyFilter({ key: CLIP_NOTE_SHORTCUT }),
+    useKeyFilter({ key: ANNOTATION_TASK_NOTE_SHORTCUT }),
     (event) => {
       event.preventDefault();
       textAreaRef.current?.focus();
@@ -28,7 +28,7 @@ export default function CreateNoteForm({
   );
 
   const handleKeyDown = (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (event.key !== SUBMIT_CLIP_NOTE_SHORTCUT) {
+    if (event.key !== SUBMIT_ANNOTATION_TASK_NOTE_SHORTCUT) {
       return;
     }
 

@@ -4,24 +4,24 @@ import useObject from "@/hooks/utils/useObject";
 import type { Note } from "@/types";
 
 export default function useNote({
-  uuid,
+  id,
   note,
   onUpdate,
   onDelete,
   enabled = true,
 }: {
-  uuid: string;
+  id: number;
   note?: Note;
   onUpdate?: (note: Note) => void;
   onDelete?: (note: Note) => void;
   enabled?: boolean;
 }) {
-  if (note !== undefined && note.uuid !== uuid) {
-    throw new Error("Note uuid does not match");
+  if (note !== undefined && note.id !== id) {
+    throw new Error("Note id does not match");
   }
 
   const { query, useMutation } = useObject({
-    uuid,
+    id,
     initial: note,
     name: "note",
     enabled,

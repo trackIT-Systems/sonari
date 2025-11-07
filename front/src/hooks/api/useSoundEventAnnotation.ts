@@ -3,98 +3,63 @@ import { useCallback, useMemo } from "react";
 import api from "@/app/api";
 import useObject from "@/hooks/utils/useObject";
 
-import type { ClipAnnotation, SoundEventAnnotation, Recording } from "@/types";
+import type { AnnotationTask, SoundEventAnnotation } from "@/types";
 import type { AxiosError } from "axios";
 
 /**
  * A hook for managing the state of a sound event annotation.
  */
 export default function useSoundEventAnnotation({
-  uuid,
+  id,
   soundEventAnnotation,
-  clipAnnotation,
+  annotationTask,
   onDelete,
   onUpdate,
-  onAddTag,
-  onRemoveTag,
-  onAddNote,
   onError,
   enabled = true,
-  withRecording = false,
 }: {
-  uuid: string;
-  clipAnnotation?: ClipAnnotation;
+  id: number;
+  annotationTask: AnnotationTask;
   soundEventAnnotation?: SoundEventAnnotation;
   onDelete?: (annotation: SoundEventAnnotation) => void;
   onUpdate?: (annotation: SoundEventAnnotation) => void;
-  onAddTag?: (annotation: SoundEventAnnotation) => void;
-  onRemoveTag?: (annotation: SoundEventAnnotation) => void;
-  onAddNote?: (annotation: SoundEventAnnotation) => void;
   onError?: (error: AxiosError) => void;
   enabled?: boolean;
-  withRecording?: boolean;
 }) {
-  const { query, useQuery, useMutation, useDestruction, client } =
+  const { query, useMutation, useDestruction, client } =
     useObject<SoundEventAnnotation>({
       name: "sound_event_annotation",
-      uuid,
+      id,
       initial: soundEventAnnotation,
       enabled,
       getFn: api.soundEventAnnotations.get,
       onError,
     });
 
-  const getRecordingFn = useMemo(() => {
-    if (!withRecording)
-      return () => {
-        throw new Error(
-          "Cannot get recording for sound event annotation without recording",
-        );
-      };
-
-    return () => {
-      if (query.data == null) {
-        throw new Error(
-          "Cannot get recording for sound event annotation without recording",
-        );
-      }
-      return api.soundEvents.getRecording(query.data.sound_event);
-    };
-  }, [query.data, withRecording]);
-
-  const recordingQuery = useQuery<Recording | null>({
-    name: "annotations",
-    queryFn: getRecordingFn,
-    enabled: withRecording && query.data != null,
-  });
-
-  const updateClipAnnotation = useCallback(
+  const updateSoundEventAnnotation = useCallback(
     (annotation: SoundEventAnnotation) => {
-      if (clipAnnotation == null) return;
-
-      // Update the clip annotation in the cache.
       client.setQueryData(
-        ["clip_annotation", clipAnnotation.uuid],
-        (data: ClipAnnotation) => {
+        ["annotation_task", annotationTask.id],
+        (data: AnnotationTask) => {
           if (data == null) return;
           return {
             ...data,
-            sound_events: data.sound_events?.map((a) =>
-              a.uuid === annotation.uuid ? annotation : a,
+            sound_event_annotations: data.sound_event_annotations?.map((a) =>
+              a.id === annotation.id ? annotation : a,
             ),
           };
         },
       );
     },
-    [client, clipAnnotation],
+    [client, annotationTask],
   );
 
   const handleUpdate = useCallback(
     (annotation: SoundEventAnnotation) => {
       onUpdate?.(annotation);
-      updateClipAnnotation(annotation);
+      updateSoundEventAnnotation(annotation);
     },
-    [onUpdate, updateClipAnnotation],
+    [onUpdate, updateSoundEventAnnotation],
   );
 
   const update = useMutation({
@@ -105,9 +70,9 @@ export default function useSoundEventAnnotation({
   const handleDelete = useCallback(
     (annotation: SoundEventAnnotation) => {
       onDelete?.(annotation);
-      updateClipAnnotation(annotation);
+      updateSoundEventAnnotation(annotation);
     },
-    [onDelete, updateClipAnnotation],
+    [onDelete, updateSoundEventAnnotation],
   );
 
   const delete_ = useDestruction({
@@ -117,10 +82,9 @@ export default function useSoundEventAnnotation({
 
   const handleAddTag = useCallback(
     (annotation: SoundEventAnnotation) => {
-      onAddTag?.(annotation);
-      updateClipAnnotation(annotation);
+      updateSoundEventAnnotation(annotation);
     },
-    [onAddTag, updateClipAnnotation],
+    [updateSoundEventAnnotation],
   );
 
   const addTag = useMutation({
@@ -130,10 +94,9 @@ export default function useSoundEventAnnotation({
 
   const handleRemoveTag = useCallback(
     (annotation: SoundEventAnnotation) => {
-      onRemoveTag?.(annotation);
-      updateClipAnnotation(annotation);
+      updateSoundEventAnnotation(annotation);
     },
-    [onRemoveTag, updateClipAnnotation],
+    [updateSoundEventAnnotation],
   );
 
   const removeTag = useMutation({
@@ -141,18 +104,6 @@ export default function useSoundEventAnnotation({
     onSuccess: handleRemoveTag,
   });
 
-  const handleAddNote = useCallback(
-    (annotation: SoundEventAnnotation) => {
-      onAddNote?.(annotation);
-      updateClipAnnotation(annotation);
-    },
-    [onAddNote, updateClipAnnotation],
-  );
-
-  const addNote = useMutation({
-    mutationFn: api.soundEventAnnotations.addNote,
-    onSuccess: handleAddNote,
-  });
 
   return {
     ...query,
@@ -160,7 +111,5 @@ export default function useSoundEventAnnotation({
     delete: delete_,
     addTag,
     removeTag,
-    addNote,
-    recording: recordingQuery,
   } as const;
 }

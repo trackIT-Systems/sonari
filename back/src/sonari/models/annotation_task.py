@@ -3,9 +3,6 @@
 A task is the fundamental unit of annotation work within a project. Each
 task represents a specific piece of audio that needs to be annotated
 according to the project's criteria.
-
-This model merges the previous Clip, ClipAnnotation, and AnnotationTask
-models into a single entity, as they were always used in a 1:1:1 relationship.
 """
 
 from typing import TYPE_CHECKING, Optional
@@ -21,6 +18,7 @@ from sonari.models.user import User
 
 if TYPE_CHECKING:
     from sonari.models.annotation_project import AnnotationProject
+    from sonari.models.note import Note
     from sonari.models.recording import Recording
     from sonari.models.sound_event_annotation import SoundEventAnnotation
 
@@ -34,9 +32,6 @@ __all__ = [
 
 class AnnotationTask(Base):
     """Annotation Task model.
-
-    This model combines what were previously separate Clip, ClipAnnotation,
-    and AnnotationTask models.
 
     Attributes
     ----------
@@ -118,6 +113,13 @@ class AnnotationTask(Base):
         init=False,
     )
     features: orm.Mapped[list["AnnotationTaskFeature"]] = orm.relationship(
+        back_populates="annotation_task",
+        default_factory=list,
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+        repr=False,
+    )
+    notes: orm.Mapped[list["Note"]] = orm.relationship(
         back_populates="annotation_task",
         default_factory=list,
         cascade="all, delete-orphan",
@@ -293,8 +295,9 @@ class AnnotationStatusBadge(Base):
         back_populates="status_badges",
         init=False,
     )
-    user: orm.Mapped[Optional[User]] = orm.relationship(
+    user: orm.Mapped[User] = orm.relationship(
         User,
         init=False,
         repr=False,
+        lazy="selectin",
     )

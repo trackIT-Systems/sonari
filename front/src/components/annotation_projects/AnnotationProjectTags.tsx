@@ -17,7 +17,7 @@ export default function AnnotationProjectTags({
   onRemoveTag?: (project: AnnotationProject) => void;
 }) {
   const project = useAnnotationProject({
-    uuid: data.uuid,
+    id: data.id,
     annotationProject: data,
     onAddTag,
     onRemoveTag,

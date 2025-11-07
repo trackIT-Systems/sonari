@@ -46,7 +46,7 @@ function getTimeIntervalLabelPosition({
   window: SpectrogramWindow;
   dimensions: Dimensions;
 }): Position {
-  const geometry = annotation.sound_event.geometry as TimeInterval;
+  const geometry = annotation.geometry as TimeInterval;
   const {
     time: { min: startTime, max: endTime },
   } = window;
@@ -59,8 +59,7 @@ function getTimeIntervalLabelPosition({
   const x = scaleTimeToViewport(start, window, dimensions.width);
   const x2 = scaleTimeToViewport(end, window, dimensions.width);
 
-  const randomVal = Number(`0x${annotation.uuid.slice(-8)}`) / 0xffffffff;
-  const y = 50 + randomVal * (dimensions.height - 100);
+  const y = 50 * (dimensions.height - 100);
 
   const tooLeft = x < 50;
   const tooRight = x2 > dimensions.width - 50;
@@ -109,7 +108,7 @@ function getTimeStampLabelPosition({
   window: SpectrogramWindow;
   dimensions: Dimensions;
 }): Position {
-  const geometry = annotation.sound_event.geometry as TimeStamp;
+  const geometry = annotation.geometry as TimeStamp;
   const {
     time: { min: startTime, max: endTime },
   } = window;
@@ -148,7 +147,7 @@ export function getLabelPosition(
   window: SpectrogramWindow,
   dimensions: Dimensions,
 ): Position {
-  const { geometry } = annotation.sound_event;
+  const { geometry } = annotation;
 
   if (geometry.type === "TimeStamp") {
     return getTimeStampLabelPosition({

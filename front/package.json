@@ -13,7 +13,7 @@
     "@headlessui/react": "2.2.4",
     "@heroicons/react": "2.2.0",
     "@hookform/resolvers": "5.0.1",
-    "@table-nav/react": "0.0.7",
+    "@react-types/shared": "^3.32.1",
     "@tailwindcss/forms": "0.5.10",
     "@tailwindcss/postcss": "4.1.8",
     "@tanstack/react-query": "5.80.3",
@@ -25,7 +25,6 @@
     "fuse.js": "7.1.0",
     "immer": "10.1.1",
     "leaflet": "1.9.4",
-    "plotly.js": "3.0.1",
     "postcss": "8.5.4",
     "react": "19.1.0",
     "react-aria": "3.40.0",
@@ -33,19 +32,14 @@
     "react-hook-form": "7.57.0",
     "react-hot-toast": "2.5.2",
     "react-leaflet": "5.0.0",
-    "react-plotly.js": "2.6.0",
-    "react-router-dom": "7.6.2",
-    "react-spinners": "0.17.0",
     "react-stately": "3.38.0",
     "react-use": "17.6.0",
-    "recharts": "^2.15.3",
     "tailwindcss": "4.1.8",
     "typescript": "5.8.3",
     "zod": "3.25.51",
     "zustand": "5.0.5"
   },
   "devDependencies": {
-    "@trivago/prettier-plugin-sort-imports": "5.2.2",
     "@types/geojson": "7946.0.16",
     "@types/leaflet": "1.9.18",
     "@types/node": "22.15.29",
@@ -58,12 +52,7 @@
     "autoprefixer": "10.4.21",
     "eslint": "9.28.0",
     "eslint-config-next": "15.3.3",
-    "eslint-config-prettier": "10.1.5",
     "eslint-plugin-import": "2.31.0",
-    "eslint-plugin-prettier": "5.4.1",
-    "next": "15.3.3",
-    "prettier": "3.5.3",
-    "react-types": "0.1.0",
-    "ts-prune": "0.10.3"
+    "next": "15.3.3"
   }
 }

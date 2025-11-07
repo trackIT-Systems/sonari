@@ -4,19 +4,13 @@ import {
   AnnotationProjectSchema,
   AnnotationStatusBadgeSchema,
   AnnotationStatusSchema,
-  AnnotationTagSchema,
   AnnotationTaskSchema,
   BoundingBoxSchema,
-  ClipAnnotationSchema,
-  ClipSchema,
   DatasetSchema,
-  DateFilterSchema,
   FeatureSchema,
-  FileStateSchema,
   FloatEqFilterSchema,
   GeometrySchema,
   GeometryTypeSchema,
-  IntegerFilterSchema,
   IntervalSchema,
   LineStringSchema,
   MultiLineStringSchema,
@@ -27,14 +21,10 @@ import {
   PointSchema,
   PolygonSchema,
   RecordingSchema,
-  RecordingStateSchema,
   SoundEventAnnotationSchema,
-  SoundEventSchema,
   SpectrogramParametersSchema,
   SpectrogramWindowSchema,
-  StringFilterSchema,
   TagSchema,
-  TimeFilterSchema,
   TimeIntervalSchema,
   TimeStampSchema,
   UserSchema,
@@ -49,10 +39,6 @@ export type Feature = z.infer<typeof FeatureSchema>;
 export type Note = z.infer<typeof NoteSchema>;
 
 export type Recording = z.infer<typeof RecordingSchema>;
-
-export type FileState = z.infer<typeof FileStateSchema>;
-
-export type RecordingState = z.infer<typeof RecordingStateSchema>;
 
 export type Dataset = z.infer<typeof DatasetSchema>;
 
@@ -78,15 +64,7 @@ export type MultiPolygon = z.infer<typeof MultiPolygonSchema>;
 
 export type Geometry = z.infer<typeof GeometrySchema>;
 
-export type SoundEvent = z.infer<typeof SoundEventSchema>;
-
-export type Clip = z.infer<typeof ClipSchema>;
-
-export type AnnotationTag = z.infer<typeof AnnotationTagSchema>;
-
 export type SoundEventAnnotation = z.infer<typeof SoundEventAnnotationSchema>;
-
-export type ClipAnnotation = z.infer<typeof ClipAnnotationSchema>;
 
 export type AnnotationStatus = z.infer<typeof AnnotationStatusSchema>;
 
@@ -133,14 +111,6 @@ export interface JSONObject {
 
 export type JSONArray = Array<JSONValue>;
 
-export type DateFilter = z.input<typeof DateFilterSchema>;
-
-export type TimeFilter = z.input<typeof TimeFilterSchema>;
-
 export type NumberFilter = z.input<typeof NumberFilterSchema>;
-
-export type StringFilter = z.input<typeof StringFilterSchema>;
-
-export type IntegerFilter = z.input<typeof IntegerFilterSchema>;
 
 export type FloatEqFilter = z.input<typeof FloatEqFilterSchema>;

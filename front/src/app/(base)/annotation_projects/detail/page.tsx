@@ -13,25 +13,9 @@ export default function Page() {
   const annotationProject = useContext(AnnotationProjectContext);
   const router = useRouter();
 
-  const onDelete = useCallback(
-    (project: Promise<AnnotationProject>) => {
-      toast.promise(project, {
-        loading: "Deleting project... Please wait",
-        success: "Project deleted!",
-        error: "Failed to delete project",
-      });
-
-      project.then(() => {
-        router.push("/annotation_projects");
-      });
-    },
-    [router],
-  );
-
   return (
     <AnnotationProjectDetail
       annotationProject={annotationProject}
-      onDelete={onDelete}
     />
   );
 }

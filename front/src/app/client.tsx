@@ -3,7 +3,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { ReactNode } from "react";
 
 // Configure QueryClient with sensible defaults to prevent unnecessary re-renders
-export const queryClient = new QueryClient({
+const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
       // Keep data fresh for 30 seconds before considering it stale

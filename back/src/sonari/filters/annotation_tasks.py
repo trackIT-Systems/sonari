@@ -10,7 +10,7 @@ from sonari.filters import base
 
 __all__ = [
     "AnnotationProjectFilter",
-    "DatasetFilter",
+    "StationFilter",
     "AnnotationTaskFilter",
     "SearchRecordingsFilter",
 ]
@@ -147,8 +147,8 @@ class AnnotationProjectFilter(base.Filter):
         )
 
 
-class DatasetFilter(base.Filter):
-    """Filter for tasks by dataset."""
+class StationFilter(base.Filter):
+    """Filter for tasks by stations, which is the external name for datasets."""
 
     lst: str | None = None
 
@@ -276,7 +276,7 @@ class SoundEventAnnotationTagFilter(base.Filter):
 
 
 class EmptyFilter(base.Filter):
-    """Filter for annotation tasks with no sound events."""
+    """Filter for annotation tasks with no sound event annotations."""
 
     eq: bool | None = None
 
@@ -424,7 +424,7 @@ class SampleFilter(base.Filter):
 class DetectionConfidenceFilter(base.Filter):
     """Filter by detection confidence.
 
-    This filter returns all tasks where all sound events that have the feature
+    This filter returns all tasks where all sound event annotations that have the feature
     "detection_confidence" have values that are greater or lower than the values given.
     """
 
@@ -471,7 +471,7 @@ class DetectionConfidenceFilter(base.Filter):
 class SpeciesConfidenceFilter(base.Filter):
     """Filter by species confidence.
 
-    This filter returns all tasks where all sound events that have the feature
+    This filter returns all tasks where all sound event annotations that have the feature
     "species_confidence" have values that are greater or lower than the values given.
     """
 
@@ -525,7 +525,7 @@ AnnotationTaskFilter = base.combine(
     completed=IsCompletedFilter,
     assigned=IsAssignedFilter,
     annotation_project=AnnotationProjectFilter,
-    dataset=DatasetFilter,
+    dataset=StationFilter,
     sound_event_annotation_tag=SoundEventAnnotationTagFilter,
     date=DateRangeFilter,
     night=NightFilter,

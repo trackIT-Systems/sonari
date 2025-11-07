@@ -299,7 +299,7 @@ class AnnotationProjectAPI(
         Returns
         -------
         annotations : list[schemas.AnnotationTask]
-            List of clip annotations.
+            List of annotation tasks.
         count : int
             Total number of annotations matching the given criteria.
             This number may be larger than the number of annotations

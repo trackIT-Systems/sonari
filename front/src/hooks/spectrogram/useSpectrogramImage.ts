@@ -51,7 +51,7 @@ export default function useSpectrogramImage({
 
         await Promise.all(segmentsToLoad.map(segment =>
           spectrogramCache.getOrLoad(
-            recording.uuid,
+            recording.id,
             segment,
             parameters,
             false,

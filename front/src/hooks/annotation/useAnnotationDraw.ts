@@ -26,7 +26,7 @@ export default function useAnnotationDraw({
         const geometry = scaleGeometryToViewport(
           { width: ctx.canvas.width, height: ctx.canvas.height },
           // @ts-ignore
-          item.sound_event.geometry,
+          item.geometry,
           viewport,
         );
         drawGeometry(ctx, geometry, IDLE_STYLE);

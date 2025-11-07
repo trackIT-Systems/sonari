@@ -132,13 +132,17 @@ def get_annotation_tasks_router(settings: SonariSettings) -> APIRouter:
         limit: Limit = 10,
         offset: Offset = 0,
         sort_by: str = "recording_datetime",
+        include_recording: bool = False,
+        include_annotation_project: bool = False,
+        include_sound_event_annotations: bool = False,
+        include_tags: bool = False,
+        include_notes: bool = False,
+        include_features: bool = False,
     ):
         """Get a page of annotation tasks."""
         nigh_filter = next((f for f in filter if f[0] == "night__tz" and f[1] is not None), None)
         day_filter = next((f for f in filter if f[0] == "day__tz" and f[1] is not None), None)
         sample_filter = next((f for f in filter if f[0] == "sample__eq" and f[1] is not None), None)
-
-        noloads: list[InstrumentedAttribute[Any]] | None = None
 
         tasks, total = await api.annotation_tasks.get_many(
             session,
@@ -146,7 +150,12 @@ def get_annotation_tasks_router(settings: SonariSettings) -> APIRouter:
             offset=offset,
             filters=[filter],
             sort_by=sort_by,
-            noloads=noloads,
+            include_recording=include_recording,
+            include_annotation_project=include_annotation_project,
+            include_sound_event_annotations=include_sound_event_annotations,
+            include_tags=include_tags,
+            include_notes=include_notes,
+            include_features=include_features,
         )
 
         if nigh_filter is not None:
@@ -193,9 +202,24 @@ def get_annotation_tasks_router(settings: SonariSettings) -> APIRouter:
     async def get_task(
         session: Session,
         annotation_task_id: int,
+        include_recording: bool = False,
+        include_annotation_project: bool = False,
+        include_sound_event_annotations: bool = False,
+        include_tags: bool = False,
+        include_notes: bool = False,
+        include_features: bool = False,
     ):
         """Get an annotation task."""
-        return await api.annotation_tasks.get(session, annotation_task_id)
+        return await api.annotation_tasks.get(
+            session,
+            annotation_task_id,
+            include_recording=include_recording,
+            include_annotation_project=include_annotation_project,
+            include_sound_event_annotations=include_sound_event_annotations,
+            include_tags=include_tags,
+            include_notes=include_notes,
+            include_features=include_features,
+        )
 
     @annotation_tasks_router.post(
         "/detail/tags/",
