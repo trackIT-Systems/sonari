@@ -7,15 +7,15 @@ from soundevent.data import AnnotationState
 
 from sonari.schemas.base import BaseSchema
 from sonari.schemas.features import Feature
-from sonari.schemas.tags import Tag
 from sonari.schemas.notes import Note
+from sonari.schemas.tags import Tag
 from sonari.schemas.users import SimpleUser
 
 if TYPE_CHECKING:
     from sonari.schemas.annotation_projects import AnnotationProject
+    from sonari.schemas.notes import Note
     from sonari.schemas.recordings import Recording
     from sonari.schemas.sound_event_annotations import SoundEventAnnotation
-    from sonari.schemas.notes import Note
 
 __all__ = [
     "AnnotationStatusBadge",
@@ -72,11 +72,7 @@ class AnnotationTaskTag(BaseSchema):
 
 
 class AnnotationTask(BaseSchema):
-    """Schema for an annotation task.
-
-    This schema combines what were previously separate Clip, ClipAnnotation,
-    and AnnotationTask schemas.
-    """
+    """Schema for an annotation task."""
 
     id: int
     """Database ID of the task."""

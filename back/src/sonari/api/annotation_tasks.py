@@ -1,8 +1,4 @@
-"""Python API for interacting with Annotation Tasks.
-
-Since Clip, ClipAnnotation, and AnnotationTask have been merged into a single
-AnnotationTask model, this API handles all clip and annotation functionality.
-"""
+"""Python API for interacting with Annotation Tasks."""
 
 from typing import Sequence
 
@@ -32,10 +28,7 @@ class AnnotationTaskAPI(
         schemas.AnnotationTaskUpdate,
     ]
 ):
-    """API for annotation tasks.
-
-    Annotation tasks now include all clip and annotation data.
-    """
+    """API for annotation tasks."""
 
     _model = models.AnnotationTask
     _schema = schemas.AnnotationTask

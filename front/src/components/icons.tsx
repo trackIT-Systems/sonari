@@ -314,7 +314,6 @@ export {
   SignalIcon as SoundEventIcon,
   SpeakerWaveIcon as AudioIcon,
   SpeakerWaveIcon as VolumeIcon,
-  Square2StackIcon as ClipsIcon,
   Squares2X2Icon as GalleryIcon,
   SquaresPlusIcon as NewAnnotationIcon,
   SwatchIcon as TagsIcon,

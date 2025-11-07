@@ -172,12 +172,12 @@ export default function AnnotationTaskTags({
   annotationTask,
   projectTags,
   onReplaceTagInSoundEventAnnotations,
-  selectedAnnotation,
+  selectedSoundEventAnnotation,
 }: {
   annotationTask: AnnotationTask;
   projectTags: Tag[];
-  onReplaceTagInSoundEventAnnotations?: (oldTag: Tag | null, newTag: Tag | null, selectedAnnotation?: SoundEventAnnotation | null) => void;
-  selectedAnnotation?: SoundEventAnnotation | null;
+  onReplaceTagInSoundEventAnnotations?: (oldTag: Tag | null, newTag: Tag | null, selectedSoundEventAnnotation?: SoundEventAnnotation | null) => void;
+  selectedSoundEventAnnotation?: SoundEventAnnotation | null;
 }) {
 
   const replaceButtonRef = useRef<HTMLButtonElement>(null);
@@ -242,8 +242,8 @@ export default function AnnotationTaskTags({
   const popoverTagsWithCount = useMemo(() => {
     if (!annotationTask.sound_event_annotations) return [];
 
-    const relevantSoundEvents = selectedAnnotation
-      ? [selectedAnnotation]
+    const relevantSoundEvents = selectedSoundEventAnnotation
+      ? [selectedSoundEventAnnotation]
       : annotationTask.sound_event_annotations;
 
     const allTags = relevantSoundEvents.flatMap(event => event.tags || []);
@@ -260,13 +260,13 @@ export default function AnnotationTaskTags({
     });
 
     return Array.from(tagCounts.values());
-  }, [annotationTask, selectedAnnotation]);
+  }, [annotationTask, selectedSoundEventAnnotation]);
 
   const handleTagReplaceRemove = useCallback(
     async (oldTag: Tag | null, newTag: Tag | null) => {
-      await onReplaceTagInSoundEventAnnotations?.(oldTag, newTag, selectedAnnotation);
+      await onReplaceTagInSoundEventAnnotations?.(oldTag, newTag, selectedSoundEventAnnotation);
     },
-    [onReplaceTagInSoundEventAnnotations, selectedAnnotation]
+    [onReplaceTagInSoundEventAnnotations, selectedSoundEventAnnotation]
   );
 
   return (

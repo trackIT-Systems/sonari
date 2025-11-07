@@ -4,7 +4,7 @@ import AnnotationTaskTable from "@/components/annotation_tasks/AnnotationTaskTab
 
 import type {AnnotationProject, AnnotationTask} from "@/types";
 
-export default function AnnotationProjectTaskClips({
+export default function AnnotationProjectTasks({
   annotationProject,
   getAnnotationTaskLink: getAnnotationTaskLinkFn,
 }: {

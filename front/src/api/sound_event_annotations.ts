@@ -13,7 +13,7 @@ import {
 
 import type { AnnotationTask, SoundEventAnnotation, Tag } from "@/types";
 
-export const SoundEventAnnotationCreateSchema = z.object({
+const SoundEventAnnotationCreateSchema = z.object({
   geometry: GeometrySchema,
   tags: z.array(TagSchema).optional(),
 });
@@ -22,38 +22,12 @@ export type SoundEventAnnotationCreate = z.input<
   typeof SoundEventAnnotationCreateSchema
 >;
 
-export const SoundEventAnnotationUpdateSchema = z.object({
+const SoundEventAnnotationUpdateSchema = z.object({
   geometry: GeometrySchema,
 });
 
 export type SoundEventAnnotationUpdate = z.input<
   typeof SoundEventAnnotationUpdateSchema
->;
-
-export const SoundEventAnnotationPageSchema = Page(SoundEventAnnotationSchema);
-
-export type SoundEventAnnotationPage = z.infer<
-  typeof SoundEventAnnotationPageSchema
->;
-
-export const SoundEventAnnotationFilterSchema = z.object({
-  annotation_project: AnnotationProjectSchema.optional(),
-  recording: RecordingSchema.optional(),
-  created_by: UserSchema.optional(),
-  tag: TagSchema.optional(),
-});
-
-export type SoundEventAnnotationFilter = z.input<
-  typeof SoundEventAnnotationFilterSchema
->;
-
-export const GetSoundEventAnnotationsQuerySchema = z.intersection(
-  GetManySchema,
-  SoundEventAnnotationFilterSchema,
-);
-
-export type GetSoundEventAnnotationsQuery = z.input<
-  typeof GetSoundEventAnnotationsQuerySchema
 >;
 
 const DEFAULT_ENDPOINTS = {

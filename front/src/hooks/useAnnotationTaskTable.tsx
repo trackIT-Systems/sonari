@@ -81,8 +81,8 @@ export default function useAnnotationTaskTable({
         },
       },
       {
-        id: "clip",
-        header: () => <TableHeader>Clip</TableHeader>,
+        id: "task",
+        header: () => <TableHeader>Task</TableHeader>,
         enableResizing: true,
         size: 30,
         cell: ({ row }) => {

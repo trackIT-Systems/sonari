@@ -13,18 +13,6 @@ import { IntervalSchema, SpectrogramParametersSchema } from "@/schemas";
 import type { Interval, Recording, SpectrogramParameters } from "@/types";
 import { AxiosInstance } from "axios";
 
-// NOTE: This duplication is temporary, while we update code to use the types
-// and schemas files
-export {
-  DEFAULT_CMAP,
-  DEFAULT_FILTER_ORDER,
-  DEFAULT_HOP_SIZE,
-  DEFAULT_SCALE,
-  DEFAULT_WINDOW,
-  DEFAULT_WINDOW_SIZE,
-  MIN_DB,
-};
-
 const DEFAULT_ENDPOINTS = {
   get: "/api/v1/spectrograms/",
   getLow: "/api/v1/spectrograms/low"

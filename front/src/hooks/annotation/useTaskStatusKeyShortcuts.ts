@@ -12,7 +12,7 @@ import {
   VERIFY_TASK_SHORTCUT,
 } from "@/utils/keyboard";
 
-export default function useAnnotateTaskKeyShortcuts(props: {
+export default function useTaskStatusKeyShortcuts(props: {
   onGoNext?: () => void;
   onGoPrevious?: () => void;
   onMarkCompleted?: () => void;

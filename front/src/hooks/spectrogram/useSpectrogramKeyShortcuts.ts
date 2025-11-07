@@ -14,7 +14,7 @@ import {
   RESET_ZOOM_SHORTCUT,
 } from "@/utils/keyboard";
 
-export default function useAnnotateClipKeyShortcuts(props: {
+export default function useSpectrogramKeyShortcuts(props: {
   onGoZoom: () => void;
   onZoomIn: () => void;
   onZoomOut: () => void;

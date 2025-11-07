@@ -94,24 +94,6 @@ export function scalePixelsToWindow(
   return { time, freq };
 }
 
-export function scaleOnsetToViewport(
-  dims: Dimensions,
-  onset: number,
-  window: SpectrogramWindow,
-): number {
-  const { width } = dims;
-  return scaleTimeToViewport(onset, window, width);
-}
-
-export function scaleOnsetToWindow(
-  dims: Dimensions,
-  onset: number,
-  window: SpectrogramWindow,
-): number {
-  const { width } = dims;
-  return scaleXToWindow(onset, window, width);
-}
-
 export function scaleIntervalToViewport(
   dims: Dimensions,
   interval: Coordinates,

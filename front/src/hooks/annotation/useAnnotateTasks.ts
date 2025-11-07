@@ -14,7 +14,7 @@ import {
   type AnnotationTaskPage,
 } from "@/api/annotation_tasks";
 import api from "@/app/api";
-import useAnnotateTasksKeyShortcuts from "@/hooks/annotation/useAnnotateTasksKeyShortcuts";
+import useAnnotateTasksKeyShortcuts from "@/hooks/annotation/useTaskStatusKeyShortcuts";
 import useAnnotationTasks from "@/hooks/api/useAnnotationTasks";
 import { type Filter } from "@/hooks/utils/useFilter";
 
@@ -80,7 +80,7 @@ export default function useAnnotateTasks({
   onUnsureTask,
   onRejectTask,
   onVerifyTask,
-  onDeselectAnnotation,
+  onDeselectSoundEventAnnotation,
 }: {
   /** Initial filter to select which annotation tasks to show */
   filter?: AnnotationTaskFilter;
@@ -97,7 +97,7 @@ export default function useAnnotateTasks({
   /** Callback when the current task is marked as verified */
   onVerifyTask?: (task: AnnotationTask) => void;
   /** Set current annotation to null */
-  onDeselectAnnotation: () => void;
+  onDeselectSoundEventAnnotation: () => void;
 }): AnnotationState & AnnotationControls {
   const [currentTask, setCurrentTask] = useState<AnnotationTask | null>(
     initialTask ?? null,
@@ -196,9 +196,9 @@ export default function useAnnotateTasks({
       client.setQueryData(["annotation_task", task.id], task);
       setCurrentTask(task);
       onChangeTask?.(task);
-      onDeselectAnnotation();
+      onDeselectSoundEventAnnotation();
     },
-    [onChangeTask, client, onDeselectAnnotation],
+    [onChangeTask, client, onDeselectSoundEventAnnotation],
   );
 
   const hasNextTask = useMemo(() => {

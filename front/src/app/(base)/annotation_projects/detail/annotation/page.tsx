@@ -6,7 +6,7 @@ import { HOST } from "@/api/common";
 import { AxiosError } from "axios";
 
 import UserContext from "@/app/(base)/context";
-import AnnotateTasks from "@/components/annotation/AnnotateTasks";
+import AnnotateTasks from "@/components/annotation_tasks/AnnotateTasks";
 import Loading from "@/components/Loading";
 import { CompleteIcon, NeedsReviewIcon, HelpIcon, VerifiedIcon } from "@/components/icons";
 import useAnnotationTask from "@/hooks/api/useAnnotationTask";
@@ -29,18 +29,13 @@ export default function Page() {
 
   const annotationTaskID = search.get("annotation_task_id");
 
-  if (annotationTaskID == null) {
-    toast.error("Annotation task not found.");
-    router.back()
-    return;
-  }
-
+  // All hooks must be called before any conditional returns
   const handleError = useCallback((error: AxiosError) => {
     toast.error(error.message)
   }, []);
 
   const annotationTask = useAnnotationTask({
-    id: parseInt(annotationTaskID),
+    id: annotationTaskID ? parseInt(annotationTaskID) : 0,
     enabled: !!annotationTaskID,
     onError: handleError,
     include_recording: true,
@@ -114,6 +109,13 @@ export default function Page() {
     }),
     [project],
   );
+
+  // Now handle conditional cases after all hooks have been called
+  if (annotationTaskID == null) {
+    toast.error("Annotation task not found.");
+    router.back()
+    return null;
+  }
 
   if (annotationTask.isLoading && !annotationTask.data) {
     return <Loading />;

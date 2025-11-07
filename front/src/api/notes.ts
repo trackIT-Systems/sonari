@@ -10,34 +10,32 @@ import {
 
 import type { Note } from "@/types";
 
-export const NotePageSchema = Page(NoteSchema);
+const NotePageSchema = Page(NoteSchema);
 
 export type NotePage = z.infer<typeof NotePageSchema>;
 
-export const NoteCreateSchema = z.object({
+const NoteCreateSchema = z.object({
   message: z.string(),
   is_issue: z.boolean(),
 });
 
 export type NoteCreate = z.input<typeof NoteCreateSchema>;
 
-export const NoteUpdateSchema = z.object({
+const NoteUpdateSchema = z.object({
   message: z.string().optional(),
   is_issue: z.boolean().optional(),
 });
 
 export type NoteUpdate = z.input<typeof NoteUpdateSchema>;
 
-export const NoteFilterSchema = z.object({
+const NoteFilterSchema = z.object({
   is_issue: z.boolean().optional(),
   search: z.string().optional(),
   created_by: UserSchema.optional(),
   annotation_task: AnnotationTaskSchema.optional(),
 });
 
-export type NoteFilter = z.input<typeof NoteFilterSchema>;
-
-export const GetNotesQuerySchema = z.intersection(
+const GetNotesQuerySchema = z.intersection(
   GetManySchema,
   NoteFilterSchema,
 );

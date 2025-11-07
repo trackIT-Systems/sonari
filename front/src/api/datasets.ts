@@ -5,17 +5,17 @@ import { DatasetSchema } from "@/schemas";
 
 import { GetManySchema, Page } from "./common";
 
-export const DatasetFilterSchema = z.object({
+const DatasetFilterSchema = z.object({
   search: z.string().optional(),
 });
 
 export type DatasetFilter = z.input<typeof DatasetFilterSchema>;
 
-export const DatasetPageSchema = Page(DatasetSchema);
+const DatasetPageSchema = Page(DatasetSchema);
 
 export type DatasetPage = z.infer<typeof DatasetPageSchema>;
 
-export const GetDatasetsQuerySchema = z.intersection(
+const GetDatasetsQuerySchema = z.intersection(
   GetManySchema,
   DatasetFilterSchema,
 );

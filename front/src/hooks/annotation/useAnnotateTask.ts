@@ -6,7 +6,7 @@ import useAnnotationDraw from "@/hooks/annotation/useAnnotationDraw";
 import useAnnotationEdit from "@/hooks/annotation/useAnnotationEdit";
 import useAnnotationSelect from "@/hooks/annotation/useAnnotationSelect";
 import useSpectrogramTags from "@/hooks/spectrogram/useSpectrogramTags";
-import useAnnotateClipKeyShortcuts from "@/hooks/annotation/useAnnotateClipKeyShortcuts";
+import useAnnotateTaskKeyShortcuts from "@/hooks/annotation/useSoundEventAnnotationKeyShortcuts";
 import useCreateWaveformMeasurement from "@/hooks/draw/useCreateWaveformMeasurement";
 
 import { ABORT_SHORTCUT } from "@/utils/keyboard";
@@ -26,31 +26,6 @@ import toast from "react-hot-toast";
 export type AnnotateMode = "select" | "measure" | "draw" | "edit" | "delete" | "idle";
 
 type DrawFunction = (ctx: CanvasRenderingContext2D) => void;
-
-export type AnnotateClipState = {
-  mode: AnnotateMode;
-  geometryType: GeometryType;
-  selectedAnnotation: SoundEventAnnotation | null;
-  annotations: SoundEventAnnotation[];
-  isSelecting: boolean;
-  isDrawing: boolean;
-  isEditing: boolean;
-  isDeleting: boolean;
-  activeMeasurementCanvas: "spectrogram" | "waveform" | null;
-};
-
-export type AnnotateClipActions = {
-  setMode: (mode: AnnotateMode) => void;
-  focusOnAnnotation: (annotation: SoundEventAnnotation) => void;
-  selectAnnotation: (annotation: SoundEventAnnotation) => void;
-  clearSelection: () => void;
-  enableSelect: () => void;
-  enableDraw: () => void;
-  enableEdit: () => void;
-  enableDelete: () => void;
-  setGeometryType: (geometryType: GeometryType) => void;
-  disable: () => void;
-};
 
 const getStartCoordinate = (geometry: Geometry) => {
   switch (geometry.type) {
@@ -86,7 +61,7 @@ const sortSoundEvents = (soundEvents: SoundEventAnnotation[]) => {
   });
 };
 
-export default function useAnnotateClip(props: {
+export default function useAnnotateTask(props: {
   /** The annotation task to annotate */
   annotationTaskProps: ReturnType<typeof useAnnotationTask>;
   /** Current spectrogram viewport */
@@ -109,7 +84,7 @@ export default function useAnnotateClip(props: {
   /** Whether to show sound events or not */
   withSoundEvent?: boolean;
   /** Callback when the selected annotation changes */
-  onSelectAnnotation?: (annotation: SoundEventAnnotation | null) => void;
+  onSelectSoundEventAnnotation?: (annotation: SoundEventAnnotation | null) => void;
   /** Callback when the annotation mode (idle, create, delete, select, draw)
    * changes */
   onModeChange?: (mode: AnnotateMode) => void;
@@ -128,7 +103,7 @@ export default function useAnnotateClip(props: {
     disabled = false,
     withSoundEvent = true,
     onModeChange,
-    onSelectAnnotation,
+    onSelectSoundEventAnnotation,
     onDeselect,
     onCenterOn,
   } = props;
@@ -136,26 +111,23 @@ export default function useAnnotateClip(props: {
   const {
     mode,
     geometryType,
-    selectedAnnotation,
+    selectedSoundEventAnnotation,
     setMode,
     setGeometryType,
-    setSelectedAnnotation,
-  } = useAnnotateClipState({
+    setSelectedSoundEventAnnotation,
+  } = useAnnotateTaskState({
     mode: initialMode,
     geometryType: "BoundingBox",
-    onSelectAnnotation,
+    onSelectSoundEventAnnotation,
     onChangeMode: onModeChange,
   });
 
   const {data: annotationTask, addSoundEventAnnotation, removeSoundEventAnnotation, addTagToSoundEventAnnotation, removeTagFromSoundEventAnnotation, updateSoundEventAnnotation} = annotationTaskProps;
-  if (!annotationTask) {
-    toast.error("Annotation task not found.")
-    return
-  }
-
+  
+  // Extract sound events with safe default - all hooks must be called before any conditional returns
   const soundEvents = useMemo(
     () => {
-      if (withSoundEvent) {
+      if (withSoundEvent && annotationTask) {
         return annotationTask.sound_event_annotations || []
       } else {
         return []
@@ -174,12 +146,12 @@ export default function useAnnotateClip(props: {
         },
         {
           onSuccess: (data) => {
-            setSelectedAnnotation(data);
+            setSelectedSoundEventAnnotation(data);
           },
         },
       );
     },
-    [defaultTags, addSoundEventAnnotation, disabled, setSelectedAnnotation],
+    [defaultTags, addSoundEventAnnotation, disabled, setSelectedSoundEventAnnotation],
   );
 
   // State to track measurements from different sources
@@ -259,7 +231,7 @@ export default function useAnnotateClip(props: {
     viewport,
     dimensions,
     annotations: soundEvents,
-    onSelect: setSelectedAnnotation,
+    onSelect: setSelectedSoundEventAnnotation,
     onDeselect,
     enabled: active && mode === "select",
   });
@@ -267,7 +239,7 @@ export default function useAnnotateClip(props: {
     useEffect(() => {
       const handleKeyPress = (event: KeyboardEvent) => {
         if (event.key === ABORT_SHORTCUT) {
-          onSelectAnnotation?.(null);
+          onSelectSoundEventAnnotation?.(null);
           onDeselect?.()
           setMode("idle")
           return;
@@ -276,7 +248,7 @@ export default function useAnnotateClip(props: {
   
       document.addEventListener('keydown', handleKeyPress);
       return () => document.removeEventListener('keydown', handleKeyPress);
-    }, [onDeselect, onSelectAnnotation, setMode]);
+    }, [onDeselect, onSelectSoundEventAnnotation, setMode]);
 
   const handleDelete = useCallback(
     (annotation: SoundEventAnnotation) => {
@@ -298,38 +270,38 @@ export default function useAnnotateClip(props: {
 
   const handleEdit = useCallback(
     (geometry: Geometry) => {
-      if (selectedAnnotation == null || disabled) return;
+      if (selectedSoundEventAnnotation == null || disabled) return;
       updateSoundEventAnnotation.mutate(
         {
-          soundEventAnnotation: selectedAnnotation,
+          soundEventAnnotation: selectedSoundEventAnnotation,
           geometry,
         },
         {
           onSuccess: (data) => {
-            setSelectedAnnotation(data);
+            setSelectedSoundEventAnnotation(data);
           },
         },
       );
     },
-    [selectedAnnotation, updateSoundEventAnnotation, setSelectedAnnotation, disabled],
+    [selectedSoundEventAnnotation, updateSoundEventAnnotation, setSelectedSoundEventAnnotation, disabled],
   );
 
   const handleCopy = useCallback(
-    (annotation: SoundEventAnnotation, geometry: Geometry) => {
+    (soundEventAnnotation: SoundEventAnnotation, geometry: Geometry) => {
       if (disabled) return;
       addSoundEventAnnotation.mutate(
         {
           geometry,
-          tags: annotation.tags || [],
+          tags: soundEventAnnotation.tags || [],
         },
         {
           onSuccess: (data) => {
-            setSelectedAnnotation(data);
+            setSelectedSoundEventAnnotation(data);
           },
         },
       );
     },
-    [addSoundEventAnnotation, setSelectedAnnotation, disabled],
+    [addSoundEventAnnotation, setSelectedSoundEventAnnotation, disabled],
   );
 
   const filteredSoundEvents = useMemo(() => {
@@ -347,7 +319,7 @@ export default function useAnnotateClip(props: {
     const sortedAnnotations = sortSoundEvents(filteredSoundEvents);
   
     const currentIndex = sortedAnnotations.findIndex(
-      (annotation) => annotation.id === selectedAnnotation?.id
+      (annotation) => annotation.id === selectedSoundEventAnnotation?.id
     );
   
     const nextIndex = currentIndex === -1 
@@ -355,8 +327,8 @@ export default function useAnnotateClip(props: {
       : (currentIndex + 1) % sortedAnnotations.length;
   
     const nextAnnotation = sortedAnnotations[nextIndex];
-    setSelectedAnnotation(nextAnnotation);
-    onSelectAnnotation?.(nextAnnotation);
+    setSelectedSoundEventAnnotation(nextAnnotation);
+    onSelectSoundEventAnnotation?.(nextAnnotation);
   
     // Assume `centerOn` is a function provided by the spectrogram to adjust the viewport.
     if (viewport && nextAnnotation) {
@@ -370,7 +342,7 @@ export default function useAnnotateClip(props: {
         onCenterOn(newCenterTime);
       }
     }
-  }, [filteredSoundEvents, selectedAnnotation, onSelectAnnotation, onCenterOn, viewport, setSelectedAnnotation]);
+  }, [filteredSoundEvents, selectedSoundEventAnnotation, onSelectSoundEventAnnotation, onCenterOn, viewport, setSelectedSoundEventAnnotation]);
 
   const selectPrevAnnotation = useCallback(() => {
     if (!filteredSoundEvents.length) return;
@@ -378,7 +350,7 @@ export default function useAnnotateClip(props: {
     const sortedAnnotations = sortSoundEvents(filteredSoundEvents);
   
     const currentIndex = sortedAnnotations.findIndex(
-      (annotation) => annotation.id === selectedAnnotation?.id
+      (annotation) => annotation.id === selectedSoundEventAnnotation?.id
     );
   
     const prevIndex = currentIndex === -1 
@@ -386,8 +358,8 @@ export default function useAnnotateClip(props: {
       : (currentIndex - 1 + sortedAnnotations.length) % sortedAnnotations.length;
   
     const nextAnnotation = sortedAnnotations[prevIndex];
-    setSelectedAnnotation(nextAnnotation);
-    onSelectAnnotation?.(nextAnnotation);
+    setSelectedSoundEventAnnotation(nextAnnotation);
+    onSelectSoundEventAnnotation?.(nextAnnotation);
   
     // Assume `centerOn` is a function provided by the spectrogram to adjust the viewport.
     if (viewport && nextAnnotation) {
@@ -401,12 +373,12 @@ export default function useAnnotateClip(props: {
         onCenterOn(newCenterTime);
       }
     }
-  }, [filteredSoundEvents, selectedAnnotation, onSelectAnnotation, onCenterOn, viewport, setSelectedAnnotation]);
+  }, [filteredSoundEvents, selectedSoundEventAnnotation, onSelectSoundEventAnnotation, onCenterOn, viewport, setSelectedSoundEventAnnotation]);
 
   const { props: editProps, draw: drawEdit } = useAnnotationEdit({
     viewport,
     dimensions,
-    annotation: selectedAnnotation,
+    annotation: selectedSoundEventAnnotation,
     onDeselect,
     onEdit: handleEdit,
     onCopy: handleCopy,
@@ -563,13 +535,13 @@ export default function useAnnotateClip(props: {
     setMode("idle");
   }, [setMode]);
 
-  const handleDeleteSelected = useCallback(() => {
-    if (selectedAnnotation && !disabled) {
-      handleDelete(selectedAnnotation);
+  const handleDeleteSelectedSoundEventAnnotations = useCallback(() => {
+    if (selectedSoundEventAnnotation && !disabled) {
+      handleDelete(selectedSoundEventAnnotation);
     }
-  }, [selectedAnnotation, handleDelete, disabled]);
+  }, [selectedSoundEventAnnotation, handleDelete, disabled]);
 
-  useAnnotateClipKeyShortcuts({
+  useAnnotateTaskKeyShortcuts({
     onGoMeasure: enableMeasure,
     onGoCreate: enableDraw,
     onGoDelete: enableDelete,
@@ -577,9 +549,15 @@ export default function useAnnotateClip(props: {
     onGoNext: selectNextAnnotation,
     onGoPrev: selectPrevAnnotation,
     enabled: !disabled,
-    selectedAnnotation,
-    onDeleteSelectedAnnotation: handleDeleteSelected,
+    selectedSoundEventAnnotation,
+    onDeleteSelectedSoundEventAnnotation: handleDeleteSelectedSoundEventAnnotations,
   });
+
+  // All hooks have been called, now check for null values
+  if (!annotationTask) {
+    toast.error("Annotation task not found.")
+    return null
+  }
 
   return {
     mode,
@@ -594,7 +572,7 @@ export default function useAnnotateClip(props: {
     // Keep the old draw for backward compatibility
     draw: drawSpectrogram,
     geometryType,
-    selectedAnnotation,
+    selectedSoundEventAnnotation,
     enabled: mode !== "idle" && active,
     isSelecting: mode === "select" && active,
     isMeasuring: mode === "measure" && active,
@@ -612,26 +590,26 @@ export default function useAnnotateClip(props: {
   };
 }
 
-function useAnnotateClipState({
+function useAnnotateTaskState({
   mode: initialMode = "select",
   geometryType: initialGeometryType = "BoundingBox",
-  selectedAnnotation: initialSelectedAnnotation = null,
+  selectedSoundEventAnnotation: initialSelectedSoundEventAnnotation = null,
   onChangeMode,
-  onSelectAnnotation,
+  onSelectSoundEventAnnotation,
   onChangeGeometryType,
   disabled = false,
 }: {
   mode?: AnnotateMode;
   geometryType?: GeometryType;
-  selectedAnnotation?: SoundEventAnnotation | null;
+  selectedSoundEventAnnotation?: SoundEventAnnotation | null;
   disabled?: boolean;
   onChangeMode?: (mode: AnnotateMode) => void;
-  onSelectAnnotation?: (annotation: SoundEventAnnotation | null) => void;
+  onSelectSoundEventAnnotation?: (annotation: SoundEventAnnotation | null) => void;
   onChangeGeometryType?: (geometryType: GeometryType) => void;
 }) {
   const [mode, setMode] = useState<AnnotateMode>(initialMode);
   const [geometryType, setGeometryType] = useState<GeometryType>(initialGeometryType);
-  const [selectedAnnotation, setSelectedAnnotation] = useState<SoundEventAnnotation | null>(initialSelectedAnnotation);
+  const [selectedSoundEventAnnotation, setSelectedSoundEventAnnotation] = useState<SoundEventAnnotation | null>(initialSelectedSoundEventAnnotation);
 
   const changeMode = useCallback(
     (mode: AnnotateMode) => {
@@ -644,16 +622,16 @@ function useAnnotateClipState({
       onChangeMode?.(mode);
 
       if (mode != "edit" && !disabled) {
-        setSelectedAnnotation(null);
-        onSelectAnnotation?.(null);
+        setSelectedSoundEventAnnotation(null);
+        onSelectSoundEventAnnotation?.(null);
       }
 
       if (mode === "idle" && disabled) {
-        setSelectedAnnotation(null);
-        onSelectAnnotation?.(null);
+        setSelectedSoundEventAnnotation(null);
+        onSelectSoundEventAnnotation?.(null);
       }
     },
-    [onChangeMode, onSelectAnnotation, setSelectedAnnotation, disabled],
+    [onChangeMode, onSelectSoundEventAnnotation, setSelectedSoundEventAnnotation, disabled],
   );
 
   const changeGeometryType = useCallback(
@@ -664,22 +642,22 @@ function useAnnotateClipState({
     [onChangeGeometryType],
   );
 
-  const selectAnnotation = useCallback(
+  const selectSoundEventAnnotation = useCallback(
     (annotation: SoundEventAnnotation) => {
-      setSelectedAnnotation(annotation);
-      onSelectAnnotation?.(annotation);
+      setSelectedSoundEventAnnotation(annotation);
+      onSelectSoundEventAnnotation?.(annotation);
       if (disabled) return;
       changeMode("edit");
     },
-    [onSelectAnnotation, changeMode, setSelectedAnnotation, disabled],
+    [onSelectSoundEventAnnotation, changeMode, setSelectedSoundEventAnnotation, disabled],
   );
 
   return {
     mode,
     geometryType,
-    selectedAnnotation,
+    selectedSoundEventAnnotation,
     setMode: changeMode,
-    setSelectedAnnotation: selectAnnotation,
+    setSelectedSoundEventAnnotation: selectSoundEventAnnotation,
     setGeometryType: changeGeometryType,
   };
 }

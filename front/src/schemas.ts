@@ -110,16 +110,6 @@ export const RecordingSchema: z.ZodType<Recording> = z.object({
   created_on: z.coerce.date(),
 }) as z.ZodType<Recording>;
 
-export const FileStateSchema = z.enum([
-  "missing",
-  "registered",
-  "unregistered",
-]);
-
-export const RecordingStateSchema = z.object({
-  path: z.string(),
-  state: FileStateSchema,
-});
 
 export const DatasetSchema = z.object({
   id: z.number().int().positive(),
@@ -199,12 +189,6 @@ export const GeometrySchema = z.discriminatedUnion("type", [
   MultiLineStringSchema,
   MultiPolygonSchema,
 ]);
-
-export const AnnotationTagSchema = z.object({
-  tag: TagSchema,
-  created_by: UserSchema.nullish(),
-  created_on: z.coerce.date(),
-});
 
 // Base schema without circular reference
 const SoundEventAnnotationBaseSchema = z.object({
@@ -377,12 +361,6 @@ export const SpectrogramParametersSchema = z
       path: ["min_dB"],
     },
   );
-
-export const FeatureFilterSchema = z.object({
-  name: z.string(),
-  gt: z.number().optional(),
-  lt: z.number().optional(),
-});
 
 export const NumberFilterSchema = z.object({
   gt: z.number().optional(),

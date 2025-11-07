@@ -21,11 +21,11 @@ import type {
 
 import { formatDateForAPI } from "@/components/filters/DateRangeFilter";
 
-export const AnnotationTaskPageSchema = Page(AnnotationTaskSchema);
+const AnnotationTaskPageSchema = Page(AnnotationTaskSchema);
 
 export type AnnotationTaskPage = z.infer<typeof AnnotationTaskPageSchema>;
 
-export const AnnotationTaskFilterSchema = z.object({
+const AnnotationTaskFilterSchema = z.object({
   dataset: z.union([
     DatasetSchema,
     z.array(DatasetSchema)
@@ -95,7 +95,7 @@ export const AnnotationTaskFilterSchema = z.object({
 
 export type AnnotationTaskFilter = z.input<typeof AnnotationTaskFilterSchema>;
 
-export const GetAnnotationTasksQuerySchema = z.intersection(
+const GetAnnotationTasksQuerySchema = z.intersection(
   GetManySchema,
   AnnotationTaskFilterSchema,
 );

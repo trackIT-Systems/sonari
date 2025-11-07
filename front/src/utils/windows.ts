@@ -32,33 +32,6 @@ export function getInitialViewingWindow({
   };
 }
 
-export function getCenteredViewingWindow({
-  startTime,
-  endTime,
-  samplerate,
-  parameters = DEFAULT_SPECTROGRAM_PARAMETERS,
-}: {
-  startTime: number;
-  endTime: number;
-  samplerate: number;
-  parameters?: SpectrogramParameters;
-}): SpectrogramWindow {
-  const center = (startTime + endTime) / 2;
-  const duration = getInitialDuration({
-    interval: {
-      min: startTime,
-      max: endTime,
-    },
-    samplerate,
-    window_size: parameters.window_size,
-    hop_size: parameters.hop_size,
-  });
-  return {
-    time: { min: center - duration / 2, max: center + duration / 2 },
-    freq: { min: 0, max: samplerate / 2 },
-  };
-}
-
 /**
  * Get the ideal duration of a spectrogram window given the interval and
  * samplerate of the audio.
@@ -119,24 +92,6 @@ export function intersectWindows(
   return {
     time: timeIntersection,
     freq: freqIntersection,
-  };
-}
-
-/**
- * Extend a spectrogram window in the time an frequency axis.
- * @param {SpectrogramWindow} window: Spectrogram window to extend.
- * @param {{time: number, freq: number}} expandBy: The amount of extension in
- * each axis. The extension can be negative and thus contract the original
- * window.
- */
-export function extendWindow(
-  window: SpectrogramWindow,
-  expandBy: { time: number; freq: number },
-): SpectrogramWindow {
-  const { time, freq } = expandBy;
-  return {
-    time: { min: window.time.min - time, max: window.time.max + time },
-    freq: { min: window.freq.min - freq, max: window.freq.max + freq },
   };
 }
 

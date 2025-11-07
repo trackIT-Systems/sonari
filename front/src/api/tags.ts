@@ -13,7 +13,7 @@ import {
 
 import type { Tag } from "@/types";
 
-export const TagPageSchema = Page(TagSchema);
+const TagPageSchema = Page(TagSchema);
 
 export type TagPage = z.infer<typeof TagPageSchema>;
 
@@ -24,18 +24,7 @@ export const TagCreateSchema = z.object({
 
 export type TagCreate = z.input<typeof TagCreateSchema>;
 
-export const RecordingTagSchema = z.object({
-  tag: TagSchema,
-  recording_id: z.number().int().positive(),
-});
-
-export type RecordingTag = z.infer<typeof RecordingTagSchema>;
-
-export const RecordingTagPageSchema = Page(RecordingTagSchema);
-
-export type RecordingTagPage = z.infer<typeof RecordingTagPageSchema>;
-
-export const TagFilterSchema = z.object({
+const TagFilterSchema = z.object({
   search: z.string().optional(),
   key: z.string().optional(),
   value: StringFilterSchema.optional(),
@@ -47,7 +36,7 @@ export const TagFilterSchema = z.object({
 
 export type TagFilter = z.input<typeof TagFilterSchema>;
 
-export const GetTagsQuerySchema = z.intersection(
+const GetTagsQuerySchema = z.intersection(
   GetManySchema,
   TagFilterSchema,
 );

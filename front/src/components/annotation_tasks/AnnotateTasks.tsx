@@ -68,13 +68,13 @@ export default function AnnotateTasks({
   const [tagPalette, setTagPalette] = useState<Tag[]>([]);
   const [selectedTag, setSelectedTag] = useState<{ tag: Tag; count: number } | null>(null);
   
-  const [selectedAnnotation, setSelectedAnnotation] = useState<SoundEventAnnotation | null>(null);
-  const onDeselectAnnotation = useCallback(() => {
-    setSelectedAnnotation(null);
-  }, [setSelectedAnnotation]);
+  const [selectedSoundEventAnnotation, setSelectedSoundEventAnnotation] = useState<SoundEventAnnotation | null>(null);
+  const onDeselectSoundEventAnnotation = useCallback(() => {
+    setSelectedSoundEventAnnotation(null);
+  }, [setSelectedSoundEventAnnotation]);
 
-  const onUpdateSelectedAnnotation = useCallback((annotation: SoundEventAnnotation) => {
-    setSelectedAnnotation(annotation);
+  const onUpdateSelectedSoundEventAnnotation = useCallback((annotation: SoundEventAnnotation) => {
+    setSelectedSoundEventAnnotation(annotation);
   }, []);
 
   const [withSpectrogram, setWithSpectrogram] = useState(true);
@@ -116,7 +116,7 @@ export default function AnnotateTasks({
     onUnsureTask,
     onRejectTask,
     onVerifyTask,
-    onDeselectAnnotation,
+    onDeselectSoundEventAnnotation,
   });
 
   const handleRemoveTagFromSoundEventAnnotations = useCallback(
@@ -203,7 +203,7 @@ export default function AnnotateTasks({
   const tagsWithCount = useMemo(() => {
     if (!annotationTask?.sound_event_annotations) return [];
 
-    const allTags = annotationTask.sound_event_annotations.flatMap(eventAnnotation => eventAnnotation.tags || []);
+    const allTags = annotationTask.sound_event_annotations.flatMap(soundEventAnnotation => soundEventAnnotation.tags || []);
     const tagCounts = new Map<string, { tag: Tag; count: number }>();
 
     allTags.forEach(tag => {
@@ -222,10 +222,10 @@ export default function AnnotateTasks({
   const handleDeleteTagFromAll = useCallback(
     async (tagWithCount: { tag: Tag; count: number }, shouldDelete: boolean) => {
       if (shouldDelete) {
-        if (selectedAnnotation) {
+        if (selectedSoundEventAnnotation) {
           // If an annotation is selected, only remove tag from it
           await removeTagFromSoundEventAnnotation.mutateAsync({
-            soundEventAnnotation: selectedAnnotation,
+            soundEventAnnotation: selectedSoundEventAnnotation,
             tag: tagWithCount.tag
           });
         } else {
@@ -235,7 +235,7 @@ export default function AnnotateTasks({
       }
       setIsDeletePopoverOpen(false);
     },
-    [handleRemoveTagFromSoundEventAnnotations, removeTagFromSoundEventAnnotation, selectedAnnotation]
+    [handleRemoveTagFromSoundEventAnnotations, removeTagFromSoundEventAnnotation, selectedSoundEventAnnotation]
   );
 
   const handleAddTagToPalette = useCallback((tag: Tag) => {
@@ -378,8 +378,8 @@ export default function AnnotateTasks({
                     selectedTag={selectedTag}
                     onClearSelectedTag={setSelectedTag}
                     onParameterSave={onParameterSave}
-                    selectedAnnotation={selectedAnnotation}
-                    onSelectAnnotation={setSelectedAnnotation}
+                    selectedSoundEventAnnotation={selectedSoundEventAnnotation}
+                    onSelectSoundEventAnnotation={setSelectedSoundEventAnnotation}
                     tagFilter={tagFilter}
                     withSpectrogram={withSpectrogram}
                     onWithSpectrogramChange={onWithSpectrogramChange}
@@ -397,7 +397,7 @@ export default function AnnotateTasks({
             })()}
           </div>
 
-          {selectedAnnotation == null || annotationTask == null ? (
+          {selectedSoundEventAnnotation == null || annotationTask == null ? (
             <div className="w-[35rem] flex-none mt-9">
               <Empty
                 padding="p-0">
@@ -409,10 +409,10 @@ export default function AnnotateTasks({
               <SelectedSoundEventAnnotation
                 annotationTask={annotationTask}
                 tagFilter={tagFilter}
-                soundEventAnnotation={selectedAnnotation}
+                soundEventAnnotation={selectedSoundEventAnnotation}
                 parameters={parameters}
                 withSpectrogram={withSpectrogram}
-                onUpdate={onUpdateSelectedAnnotation}
+                onUpdate={onUpdateSelectedSoundEventAnnotation}
               />
             </div>
           )}
@@ -437,7 +437,7 @@ export default function AnnotateTasks({
                 annotationTask={annotationTask}
                 projectTags={projectTags}
                 onReplaceTagInSoundEventAnnotations={handleReplaceTagInSoundEventAnnotations}
-                selectedAnnotation={selectedAnnotation}
+                selectedSoundEventAnnotation={selectedSoundEventAnnotation}
               />
             </div>
           </div>
@@ -463,12 +463,12 @@ export default function AnnotateTasks({
                     <div ref={menuRef} className="relative w-96 divide-y divide-stone-100 rounded-md bg-stone-50 dark:bg-stone-700 border border-stone-200 dark:border-stone-500 shadow-md dark:shadow-stone-800 ring-1 ring-stone-900 ring-opacity-5 focus:outline-none">
                       <div className="p-4">
                         <div className="mb-2 text-stone-700 dark:text-stone-300 underline underline-offset-2 decoration-amber-500 decoration-2">
-                          Select a tag to remove from {selectedAnnotation ? 'selected sound event annotation' : 'all sound event annotations'}
+                          Select a tag to remove from {selectedSoundEventAnnotation ? 'selected sound event annotation' : 'all sound event annotations'}
                         </div>
                         <SearchMenu
                           limit={100}
-                          options={selectedAnnotation
-                            ? (selectedAnnotation.tags || []).map(tag => ({ tag, count: 1 }))
+                          options={selectedSoundEventAnnotation
+                            ? (selectedSoundEventAnnotation.tags || []).map(tag => ({ tag, count: 1 }))
                             : tagsWithCount}
                           fields={["tag.key", "tag.value"]}
                           renderOption={(tagWithCount) => (

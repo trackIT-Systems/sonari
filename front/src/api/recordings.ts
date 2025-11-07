@@ -14,11 +14,11 @@ import {
 
 import type { Feature, Recording, Tag } from "@/types";
 
-export const RecordingPageSchema = Page(RecordingSchema);
+const RecordingPageSchema = Page(RecordingSchema);
 
 export type RecordingPage = z.infer<typeof RecordingPageSchema>;
 
-export const RecordingUpdateSchema = z.object({
+const RecordingUpdateSchema = z.object({
   date: z.coerce.date().nullish(),
   time: TimeStringSchema.nullish(),
   latitude: z.number().nullish(),
@@ -29,7 +29,7 @@ export const RecordingUpdateSchema = z.object({
 
 export type RecordingUpdate = z.input<typeof RecordingUpdateSchema>;
 
-export const RecordingFilterSchema = z.object({
+const RecordingFilterSchema = z.object({
   search: z.string().optional(),
   duration: NumberFilterSchema.optional(),
   samplerate: IntegerFilterSchema.optional(),
@@ -43,9 +43,7 @@ export const RecordingFilterSchema = z.object({
   time: TimeFilterSchema.optional(),
 });
 
-export type RecordingFilter = z.input<typeof RecordingFilterSchema>;
-
-export const GetRecordingsQuerySchema = z.intersection(
+const GetRecordingsQuerySchema = z.intersection(
   GetManySchema,
   RecordingFilterSchema,
 );

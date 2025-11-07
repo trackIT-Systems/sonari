@@ -74,21 +74,19 @@ function applyStyle(ctx: CanvasRenderingContext2D, style: any) {
 
 export default function useAnnotationDrawWaveform({
   viewport,
-  annotations,
-  mode = "idle",
-  selectedAnnotation,
+  soundEventAnnotations,
+  selectedSoundEventAnnotation,
 }: {
   viewport: SpectrogramWindow;
-  annotations: SoundEventAnnotation[];
-  mode?: string;
-  selectedAnnotation?: SoundEventAnnotation | null;
+  soundEventAnnotations: SoundEventAnnotation[];
+  selectedSoundEventAnnotation?: SoundEventAnnotation | null;
 }) {
   const draw = useCallback(
     (ctx: CanvasRenderingContext2D) => {
       const { width, height } = ctx.canvas;
       
-      for (const annotation of annotations) {
-        const [startTime, endTime] = getAnnotationTimeBounds(annotation);
+      for (const soundEventAnnotation of soundEventAnnotations) {
+        const [startTime, endTime] = getAnnotationTimeBounds(soundEventAnnotation);
         
         // Convert time bounds to x coordinates
         const startX = scaleTimeToViewport(startTime, viewport, width);
@@ -97,7 +95,7 @@ export default function useAnnotationDrawWaveform({
         // Determine style based on annotation state and mode
         let style = IDLE_STYLE;
         
-        if (selectedAnnotation && selectedAnnotation.id === annotation.id) {
+        if (selectedSoundEventAnnotation && selectedSoundEventAnnotation.id === soundEventAnnotation.id) {
           style = EDIT_STYLE;
         }
         
@@ -128,7 +126,7 @@ export default function useAnnotationDrawWaveform({
       ctx.setLineDash([]);
       ctx.globalAlpha = 1;
     },
-    [viewport, annotations, selectedAnnotation],
+    [viewport, soundEventAnnotations, selectedSoundEventAnnotation],
   );
 
   return draw;

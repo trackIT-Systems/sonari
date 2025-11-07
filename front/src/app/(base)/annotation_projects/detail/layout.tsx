@@ -15,16 +15,18 @@ export default function Layout({ children }: { children: ReactNode }) {
 
   const id = params.get("annotation_project_id");
 
+  // All hooks must be called before any conditional returns
+  const project = useAnnotationProject({
+    id: id ? parseInt(id) : 0,
+    enabled: id != null,
+  });
+
+  // Handle conditional cases after all hooks have been called
   if (id == null) {
     toast.error("Annotation project not specified.");
     router.push("/annotation_projects/");
-    return;
+    return null;
   }
-
-  // Fetch the annotation project.
-  const project = useAnnotationProject({
-    id: parseInt(id) as number,
-  });
 
   if (project.isLoading) {
     return <Loading />;
@@ -33,7 +35,7 @@ export default function Layout({ children }: { children: ReactNode }) {
   if (project.isError || project.data == null) {
     toast.error(`Annotation project not found. ${project.isError}`);
     router.push("/annotation_projects/");
-    return;
+    return null;
   }
 
   return (

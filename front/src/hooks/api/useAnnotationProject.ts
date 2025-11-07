@@ -35,11 +35,6 @@ export default function useAnnotationProject({
     onError,
   });
 
-  const update = useMutation({
-    mutationFn: api.annotationProjects.update,
-    onSuccess: onUpdate,
-  });
-
   const addTag = useMutation({
     mutationFn: api.annotationProjects.addTag,
     onSuccess: onAddTag,
@@ -57,7 +52,6 @@ export default function useAnnotationProject({
 
   return {
     ...query,
-    update,
     addTag,
     removeTag,
     delete: delete_,

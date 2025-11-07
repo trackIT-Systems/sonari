@@ -2,12 +2,12 @@
 import { notFound } from "next/navigation";
 import { useContext } from "react";
 
-import AnnotationProjectTaskClips from "@/components/annotation_projects/AnnotationProjectTaskClips";
 import AnnotationProject from "../context";
 
 import type { AnnotationTask } from "@/types";
 
 import "./page.css";
+import AnnotationProjectTasks from "@/components/annotation_projects/AnnotationProjectTasks";
 
 function getAnnotationTaskLink(annotationTask: AnnotationTask): string {
   return `detail/annotation/?annotation_task_id=${annotationTask.id}`;
@@ -22,7 +22,7 @@ export default function Page() {
 
   return (
     <div className="w-full">
-      <AnnotationProjectTaskClips
+      <AnnotationProjectTasks
         annotationProject={annotationProject}
         getAnnotationTaskLink={getAnnotationTaskLink}
       />

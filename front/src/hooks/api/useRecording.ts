@@ -13,7 +13,6 @@ export default function useRecording({
   onUpdate,
   onDelete,
   onAddTag,
-  onAddNote,
   onRemoveTag,
   onAddFeature,
   onRemoveFeature,
@@ -26,7 +25,6 @@ export default function useRecording({
   onUpdate?: (recording: Recording) => void;
   onDelete?: (recording: Recording) => void;
   onAddTag?: (recording: Recording) => void;
-  onAddNote?: (recording: Recording) => void;
   onRemoveTag?: (recording: Recording) => void;
   onAddFeature?: (recording: Recording) => void;
   onRemoveFeature?: (recording: Recording) => void;
@@ -65,11 +63,6 @@ export default function useRecording({
     onSuccess: onRemoveTag,
   });
 
-  const addNote = useMutation({
-    mutationFn: api.recordings.addNote,
-    onSuccess: onAddNote,
-  });
-
   const addFeature = useMutation({
     mutationFn: api.recordings.addFeature,
     onSuccess: onAddFeature,
@@ -100,7 +93,6 @@ export default function useRecording({
     update,
     addTag,
     removeTag,
-    addNote,
     addFeature,
     removeFeature,
     updateFeature,

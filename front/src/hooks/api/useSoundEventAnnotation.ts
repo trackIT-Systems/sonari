@@ -15,7 +15,6 @@ export default function useSoundEventAnnotation({
   annotationTask,
   onDelete,
   onUpdate,
-  onAddNote,
   onError,
   enabled = true,
 }: {
@@ -24,7 +23,6 @@ export default function useSoundEventAnnotation({
   soundEventAnnotation?: SoundEventAnnotation;
   onDelete?: (annotation: SoundEventAnnotation) => void;
   onUpdate?: (annotation: SoundEventAnnotation) => void;
-  onAddNote?: (annotation: SoundEventAnnotation) => void;
   onError?: (error: AxiosError) => void;
   enabled?: boolean;
 }) {

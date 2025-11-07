@@ -11,7 +11,7 @@ import {
   MEASURE_SHORTCUT,
 } from "@/utils/keyboard";
 
-export default function useAnnotateClipKeyShortcuts(props: {
+export default function useSoundEventAnnotationKeyShortcuts(props: {
   onGoMeasure: () => void;
   onGoCreate: () => void;
   onGoSelect: () => void;
@@ -19,8 +19,8 @@ export default function useAnnotateClipKeyShortcuts(props: {
   onGoNext: () => void;
   onGoPrev: () => void;
   enabled?: boolean;
-  selectedAnnotation?: { id: number } | null;
-  onDeleteSelectedAnnotation?: () => void;
+  selectedSoundEventAnnotation?: { id: number } | null;
+  onDeleteSelectedSoundEventAnnotation?: () => void;
 }) {
   const { 
     onGoMeasure,
@@ -30,14 +30,14 @@ export default function useAnnotateClipKeyShortcuts(props: {
     onGoNext, 
     onGoPrev, 
     enabled = true,
-    selectedAnnotation,
-    onDeleteSelectedAnnotation,
+    selectedSoundEventAnnotation,
+    onDeleteSelectedSoundEventAnnotation,
   } = props;
 
   // Handler for delete key that checks if there's a selected annotation
   const handleDelete = () => {
-    if (selectedAnnotation && onDeleteSelectedAnnotation) {
-      onDeleteSelectedAnnotation();
+    if (selectedSoundEventAnnotation && onDeleteSelectedSoundEventAnnotation) {
+      onDeleteSelectedSoundEventAnnotation();
     } else {
       onGoDelete();
     }
