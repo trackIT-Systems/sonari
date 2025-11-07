@@ -1,5 +1,3 @@
-import { useMutation } from "@tanstack/react-query";
-
 import { type DatasetFilter } from "@/api/datasets";
 import api from "@/app/api";
 import useFilter from "@/hooks/utils/useFilter";
@@ -33,19 +31,11 @@ export default function useDatasets({
     enabled,
   });
 
-  const create = useMutation({
-    mutationFn: api.datasets.create,
-    onSuccess: () => {
-      query.refetch();
-    },
-  });
-
   return {
     ...query,
     filter,
     pagination,
     items,
     total,
-    create,
   } as const;
 }

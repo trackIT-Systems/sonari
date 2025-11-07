@@ -116,37 +116,6 @@ class AnnotationTaskFilter(base.Filter):
         )
 
 
-class DatasetFilter(base.Filter):
-    """Get tags of recordings in a dataset."""
-
-    eq: int | None = None
-
-    def filter(self, query: Select) -> Select:
-        """Filter tags by dataset."""
-        if self.eq is None:
-            return query
-
-        return (
-            query.join(
-                models.RecordingTag,
-                models.RecordingTag.tag_id == models.Tag.id,
-            )
-            .join(
-                models.Recording,
-                models.Recording.id == models.RecordingTag.recording_id,
-            )
-            .join(
-                models.DatasetRecording,
-                models.DatasetRecording.recording_id == models.Recording.id,
-            )
-            .join(
-                models.Dataset,
-                models.Dataset.id == models.DatasetRecording.dataset_id,
-            )
-            .where(models.Dataset.id == self.eq)
-        )
-
-
 TagFilter = base.combine(
     SearchFilter,
     key=KeyFilter,
@@ -155,5 +124,4 @@ TagFilter = base.combine(
     recording=RecordingFilter,
     sound_event_annotation=SoundEventAnnotationFilter,
     annotation_task=AnnotationTaskFilter,
-    dataset=DatasetFilter,
 )

@@ -3,7 +3,6 @@ import { z } from "zod";
 
 import { GetManySchema, Page } from "@/api/common";
 import {
-  DatasetSchema,
   DateFilterSchema,
   IntegerFilterSchema,
   NumberFilterSchema,
@@ -32,7 +31,6 @@ export type RecordingUpdate = z.input<typeof RecordingUpdateSchema>;
 
 export const RecordingFilterSchema = z.object({
   search: z.string().optional(),
-  dataset: DatasetSchema.optional(),
   duration: NumberFilterSchema.optional(),
   samplerate: IntegerFilterSchema.optional(),
   channels: IntegerFilterSchema.optional(),
@@ -78,7 +76,6 @@ export function registerRecordingAPI(
         offset: params.offset,
         sort_by: params.sort_by,
         search: params.search,
-        dataset__eq: params.dataset?.id,
         duration__gt: params.duration?.gt,
         duration__lt: params.duration?.lt,
         latitude__gt: params.latitude?.gt,

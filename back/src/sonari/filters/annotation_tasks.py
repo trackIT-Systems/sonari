@@ -10,7 +10,7 @@ from sonari.filters import base
 
 __all__ = [
     "AnnotationProjectFilter",
-    "DatasetFilter",
+    "StationFilter",
     "AnnotationTaskFilter",
     "SearchRecordingsFilter",
 ]
@@ -147,8 +147,8 @@ class AnnotationProjectFilter(base.Filter):
         )
 
 
-class DatasetFilter(base.Filter):
-    """Filter for tasks by dataset."""
+class StationFilter(base.Filter):
+    """Filter for tasks by stations, which is the external name for datasets."""
 
     lst: str | None = None
 
@@ -525,7 +525,7 @@ AnnotationTaskFilter = base.combine(
     completed=IsCompletedFilter,
     assigned=IsAssignedFilter,
     annotation_project=AnnotationProjectFilter,
-    dataset=DatasetFilter,
+    dataset=StationFilter,
     sound_event_annotation_tag=SoundEventAnnotationTagFilter,
     date=DateRangeFilter,
     night=NightFilter,

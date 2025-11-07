@@ -5,7 +5,6 @@ import { GetManySchema, Page } from "@/api/common";
 import {
   AnnotationProjectSchema,
   AnnotationTaskSchema,
-  DatasetSchema,
   RecordingSchema,
   SoundEventAnnotationSchema,
   StringFilterSchema,
@@ -44,19 +43,9 @@ export const TagFilterSchema = z.object({
   recording: RecordingSchema.optional(),
   sound_event_annotation: SoundEventAnnotationSchema.optional(),
   annotation_tasks: AnnotationTaskSchema.optional(),
-  dataset: DatasetSchema.optional(),
 });
 
 export type TagFilter = z.input<typeof TagFilterSchema>;
-
-export const RecordingTagFilterSchema = z.object({
-  recording: RecordingSchema.optional(),
-  dataset: DatasetSchema.optional(),
-  tag: TagSchema.optional(),
-  issue: z.boolean().optional(),
-});
-
-export type RecordingTagFilter = z.input<typeof RecordingTagFilterSchema>;
 
 export const GetTagsQuerySchema = z.intersection(
   GetManySchema,
@@ -64,13 +53,6 @@ export const GetTagsQuerySchema = z.intersection(
 );
 
 export type GetTagsQuery = z.input<typeof GetTagsQuerySchema>;
-
-export const GetRecordingTagsQuerySchema = z.intersection(
-  GetManySchema,
-  RecordingTagFilterSchema,
-);
-
-export type GetRecordingTagsQuery = z.input<typeof GetRecordingTagsQuerySchema>;
 
 const DEFAULT_ENDPOINTS = {
   get: "/api/v1/tags/",
@@ -96,26 +78,6 @@ export function registerTagAPI(
         annotation_project__eq: params.annotation_project?.id,
         recording__eq: params.recording?.id,
         sound_event_annotation__eq: params.sound_event_annotation?.id,
-        dataset__eq: params.dataset?.id,
-      },
-    });
-    return response.data;
-  }
-
-  async function getRecordingTags(
-    query: GetRecordingTagsQuery,
-  ): Promise<RecordingTagPage> {
-    const params = GetRecordingTagsQuerySchema.parse(query);
-    const response = await instance.get(endpoints.getRecordingTags, {
-      params: {
-        limit: params.limit,
-        offset: params.offset,
-        sort_by: params.sort_by,
-        recording__eq: params.recording?.id,
-        dataset__eq: params.dataset?.id,
-        tag__key: params.tag?.key,
-        tag__value: params.tag?.value,
-        issue__eq: params.issue,
       },
     });
     return response.data;
@@ -126,5 +88,5 @@ export function registerTagAPI(
     return TagSchema.parse(response.data);
   }
 
-  return { get: getTags, create: createTag, getRecordingTags } as const;
+  return { get: getTags, create: createTag } as const;
 }

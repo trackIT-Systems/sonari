@@ -183,7 +183,7 @@ const tasksFilterDefs: FilterDef<AnnotationTaskFilter>[] = [
   },
   {
     field: "dataset",
-    name: "Dataset",
+    name: "Station",
     render: ({ value, clear, setFilter }) => {
       const datasets = Array.isArray(value) ? value : [value];
       return datasets.map(dataset => (
@@ -221,7 +221,7 @@ const tasksFilterDefs: FilterDef<AnnotationTaskFilter>[] = [
         }} 
       />
     ),
-    description: "Only show tasks from a specific dataset. You can filter for multiple datasets. A task from either of the datasets will be shown.",
+    description: "Only show tasks from a specific stations. You can filter for multiple stations. A task from either of the stations will be shown.",
     icon: (
       <DatasetIcon className="h-5 w-5 inline-block text-stone-500 mr-1 align-middle" />
     ),
