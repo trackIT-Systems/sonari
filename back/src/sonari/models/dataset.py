@@ -153,8 +153,6 @@ class DatasetRecording(Base):
         init=False,
         repr=False,
         back_populates="recording_datasets",
-        cascade="all",
-        passive_deletes=True,
     )
 
 

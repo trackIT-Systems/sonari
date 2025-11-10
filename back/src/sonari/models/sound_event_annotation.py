@@ -164,8 +164,6 @@ class SoundEventAnnotationFeature(Base):
     # Relations
     sound_event_annotation: orm.Mapped[SoundEventAnnotation] = orm.relationship(
         back_populates="features",
-        cascade="all",
-        passive_deletes=True,
         init=False,
         repr=False,
     )

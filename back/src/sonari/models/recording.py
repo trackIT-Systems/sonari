@@ -258,8 +258,6 @@ class RecordingFeature(Base):
         back_populates="features",
         init=False,
         repr=False,
-        cascade="all",
-        passive_deletes=True,
     )
 
 
@@ -299,8 +297,6 @@ class RecordingOwner(Base):
     recording: orm.Mapped[Recording] = orm.relationship(
         init=False,
         repr=False,
-        cascade="all",
-        passive_deletes=True,
     )
     user: orm.Mapped[User] = orm.relationship(
         back_populates="recording_owner",
