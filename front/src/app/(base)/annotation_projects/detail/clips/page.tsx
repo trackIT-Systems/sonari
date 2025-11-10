@@ -24,7 +24,6 @@ export default function Page() {
     <div className="w-full">
       <AnnotationProjectTasks
         annotationProject={annotationProject}
-        getAnnotationTaskLink={getAnnotationTaskLink}
       />
     </div>
   );
