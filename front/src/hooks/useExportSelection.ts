@@ -14,8 +14,6 @@ export interface ExportSelectionState {
   
   // Tag selection (optional)
   selectedTags: Tag[];
-  projectTags: Tag[];
-  availableTags: Tag[];
   
   // Status selection (optional)
   selectedStatuses: (AnnotationStatus | string)[];
@@ -75,7 +73,6 @@ export function useExportSelection(options: UseExportSelectionOptions = {}) {
   
   // Tag selection state
   const [selectedTags, setSelectedTags] = useState<Tag[]>([]);
-  const [projectTags, setProjectTags] = useState<Tag[]>([]);
   
   // Status selection state
   const [selectedStatuses, setSelectedStatuses] = useState<(AnnotationStatus | string)[]>([]);
@@ -127,33 +124,15 @@ export function useExportSelection(options: UseExportSelectionOptions = {}) {
     setAvailableProjects(options);
   }, [allProjects]);
 
-  // Update project tags when selected projects change
+  // Reset selections when projects change
   useEffect(() => {
-    if (!includeTags) return;
-    
     if (selectedProjects.length === 0) {
-      setProjectTags([]);
       setSelectedTags([]);
       if (includeStatuses) {
         setSelectedStatuses([]);
       }
-      return;
     }
-    
-    const mergedTags = selectedProjects.flatMap(p => p.tags ?? []);
-    const uniqueTagMap = new Map<string, Tag>();
-    for (const tag of mergedTags) {
-      const key = `${tag.key}:${tag.value}`;
-      if (!uniqueTagMap.has(key)) {
-        uniqueTagMap.set(key, tag);
-      }
-    }
-    setProjectTags(Array.from(uniqueTagMap.values()));
-    setSelectedTags([]);
-    if (includeStatuses) {
-      setSelectedStatuses([]);
-    }
-  }, [selectedProjects, includeTags, includeStatuses]);
+  }, [selectedProjects, includeStatuses]);
 
   // Computed values
   const availableProjectOptions = availableProjects.filter(p =>
@@ -169,10 +148,6 @@ export function useExportSelection(options: UseExportSelectionOptions = {}) {
     key: "",
     value: p.name,
   }));
-
-  const availableTags = includeTags ? projectTags.filter(tag =>
-    !selectedTags.some(t => t.key === tag.key && t.value === tag.value)
-  ) : [];
 
   // Action handlers
   const handleProjectSelect = (tag: Tag) => {
@@ -196,12 +171,33 @@ export function useExportSelection(options: UseExportSelectionOptions = {}) {
     setSelectedTags(prev => prev.filter(t => t.key !== tag.key || t.value !== tag.value));
   };
 
-  const handleSelectAllTags = () => {
-    if (!includeTags || availableTags.length === 0) return;
-    setSelectedTags(prev => {
-      const tagsToAdd = availableTags.filter(avail => !prev.some(sel => sel.key === avail.key && sel.value === avail.value));
-      return [...prev, ...tagsToAdd];
-    });
+  const handleSelectAllTags = async () => {
+    if (!includeTags) return;
+    
+    try {
+      // Fetch all tags from the system when "Select All" is pressed
+      const allTags: Tag[] = [];
+      let offset = 0;
+      const pageSize = 100;
+      let hasMore = true;
+
+      while (hasMore) {
+        const page = await api.tags.get({ limit: pageSize, offset });
+        allTags.push(...page.items);
+        offset += pageSize;
+        hasMore = page.items.length === pageSize;
+      }
+
+      // Add only tags that aren't already selected
+      setSelectedTags(prev => {
+        const tagsToAdd = allTags.filter(
+          tag => !prev.some(sel => sel.key === tag.key && sel.value === tag.value)
+        );
+        return [...prev, ...tagsToAdd];
+      });
+    } catch (err) {
+      console.error("Failed to fetch all tags", err);
+    }
   };
 
   const handleStatusToggle = (status: AnnotationStatus | string) => {
@@ -234,8 +230,6 @@ export function useExportSelection(options: UseExportSelectionOptions = {}) {
     projectTagList,
     selectedProjectTags,
     selectedTags,
-    projectTags,
-    availableTags,
     selectedStatuses,
     allStatusOptions,
     startDate,

@@ -190,7 +190,6 @@ export default function PassesExport() {
         {/* Right Column */}
         <div className="flex flex-col gap-y-6 min-w-0">
           <ExportTagSelection
-            availableTags={exportSelection.availableTags}
             selectedTags={exportSelection.selectedTags}
             onTagSelect={exportSelection.handleTagSelect}
             onTagDeselect={exportSelection.handleTagDeselect}

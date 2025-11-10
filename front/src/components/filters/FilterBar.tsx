@@ -62,7 +62,7 @@ export default function FilterBar<T extends Object>({
         {withLabel && (
           <span className="mr-2 text-blue-200">
             <FilterIcon className="inline-block h-5 w-5 mr-1" />
-            filters:
+            Filters:
           </span>
         )}
         {Object.entries(filter.filter)

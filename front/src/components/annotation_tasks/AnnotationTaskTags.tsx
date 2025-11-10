@@ -4,13 +4,13 @@ import Empty from "@/components/Empty";
 import { H4 } from "@/components/Headings";
 import { TagsIcon, BackIcon } from "@/components/icons";
 import TagComponent, { TagCount, getTagKey } from "@/components/tags/Tag";
+import TagSearchBar from "@/components/tags/TagSearchBar";
 import SearchMenu from "../search/SearchMenu";
 import Button from "../Button";
 import { Popover, PopoverButton, PopoverPanel } from "@headlessui/react";
 import KeyboardKey from "../KeyboardKey";
 import type { AnnotationTask, Tag, SoundEventAnnotation } from "@/types";
 import { ADD_TAG_SHORTCUT, REPLACE_TAG_SHORTCUT } from "@/utils/keyboard";
-import useTags from "@/hooks/api/useTags";
 
 function NoTags() {
   return (
@@ -28,8 +28,6 @@ function TagReplacePanel({
   onReplaceTag: (oldTag: Tag | null, newTag: Tag) => void;
 }) {
   const [selectedTagWithCount, setSelectedTagWithCount] = useState<{ tag: Tag; count: number } | null>(null);
-
-  const {items: availableTags} = useTags()
 
   // Calculate total count
   const totalCount = useMemo(() =>
@@ -96,20 +94,8 @@ function TagReplacePanel({
           <BackIcon className="w-5 h-5" />
         </Button>
       </div>
-      <SearchMenu
-        limit={100}
-        key="second-search"
-        options={availableTags}
-        fields={["key", "value"]}
-        renderOption={(tag) => (
-          <TagComponent
-            key={getTagKey(tag)}
-            tag={tag}
-            onClose={() => { }}
-            count={null}
-          />
-        )}
-        getOptionKey={(tag) => `${tag.key}-${tag.value}`}
+      <TagSearchBar
+        placeholder="Search or create tag..."
         onSelect={(newTag) => {
           onReplaceTag(
             selectedTagWithCount.tag,
@@ -117,7 +103,6 @@ function TagReplacePanel({
           );
           setSelectedTagWithCount(null);
         }}
-        empty={<div className="text-stone-500 text-center w-full">No tags found</div>}
         autoFocus
       />
     </div>
@@ -130,7 +115,6 @@ function TagAddPanel({
 }: {
   onReplaceTag: (oldTag: Tag | null, newTag: Tag) => void;
 }) {
-  const {items: availableTags} = useTags()
   return (
     <div className="p-4">
       <div className="mb-2 flex flex-row items-center justify-between">
@@ -140,27 +124,14 @@ function TagAddPanel({
           </span>
         </div>
       </div>
-      <SearchMenu
-        limit={100}
-        key="second-search"
-        options={availableTags}
-        fields={["key", "value"]}
-        renderOption={(tag) => (
-          <TagComponent
-            key={getTagKey(tag)}
-            tag={tag}
-            onClose={() => { }}
-            count={null}
-          />
-        )}
-        getOptionKey={(tag) => `${tag.key}-${tag.value}`}
+      <TagSearchBar
+        placeholder="Search tag to add..."
         onSelect={(newTag) => {
           onReplaceTag(
             null,
             newTag
           );
         }}
-        empty={<div className="text-stone-500 text-center w-full">No tags found</div>}
         autoFocus
       />
     </div>
