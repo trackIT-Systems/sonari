@@ -32,7 +32,7 @@ export default function useAnnotationTaskTable({
 }: {
   data: AnnotationTask[];
   pathFormatter?: (path: string) => string;
-  getAnnotationTaskLink?: (annotationTask: AnnotationTask) => string;
+  getAnnotationTaskLink: (annotationProjectId: number, annotationTaskId: number) => string;
   pagination?: { page: number; pageSize: number };
 }) {
 
@@ -67,12 +67,14 @@ export default function useAnnotationTaskTable({
         accessorFn: (row) => row.recording,
         cell: ({ row }) => {
           const recording = row.getValue("recording") as Recording;
-          
+          const link = getAnnotationTaskLink(row.original.annotation_project_id, row.original.id);
+          const fullHref = link ? `/annotation_projects/${link}` : "#";
+
           return (
             <TableCell>
               <Link
                 className="hover:font-bold hover:text-emerald-500 focus:ring focus:ring-emerald-500 focus:outline-none block break-words"
-                href={`/annotation_projects/` + getAnnotationTaskLink?.(row.original) || "#"}
+                href={fullHref}
               >
                 {pathFormatter(recording.path)}
               </Link>

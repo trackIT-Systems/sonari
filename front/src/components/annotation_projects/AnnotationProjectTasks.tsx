@@ -6,20 +6,10 @@ import type {AnnotationProject, AnnotationTask} from "@/types";
 
 export default function AnnotationProjectTasks({
   annotationProject,
-  getAnnotationTaskLink: getAnnotationTaskLinkFn,
 }: {
   annotationProject: AnnotationProject;
-  getAnnotationTaskLink?: (annotationTask: AnnotationTask) => string;
 }) {
 
-  const getAnnotationTaskLink = useMemo(() => {
-    if (getAnnotationTaskLinkFn == null) return undefined;
-
-    return (annotationTask: AnnotationTask) => {
-      const url = getAnnotationTaskLinkFn(annotationTask);
-      return `${url}&annotation_project_id=${annotationProject.id}`;
-    };
-  }, [getAnnotationTaskLinkFn, annotationProject.id]);
   const filter = useMemo(() => (
     {
       annotation_project: annotationProject,
@@ -34,7 +24,6 @@ export default function AnnotationProjectTasks({
     <AnnotationTaskTable
       filter={filter}
       fixed={["annotation_project"]}
-      getAnnotationTaskLink={getAnnotationTaskLink}
     />
   );
 }

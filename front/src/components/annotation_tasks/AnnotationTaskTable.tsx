@@ -3,7 +3,7 @@ import { useRouter } from "next/navigation";
 import { useKeyPressEvent } from "react-use";
 import useKeyFilter from "@/hooks/utils/useKeyFilter";
 import type { AnnotationTaskFilter } from "@/api/annotation_tasks";
-import type { AnnotationTask } from "@/types";
+import type { AnnotationProject, AnnotationTask } from "@/types";
 import useAnnotationTasks from "@/hooks/api/useAnnotationTasks";
 import useAnnotationTaskTable from "@/hooks/useAnnotationTaskTable";
 import Loading from "@/app/loading";
@@ -20,12 +20,10 @@ import { FilterIcon } from "../icons";
 export default function AnnotationTaskTable({
   filter,
   fixed,
-  getAnnotationTaskLink,
   pathFormatter,
 }: {
   filter: AnnotationTaskFilter;
   fixed?: (keyof AnnotationTaskFilter)[];
-  getAnnotationTaskLink?: (annotationTask: AnnotationTask) => string;
   pathFormatter?: (path: string) => string;
 }) {
   const annotationTasks = useAnnotationTasks({ filter, fixed });
@@ -33,6 +31,11 @@ export default function AnnotationTaskTable({
   const [focusedElement, setFocusedElement] = useState<'search' | 'filter' | number>(-1);
   const router = useRouter();
   const popoverButtonRef = useRef<HTMLButtonElement>(null);
+
+  function  getAnnotationTaskLink(annotationProjectId: number, annotationTaskId: number): string {
+    const url = `detail/annotation/?annotation_task_id=${annotationTaskId}`;
+    return `${url}&annotation_project_id=${annotationProjectId}`;
+  };
 
   const table = useAnnotationTaskTable({
     data: annotationTasks.items,
@@ -69,7 +72,7 @@ export default function AnnotationTaskTable({
   }, [setFocusedElement, searchInputRef]);
 
   const handleSelect = useCallback((task: AnnotationTask) => {
-    const link = getAnnotationTaskLink?.(task);
+    const link = getAnnotationTaskLink(task.annotation_project_id, task.id);
     if (link) {
       router.push(`/annotation_projects/${link}`);
     }
