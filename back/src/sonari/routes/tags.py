@@ -47,24 +47,9 @@ def get_tags_router(settings: SonariSettings) -> APIRouter:
         data: schemas.TagCreate,
         user: Annotated[schemas.SimpleUser, Depends(active_user)],
     ):
-        """Create a new tag and automatically add it to all annotation projects."""
+        """Create a new tag."""
         # Create the tag
         tag = await api.tags.create(session, key=data.key, value=data.value, created_by=user)
-
-        # Get all annotation projects with tags eagerly loaded
-        projects, _ = await api.annotation_projects.get_many_with_tags(
-            session,
-            limit=None,  # Get all projects
-            offset=0,
-        )
-
-        # Add the tag to all annotation projects
-        for project in projects:
-            try:
-                await api.annotation_projects.add_tag(session, project, tag)
-            except Exception:
-                # If tag already exists in project, skip (shouldn't happen with new tags)
-                pass
 
         await session.commit()
         return tag

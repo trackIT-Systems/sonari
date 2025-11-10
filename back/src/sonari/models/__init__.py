@@ -7,10 +7,7 @@ models into other modules without having to import the entire database
 module.
 """
 
-from sonari.models.annotation_project import (
-    AnnotationProject,
-    AnnotationProjectTag,
-)
+from sonari.models.annotation_project import AnnotationProject
 from sonari.models.annotation_task import (
     AnnotationStatusBadge,
     AnnotationTask,
@@ -38,7 +35,6 @@ from sonari.models.user import User
 __all__ = [
     "AccessToken",
     "AnnotationProject",
-    "AnnotationProjectTag",
     "AnnotationStatusBadge",
     "AnnotationTask",
     "AnnotationTaskFeature",

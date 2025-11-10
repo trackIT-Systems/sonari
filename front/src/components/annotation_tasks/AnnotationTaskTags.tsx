@@ -10,6 +10,7 @@ import { Popover, PopoverButton, PopoverPanel } from "@headlessui/react";
 import KeyboardKey from "../KeyboardKey";
 import type { AnnotationTask, Tag, SoundEventAnnotation } from "@/types";
 import { ADD_TAG_SHORTCUT, REPLACE_TAG_SHORTCUT } from "@/utils/keyboard";
+import useTags from "@/hooks/api/useTags";
 
 function NoTags() {
   return (
@@ -21,14 +22,14 @@ const allTag: Tag = { key: "all", value: "tags" }
 
 function TagReplacePanel({
   taskTags,
-  projectTags,
   onReplaceTag,
 }: {
   taskTags: { tag: Tag; count: number }[];
-  projectTags: Tag[];
   onReplaceTag: (oldTag: Tag | null, newTag: Tag) => void;
 }) {
   const [selectedTagWithCount, setSelectedTagWithCount] = useState<{ tag: Tag; count: number } | null>(null);
+
+  const {items: availableTags} = useTags()
 
   // Calculate total count
   const totalCount = useMemo(() =>
@@ -98,7 +99,7 @@ function TagReplacePanel({
       <SearchMenu
         limit={100}
         key="second-search"
-        options={projectTags}
+        options={availableTags}
         fields={["key", "value"]}
         renderOption={(tag) => (
           <TagComponent
@@ -125,12 +126,11 @@ function TagReplacePanel({
 
 
 function TagAddPanel({
-  projectTags,
   onReplaceTag,
 }: {
-  projectTags: Tag[];
   onReplaceTag: (oldTag: Tag | null, newTag: Tag) => void;
 }) {
+  const {items: availableTags} = useTags()
   return (
     <div className="p-4">
       <div className="mb-2 flex flex-row items-center justify-between">
@@ -143,7 +143,7 @@ function TagAddPanel({
       <SearchMenu
         limit={100}
         key="second-search"
-        options={projectTags}
+        options={availableTags}
         fields={["key", "value"]}
         renderOption={(tag) => (
           <TagComponent
@@ -170,12 +170,10 @@ function TagAddPanel({
 
 export default function AnnotationTaskTags({
   annotationTask,
-  projectTags,
   onReplaceTagInSoundEventAnnotations,
   selectedSoundEventAnnotation,
 }: {
   annotationTask: AnnotationTask;
-  projectTags: Tag[];
   onReplaceTagInSoundEventAnnotations?: (oldTag: Tag | null, newTag: Tag | null, selectedSoundEventAnnotation?: SoundEventAnnotation | null) => void;
   selectedSoundEventAnnotation?: SoundEventAnnotation | null;
 }) {
@@ -326,7 +324,6 @@ export default function AnnotationTaskTags({
                   >
                     <TagReplacePanel
                       taskTags={popoverTagsWithCount}
-                      projectTags={projectTags}
                       onReplaceTag={async (oldTag, newTag) => {
                         close();
                         await handleTagReplaceRemove(oldTag, newTag);
@@ -386,7 +383,6 @@ export default function AnnotationTaskTags({
                     className="absolute right-0 mt-2 w-96 divide-y divide-stone-100 rounded-md bg-stone-50 dark:bg-stone-700 border border-stone-200 dark:border-stone-500 shadow-md dark:shadow-stone-800 ring-1 ring-stone-900 ring-opacity-5 z-50 origin-top-right transition transform data-[closed]:scale-95 data-[closed]:opacity-0 data-[enter]:duration-100 data-[leave]:duration-75 data-[enter]:ease-out data-[leave]:ease-in"
                   >
                     <TagAddPanel
-                      projectTags={projectTags}
                       onReplaceTag={async (_, newTag) => {
                         close();
                         await handleTagReplaceRemove(null, newTag);

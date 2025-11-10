@@ -34,7 +34,6 @@ import { NoIcon } from "../icons";
 
 export default function AnnotationTaskSpectrogram({
   annotationTaskProps,
-  tagFilter,
   parameters = DEFAULT_SPECTROGRAM_PARAMETERS,
   disabled = false,
   height = 384,
@@ -62,7 +61,6 @@ export default function AnnotationTaskSpectrogram({
 }: {
   annotationTaskProps: ReturnType<typeof useAnnotationTask>;
   parameters?: SpectrogramParameters;
-  tagFilter?: TagFilter;
   disabled?: boolean;
   defaultTags?: Tag[];
   selectedTag: { tag: Tag; count: number } | null;
@@ -475,7 +473,6 @@ export default function AnnotationTaskSpectrogram({
         <SpectrogramTags
           disabled={disabled}
           tags={annotate.tags}
-          filter={tagFilter}
           withSoundEvent={withSoundEvent}
           onWithSoundEventChange={onWithSoundEventChange}
         >

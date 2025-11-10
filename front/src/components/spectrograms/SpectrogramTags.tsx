@@ -173,14 +173,12 @@ export function TagGroup({
 export default function SpectrogramTags({
   tags,
   children,
-  filter,
   disabled = false,
   withSoundEvent = true,
   onWithSoundEventChange,
 }: {
   tags: TagGroup[];
   children: ReactNode;
-  filter?: TagFilter;
   disabled?: boolean;
   withSoundEvent?: boolean;
   onWithSoundEventChange?: () => void;
@@ -205,7 +203,6 @@ export default function SpectrogramTags({
         <TagGroup
           key={group.annotation.id}
           group={group}
-          filter={filter}
           disabled={disabled}
         />
       ))}

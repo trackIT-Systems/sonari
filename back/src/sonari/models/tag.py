@@ -100,7 +100,6 @@ class Tag(Base):
     if TYPE_CHECKING:
         from sonari.models.annotation_project import (
             AnnotationProject,
-            AnnotationProjectTag,
         )
         from sonari.models.annotation_task import AnnotationTask
         from sonari.models.recording import Recording, RecordingTag
@@ -145,19 +144,4 @@ class Tag(Base):
         repr=False,
         viewonly=True,
         default_factory=list,
-    )
-    annotation_projects: orm.Mapped[list["AnnotationProject"]] = orm.relationship(
-        secondary="annotation_project_tag",
-        init=False,
-        repr=False,
-        viewonly=True,
-        default_factory=list,
-    )
-    annotation_project_tags: orm.Mapped[list["AnnotationProjectTag"]] = orm.relationship(
-        back_populates="tag",
-        init=False,
-        repr=False,
-        default_factory=list,
-        cascade="all, delete-orphan",
-        passive_deletes=True,
     )

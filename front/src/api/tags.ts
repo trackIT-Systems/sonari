@@ -3,7 +3,6 @@ import { z } from "zod";
 
 import { GetManySchema, Page } from "@/api/common";
 import {
-  AnnotationProjectSchema,
   AnnotationTaskSchema,
   RecordingSchema,
   SoundEventAnnotationSchema,
@@ -28,7 +27,6 @@ const TagFilterSchema = z.object({
   search: z.string().optional(),
   key: z.string().optional(),
   value: StringFilterSchema.optional(),
-  annotation_project: AnnotationProjectSchema.optional(),
   recording: RecordingSchema.optional(),
   sound_event_annotation: SoundEventAnnotationSchema.optional(),
   annotation_tasks: AnnotationTaskSchema.optional(),
@@ -45,7 +43,6 @@ export type GetTagsQuery = z.input<typeof GetTagsQuerySchema>;
 
 const DEFAULT_ENDPOINTS = {
   get: "/api/v1/tags/",
-  getRecordingTags: "/api/v1/tags/recording_tags/",
   create: "/api/v1/tags/",
 };
 
@@ -64,7 +61,6 @@ export function registerTagAPI(
         key__eq: params.key,
         value__eq: params.value?.eq,
         value__has: params.value?.has,
-        annotation_project__eq: params.annotation_project?.id,
         recording__eq: params.recording?.id,
         sound_event_annotation__eq: params.sound_event_annotation?.id,
       },

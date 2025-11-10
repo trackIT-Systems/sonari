@@ -125,8 +125,6 @@ export default function Page() {
     <div className="w-full">
       <AnnotateTasks
         taskFilter={filter}
-        tagFilter={filter}
-        projectTags={project.tags == null ? [] : project.tags}
         annotationTaskProps={annotationTask}
         parameters={parameters}
         onChangeTask={onChangeTask}

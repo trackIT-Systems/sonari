@@ -9,7 +9,6 @@ __all__ = [
     "KeyFilter",
     "ValueFilter",
     "SearchFilter",
-    "AnnotationProjectFilter",
     "TagFilter",
 ]
 
@@ -22,29 +21,6 @@ ValueFilter = base.string_filter(models.Tag.value)
 
 SearchFilter = base.search_filter([models.Tag.key, models.Tag.value])
 """Search tags by key or value."""
-
-
-class AnnotationProjectFilter(base.Filter):
-    """Get tags for an annotation project."""
-
-    eq: int | None = None
-
-    def filter(self, query: Select) -> Select:
-        """Filter tags by project."""
-        if self.eq is None:
-            return query
-
-        return (
-            query.join(
-                models.AnnotationProjectTag,
-                models.AnnotationProjectTag.tag_id == models.Tag.id,
-            )
-            .join(
-                models.AnnotationProject,
-                models.AnnotationProject.id == models.AnnotationProjectTag.annotation_project_id,
-            )
-            .where(models.AnnotationProject.id == self.eq)
-        )
 
 
 class RecordingFilter(base.Filter):
@@ -120,7 +96,6 @@ TagFilter = base.combine(
     SearchFilter,
     key=KeyFilter,
     value=ValueFilter,
-    annotation_project=AnnotationProjectFilter,
     recording=RecordingFilter,
     sound_event_annotation=SoundEventAnnotationFilter,
     annotation_task=AnnotationTaskFilter,

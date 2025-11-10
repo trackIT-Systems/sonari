@@ -32,8 +32,6 @@ import AnnotationTaskTags from "@/components/annotation_tasks/AnnotationTaskTags
 
 export default function AnnotateTasks({
   taskFilter,
-  tagFilter,
-  projectTags,
   parameters = DEFAULT_SPECTROGRAM_PARAMETERS,
   annotationTaskProps,
   currentUser,
@@ -46,10 +44,6 @@ export default function AnnotateTasks({
 }: {
   /** Filter to select which tasks are to be annotated */
   taskFilter?: AnnotationTaskFilter;
-  /** Filter to select which tags are to be used for annotation */
-  tagFilter?: TagFilter;
-  /** All tags available in that annotation project */
-  projectTags: Tag[],
   /** Parameters to use for spectrogram rendering */
   parameters?: SpectrogramParameters;
   /** An optional annotation task to use initially */
@@ -380,7 +374,6 @@ export default function AnnotateTasks({
                     onParameterSave={onParameterSave}
                     selectedSoundEventAnnotation={selectedSoundEventAnnotation}
                     onSelectSoundEventAnnotation={setSelectedSoundEventAnnotation}
-                    tagFilter={tagFilter}
                     withSpectrogram={withSpectrogram}
                     onWithSpectrogramChange={onWithSpectrogramChange}
                     withSoundEvent={withSoundEvent}
@@ -408,7 +401,6 @@ export default function AnnotateTasks({
             <div className="w-[35rem] flex-none mt-5">
               <SelectedSoundEventAnnotation
                 annotationTask={annotationTask}
-                tagFilter={tagFilter}
                 soundEventAnnotation={selectedSoundEventAnnotation}
                 parameters={parameters}
                 withSpectrogram={withSpectrogram}
@@ -435,7 +427,6 @@ export default function AnnotateTasks({
             <div className="min-w-[35rem]">
               <AnnotationTaskTags
                 annotationTask={annotationTask}
-                projectTags={projectTags}
                 onReplaceTagInSoundEventAnnotations={handleReplaceTagInSoundEventAnnotations}
                 selectedSoundEventAnnotation={selectedSoundEventAnnotation}
               />
