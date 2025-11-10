@@ -3,13 +3,12 @@
 import math
 import random
 from datetime import datetime, timedelta, timezone
-from typing import Annotated, Any, Dict, Sequence
+from typing import Annotated, Dict, Sequence
 
 from astral import LocationInfo
 from astral.sun import sun
 from fastapi import APIRouter, Depends
 from soundevent.data import AnnotationState
-from sqlalchemy.orm.attributes import InstrumentedAttribute
 
 from sonari import api, schemas
 from sonari.filters.annotation_tasks import AnnotationTaskFilter

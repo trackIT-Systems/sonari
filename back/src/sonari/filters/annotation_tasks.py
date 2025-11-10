@@ -3,7 +3,9 @@
 from datetime import datetime, time
 
 from soundevent import data
-from sqlalchemy import Select, and_, exists, func, not_, or_, select
+from sqlalchemy import Float, Select, and_, exists, func, literal, not_, or_, select
+from sqlalchemy.ext.compiler import compiles
+from sqlalchemy.sql.expression import FunctionElement
 
 from sonari import models
 from sonari.filters import base
@@ -14,6 +16,45 @@ __all__ = [
     "AnnotationTaskFilter",
     "SearchRecordingsFilter",
 ]
+
+
+# Extract min_freq from JSON geometry coordinates
+# BoundingBox format: [start_time, min_freq, end_time, max_freq]
+# So coordinates[1] is the minimum frequency
+# Create a custom SQL function that compiles differently for SQLite vs PostgreSQL
+class json_array_element(FunctionElement):
+    """Extract element from JSON array - compiles to dialect-specific SQL."""
+
+    type = Float()
+    name = "json_array_element"
+    inherit_cache = True
+
+
+@compiles(json_array_element, "sqlite")
+def _json_array_element_sqlite(element, compiler, **kw):
+    """Use json_extract with array index for SQLite."""
+    col, idx = list(element.clauses)
+    # Get the literal value of the index
+    idx_value = idx.value if hasattr(idx, "value") else idx
+    return f"CAST(json_extract({compiler.process(col, **kw)}, '$.coordinates[{idx_value}]') AS REAL)"
+
+
+@compiles(json_array_element, "postgresql")
+def _json_array_element_postgresql(element, compiler, **kw):
+    """Use JSON operators for PostgreSQL."""
+    col, idx = list(element.clauses)
+    # Get the literal value of the index
+    idx_value = idx.value if hasattr(idx, "value") else idx
+    return f"CAST(CAST({compiler.process(col, **kw)} AS json)->'coordinates'->{idx_value} AS FLOAT)"
+
+
+@compiles(json_array_element)
+def _json_array_element_default(element, compiler, **kw):
+    """Use SQLite syntax as default."""
+    col, idx = list(element.clauses)
+    # Get the literal value of the index
+    idx_value = idx.value if hasattr(idx, "value") else idx
+    return f"CAST(json_extract({compiler.process(col, **kw)}, '$.coordinates[{idx_value}]') AS REAL)"
 
 
 class PendingFilter(base.Filter):
@@ -515,6 +556,86 @@ class SpeciesConfidenceFilter(base.Filter):
         return query
 
 
+class SoundEventAnnotationMinFreqFilter(base.Filter):
+    """Filter by lower frequency.
+
+    This filter returns all tasks where sound event annotations exist with the minimum frequency
+    greater or lower than the specified values. Uses database-level JSON extraction for filtering.
+
+    Note: This filter works with both SQLite and PostgreSQL by using SQLAlchemy's compilation
+    system to generate dialect-appropriate SQL.
+    """
+
+    gt: float | None = None
+    lt: float | None = None
+
+    def filter(self, query: Select) -> Select:
+        """Filter the query."""
+        if self.gt is None and self.lt is None:
+            return query
+
+        min_freq_expr = json_array_element(models.SoundEventAnnotation.geometry, literal(1))
+
+        # Create subquery to find sound event annotations matching conditions
+        subquery = (
+            select(1)
+            .select_from(models.SoundEventAnnotation)
+            .where(
+                models.SoundEventAnnotation.annotation_task_id == models.AnnotationTask.id,
+                models.SoundEventAnnotation.geometry_type == "BoundingBox",
+            )
+        )
+
+        # Add frequency conditions
+        if self.gt is not None:
+            subquery = subquery.where(min_freq_expr > self.gt)
+        if self.lt is not None:
+            subquery = subquery.where(min_freq_expr < self.lt)
+
+        # Use exists to filter tasks - very efficient
+        return query.where(exists(subquery))
+
+
+class SoundEventAnnotationMaxFreqFilter(base.Filter):
+    """Filter by upper frequency.
+
+    This filter returns all tasks where sound event annotations exist with the maximum frequency
+    greater or lower than the specified values. Uses database-level JSON extraction for filtering.
+
+    Note: This filter works with both SQLite and PostgreSQL by using SQLAlchemy's compilation
+    system to generate dialect-appropriate SQL.
+    """
+
+    gt: float | None = None
+    lt: float | None = None
+
+    def filter(self, query: Select) -> Select:
+        """Filter the query."""
+        if self.gt is None and self.lt is None:
+            return query
+
+        max_freq_expr = json_array_element(models.SoundEventAnnotation.geometry, literal(3))
+
+        # Create subquery to find sound event annotations matching conditions
+        subquery = (
+            select(1)
+            .select_from(models.SoundEventAnnotation)
+            .where(
+                models.SoundEventAnnotation.annotation_task_id == models.AnnotationTask.id,
+                models.SoundEventAnnotation.geometry_type == "BoundingBox",  # Fast filter first
+            )
+        )
+
+        # Add frequency conditions
+        if self.gt is not None:
+            subquery = subquery.where(max_freq_expr > self.gt)
+        if self.lt is not None:
+            subquery = subquery.where(max_freq_expr < self.lt)
+
+        # Use exists to filter tasks - very efficient
+        return query.where(exists(subquery))
+
+
 AnnotationTaskFilter = base.combine(
     SearchRecordingsFilter,
     assigned_to=AssignedToFilter,
@@ -533,4 +654,6 @@ AnnotationTaskFilter = base.combine(
     sample=SampleFilter,
     detection_confidence=DetectionConfidenceFilter,
     species_confidence=SpeciesConfidenceFilter,
+    sound_event_annotation_min_frequency=SoundEventAnnotationMinFreqFilter,
+    sound_event_annotation_max_frequency=SoundEventAnnotationMaxFreqFilter,
 )
