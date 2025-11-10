@@ -9,6 +9,7 @@ import useAnnotationTaskTable from "@/hooks/useAnnotationTaskTable";
 import Loading from "@/app/loading";
 import Search from "@/components/inputs/Search";
 import FilterPopover from "@/components/filters/FilterMenu";
+import FilterPresets from "@/components/filters/FilterPresets";
 import tasksFilterDefs from "../filters/tasks";
 import FilterBar from "@/components/filters/FilterBar";
 import Table from "@/components/tables/Table";
@@ -122,8 +123,10 @@ export default function AnnotationTaskTable({
             filter={annotationTasks.filter}
             filterDef={tasksFilterDefs}
             button={btn}
-            
-
+          />
+          <FilterPresets
+            storageKey="presets:annotation_tasks"
+            filter={annotationTasks.filter}
           />
         </div>
       </div>
