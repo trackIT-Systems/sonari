@@ -79,12 +79,13 @@ export default function AnnotationTaskTable({
   }, [router, getAnnotationTaskLink]);
 
   const btn = <Button
-    padding="0"
-    className="border-none"
+    mode="outline"
+    variant="secondary"
+    padding="px-3 py-2"
     autoFocus={false}
     ref={popoverButtonRef}
   >
-    <FilterIcon className="h-4 w-4 stroke-2" />
+    <FilterIcon className="h-5 w-5 stroke-2" />
   </Button>
 
   useKeyPressEvent(FILTER_POPOVER_SHORTCUT, (event: KeyboardEvent) => {
