@@ -350,6 +350,9 @@ const tasksFilterDefs: FilterDef<AnnotationTaskFilter>[] = [
       <FloatFilter
         name="confidence"
         showDecimals={true}
+        min={0}
+        max={1}
+        step={0.01}
         onChange={(val) => {
           const currentValue = filter.get("detection_confidence") || {};
           if ('gt' in val) {
@@ -406,6 +409,9 @@ const tasksFilterDefs: FilterDef<AnnotationTaskFilter>[] = [
       <FloatFilter
         name="confidence"
         showDecimals={true}
+        min={0}
+        max={1}
+        step={0.01}
         onChange={(val) => {
           const currentValue = filter.get("species_confidence") || {};
           if ('gt' in val) {

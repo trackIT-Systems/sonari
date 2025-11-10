@@ -3,7 +3,7 @@ import { useRouter } from "next/navigation";
 import { useKeyPressEvent } from "react-use";
 import useKeyFilter from "@/hooks/utils/useKeyFilter";
 import type { AnnotationTaskFilter } from "@/api/annotation_tasks";
-import type { AnnotationProject, AnnotationTask } from "@/types";
+import type { AnnotationTask } from "@/types";
 import useAnnotationTasks from "@/hooks/api/useAnnotationTasks";
 import useAnnotationTaskTable from "@/hooks/useAnnotationTaskTable";
 import Loading from "@/app/loading";
