@@ -30,7 +30,7 @@ export default function useRecordingSegments({
   strict,
 }: {
   recording: Recording;
-  window: SpectrogramWindow;
+  window?: SpectrogramWindow;
   strict?: boolean;
 }) {
   // The bounds of the spectrogram
@@ -44,6 +44,7 @@ export default function useRecordingSegments({
 
   // Compute the segments that cover the window
   const segments = useMemo(() => {
+    if (!window) return [bounds];
     const duration = getCoveringSegmentDuration(window, strict);
     const segments = getSegments(bounds, duration, OVERLAP);
     return segments;
@@ -51,7 +52,7 @@ export default function useRecordingSegments({
 
   // Select the segment that best covers the window
   const indexSelected = useMemo(
-    () => getCoveringSegment(segments, window),
+    () => window ? getCoveringSegment(segments, window) : 0,
     [segments, window],
   );
 
@@ -90,21 +91,21 @@ export function getCoveringSegmentDuration(window: SpectrogramWindow, strict?: b
   );
 }
 
-/** Segment a window into overlapping segments of a given duration. */
+/** Segment a bounds into overlapping segments of a given duration. */
 export function getSegments(
-  window: SpectrogramWindow,
+  bounds: SpectrogramWindow,
   duration: number,
   overlap: number,
 ): SpectrogramWindow[] {
-  const fullDuration = window.time.max - window.time.min;
+  const fullDuration = bounds.time.max - bounds.time.min;
 
-  // If the window is smaller than the segment duration, return
-  // the whole window
+  // If the bounds is smaller than the segment duration, return
+  // the whole bounds
   if (fullDuration <= duration) {
     return [
       {
-        time: window.time,
-        freq: window.freq,
+        time: bounds.time,
+        freq: bounds.freq,
       },
     ];
   }
@@ -114,13 +115,13 @@ export function getSegments(
   return Array(numSegments)
     .fill(0)
     .map((_, index: number) => {
-      const start = window.time.min + index * hop;
+      const start = bounds.time.min + index * hop;
       return {
         time: {
           min: start,
           max: start + duration,
         },
-        freq: window.freq,
+        freq: bounds.freq,
       };
     });
 }

@@ -24,31 +24,33 @@ type GetUrlFn = ({
 }) => string;
 export default function useSpectrogramWindow({
   recording,
-  window: spectrogramWindow,
+  window,
   parameters = DEFAULT_SPECTROGRAM_PARAMETERS,
   getSpectrogramImageUrl = api.spectrograms.getUrl,
   withSpectrogram,
   lowRes = false,
 }: {
   recording: Recording;
-  window: SpectrogramWindow;
+  window?: SpectrogramWindow;
   parameters?: SpectrogramParameters;
   getSpectrogramImageUrl?: GetUrlFn;
   withSpectrogram: boolean;
   lowRes?: boolean;
 }) {
   const url = useMemo(() => {
+    if (!window) return '';
+    
     return getSpectrogramImageUrl({
       recording,
-      segment: spectrogramWindow.time,
+      segment: window.time,
       parameters,
       lowRes,
     });
-  }, [recording, spectrogramWindow.time, parameters, lowRes, getSpectrogramImageUrl]);
+  }, [recording, window, parameters, lowRes, getSpectrogramImageUrl]);
 
   const imageStatus = useSpectrogramCache({
     recording,
-    window: spectrogramWindow,
+    window,
     parameters,
     withSpectrogram,
     lowRes,
@@ -80,7 +82,7 @@ export default function useSpectrogramWindow({
   }, [imageStatus.image, imageStatus.isError]);
 
   const draw = useCallback(
-    (ctx: CanvasRenderingContext2D, view: SpectrogramWindow) => {
+    (ctx: CanvasRenderingContext2D, currentWindow: SpectrogramWindow) => {
       if (!withSpectrogram) {
         ctx.fillStyle = "rgb(156 163 175)";
         ctx.roundRect(0, 0, ctx.canvas.width, ctx.canvas.height, 10);
@@ -88,12 +90,12 @@ export default function useSpectrogramWindow({
         return;
       }
 
-      if (imageStatus.image) {  // Remove isImageReady check here
+      if (imageStatus.image && window) {
         drawImage({
           ctx,
           image: imageStatus.image,
-          window: view,
-          bounds: spectrogramWindow,
+          window: currentWindow,
+          bounds: window,
         });
       } else {
         // Loading indicator
@@ -101,13 +103,13 @@ export default function useSpectrogramWindow({
         ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
       }
     },
-    [imageStatus.image, spectrogramWindow, withSpectrogram],  // Remove isImageReady from deps
+    [imageStatus.image, window, withSpectrogram],
   );
 
 
   return {
     image: imageStatus.image,
-    viewport: spectrogramWindow,
+    window,
     isLoading: imageStatus.isLoading || !isImageReady,
     isError: imageStatus.isError,
     draw,

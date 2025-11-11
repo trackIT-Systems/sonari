@@ -3,7 +3,6 @@ import { useCallback, useMemo } from "react";
 import { type Style } from "@/draw/styles";
 import useEditGeometry from "@/hooks/edit/useEditGeometry";
 import {
-  scaleGeometryToViewport,
   scaleGeometryToWindow,
 } from "@/utils/geometry";
 
@@ -15,7 +14,7 @@ import type {
 } from "@/types";
 
 export default function useEditAnnotationGeometry({
-  viewport,
+  window,
   dimensions,
   soundEventAnnotation,
   enabled = true,
@@ -24,7 +23,7 @@ export default function useEditAnnotationGeometry({
   onDeselect,
   style,
 }: {
-  viewport: SpectrogramWindow;
+  window: SpectrogramWindow;
   dimensions: Dimensions;
   soundEventAnnotation: SoundEventAnnotation | null;
   enabled?: boolean;
@@ -37,25 +36,25 @@ export default function useEditAnnotationGeometry({
 
   const scaledGeometry = useMemo(() => {
     if (geometry == null) return null;
-    return scaleGeometryToViewport(dimensions, geometry, viewport);
-  }, [geometry, viewport, dimensions]);
+    return scaleGeometryToWindow(dimensions, geometry, window);
+  }, [geometry, window, dimensions]);
 
   const handleOnChange = useCallback(
     (geometry?: Geometry) => {
       if (geometry == null) return;
-      const rescaled = scaleGeometryToWindow(dimensions, geometry, viewport);
+      const rescaled = scaleGeometryToWindow(dimensions, geometry, window);
       onChange?.(rescaled);
     },
-    [onChange, viewport, dimensions],
+    [onChange, window, dimensions],
   );
 
   const handleOnCopy = useCallback(
     (geometry?: Geometry) => {
       if (geometry == null) return;
-      const rescaled = scaleGeometryToWindow(dimensions, geometry, viewport);
+      const rescaled = scaleGeometryToWindow(dimensions, geometry, window);
       onCopy?.(rescaled);
     },
-    [onCopy, viewport, dimensions],
+    [onCopy, window, dimensions],
   );
 
   const ret = useEditGeometry({
@@ -70,8 +69,8 @@ export default function useEditAnnotationGeometry({
 
   const reconstructed = useMemo(() => {
     if (ret.object === null) return null;
-    return scaleGeometryToWindow(dimensions, ret.object, viewport);
-  }, [dimensions, viewport, ret.object]);
+    return scaleGeometryToWindow(dimensions, ret.object, window);
+  }, [dimensions, window, ret.object]);
 
   return {
     ...ret,

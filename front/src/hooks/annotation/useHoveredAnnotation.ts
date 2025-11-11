@@ -3,8 +3,8 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import useWindowHover from "@/hooks/window/useWindowHover";
 import {
   isCloseToGeometry,
-  scaleGeometryToViewport,
-  scalePositionToViewport,
+  scaleGeometryToWindow,
+  scalePositionToWindow,
 } from "@/utils/geometry";
 
 import type {
@@ -15,12 +15,12 @@ import type {
 } from "@/types";
 
 export default function useHoveredAnnotations({
-  viewport,
+  window,
   dimensions,
   annotations,
   enabled: enabled = true,
 }: {
-  viewport: SpectrogramWindow;
+  window: SpectrogramWindow;
   dimensions: Dimensions;
   annotations: SoundEventAnnotation[];
   enabled?: boolean;
@@ -30,8 +30,8 @@ export default function useHoveredAnnotations({
 
   const annotationsInWindow = useMemo(() => {
     if (!enabled) return [];
-    const { min: startTime, max: endTime } = viewport.time;
-    const { min: lowFreq, max: highFreq } = viewport.freq;
+    const { min: startTime, max: endTime } = window.time;
+    const { min: lowFreq, max: highFreq } = window.freq;
     return annotations.filter((annotation) => {
       const { geometry } = annotation;
 
@@ -66,23 +66,23 @@ export default function useHoveredAnnotations({
 
       return true;
     });
-  }, [enabled, annotations, viewport]);
+  }, [enabled, annotations, window]);
 
   const scaledGeometries = useMemo(() => {
     if (!enabled) return [];
     return annotationsInWindow.map(({ geometry }) => {
-      return scaleGeometryToViewport(dimensions, geometry, viewport);
+      return scaleGeometryToWindow(dimensions, geometry, window);
     });
-  }, [enabled, annotationsInWindow, viewport, dimensions]);
+  }, [enabled, annotationsInWindow, window, dimensions]);
 
   const handleOnHover = useCallback(
     (position: Position) => {
       if (!enabled) return;
       const { time, freq } = position;
-      const [x, y] = scalePositionToViewport(
+      const [x, y] = scalePositionToWindow(
         dimensions,
         [time, freq],
-        viewport,
+        window,
       );
 
       const index = scaledGeometries.findIndex((geometry) => {
@@ -97,7 +97,7 @@ export default function useHoveredAnnotations({
       const annotation = annotationsInWindow[index];
       setHoveredAnnotation(annotation ?? null);
     },
-    [scaledGeometries, annotationsInWindow, viewport, dimensions, enabled],
+    [scaledGeometries, annotationsInWindow, window, dimensions, enabled],
   );
 
   useEffect(() => {
@@ -108,7 +108,7 @@ export default function useHoveredAnnotations({
 
   const props = useWindowHover({
     enabled,
-    viewport,
+    window,
     dimensions,
     onHover: handleOnHover,
   });

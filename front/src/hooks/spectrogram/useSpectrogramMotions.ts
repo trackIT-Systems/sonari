@@ -19,7 +19,7 @@ export type MotionMode = "drag" | "zoom" | "idle";
  * for a spectrogram.
  */
 export default function useSpectrogramMotions({
-  viewport,
+  window,
   dimensions,
   onDragStart,
   onDragEnd,
@@ -34,7 +34,7 @@ export default function useSpectrogramMotions({
   fixedAspectRatio,
   enabled = true,
 }: {
-  viewport: SpectrogramWindow;
+  window: SpectrogramWindow;
   dimensions: { width: number; height: number };
   onDoubleClick?: (dblClickProps: { position: Position }) => void;
   onDragStart?: () => void;
@@ -54,7 +54,7 @@ export default function useSpectrogramMotions({
   );
 
   const { dragProps } = useSpectrogramDrag({
-    viewport,
+    window,
     dimensions,
     onDragStart,
     onDrag,
@@ -64,15 +64,15 @@ export default function useSpectrogramMotions({
   });
 
   const handleOnZoom = useCallback(
-    (next: SpectrogramWindow) => {
-      onZoom?.(next);
+    (nextWindow: SpectrogramWindow) => {
+      onZoom?.(nextWindow);
       setMotionMode("drag");
     },
     [onZoom],
   );
 
   const { zoomProps, draw } = useSpectrogramZoom({
-    viewport,
+    window,
     dimensions,
     onZoom: handleOnZoom,
     fixedAspectRatio,
@@ -88,7 +88,7 @@ export default function useSpectrogramMotions({
   );
 
   const { scrollProps: scrollMoveTimeProps } = useWindowScroll({
-    viewport,
+    window,
     dimensions,
     onScroll: handleTimeScroll,
     shift: true,
@@ -105,7 +105,7 @@ export default function useSpectrogramMotions({
   );
 
   const { scrollProps: scrollZoomTimeProps } = useWindowScroll({
-    viewport,
+    window,
     dimensions,
     onScroll: handleTimeZoom,
     shift: true,
@@ -123,7 +123,7 @@ export default function useSpectrogramMotions({
   );
 
   const { scrollProps: scrollMoveFreqProps } = useWindowScroll({
-    viewport,
+    window,
     dimensions,
     onScroll: handleFreqScroll,
     ctrl: true,
@@ -140,7 +140,7 @@ export default function useSpectrogramMotions({
   );
 
   const { scrollProps: scrollZoomFreqProps } = useWindowScroll({
-    viewport,
+    window,
     dimensions,
     onScroll: handleFreqZoom,
     ctrl: true,

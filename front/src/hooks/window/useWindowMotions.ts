@@ -11,7 +11,7 @@ import type { Position, SpectrogramWindow } from "@/types";
  * Hook for handling window motions on a spectrogram.
  */
 export default function useWindowMotions({
-  viewport,
+  window,
   dimensions,
   enabled = true,
   onClick,
@@ -21,7 +21,7 @@ export default function useWindowMotions({
   onMoveEnd,
 }: {
   /** The current spectrogram window displayed on canvas. */
-  viewport: SpectrogramWindow;
+  window: SpectrogramWindow;
   /** The dimensions of the canvas. */
   dimensions: { width: number; height: number };
   /** Whether the motion is enabled. */
@@ -64,7 +64,7 @@ export default function useWindowMotions({
         x: e.nativeEvent.offsetX,
         y: e.nativeEvent.offsetY,
       };
-      const position = scalePixelsToWindow(point, viewport, dimensions);
+      const position = scalePixelsToWindow(point, window, dimensions);
       setInitialPosition(position);
       onClick?.({
         position,
@@ -90,7 +90,7 @@ export default function useWindowMotions({
       onPointerDown: handleClick,
       onClick: handleClick,
     };
-  }, [enabled, viewport, dimensions, onClick, onDoubleClick]);
+  }, [enabled, window, dimensions, onClick, onDoubleClick]);
 
   const handleMoveStart = useCallback(
     ({ shiftKey, ctrlKey, altKey, metaKey }: EventKeys = {}) => {
@@ -143,7 +143,7 @@ export default function useWindowMotions({
   );
 
   const { moveProps, isDragging } = useWindowDrag({
-    viewport,
+    window,
     dimensions,
     onMoveStart: handleMoveStart,
     onMove: handleMove,

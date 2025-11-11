@@ -2,24 +2,24 @@ import { useMemo, useRef, useState } from "react";
 import useCanvas from "@/hooks/draw/useCanvas";
 import useSpectrogramWindow from "@/hooks/spectrogram/useSpectrogramWindow";
 import useWindowDrag from "@/hooks/window/useWindowDrag";
-import { getViewportPosition } from "@/utils/windows";
+import { getWindowPosition } from "@/utils/windows";
 
 import type { SpectrogramWindow, Recording, SpectrogramParameters } from "@/types";
 
 export default function SpectrogramBar({
   bounds,
-  viewport,
+  window,
   onMove,
   recording,
   parameters,
   withSpectrogram,
 }: {
   bounds: SpectrogramWindow;
-  viewport: SpectrogramWindow;
+  window: SpectrogramWindow;
   recording: Recording;
   parameters: SpectrogramParameters;
   withSpectrogram: boolean;
-  onMove?: (viewport: SpectrogramWindow) => void;
+  onMove?: (window: SpectrogramWindow) => void;
 }) {
   const barRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -31,16 +31,16 @@ export default function SpectrogramBar({
 
   const barPosition = useMemo(
     () =>
-      getViewportPosition({
+      getWindowPosition({
         width,
         height,
-        viewport,
+        window,
         bounds,
       }),
-    [viewport, bounds, width, height],
+    [window, bounds, width, height],
   );
 
-  const [intialViewport, setInitialViewport] = useState(viewport);
+  const [intialWindow, setInitialWindow] = useState(window);
 
   // Get the complete spectrogram image
   const { draw: drawFullSpectrogram } = useSpectrogramWindow({
@@ -64,21 +64,21 @@ export default function SpectrogramBar({
 
   const { moveProps } = useWindowDrag({
     dimensions: { width, height },
-    viewport: bounds,
-    onMoveStart: () => setInitialViewport(viewport),
+    window: bounds,
+    onMoveStart: () => setInitialWindow(window),
     onMove: ({ shift: { time, freq } }) => {
       onMove?.({
         time: {
-          min: intialViewport.time.min + time,
-          max: intialViewport.time.max + time,
+          min: intialWindow.time.min + time,
+          max: intialWindow.time.max + time,
         },
         freq: {
-          min: intialViewport.freq.min - freq,
-          max: intialViewport.freq.max - freq,
+          min: intialWindow.freq.min - freq,
+          max: intialWindow.freq.max - freq,
         },
       });
     },
-    onMoveEnd: () => setInitialViewport(viewport),
+    onMoveEnd: () => setInitialWindow(window),
   });
 
   return (

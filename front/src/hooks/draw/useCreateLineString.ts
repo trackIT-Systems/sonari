@@ -3,7 +3,7 @@ import { useCallback, useEffect, useState } from "react";
 import drawGeometry from "@/draw/geometry";
 import { DEFAULT_LINESTRING_STYLE } from "@/draw/linestring";
 import useWindowMotions from "@/hooks/window/useWindowMotions";
-import { scaleGeometryToViewport } from "@/utils/geometry";
+import { scaleGeometryToWindow } from "@/utils/geometry";
 
 import type { BorderStyle } from "@/draw/styles";
 import type {
@@ -15,13 +15,13 @@ import type {
 } from "@/types";
 
 export default function useCreateLineString({
-  viewport,
+  window,
   dimensions,
   enabled = true,
   style = DEFAULT_LINESTRING_STYLE,
   onCreate,
 }: {
-  viewport: SpectrogramWindow;
+  window: SpectrogramWindow;
   dimensions: Dimensions;
   enabled?: boolean;
   style?: BorderStyle;
@@ -112,7 +112,7 @@ export default function useCreateLineString({
 
   const { props, isDragging } = useWindowMotions({
     enabled,
-    viewport,
+    window,
     dimensions,
     onClick: handleClick,
     onMoveStart: handleMoveStart,
@@ -127,7 +127,7 @@ export default function useCreateLineString({
 
       if (coordinates != null) {
         const geometry: LineString = { type: "LineString", coordinates };
-        const scaled = scaleGeometryToViewport(dimensions, geometry, viewport);
+        const scaled = scaleGeometryToWindow(dimensions, geometry, window);
         drawGeometry(ctx, scaled, style);
         
         // Helper function to draw text with outline for better visibility
@@ -258,10 +258,10 @@ export default function useCreateLineString({
       }
 
       if (vertex != null) {
-        const scaledVertex = scaleGeometryToViewport(
+        const scaledVertex = scaleGeometryToWindow(
           dimensions,
           { type: "Point", coordinates: [vertex.time, vertex.freq] },
-          viewport,
+          window,
         );
         drawGeometry(ctx, scaledVertex, style);
         
@@ -292,11 +292,11 @@ export default function useCreateLineString({
           type: "LineString",
           coordinates: [lastVertex, [vertex.time, vertex.freq]],
         };
-        const scaled = scaleGeometryToViewport(dimensions, geometry, viewport);
+        const scaled = scaleGeometryToWindow(dimensions, geometry, window);
         drawGeometry(ctx, scaled, style);
       }
     },
-    [enabled, coordinates, style, viewport, dimensions, vertex],
+    [enabled, coordinates, style, window, dimensions, vertex],
   );
 
   useEffect(() => {

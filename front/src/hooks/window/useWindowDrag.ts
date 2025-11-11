@@ -8,17 +8,17 @@ import type { Dimensions, Position, SpectrogramWindow } from "@/types";
 
 /**
  * The `useDrag` hook manages dragging behavior for an object
- * within a specified viewport.
+ * within a specified window.
  *
  */
 export default function useWindowDrag({
-  viewport,
+  window,
   dimensions,
   onMoveStart,
   onMove,
   onMoveEnd,
 }: {
-  viewport: SpectrogramWindow;
+  window: SpectrogramWindow;
   dimensions: Dimensions;
   onMoveStart?: (moveStartProps?: EventKeys) => void;
   onMove?: (moveProps: { shift: Position } & EventKeys) => void;
@@ -42,7 +42,7 @@ export default function useWindowDrag({
           x: position.x + deltaX,
           y: position.y + deltaY,
         },
-        viewport,
+        window,
         dimensions,
         true,
       );
@@ -54,7 +54,7 @@ export default function useWindowDrag({
         metaKey,
       });
     },
-    [dimensions, position, viewport, onMove],
+    [dimensions, position, window, onMove],
   );
 
   const handleMoveStart = useCallback(

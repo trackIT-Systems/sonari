@@ -21,7 +21,7 @@ export default function useSpectrogramImage({
   onAllSegmentsLoaded,
 }: {
   recording: Recording;
-  window: SpectrogramWindow;
+  window?: SpectrogramWindow;
   parameters: SpectrogramParameters;
   withSpectrogram: boolean;
   strict?: boolean;

@@ -1,8 +1,8 @@
 import {
   bboxIntersection,
   computeGeometryBBox,
-  scaleBBoxToViewport,
-  scaleTimeToViewport,
+  scaleBBoxToWindow,
+  scaleTimeToWindow,
 } from "@/utils/geometry";
 
 import type {
@@ -56,8 +56,8 @@ function getTimeIntervalLabelPosition({
     throw new Error("Annotation is not in the window");
   }
 
-  const x = scaleTimeToViewport(start, window, dimensions.width);
-  const x2 = scaleTimeToViewport(end, window, dimensions.width);
+  const x = scaleTimeToWindow(start, window, dimensions.width);
+  const x2 = scaleTimeToWindow(end, window, dimensions.width);
 
   const y = 50 * (dimensions.height - 100);
 
@@ -118,7 +118,7 @@ function getTimeStampLabelPosition({
     throw new Error("Annotation is not in the window");
   }
 
-  const x = scaleTimeToViewport(time, window, dimensions.width);
+  const x = scaleTimeToWindow(time, window, dimensions.width);
 
   // Get random height between 50 and dimensions.height - 50
   const y = 50 + Math.random() * (dimensions.height - 100);
@@ -179,7 +179,7 @@ export function getLabelPosition(
     throw new Error("Annotation is not in the window");
   }
 
-  const [left, top, right, bottom] = scaleBBoxToViewport(
+  const [left, top, right, bottom] = scaleBBoxToWindow(
     dimensions,
     intersection,
     window,

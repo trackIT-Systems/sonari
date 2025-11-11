@@ -1,7 +1,7 @@
 import { useCallback } from "react";
 
-import { BLUE, ORANGE, GREEN, RED } from "@/draw/styles";
-import { scaleTimeToViewport } from "@/utils/geometry";
+import { BLUE, GREEN } from "@/draw/styles";
+import { scaleTimeToWindow } from "@/utils/geometry";
 
 import type { SoundEventAnnotation, SpectrogramWindow } from "@/types";
 
@@ -73,11 +73,11 @@ function applyStyle(ctx: CanvasRenderingContext2D, style: any) {
 }
 
 export default function useAnnotationDrawWaveform({
-  viewport,
+  window,
   soundEventAnnotations,
   selectedSoundEventAnnotation,
 }: {
-  viewport: SpectrogramWindow;
+  window: SpectrogramWindow;
   soundEventAnnotations: SoundEventAnnotation[];
   selectedSoundEventAnnotation?: SoundEventAnnotation | null;
 }) {
@@ -89,8 +89,8 @@ export default function useAnnotationDrawWaveform({
         const [startTime, endTime] = getAnnotationTimeBounds(soundEventAnnotation);
         
         // Convert time bounds to x coordinates
-        const startX = scaleTimeToViewport(startTime, viewport, width);
-        const endX = scaleTimeToViewport(endTime, viewport, width);
+        const startX = scaleTimeToWindow(startTime, window, width);
+        const endX = scaleTimeToWindow(endTime, window, width);
         
         // Determine style based on annotation state and mode
         let style = IDLE_STYLE;
@@ -126,7 +126,7 @@ export default function useAnnotationDrawWaveform({
       ctx.setLineDash([]);
       ctx.globalAlpha = 1;
     },
-    [viewport, soundEventAnnotations, selectedSoundEventAnnotation],
+    [window, soundEventAnnotations, selectedSoundEventAnnotation],
   );
 
   return draw;

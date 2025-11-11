@@ -219,7 +219,7 @@ export function useSpectrogramCache({
     url,
 }: {
     recording: Recording;
-    window: SpectrogramWindow;
+    window?: SpectrogramWindow;
     parameters: SpectrogramParameters;
     lowRes: boolean;
     withSpectrogram: boolean;
@@ -230,7 +230,7 @@ export function useSpectrogramCache({
     const [currentImage, setCurrentImage] = useState<HTMLImageElement | null>(null);
 
     useEffect(() => {
-        if (!withSpectrogram) {
+        if (!withSpectrogram || !window) {
             setLoading(false);
             return;
         }

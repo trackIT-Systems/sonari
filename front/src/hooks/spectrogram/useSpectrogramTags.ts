@@ -13,7 +13,7 @@ import type {
 
 export default function useSpectrogramTags({
   annotations,
-  viewport,
+  window,
   dimensions,
   onClickTag,
   onAddTag,
@@ -21,7 +21,7 @@ export default function useSpectrogramTags({
   disabled = false,
 }: {
   annotations: SoundEventAnnotation[];
-  viewport: SpectrogramWindow;
+  window: SpectrogramWindow;
   dimensions: Dimensions;
   onClickTag?: (annotation: SoundEventAnnotation, tag: Tag) => void;
   onAddTag?: (annotation: SoundEventAnnotation, tag: Tag) => void;
@@ -31,13 +31,13 @@ export default function useSpectrogramTags({
   const annotationsInWindow = useMemo(() => {
     return annotations.filter((annotation) => {
       // @ts-ignore
-      return isGeometryInWindow(annotation.geometry, viewport);
+      return isGeometryInWindow(annotation.geometry, window);
     });
-  }, [annotations, viewport]);
+  }, [annotations, window]);
 
   const groups: TagGroup[] = useMemo(() => {
     return annotationsInWindow.map((annotation) => {
-      const position = getLabelPosition(annotation, viewport, dimensions);
+      const position = getLabelPosition(annotation, window, dimensions);
 
       const group: TagElement[] =
         annotation.tags?.map((tag) => {
@@ -58,7 +58,7 @@ export default function useSpectrogramTags({
     });
   }, [
     annotationsInWindow,
-    viewport,
+    window,
     dimensions,
     active,
     onClickTag,

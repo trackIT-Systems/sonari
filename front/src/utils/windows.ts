@@ -9,6 +9,66 @@ import type {
 
 const SPECTROGRAM_STRETCH_FACTOR = 6;
 
+/**
+ * Spectrogram Window System Documentation
+ * ========================================
+ * 
+ * This file contains utilities for managing spectrogram windows. Understanding the
+ * three key concepts is essential:
+ * 
+ * 1. **bounds**: The maximum navigable area
+ *    - Defines the outer limits of where the window can be positioned
+ *    - Typically set by annotation task boundaries and current spectrogram parameters
+ *    - Example: A task might limit bounds to time range [10s, 20s] and freq range [0Hz, 48kHz]
+ *    - The window is always constrained to stay within these bounds
+ * 
+ * 2. **window**: The currently visible window
+ *    - What the user actually sees on screen at any given moment
+ *    - User can zoom/pan this, but it will always be constrained to stay within bounds
+ *    - Changes dynamically as user navigates the spectrogram
+ *    - Example: User might be viewing time [12s, 14s] and freq [5kHz, 15kHz] within the bounds
+ * 
+ * 3. **initial**: The starting window position
+ *    - Determines what portion of the bounds the user sees when component first renders
+ *    - Calculated once at component mount based on parameters and context
+ *    - Should provide a good initial view (not too zoomed in or out)
+ *    - Example: For a 10s task, might show first 2s at full frequency range
+ * 
+ * Window vs. Bounds:
+ * - Bounds are the "playing field" (what's allowed)
+ * - Window is the "camera view" (what you see)
+ * - The window moves and zooms within the bounds
+ * 
+ * When window resets:
+ * - Parameter changes (resampling): Frequency range resets to show full spectrum
+ * - Initial changes: Full window reset to new initial
+ * - User reset action: Returns to initial window
+ * 
+ * When window is preserved:
+ * - Normal zoom/pan operations
+ * - Minor parameter tweaks (window size, hop size, etc.)
+ * - Toggling visual settings
+ */
+
+/**
+ * Calculate the initial window for a spectrogram.
+ * 
+ * This determines what the user sees when the spectrogram first loads. The goal is to
+ * show enough detail to be useful without overwhelming the user with too much data.
+ * 
+ * The time range is calculated to balance:
+ * - Showing a good overview of the audio
+ * - Keeping spectrogram computation fast (smaller windows compute faster)
+ * - Providing enough detail for the given parameters
+ * 
+ * The frequency range always shows the full spectrum (0 to Nyquist frequency).
+ * 
+ * @param startTime - Start time of the available audio (usually task start)
+ * @param endTime - End time of the available audio (usually task end)
+ * @param samplerate - Sample rate of the audio in Hz
+ * @param parameters - Spectrogram computation parameters (affects optimal window size)
+ * @returns The initial window window showing a reasonable starting view
+ */
 export function getInitialViewingWindow({
   startTime,
   endTime,
@@ -106,10 +166,32 @@ export function getWindowDimensions(window: SpectrogramWindow): {
 }
 
 /**
- * Adjust spectrogram window to given bounds
- * @param {SpectrogramWindow} window: Spectrogram window to adjust.
- * @param {SpectrogramWindow} bounds: Spectrogram window to use as bounds for
- * the given window.
+ * Constrain a window window to stay within bounds.
+ * 
+ * This is the core constraint function that ensures the window never goes outside
+ * the allowed bounds. It handles several cases:
+ * 
+ * 1. If window is too large for bounds: Centers it and clips to fit
+ * 2. If window extends past bounds: Shifts it back inside
+ * 3. If window is already within bounds: Returns it unchanged
+ * 
+ * The function preserves the window's duration and bandwidth (size) as much as
+ * possible, only clipping when absolutely necessary.
+ * 
+ * This should be called every time the window changes to maintain the invariant
+ * that window ⊆ bounds at all times.
+ * 
+ * @param window - The window window to constrain (what user wants to see)
+ * @param bounds - The maximum allowed area (task boundaries + parameter constraints)
+ * @returns A new window window that fits within the bounds
+ * 
+ * @example
+ * // Window trying to go past bounds
+ * const window = { time: {min: 15, max: 25}, freq: {min: 0, max: 10000} };
+ * const bounds = { time: {min: 0, max: 20}, freq: {min: 0, max: 48000} };
+ * const constrained = adjustWindowToBounds(window, bounds);
+ * // Result: { time: {min: 10, max: 20}, freq: {min: 0, max: 10000} }
+ * // (shifted left to stay within time bounds, freq unchanged as it fits)
  */
 export function adjustWindowToBounds(
   window: SpectrogramWindow,
@@ -210,15 +292,15 @@ function clamp(value: number, min: number, max: number): number {
   return Math.min(Math.max(Math.round(value), min), max);
 }
 
-export function getViewportPosition({
+export function getWindowPosition({
   width,
   height,
-  viewport,
+  window,
   bounds,
 }: {
   width?: number;
   height?: number;
-  viewport: SpectrogramWindow;
+  window: SpectrogramWindow;
   bounds: SpectrogramWindow;
 }): {
   left: number;
@@ -231,13 +313,13 @@ export function getViewportPosition({
   }
 
   const bottom =
-    (bounds.freq.max - viewport.freq.min) / (bounds.freq.max - bounds.freq.min);
+    (bounds.freq.max - window.freq.min) / (bounds.freq.max - bounds.freq.min);
   const top =
-    (bounds.freq.max - viewport.freq.max) / (bounds.freq.max - bounds.freq.min);
+    (bounds.freq.max - window.freq.max) / (bounds.freq.max - bounds.freq.min);
   const left =
-    (viewport.time.min - bounds.time.min) / (bounds.time.max - bounds.time.min);
+    (window.time.min - bounds.time.min) / (bounds.time.max - bounds.time.min);
   const right =
-    (viewport.time.max - bounds.time.min) / (bounds.time.max - bounds.time.min);
+    (window.time.max - bounds.time.min) / (bounds.time.max - bounds.time.min);
   return {
     top: clamp(top * height, 0, height),
     left: clamp(left * width, 0, width),

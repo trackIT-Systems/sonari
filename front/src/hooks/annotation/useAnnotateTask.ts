@@ -64,8 +64,8 @@ const sortSoundEvents = (soundEvents: SoundEventAnnotation[]) => {
 export default function useAnnotateTask(props: {
   /** The annotation task to annotate */
   annotationTaskProps: ReturnType<typeof useAnnotationTask>;
-  /** Current spectrogram viewport */
-  viewport: SpectrogramWindow;
+  /** Current spectrogram window */
+  window: SpectrogramWindow;
   /** Dimensions of the spectrogram canvas */
   dimensions: Dimensions;
   /** Initial annotation mode */
@@ -94,7 +94,7 @@ export default function useAnnotateTask(props: {
 }) {
   const {
     annotationTaskProps,
-    viewport,
+    window,
     dimensions,
     defaultTags,
     selectedTag,
@@ -161,7 +161,7 @@ export default function useAnnotateTask(props: {
 
   // Measurement hook for spectrogram - measurements here will be reflected in waveform
   const { props: spectrogramMeasureProps, draw: drawSpectrogramMeasure } = useAnnotationCreate({
-    viewport,
+    window,
     dimensions,
     geometryType: "LineString",
     enabled: active && mode === "measure" && !disabled && (activeMeasurementCanvas === null || activeMeasurementCanvas === "spectrogram"),
@@ -199,7 +199,7 @@ export default function useAnnotateTask(props: {
 
   // Measurement hook for waveform - measurements here stay only in waveform
   const { props: waveformMeasureProps, draw: drawWaveformMeasure } = useCreateWaveformMeasurement({
-    viewport,
+    window,
     dimensions,
     enabled: active && mode === "measure" && !disabled && (activeMeasurementCanvas === null || activeMeasurementCanvas === "waveform"),
     onCreate: (geometry: Geometry) => {
@@ -220,7 +220,7 @@ export default function useAnnotateTask(props: {
   }), [waveformMeasureProps, handleWaveformMeasureStart]);
 
   const { props: createProps, draw: drawCreate } = useAnnotationCreate({
-    viewport,
+    window,
     dimensions,
     geometryType,
     enabled: active && mode === "draw" && !disabled,
@@ -228,7 +228,7 @@ export default function useAnnotateTask(props: {
   });
 
   const { props: selectProps, draw: drawSelect } = useAnnotationSelect({
-    viewport,
+    window,
     dimensions,
     annotations: soundEvents,
     onSelect: setSelectedSoundEventAnnotation,
@@ -260,7 +260,7 @@ export default function useAnnotateTask(props: {
   );
 
   const { props: deleteProps, draw: drawDelete } = useAnnotationDelete({
-    viewport,
+    window,
     dimensions,
     annotations: soundEvents,
     onDelete: handleDelete,
@@ -330,19 +330,19 @@ export default function useAnnotateTask(props: {
     setSelectedSoundEventAnnotation(nextAnnotation);
     onSelectSoundEventAnnotation?.(nextAnnotation);
   
-    // Assume `centerOn` is a function provided by the spectrogram to adjust the viewport.
-    if (viewport && nextAnnotation) {
+    // Assume `centerOn` is a function provided by the spectrogram to adjust the window.
+    if (window && nextAnnotation) {
       const annotationStart = getStartCoordinate(nextAnnotation.geometry);
       const annotationEnd = getEndCoordinate(nextAnnotation.geometry);
   
-      // Check if annotation is outside viewport:
-      if (annotationStart < viewport.time.min || annotationEnd > viewport.time.max) {
+      // Check if annotation is outside window:
+      if (annotationStart < window.time.min || annotationEnd > window.time.max) {
         // Calculate the new center position
         const newCenterTime = (annotationStart + annotationEnd) / 2;
         onCenterOn(newCenterTime);
       }
     }
-  }, [filteredSoundEvents, selectedSoundEventAnnotation, onSelectSoundEventAnnotation, onCenterOn, viewport, setSelectedSoundEventAnnotation]);
+  }, [filteredSoundEvents, selectedSoundEventAnnotation, onSelectSoundEventAnnotation, onCenterOn, window, setSelectedSoundEventAnnotation]);
 
   const selectPrevAnnotation = useCallback(() => {
     if (!filteredSoundEvents.length) return;
@@ -361,22 +361,22 @@ export default function useAnnotateTask(props: {
     setSelectedSoundEventAnnotation(nextAnnotation);
     onSelectSoundEventAnnotation?.(nextAnnotation);
   
-    // Assume `centerOn` is a function provided by the spectrogram to adjust the viewport.
-    if (viewport && nextAnnotation) {
+    // Assume `centerOn` is a function provided by the spectrogram to adjust the window.
+    if (window && nextAnnotation) {
       const annotationStart = getStartCoordinate(nextAnnotation.geometry);
       const annotationEnd = getEndCoordinate(nextAnnotation.geometry);
   
-      // Check if annotation is outside viewport:
-      if (annotationStart < viewport.time.min || annotationEnd > viewport.time.max) {
+      // Check if annotation is outside window:
+      if (annotationStart < window.time.min || annotationEnd > window.time.max) {
         // Calculate the new center position
         const newCenterTime = (annotationStart + annotationEnd) / 2;
         onCenterOn(newCenterTime);
       }
     }
-  }, [filteredSoundEvents, selectedSoundEventAnnotation, onSelectSoundEventAnnotation, onCenterOn, viewport, setSelectedSoundEventAnnotation]);
+  }, [filteredSoundEvents, selectedSoundEventAnnotation, onSelectSoundEventAnnotation, onCenterOn, window, setSelectedSoundEventAnnotation]);
 
   const { props: editProps, draw: drawEdit } = useAnnotationEdit({
-    viewport,
+    window,
     dimensions,
     annotation: selectedSoundEventAnnotation,
     onDeselect,
@@ -409,7 +409,7 @@ export default function useAnnotateTask(props: {
 
   const tags = useSpectrogramTags({
     annotations: soundEvents,
-    viewport: viewport,
+    window,
     dimensions,
     onClickTag: handleOnClickTag,
     onAddTag: handleOnAddTag,
@@ -418,7 +418,7 @@ export default function useAnnotateTask(props: {
   });
 
   const drawAnnotations = useAnnotationDraw({
-    viewport,
+    window,
     annotations: soundEvents,
   });
 
@@ -496,7 +496,7 @@ export default function useAnnotateTask(props: {
     return (ctx: CanvasRenderingContext2D) => {
       // Draw any time bounds from spectrogram measurements (persist even when not actively measuring)
       if (spectrogramMeasurement && measurementSource === "spectrogram") {
-        drawSpectrogramMeasurementBounds(ctx, spectrogramMeasurement, viewport);
+        drawSpectrogramMeasurementBounds(ctx, spectrogramMeasurement, window);
       }
       otherDraw(ctx);
     };
@@ -505,7 +505,7 @@ export default function useAnnotateTask(props: {
     spectrogramMeasurement,
     measurementSource,
     drawWaveformMeasure,
-    viewport,
+    window,
   ]);
 
   const enableDelete = useCallback(() => {
@@ -666,7 +666,7 @@ function useAnnotateTaskState({
 function drawSpectrogramMeasurementBounds(
   ctx: CanvasRenderingContext2D, 
   measurement: LineString, 
-  viewport: SpectrogramWindow
+  window: SpectrogramWindow
 ) {
   if (measurement.coordinates.length < 2) return;
   
@@ -676,9 +676,9 @@ function drawSpectrogramMeasurementBounds(
   const maxTime = Math.max(...timeCoords);
   
   // Convert time to canvas x coordinates
-  const timeRange = viewport.time.max - viewport.time.min;
-  const minX = ((minTime - viewport.time.min) / timeRange) * width;
-  const maxX = ((maxTime - viewport.time.min) / timeRange) * width;
+  const timeRange = window.time.max - window.time.min;
+  const minX = ((minTime - window.time.min) / timeRange) * width;
+  const maxX = ((maxTime - window.time.min) / timeRange) * width;
   
   // Draw vertical lines to show time bounds
   ctx.strokeStyle = "rgba(16, 185, 129, 0.8)"; // Green color

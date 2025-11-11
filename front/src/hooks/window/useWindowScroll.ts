@@ -10,7 +10,7 @@ import type { SpectrogramWindow } from "@/types";
  * adjustments to the spectrogram window based on user input.
  */
 export default function useWindowScroll({
-  viewport,
+  window,
   dimensions,
   onScroll,
   shift = false,
@@ -20,7 +20,7 @@ export default function useWindowScroll({
   relative = false,
 }: {
   /** The current spectrogram window being displayed in the canvas. */
-  viewport: SpectrogramWindow;
+  window: SpectrogramWindow;
   /** The dimensions of the spectrogram canvas. */
   dimensions: { width: number; height: number };
   /** The callback function to handle scroll events. */
@@ -55,13 +55,13 @@ export default function useWindowScroll({
         if (!relative && !shiftKey && !ctrlKey && !altKey && !metaKey) {
           const deltaTime = scaleXToWindow(
             deltaX,
-            viewport,
+            window,
             dimensions.width,
             true,
           );
           const deltaFreq = scaleYToWindow(
             deltaY,
-            viewport,
+            window,
             dimensions.height,
             true,
           );
@@ -88,7 +88,7 @@ export default function useWindowScroll({
           case shiftKey && !relative:
             const deltaTime = scaleXToWindow(
               deltaY,
-              viewport,
+              window,
               dimensions.width,
               true,
             );
@@ -97,7 +97,7 @@ export default function useWindowScroll({
           case !shiftKey && !relative:
             const deltaFreq = scaleYToWindow(
               deltaY,
-              viewport,
+              window,
               dimensions.height,
               true,
             );
@@ -105,7 +105,7 @@ export default function useWindowScroll({
         }
       },
     };
-  }, [enabled, onScroll, dimensions, ctrl, shift, alt, relative, viewport]);
+  }, [enabled, onScroll, dimensions, ctrl, shift, alt, relative, window]);
 
   return {
     scrollProps,

@@ -6,7 +6,7 @@ import useWindowMotions from "@/hooks/window/useWindowMotions";
 import type { Position, SpectrogramWindow } from "@/types";
 
 export default function useSpectrogramDrag({
-  viewport,
+  window,
   dimensions,
   enabled = true,
   onDoubleClick,
@@ -14,7 +14,7 @@ export default function useSpectrogramDrag({
   onDrag,
   onDragEnd,
 }: {
-  viewport: SpectrogramWindow;
+  window: SpectrogramWindow;
   dimensions: { width: number; height: number };
   onDoubleClick?: (dblClickProps: {
     position: Position;
@@ -26,18 +26,18 @@ export default function useSpectrogramDrag({
   onDragEnd?: () => void;
   enabled?: boolean;
 }) {
-  const [initialWindow, setInitialWindow] = useState(viewport);
+  const [initialWindow, setInitialWindow] = useState(window);
 
   const onMoveStart = useCallback(() => {
     if (!enabled) return;
-    setInitialWindow(viewport);
+    setInitialWindow(window);
     onDragStart?.();
-  }, [onDragStart, viewport, enabled]);
+  }, [onDragStart, window, enabled]);
 
   const onMove = useCallback(
     ({ shift }: { shift: Position }) => {
       if (!enabled) return;
-      const window = {
+      const newWindow = {
         time: {
           min: initialWindow.time.min - shift.time,
           max: initialWindow.time.max - shift.time,
@@ -47,19 +47,19 @@ export default function useSpectrogramDrag({
           max: initialWindow.freq.max + shift.freq,
         },
       };
-      onDrag?.(window);
+      onDrag?.(newWindow);
     },
     [onDrag, initialWindow, enabled],
   );
 
   const onMoveEnd = useCallback(() => {
     if (!enabled) return;
-    setInitialWindow(viewport);
+    setInitialWindow(window);
     onDragEnd?.();
-  }, [onDragEnd, viewport, enabled]);
+  }, [onDragEnd, window, enabled]);
 
   const { props: moveProps, isDragging } = useWindowMotions({
-    viewport,
+    window,
     dimensions,
     onMoveStart,
     onMove,

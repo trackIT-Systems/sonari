@@ -9,7 +9,7 @@ type UseWaveformImageParams = {
   parameters: SpectrogramParameters
 };
 
-export default function useWaveformImage({ recording, window,parameters }: UseWaveformImageParams) {
+export default function useWaveformImage({ recording, window, parameters }: UseWaveformImageParams) {
   const [image, setImage] = useState<HTMLImageElement | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isError, setIsError] = useState(false);
@@ -19,7 +19,7 @@ export default function useWaveformImage({ recording, window,parameters }: UseWa
       recording,
       parameters
     });
-  }, [recording,parameters]);
+  }, [recording, parameters]);
 
   useEffect(() => {
     const img = new Image();
@@ -32,7 +32,7 @@ export default function useWaveformImage({ recording, window,parameters }: UseWa
       setIsError(true);
       setIsLoading(false);
     };
-  }, [recording.id, window.time.min, window.time.max,url]);
+  }, [recording.id, window.time.min, window.time.max, url]);
 
   const draw = useCallback((ctx: CanvasRenderingContext2D) => {
     if (!image) return;

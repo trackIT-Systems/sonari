@@ -4,8 +4,8 @@ import { mergeProps, usePress } from "react-aria";
 import drawGeometry from "@/draw/geometry";
 import { ORANGE } from "@/draw/styles";
 import useHoveredAnnotation from "@/hooks/annotation/useHoveredAnnotation";
-import { scaleGeometryToViewport } from "@/utils/geometry";
-import { ABORT_SHORTCUT } from "@/utils/keyboard";
+import { scaleGeometryToWindow } from "@/utils/geometry";
+
 import type {
   Dimensions,
   SoundEventAnnotation,
@@ -21,7 +21,7 @@ const SELECT_STYLE = {
 
 export default function useAnnotationSelect({
   annotations,
-  viewport,
+  window,
   dimensions,
   enabled = true,
   onSelect,
@@ -29,14 +29,14 @@ export default function useAnnotationSelect({
 }: {
   annotations: SoundEventAnnotation[];
   dimensions: Dimensions;
-  viewport: SpectrogramWindow;
+  window: SpectrogramWindow;
   enabled: boolean;
   onSelect?: (annotation: SoundEventAnnotation) => void;
   onDeselect?: () => void;
 }) {
   const { props: hoverProps, hoveredAnnotation: hovered } =
     useHoveredAnnotation({
-      viewport,
+      window,
       dimensions,
       annotations,
       enabled,
@@ -62,16 +62,16 @@ export default function useAnnotationSelect({
 
       ctx.canvas.style.cursor = "pointer";
 
-      const geometry = scaleGeometryToViewport(
+      const geometry = scaleGeometryToWindow(
         { width: ctx.canvas.width, height: ctx.canvas.height },
         // @ts-ignore
         hovered.geometry,
-        viewport,
+        window,
       );
 
       drawGeometry(ctx, geometry, SELECT_STYLE);
     },
-    [viewport, hovered, enabled],
+    [window, hovered, enabled],
   );
 
   const props = mergeProps(pressProps, hoverProps);

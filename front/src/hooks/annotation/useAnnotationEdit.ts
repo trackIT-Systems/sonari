@@ -20,7 +20,7 @@ const EDIT_STYLE = {
 };
 
 export default function useAnnotationEdit({
-  viewport,
+  window,
   dimensions,
   annotation,
   enabled = true,
@@ -28,7 +28,7 @@ export default function useAnnotationEdit({
   onCopy,
   onDeselect,
 }: {
-  viewport: SpectrogramWindow;
+  window: SpectrogramWindow;
   dimensions: Dimensions;
   annotation: SoundEventAnnotation | null;
   enabled?: boolean;
@@ -46,7 +46,7 @@ export default function useAnnotationEdit({
   );
 
   const { draw, props } = useEditAnnotationGeometry({
-    viewport,
+    window,
     dimensions,
     soundEventAnnotation: annotation,
     enabled,

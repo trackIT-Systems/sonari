@@ -12,15 +12,15 @@ export function toWaveformWindow(window: SpectrogramWindow): WaveformWindow {
 export default function useWaveform({
   recording,
   parameters,
-  viewport,
+  window,
 }: {
   recording: Recording;
   parameters: SpectrogramParameters;
-  viewport: SpectrogramWindow;
+  window: SpectrogramWindow;
 }) {
   const waveformWindow = useMemo(
-    () => toWaveformWindow(viewport),
-    [viewport]
+    () => toWaveformWindow(window),
+    [window]
   );
 
   const { draw: drawImage, isLoading, isError } = useWaveformImage({
@@ -40,6 +40,6 @@ export default function useWaveform({
     draw,
     isLoading,
     isError,
-    viewport: waveformWindow,
+    window: waveformWindow,
   };
 }
