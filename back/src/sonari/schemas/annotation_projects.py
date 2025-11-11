@@ -14,6 +14,7 @@ __all__ = [
     "AnnotationProject",
     "AnnotationProjectCreate",
     "AnnotationProjectUpdate",
+    "AnnotationProjectProgress",
 ]
 
 
@@ -63,3 +64,25 @@ class AnnotationProjectUpdate(BaseModel):
 
     annotation_instructions: str | None = None
     """Project instructions for annotating."""
+
+
+class AnnotationProjectProgress(BaseModel):
+    """Schema for annotation project progress statistics."""
+
+    total: int
+    """Total number of tasks in the project."""
+
+    verified: int
+    """Number of tasks with verified status."""
+
+    rejected: int
+    """Number of tasks with rejected status."""
+
+    completed: int
+    """Number of tasks with completed status."""
+
+    assigned: int
+    """Number of tasks with assigned status."""
+
+    pending: int
+    """Number of tasks with no done status (pending or only assigned)."""

@@ -1,10 +1,6 @@
-import { useMemo } from "react";
-
 import Card from "@/components/Card";
 import Empty from "@/components/Empty";
-import { H3 } from "@/components/Headings";
 import {
-  AddIcon,
   CompleteIcon,
   EditIcon,
   InformationCircleIcon,
@@ -12,11 +8,9 @@ import {
   VerifiedIcon,
   HelpIcon,
 } from "@/components/icons";
-import Link from "@/components/Link";
 import Loading from "@/components/Loading";
 import MetricBadge from "@/components/MetricBadge";
-import useAnnotationTasks from "@/hooks/api/useAnnotationTasks";
-import { computeAnnotationTasksProgress } from "@/utils/annotation_tasks";
+import useAnnotationProjectProgress from "@/hooks/api/useAnnotationProjectProgress";
 
 import type { AnnotationProject } from "@/types";
 
@@ -25,21 +19,25 @@ export default function ProjectProgress({
 }: {
   annotationProject: AnnotationProject;
 }) {
-  const filter = useMemo(
-    () => ({
-      annotation_project: annotationProject,
-    }),
-    [annotationProject],
-  );
-
-  const { items: annotationTasks, isLoading } = useAnnotationTasks({
-    filter,
-    pageSize: -1,
+  const { progress: rawProgress, isLoading } = useAnnotationProjectProgress({
+    annotationProjectId: annotationProject.id,
   });
 
-  const progress = useMemo(() => {
-    if (isLoading || annotationTasks == null) {
-      return {
+  const progress = rawProgress
+    ? {
+        total: rawProgress.total,
+        done: {
+          count: rawProgress.total - rawProgress.pending,
+          verified: rawProgress.verified,
+          completed: rawProgress.completed,
+          rejected: rawProgress.rejected,
+        },
+        pending: {
+          count: rawProgress.pending,
+          assigned: rawProgress.assigned,
+        },
+      }
+    : {
         total: 0,
         done: {
           count: 0,
@@ -52,15 +50,12 @@ export default function ProjectProgress({
           assigned: 0,
         },
       };
-    }
-    return computeAnnotationTasksProgress(annotationTasks);
-  }, [annotationTasks, isLoading]);
 
   return (
     <Card>
       {isLoading ? (
         <Loading />
-      ) : annotationTasks.length === 0 ? (
+      ) : progress.total === 0 ? (
         <NoTasks />
       ) : (
         <ProgressReport

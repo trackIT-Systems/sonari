@@ -1,8 +1,6 @@
 import {
   type UseMutationResult,
-  type UseQueryResult,
   useMutation,
-  useQuery,
   useQueryClient,
 } from "@tanstack/react-query";
 import { type AxiosError } from "axios";
@@ -104,6 +102,23 @@ export default function useAnnotateTasks({
   );
   const client = useQueryClient();
 
+  // Memoize the filter to prevent infinite re-renders
+  const minimalFilter = useMemo(
+    () => ({
+      ...initialFilter,
+      // Explicitly exclude all heavy data for navigation
+      // Full data will be loaded when task is selected via useAnnotationTask
+      include_recording: false,
+      include_status_badges: false,
+      include_status_badge_users: false,
+      include_tags: false,
+      include_notes: false,
+      include_sound_event_annotations: false,
+      include_features: false,
+    }),
+    [initialFilter],
+  );
+
   const {
     items: initialItems,
     filter,
@@ -112,7 +127,7 @@ export default function useAnnotateTasks({
     queryKey,
   } = useAnnotationTasks({
     pageSize: -1,
-    filter: initialFilter,
+    filter: minimalFilter,
     fixed: Object.keys(initialFilter) as (keyof AnnotationTaskFilter)[],
   });
 

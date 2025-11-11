@@ -91,6 +91,8 @@ const AnnotationTaskFilterSchema = z.object({
   include_tags: z.boolean().optional(),
   include_notes: z.boolean().optional(),
   include_features: z.boolean().optional(),
+  include_status_badges: z.boolean().optional(),
+  include_status_badge_users: z.boolean().optional(),
 });
 
 export type AnnotationTaskFilter = z.input<typeof AnnotationTaskFilterSchema>;
@@ -196,6 +198,8 @@ export function registerAnnotationTasksAPI(
         include_tags: params.include_tags,
         include_notes: params.include_notes,
         include_features: params.include_features,
+        include_status_badges: params.include_status_badges,
+        include_status_badge_users: params.include_status_badge_users,
       },
     });
     return AnnotationTaskPageSchema.parse(response.data);
@@ -211,6 +215,7 @@ export function registerAnnotationTasksAPI(
       notes?: boolean;
       features?: boolean;
       status_badges?: boolean;
+      status_badge_users?: boolean;
     }
   ): Promise<AnnotationTask> {
     const response = await instance.get(endpoints.get, {
@@ -222,6 +227,8 @@ export function registerAnnotationTasksAPI(
         include_tags: includes?.tags,
         include_notes: includes?.notes,
         include_features: includes?.features,
+        include_status_badges: includes?.status_badges,
+        include_status_badge_users: includes?.status_badge_users,
       },
     });
     return AnnotationTaskSchema.parse(response.data);

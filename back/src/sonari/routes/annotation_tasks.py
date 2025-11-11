@@ -137,6 +137,8 @@ def get_annotation_tasks_router(settings: SonariSettings) -> APIRouter:
         include_tags: bool = False,
         include_notes: bool = False,
         include_features: bool = False,
+        include_status_badges: bool = False,
+        include_status_badge_users: bool = False,
     ):
         """Get a page of annotation tasks."""
         nigh_filter = next((f for f in filter if f[0] == "night__tz" and f[1] is not None), None)
@@ -155,6 +157,8 @@ def get_annotation_tasks_router(settings: SonariSettings) -> APIRouter:
             include_tags=include_tags,
             include_notes=include_notes,
             include_features=include_features,
+            include_status_badges=include_status_badges,
+            include_status_badge_users=include_status_badge_users,
         )
 
         if nigh_filter is not None:
@@ -207,6 +211,8 @@ def get_annotation_tasks_router(settings: SonariSettings) -> APIRouter:
         include_tags: bool = False,
         include_notes: bool = False,
         include_features: bool = False,
+        include_status_badges: bool = False,
+        include_status_badge_users: bool = False,
     ):
         """Get an annotation task."""
         return await api.annotation_tasks.get(
@@ -218,6 +224,8 @@ def get_annotation_tasks_router(settings: SonariSettings) -> APIRouter:
             include_tags=include_tags,
             include_notes=include_notes,
             include_features=include_features,
+            include_status_badges=include_status_badges,
+            include_status_badge_users=include_status_badge_users,
         )
 
     @annotation_tasks_router.post(

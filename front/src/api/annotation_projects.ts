@@ -6,9 +6,21 @@ import { AnnotationProjectSchema } from "@/schemas";
 
 import type { AnnotationProject } from "@/types";
 
+export const AnnotationProjectProgressSchema = z.object({
+  total: z.number(),
+  verified: z.number(),
+  rejected: z.number(),
+  completed: z.number(),
+  assigned: z.number(),
+  pending: z.number(),
+});
+
+export type AnnotationProjectProgress = z.infer<typeof AnnotationProjectProgressSchema>;
+
 const DEFAULT_ENDPOINTS = {
   getMany: "/api/v1/annotation_projects/",
   get: "/api/v1/annotation_projects/detail/",
+  getProgress: "/api/v1/annotation_projects/detail/progress/",
 };
 
 const AnnotationProjectFilterSchema = z.object({
@@ -51,8 +63,16 @@ export function registerAnnotationProjectAPI(
     return AnnotationProjectSchema.parse(data);
   }
 
+  async function getProgress(id: number): Promise<AnnotationProjectProgress> {
+    const { data } = await instance.get(endpoints.getProgress, {
+      params: { annotation_project_id: id },
+    });
+    return AnnotationProjectProgressSchema.parse(data);
+  }
+
   return {
     getMany,
     get,
+    getProgress,
   } as const;
 }

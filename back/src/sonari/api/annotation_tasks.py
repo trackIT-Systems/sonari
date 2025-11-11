@@ -41,6 +41,7 @@ class AnnotationTaskAPI(
         "tags": models.AnnotationTask.tags,
         "notes": models.AnnotationTask.notes,
         "features": models.AnnotationTask.features,
+        "status_badges": models.AnnotationTask.status_badges,
     }
 
     async def get_many(
@@ -57,6 +58,8 @@ class AnnotationTaskAPI(
         include_tags: bool = False,
         include_notes: bool = False,
         include_features: bool = False,
+        include_status_badges: bool = False,
+        include_status_badge_users: bool = False,
     ) -> tuple[Sequence[schemas.AnnotationTask], int]:
         """Get many annotation tasks without unique() to avoid duplicate removal after pagination.
 
@@ -106,10 +109,20 @@ class AnnotationTaskAPI(
             "tags": include_tags,
             "notes": include_notes,
             "features": include_features,
+            "status_badges": include_status_badges or include_status_badge_users,
         }
 
         # Build loading options dynamically
-        options = [selectinload(rel) if include_map[name] else noload(rel) for name, rel in self.relationships.items()]
+        options = []
+        for name, rel in self.relationships.items():
+            if include_map.get(name, False):
+                if name == "status_badges" and include_status_badge_users:
+                    # Chain load users when requested
+                    options.append(selectinload(rel).selectinload(models.AnnotationStatusBadge.user))
+                else:
+                    options.append(selectinload(rel))
+            else:
+                options.append(noload(rel))
 
         query = query.options(*options)
 
@@ -137,6 +150,8 @@ class AnnotationTaskAPI(
         include_tags: bool = False,
         include_notes: bool = False,
         include_features: bool = False,
+        include_status_badges: bool = False,
+        include_status_badge_users: bool = False,
     ) -> schemas.AnnotationTask:
         """Get an annotation task by primary key.
 
@@ -158,6 +173,10 @@ class AnnotationTaskAPI(
             If True, eagerly load the notes relationship.
         include_features
             If True, eagerly load the features relationship.
+        include_status_badges
+            If True, eagerly load the status_badges relationship.
+        include_status_badge_users
+            If True, eagerly load user information for status badges (implies include_status_badges).
 
         Returns
         -------
@@ -179,6 +198,7 @@ class AnnotationTaskAPI(
             "tags": include_tags,
             "notes": include_notes,
             "features": include_features,
+            "status_badges": include_status_badges or include_status_badge_users,
         }
 
         # Check cache first if no relationships are requested
@@ -189,7 +209,16 @@ class AnnotationTaskAPI(
         query = select(self._model).where(self._model.id == pk)
 
         # Build loading options dynamically
-        options = [selectinload(rel) if include_map[name] else noload(rel) for name, rel in self.relationships.items()]
+        options = []
+        for name, rel in self.relationships.items():
+            if include_map.get(name, False):
+                if name == "status_badges" and include_status_badge_users:
+                    # Chain load users when requested
+                    options.append(selectinload(rel).selectinload(models.AnnotationStatusBadge.user))
+                else:
+                    options.append(selectinload(rel))
+            else:
+                options.append(noload(rel))
 
         query = query.options(*options)
 

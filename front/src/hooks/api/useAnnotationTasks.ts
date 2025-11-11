@@ -23,17 +23,19 @@ export default function useAnnotationTasks({
     fixed
   });
 
-  // Always include recording data in the filter
-  const filterWithRecording = useMemo(() => ({
+  // Always include recording and status badge data in the filter
+  const filterWithDefaults = useMemo(() => ({
     ...filter.filter,
     include_recording: true,
+    include_status_badges: true,
+    include_status_badge_users: true,
   }), [filter.filter]);
 
   const { query, pagination, items, total, queryKey } = usePagedQuery({
     name: "annotation_tasks",
     queryFn: api.annotationTasks.getMany,
     pageSize,
-    filter: filterWithRecording,
+    filter: filterWithDefaults,
     enabled,
   });
 

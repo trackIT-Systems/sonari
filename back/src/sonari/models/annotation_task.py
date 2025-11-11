@@ -133,7 +133,6 @@ class AnnotationTask(Base):
         init=False,
         repr=False,
         default_factory=list,
-        lazy="selectin",
     )
 
 
@@ -299,5 +298,4 @@ class AnnotationStatusBadge(Base):
         User,
         init=False,
         repr=False,
-        lazy="selectin",
     )

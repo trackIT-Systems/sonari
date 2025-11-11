@@ -15,6 +15,7 @@ to validate data before it is inserted into the database.
 from sonari.schemas.annotation_projects import (
     AnnotationProject,
     AnnotationProjectCreate,
+    AnnotationProjectProgress,
     AnnotationProjectUpdate,
 )
 from sonari.schemas.annotation_tasks import (
@@ -65,6 +66,7 @@ __all__ = [
     "AmplitudeParameters",
     "AnnotationProject",
     "AnnotationProjectCreate",
+    "AnnotationProjectProgress",
     "AnnotationProjectUpdate",
     "AnnotationStatusBadge",
     "AnnotationStatusBadgeUpdate",

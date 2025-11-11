@@ -17,6 +17,8 @@ export default function useAnnotationTask({
   include_tags = false,
   include_notes = false,
   include_features = false,
+  include_status_badges = true,
+  include_status_badge_users = true,
 }: {
   id: number;
   annotationTask?: AnnotationTask;
@@ -28,6 +30,8 @@ export default function useAnnotationTask({
   include_tags?: boolean;
   include_notes?: boolean;
   include_features?: boolean;
+  include_status_badges?: boolean;
+  include_status_badge_users?: boolean;
 }) {
   const { query, setData, client, useMutation, useDestruction } =
     useObject<AnnotationTask>({
@@ -42,6 +46,8 @@ export default function useAnnotationTask({
         tags: include_tags,
         notes: include_notes,
         features: include_features,
+        status_badges: include_status_badges,
+        status_badge_users: include_status_badge_users,
       }),
       onError,
     });
