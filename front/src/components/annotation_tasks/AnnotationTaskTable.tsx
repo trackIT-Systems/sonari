@@ -33,10 +33,10 @@ export default function AnnotationTaskTable({
   const router = useRouter();
   const popoverButtonRef = useRef<HTMLButtonElement>(null);
 
-  function  getAnnotationTaskLink(annotationProjectId: number, annotationTaskId: number): string {
+  const getAnnotationTaskLink = useCallback((annotationProjectId: number, annotationTaskId: number): string => {
     const url = `detail/annotation/?annotation_task_id=${annotationTaskId}`;
     return `${url}&annotation_project_id=${annotationProjectId}`;
-  };
+  }, []);
 
   const table = useAnnotationTaskTable({
     data: annotationTasks.items,

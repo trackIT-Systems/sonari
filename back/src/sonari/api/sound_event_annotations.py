@@ -26,6 +26,79 @@ class SoundEventAnnotationAPI(
     _model = models.SoundEventAnnotation
     _schema = schemas.SoundEventAnnotation
 
+    async def get(
+        self,
+        session: AsyncSession,
+        pk: int,
+        *,
+        include_tags: bool = False,
+        include_features: bool = False,
+        include_created_by: bool = False,
+    ) -> schemas.SoundEventAnnotation:
+        """Get a sound event annotation by ID with optional relationship loading.
+
+        Parameters
+        ----------
+        session
+            The database session to use.
+        pk
+            The primary key.
+        include_tags
+            If True, eagerly load the tags relationship.
+        include_features
+            If True, eagerly load the features relationship.
+        include_created_by
+            If True, eagerly load the created_by relationship.
+
+        Returns
+        -------
+        schemas.SoundEventAnnotation
+            The sound event annotation with the given primary key.
+
+        Raises
+        ------
+        NotFoundError
+            If the annotation could not be found.
+        """
+        from sqlalchemy import select
+        from sqlalchemy.orm import noload, selectinload
+
+        # Check cache first if no relationships are requested
+        if not (include_tags or include_features or include_created_by):
+            if self._is_in_cache(pk):
+                return self._get_from_cache(pk)
+
+        query = select(self._model).where(self._model.id == pk)
+
+        # Build loading options dynamically
+        options = []
+        if include_tags:
+            options.append(selectinload(models.SoundEventAnnotation.tags))
+        else:
+            options.append(noload(models.SoundEventAnnotation.tags))
+
+        if include_features:
+            options.append(selectinload(models.SoundEventAnnotation.features))
+        else:
+            options.append(noload(models.SoundEventAnnotation.features))
+
+        if include_created_by:
+            options.append(selectinload(models.SoundEventAnnotation.created_by))
+        else:
+            options.append(noload(models.SoundEventAnnotation.created_by))
+
+        query = query.options(*options)
+
+        result = await session.execute(query)
+        obj = result.unique().scalar_one_or_none()
+
+        if obj is None:
+            raise exceptions.NotFoundError(f"SoundEventAnnotation with id {pk} not found")
+
+        data = self._schema.model_validate(obj)
+        self._update_cache(data)
+        return data
+
     async def create(
         self,
         session: AsyncSession,

@@ -16,7 +16,7 @@ export default function useListWithSearch<T extends Object>({
   const [search, setSearch] = useState("");
 
   // Ensure options is always an array
-  const safeOptions = options || [];
+  const safeOptions = useMemo(() => options || [], [options]);
 
   const fuse = useMemo(
     () =>

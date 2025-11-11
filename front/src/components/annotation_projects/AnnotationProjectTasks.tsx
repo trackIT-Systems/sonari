@@ -13,10 +13,6 @@ export default function AnnotationProjectTasks({
   const filter = useMemo(() => (
     {
       annotation_project: annotationProject,
-      include_recording: true,
-      include_tags: true,
-      include_notes: true,
-      include_sound_event_annotations: true 
     }
   ), [annotationProject]);
 

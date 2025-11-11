@@ -80,7 +80,6 @@ class Note(Base):
         User,
         back_populates="notes",
         init=False,
-        lazy="joined",
     )
     annotation_task: orm.Mapped["AnnotationTask"] = orm.relationship(
         init=False,

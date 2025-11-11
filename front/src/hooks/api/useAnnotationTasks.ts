@@ -27,6 +27,9 @@ export default function useAnnotationTasks({
   const filterWithDefaults = useMemo(() => ({
     ...filter.filter,
     include_recording: true,
+    include_sound_event_tags: true,
+    include_tags: true,
+    include_notes: true,
     include_status_badges: true,
     include_status_badge_users: true,
   }), [filter.filter]);

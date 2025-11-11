@@ -134,11 +134,15 @@ def get_annotation_tasks_router(settings: SonariSettings) -> APIRouter:
         include_recording: bool = False,
         include_annotation_project: bool = False,
         include_sound_event_annotations: bool = False,
+        include_sound_event_tags: bool = False,
         include_tags: bool = False,
         include_notes: bool = False,
         include_features: bool = False,
         include_status_badges: bool = False,
         include_status_badge_users: bool = False,
+        include_sound_event_annotation_features: bool = False,
+        include_sound_event_annotation_users: bool = False,
+        include_note_users: bool = False,
     ):
         """Get a page of annotation tasks."""
         nigh_filter = next((f for f in filter if f[0] == "night__tz" and f[1] is not None), None)
@@ -154,11 +158,15 @@ def get_annotation_tasks_router(settings: SonariSettings) -> APIRouter:
             include_recording=include_recording,
             include_annotation_project=include_annotation_project,
             include_sound_event_annotations=include_sound_event_annotations,
+            include_sound_event_tags=include_sound_event_tags,
             include_tags=include_tags,
             include_notes=include_notes,
             include_features=include_features,
             include_status_badges=include_status_badges,
             include_status_badge_users=include_status_badge_users,
+            include_sound_event_annotation_features=include_sound_event_annotation_features,
+            include_sound_event_annotation_users=include_sound_event_annotation_users,
+            include_note_users=include_note_users,
         )
 
         if nigh_filter is not None:
@@ -208,11 +216,15 @@ def get_annotation_tasks_router(settings: SonariSettings) -> APIRouter:
         include_recording: bool = False,
         include_annotation_project: bool = False,
         include_sound_event_annotations: bool = False,
+        include_sound_event_tags: bool = False,
         include_tags: bool = False,
         include_notes: bool = False,
         include_features: bool = False,
         include_status_badges: bool = False,
         include_status_badge_users: bool = False,
+        include_sound_event_annotation_features: bool = False,
+        include_sound_event_annotation_users: bool = False,
+        include_note_users: bool = False,
     ):
         """Get an annotation task."""
         return await api.annotation_tasks.get(
@@ -221,11 +233,15 @@ def get_annotation_tasks_router(settings: SonariSettings) -> APIRouter:
             include_recording=include_recording,
             include_annotation_project=include_annotation_project,
             include_sound_event_annotations=include_sound_event_annotations,
+            include_sound_event_tags=include_sound_event_tags,
             include_tags=include_tags,
             include_notes=include_notes,
             include_features=include_features,
             include_status_badges=include_status_badges,
             include_status_badge_users=include_status_badge_users,
+            include_sound_event_annotation_features=include_sound_event_annotation_features,
+            include_sound_event_annotation_users=include_sound_event_annotation_users,
+            include_note_users=include_note_users,
         )
 
     @annotation_tasks_router.post(
@@ -239,7 +255,16 @@ def get_annotation_tasks_router(settings: SonariSettings) -> APIRouter:
         user: Annotated[schemas.SimpleUser, Depends(active_user)],
     ):
         """Add a tag to an annotation task."""
-        annotation_task = await api.annotation_tasks.get(session, annotation_task_id)
+        annotation_task = await api.annotation_tasks.get(
+            session,
+            annotation_task_id,
+            include_notes=True,
+            include_recording=True,
+            include_sound_event_annotations=True,
+            include_tags=True,
+            include_features=True,
+            include_note_users=True,
+        )
         tag_obj = await api.tags.from_name(session, key=tag.key, value=tag.value)
         updated = await api.annotation_tasks.add_tag(
             session,
@@ -261,7 +286,16 @@ def get_annotation_tasks_router(settings: SonariSettings) -> APIRouter:
         value: str,
     ):
         """Remove a tag from an annotation task."""
-        annotation_task = await api.annotation_tasks.get(session, annotation_task_id)
+        annotation_task = await api.annotation_tasks.get(
+            session,
+            annotation_task_id,
+            include_notes=True,
+            include_recording=True,
+            include_sound_event_annotations=True,
+            include_tags=True,
+            include_features=True,
+            include_note_users=True,
+        )
         tag = await api.tags.from_name(session, key=key, value=value)
         updated = await api.annotation_tasks.remove_tag(
             session,
@@ -282,12 +316,22 @@ def get_annotation_tasks_router(settings: SonariSettings) -> APIRouter:
         user: Annotated[schemas.SimpleUser, Depends(active_user)],
     ):
         """Add a note to an annotation task."""
-        annotation_task = await api.annotation_tasks.get(session, annotation_task_id)
+        annotation_task = await api.annotation_tasks.get(
+            session,
+            annotation_task_id,
+            include_notes=True,
+            include_recording=True,
+            include_sound_event_annotations=True,
+            include_tags=True,
+            include_features=True,
+            include_note_users=True,
+        )
         note_obj = await api.notes.create(
             session,
             message=note.message,
             is_issue=note.is_issue,
             created_by=user,
+            annotation_task_id=annotation_task.id,
         )
         updated = await api.annotation_tasks.add_note(
             session,
@@ -307,7 +351,16 @@ def get_annotation_tasks_router(settings: SonariSettings) -> APIRouter:
         note_id: int,
     ):
         """Remove a note from an annotation task."""
-        annotation_task = await api.annotation_tasks.get(session, annotation_task_id)
+        annotation_task = await api.annotation_tasks.get(
+            session,
+            annotation_task_id,
+            include_notes=True,
+            include_recording=True,
+            include_sound_event_annotations=True,
+            include_tags=True,
+            include_features=True,
+            include_note_users=True,
+        )
         note = await api.notes.get(session, note_id)
         updated = await api.annotation_tasks.remove_note(
             session,
@@ -331,6 +384,14 @@ def get_annotation_tasks_router(settings: SonariSettings) -> APIRouter:
         annotation_task = await api.annotation_tasks.get(
             session,
             annotation_task_id,
+            include_notes=True,
+            include_recording=True,
+            include_sound_event_annotations=True,
+            include_status_badges=True,
+            include_status_badge_users=True,
+            include_tags=True,
+            include_features=True,
+            include_note_users=True,
         )
         updated = await api.annotation_tasks.add_status_badge(
             session,
@@ -355,6 +416,14 @@ def get_annotation_tasks_router(settings: SonariSettings) -> APIRouter:
         annotation_task = await api.annotation_tasks.get(
             session,
             annotation_task_id,
+            include_notes=True,
+            include_recording=True,
+            include_sound_event_annotations=True,
+            include_tags=True,
+            include_features=True,
+            include_status_badges=True,
+            include_status_badge_users=True,
+            include_note_users=True,
         )
         updated = await api.annotation_tasks.remove_status_badge(
             session,

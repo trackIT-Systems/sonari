@@ -103,7 +103,6 @@ class SoundEventAnnotation(Base):
     created_by: orm.Mapped[Optional[User]] = orm.relationship(
         init=False,
         repr=False,
-        lazy="joined",
     )
     tags: orm.Mapped[list[Tag]] = orm.relationship(
         secondary="sound_event_annotation_tag",
@@ -111,7 +110,6 @@ class SoundEventAnnotation(Base):
         default_factory=list,
         repr=False,
         init=False,
-        lazy="selectin",
     )
     features: orm.Mapped[list["SoundEventAnnotationFeature"]] = orm.relationship(
         back_populates="sound_event_annotation",
@@ -120,7 +118,6 @@ class SoundEventAnnotation(Base):
         init=False,
         repr=False,
         default_factory=list,
-        lazy="selectin",
     )
 
 

@@ -17,6 +17,9 @@ export default function useSoundEventAnnotation({
   onUpdate,
   onError,
   enabled = true,
+  includeTags = false,
+  includeFeatures = false,
+  includeCreatedBy = false,
 }: {
   id: number;
   annotationTask: AnnotationTask;
@@ -25,19 +28,47 @@ export default function useSoundEventAnnotation({
   onUpdate?: (annotation: SoundEventAnnotation) => void;
   onError?: (error: AxiosError) => void;
   enabled?: boolean;
+  includeTags?: boolean;
+  includeFeatures?: boolean;
+  includeCreatedBy?: boolean;
 }) {
+  const getFn = useCallback(
+    (id: number) =>
+      api.soundEventAnnotations.get(id, {
+        tags: includeTags,
+        features: includeFeatures,
+        created_by: includeCreatedBy,
+      }),
+    [includeTags, includeFeatures, includeCreatedBy],
+  );
+
   const { query, useMutation, useDestruction, client } =
     useObject<SoundEventAnnotation>({
       name: "sound_event_annotation",
       id,
       initial: soundEventAnnotation,
       enabled,
-      getFn: api.soundEventAnnotations.get,
+      getFn,
       onError,
     });
 
   const updateSoundEventAnnotation = useCallback(
     (annotation: SoundEventAnnotation) => {
+      // Update the individual sound event annotation cache
+      // Merge with existing cache to preserve relationships like features, created_by
+      client.setQueryData(["sound_event_annotation", annotation.id], (oldData: SoundEventAnnotation | undefined) => {
+        if (!oldData) return annotation;
+        // Merge: keep old relationships that aren't in the new data
+        return {
+          ...oldData,
+          ...annotation,
+          // Preserve these if they exist in old data but not in new
+          features: annotation.features ?? oldData.features,
+          created_by: annotation.created_by ?? oldData.created_by,
+        };
+      });
+      
+      // Update the annotation task cache
       client.setQueryData(
         ["annotation_task", annotationTask.id],
         (data: AnnotationTask) => {

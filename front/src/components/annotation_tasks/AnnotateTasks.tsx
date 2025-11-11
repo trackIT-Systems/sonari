@@ -19,7 +19,6 @@ import TagComponent, { getTagKey } from "@/components/tags/Tag";
 import { SOUND_EVENT_CYCLE_FILTER_SHORTCUT, DELETE_TAG_SHORTCUT, ABORT_SHORTCUT } from "@/utils/keyboard";
 
 import type { AnnotationTaskFilter } from "@/api/annotation_tasks";
-import type { TagFilter } from "@/api/tags";
 import type {
   AnnotationTask,
   SoundEventAnnotation,

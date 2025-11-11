@@ -76,7 +76,18 @@ export default function useSoundEventMutations({
     },
     onSuccess: (data) => {
       // Update the individual sound event annotation cache
-      client.setQueryData(["sound_event_annotation", data.id], data);
+      // Merge with existing cache to preserve relationships like features, created_by
+      client.setQueryData(["sound_event_annotation", data.id], (oldData: SoundEventAnnotation | undefined) => {
+        if (!oldData) return data;
+        // Merge: keep old relationships that aren't in the new data
+        return {
+          ...oldData,
+          ...data,
+          // Preserve these if they exist in old data but not in new
+          features: data.features ?? oldData.features,
+          created_by: data.created_by ?? oldData.created_by,
+        };
+      });
       
       // Update the parent's list
       setData((prev) => {
@@ -140,6 +151,20 @@ export default function useSoundEventMutations({
       return api.soundEventAnnotations.addTag(soundEventAnnotation, tag);
     },
     onSuccess: (data) => {
+      // Update the individual sound event annotation cache
+      // Merge with existing cache to preserve relationships like features, created_by
+      client.setQueryData(["sound_event_annotation", data.id], (oldData: SoundEventAnnotation | undefined) => {
+        if (!oldData) return data;
+        // Merge: keep old relationships that aren't in the new data
+        return {
+          ...oldData,
+          ...data,
+          // Preserve these if they exist in old data but not in new
+          features: data.features ?? oldData.features,
+          created_by: data.created_by ?? oldData.created_by,
+        };
+      });
+      
       setData((prev) => {
         if (prev == null) {
           throw new Error("No annotation task to add sound event tag to.");
@@ -182,6 +207,20 @@ export default function useSoundEventMutations({
       return api.soundEventAnnotations.removeTag(soundEventAnnotation, tag);
     },
     onSuccess: (data) => {
+      // Update the individual sound event annotation cache
+      // Merge with existing cache to preserve relationships like features, created_by
+      client.setQueryData(["sound_event_annotation", data.id], (oldData: SoundEventAnnotation | undefined) => {
+        if (!oldData) return data;
+        // Merge: keep old relationships that aren't in the new data
+        return {
+          ...oldData,
+          ...data,
+          // Preserve these if they exist in old data but not in new
+          features: data.features ?? oldData.features,
+          created_by: data.created_by ?? oldData.created_by,
+        };
+      });
+      
       setData((prev) => {
         if (prev == null) {
           throw new Error("No annotation task to remove sound event tag from.");

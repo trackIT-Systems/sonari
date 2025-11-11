@@ -122,8 +122,8 @@ export default function useAnnotationTaskTable({
         id: "sound_event_tags",
         header: () => <TableHeader>Tags</TableHeader>,
         accessorFn: (row) => {
-          // Get all sound event annotation tags and count their occurrences
-          const soundEventAnnotationTags = row.sound_event_annotations?.flatMap(event => event.tags || []) || [];
+          // Combine task tags with aggregated sound event tags
+          const soundEventAnnotationTags = row.sound_event_tags || [];
           const annotationTaskTags = row.tags || [];
           const tags = soundEventAnnotationTags.concat(annotationTaskTags);
           const tagCounts = new Map<string, TagCount>();

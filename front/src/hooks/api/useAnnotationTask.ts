@@ -14,11 +14,15 @@ export default function useAnnotationTask({
   include_recording = false,
   include_annotation_project = false,
   include_sound_event_annotations = false,
+  include_sound_event_tags = false,
   include_tags = false,
   include_notes = false,
   include_features = false,
   include_status_badges = true,
   include_status_badge_users = true,
+  include_sound_event_annotation_features = false,
+  include_sound_event_annotation_users = false,
+  include_note_users = false,
 }: {
   id: number;
   annotationTask?: AnnotationTask;
@@ -27,11 +31,15 @@ export default function useAnnotationTask({
   include_recording?: boolean;
   include_annotation_project?: boolean;
   include_sound_event_annotations?: boolean;
+  include_sound_event_tags?: boolean;
   include_tags?: boolean;
   include_notes?: boolean;
   include_features?: boolean;
   include_status_badges?: boolean;
   include_status_badge_users?: boolean;
+  include_sound_event_annotation_features?: boolean;
+  include_sound_event_annotation_users?: boolean;
+  include_note_users?: boolean;
 }) {
   const { query, setData, client, useMutation, useDestruction } =
     useObject<AnnotationTask>({
@@ -43,11 +51,15 @@ export default function useAnnotationTask({
         recording: include_recording,
         annotation_project: include_annotation_project,
         sound_event_annotations: include_sound_event_annotations,
+        sound_event_tags: include_sound_event_tags,
         tags: include_tags,
         notes: include_notes,
         features: include_features,
         status_badges: include_status_badges,
         status_badge_users: include_status_badge_users,
+        sound_event_annotation_features: include_sound_event_annotation_features,
+        sound_event_annotation_users: include_sound_event_annotation_users,
+        note_users: include_note_users,
       }),
       onError,
     });

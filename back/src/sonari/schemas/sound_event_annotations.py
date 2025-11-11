@@ -68,10 +68,10 @@ class SoundEventAnnotation(BaseSchema):
     created_by_id: UUID
     """UUID of the user that created the sound event annotation"""
 
-    tags: list[Tag] = Field(default_factory=list)
+    tags: Optional[list[Tag]] = None
     """Tags attached to this annotation."""
 
-    features: list[Feature] = Field(default_factory=list)
+    features: Optional[list[Feature]] = None
     """Features associated with this sound event."""
 
     annotation_task: Optional["AnnotationTask"] = None

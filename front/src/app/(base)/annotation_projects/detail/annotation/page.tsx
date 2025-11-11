@@ -40,8 +40,10 @@ export default function Page() {
     onError: handleError,
     include_recording: true,
     include_notes: true,
-    include_sound_event_annotations: true,
+    include_sound_event_annotations: true,  // Full sound events needed here
     include_tags: true,
+    include_features: true,
+    include_note_users: true,  // For note author display
   });
 
   const parameters = useStore((state) => state.spectrogramSettings);

@@ -57,9 +57,19 @@ export function registerSoundEventAnnotationsAPI(
 
   async function getSoundEventAnnotation(
     id: number,
+    includes?: {
+      tags?: boolean;
+      features?: boolean;
+      created_by?: boolean;
+    }
   ): Promise<SoundEventAnnotation> {
     const response = await instance.get(endpoints.get, {
-      params: { sound_event_annotation_id: id },
+      params: {
+        sound_event_annotation_id: id,
+        include_tags: includes?.tags,
+        include_features: includes?.features,
+        include_created_by: includes?.created_by,
+      },
     });
     return SoundEventAnnotationSchema.parse(response.data);
   }

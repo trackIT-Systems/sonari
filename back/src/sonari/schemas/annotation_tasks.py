@@ -7,7 +7,6 @@ from soundevent.data import AnnotationState
 
 from sonari.schemas.base import BaseSchema
 from sonari.schemas.features import Feature
-from sonari.schemas.notes import Note
 from sonari.schemas.tags import Tag
 from sonari.schemas.users import SimpleUser
 
@@ -100,7 +99,10 @@ class AnnotationTask(BaseSchema):
 
     tags: Optional[list[Tag]] = None
     """All tags of that task"""
-    
+
+    sound_event_tags: Optional[list[Tag]] = None
+    """Aggregated tags from sound event annotations (without loading full sound events)"""
+
     notes: Optional[list["Note"]] = None
     """ All notes of that task"""
 

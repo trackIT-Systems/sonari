@@ -62,11 +62,20 @@ def get_sound_event_annotations_router(settings: SonariSettings) -> APIRouter:
         "/detail/",
         response_model=schemas.SoundEventAnnotation,
     )
-    async def get_annotation(session: Session, sound_event_annotation_id: int):
+    async def get_annotation(
+        session: Session,
+        sound_event_annotation_id: int,
+        include_tags: bool = False,
+        include_features: bool = False,
+        include_created_by: bool = False,
+    ):
         """Get a sound event annotation."""
         return await api.sound_event_annotations.get(
             session,
             sound_event_annotation_id,
+            include_tags=include_tags,
+            include_features=include_features,
+            include_created_by=include_created_by,
         )
 
     @sound_event_annotations_router.get("/", response_model=schemas.Page[schemas.SoundEventAnnotation])
@@ -143,6 +152,9 @@ def get_sound_event_annotations_router(settings: SonariSettings) -> APIRouter:
         sound_event_annotation = await api.sound_event_annotations.get(
             session,
             sound_event_annotation_id,
+            include_created_by=True,
+            include_features=True,
+            include_tags=True,
         )
         sound_event_annotation = await api.sound_event_annotations.delete(
             session,
@@ -166,6 +178,7 @@ def get_sound_event_annotations_router(settings: SonariSettings) -> APIRouter:
         sound_event_annotation = await api.sound_event_annotations.get(
             session,
             sound_event_annotation_id,
+            include_tags=True,
         )
         tag = await api.tags.get(session, (key, value))
         sound_event_annotation = await api.sound_event_annotations.add_tag(
@@ -200,6 +213,7 @@ def get_sound_event_annotations_router(settings: SonariSettings) -> APIRouter:
         sound_event_annotation = await api.sound_event_annotations.get(
             session,
             sound_event_annotation_id,
+            include_tags=True,
         )
         tag = await api.tags.get(session, (key, value))
         sound_event_annotation = await api.sound_event_annotations.remove_tag(

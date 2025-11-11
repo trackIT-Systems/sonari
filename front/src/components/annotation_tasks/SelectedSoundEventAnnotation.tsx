@@ -30,19 +30,17 @@ export default function SelectedSoundEventAnnotation({
   const soundEventAnnotation = useSoundEventAnnotation({
     id: data.id,
     annotationTask,
-    soundEventAnnotation: data,
+    includeCreatedBy: true,
+    includeFeatures: true,
+    includeTags: true,
     onUpdate,
   });
 
-  // Find the current sound event annotation in the annotation task (this is reactive to cache changes)
-  const annotationFromAnnotationTask = useMemo(() => {
-    return annotationTask.sound_event_annotations?.find(annotation => annotation.id === data.id);
-  }, [annotationTask.sound_event_annotations, data.id]);
-
-  // Use the sound event annotation data if available (reactive), otherwise use hook or prop data
+  // Use the sound event annotation data from the query (it's reactive to cache updates)
+  // The query will automatically re-render when the cache is updated by mutations
   const currentAnnotation = useMemo(() => {
-    return annotationFromAnnotationTask || soundEventAnnotation.data || data;
-  }, [annotationFromAnnotationTask, soundEventAnnotation.data, data]);
+    return soundEventAnnotation.data || data;
+  }, [soundEventAnnotation.data, data]);
 
   // Update parent component when annotation data changes
   useEffect(() => {

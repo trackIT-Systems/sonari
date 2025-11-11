@@ -25,6 +25,8 @@ export const TagSchema = z.object({
   value: z.string(),
 });
 
+export type Tag = z.infer<typeof TagSchema>;
+
 export const FeatureSchema = z.object({
   name: z.string(),
   value: z.number(),
@@ -260,6 +262,7 @@ const AnnotationTaskBaseSchema = z.object({
   end_time: z.number(),
   annotation_project: AnnotationProjectSchema.nullish(),
   tags: z.array(TagSchema).nullish(),
+  sound_event_tags: z.array(TagSchema).nullish(),
   features: z.array(FeatureSchema).nullish(),
   status_badges: z.array(AnnotationStatusBadgeSchema),
   created_on: z.coerce.date(),
@@ -272,6 +275,7 @@ type AnnotationTaskBase = z.infer<typeof AnnotationTaskBaseSchema>;
 type AnnotationTask = AnnotationTaskBase & {
   recording?: Recording | null;
   sound_event_annotations?: SoundEventAnnotation[] | null;
+  sound_event_tags?: Tag[] | null;
   notes?: Note[] | null;
 };
 
@@ -286,6 +290,7 @@ export const AnnotationTaskSchema: z.ZodType<AnnotationTask> = z.object({
   recording: RecordingSchema.nullish(),
   sound_event_annotations: z.array(z.lazy(() => SoundEventAnnotationSchema)).nullish(),
   tags: z.array(TagSchema).nullish(),
+  sound_event_tags: z.array(TagSchema).nullish(),
   notes: z.array(z.lazy(() => NoteSchema)).nullish(),
   features: z.array(FeatureSchema).nullish(),
   status_badges: z.array(AnnotationStatusBadgeSchema),

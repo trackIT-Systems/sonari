@@ -88,11 +88,15 @@ const AnnotationTaskFilterSchema = z.object({
   include_recording: z.boolean().optional(),
   include_annotation_project: z.boolean().optional(),
   include_sound_event_annotations: z.boolean().optional(),
+  include_sound_event_tags: z.boolean().optional(),
   include_tags: z.boolean().optional(),
   include_notes: z.boolean().optional(),
   include_features: z.boolean().optional(),
   include_status_badges: z.boolean().optional(),
   include_status_badge_users: z.boolean().optional(),
+  include_sound_event_annotation_features: z.boolean().optional(),
+  include_sound_event_annotation_users: z.boolean().optional(),
+  include_note_users: z.boolean().optional(),
 });
 
 export type AnnotationTaskFilter = z.input<typeof AnnotationTaskFilterSchema>;
@@ -195,11 +199,15 @@ export function registerAnnotationTasksAPI(
         include_recording: params.include_recording,
         include_annotation_project: params.include_annotation_project,
         include_sound_event_annotations: params.include_sound_event_annotations,
+        include_sound_event_tags: params.include_sound_event_tags,
         include_tags: params.include_tags,
         include_notes: params.include_notes,
         include_features: params.include_features,
         include_status_badges: params.include_status_badges,
         include_status_badge_users: params.include_status_badge_users,
+        include_sound_event_annotation_features: params.include_sound_event_annotation_features,
+        include_sound_event_annotation_users: params.include_sound_event_annotation_users,
+        include_note_users: params.include_note_users,
       },
     });
     return AnnotationTaskPageSchema.parse(response.data);
@@ -211,11 +219,15 @@ export function registerAnnotationTasksAPI(
       recording?: boolean;
       annotation_project?: boolean;
       sound_event_annotations?: boolean;
+      sound_event_tags?: boolean;
       tags?: boolean;
       notes?: boolean;
       features?: boolean;
       status_badges?: boolean;
       status_badge_users?: boolean;
+      sound_event_annotation_features?: boolean;
+      sound_event_annotation_users?: boolean;
+      note_users?: boolean;
     }
   ): Promise<AnnotationTask> {
     const response = await instance.get(endpoints.get, {
@@ -224,11 +236,15 @@ export function registerAnnotationTasksAPI(
         include_recording: includes?.recording,
         include_annotation_project: includes?.annotation_project,
         include_sound_event_annotations: includes?.sound_event_annotations,
+        include_sound_event_tags: includes?.sound_event_tags,
         include_tags: includes?.tags,
         include_notes: includes?.notes,
         include_features: includes?.features,
         include_status_badges: includes?.status_badges,
         include_status_badge_users: includes?.status_badge_users,
+        include_sound_event_annotation_features: includes?.sound_event_annotation_features,
+        include_sound_event_annotation_users: includes?.sound_event_annotation_users,
+        include_note_users: includes?.note_users,
       },
     });
     return AnnotationTaskSchema.parse(response.data);

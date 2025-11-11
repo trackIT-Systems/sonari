@@ -55,11 +55,15 @@ class AnnotationTaskAPI(
         include_recording: bool = False,
         include_annotation_project: bool = False,
         include_sound_event_annotations: bool = False,
+        include_sound_event_tags: bool = False,
         include_tags: bool = False,
         include_notes: bool = False,
         include_features: bool = False,
         include_status_badges: bool = False,
         include_status_badge_users: bool = False,
+        include_sound_event_annotation_features: bool = False,
+        include_sound_event_annotation_users: bool = False,
+        include_note_users: bool = False,
     ) -> tuple[Sequence[schemas.AnnotationTask], int]:
         """Get many annotation tasks without unique() to avoid duplicate removal after pagination.
 
@@ -119,6 +123,20 @@ class AnnotationTaskAPI(
                 if name == "status_badges" and include_status_badge_users:
                     # Chain load users when requested
                     options.append(selectinload(rel).selectinload(models.AnnotationStatusBadge.user))
+                elif name == "sound_event_annotations":
+                    # Handle nested relationships for sound events
+                    # Add base loader for sound_event_annotations
+                    options.append(selectinload(rel))
+                    # Add independent loaders for each nested relationship
+                    if include_sound_event_annotation_features:
+                        options.append(selectinload(rel).selectinload(models.SoundEventAnnotation.features))
+                    if include_sound_event_annotation_users:
+                        options.append(selectinload(rel).selectinload(models.SoundEventAnnotation.created_by))
+                    # Always load tags for sound events when loading the sound events
+                    options.append(selectinload(rel).selectinload(models.SoundEventAnnotation.tags))
+                elif name == "notes" and include_note_users:
+                    # Chain load users for notes when requested
+                    options.append(selectinload(rel).selectinload(models.Note.created_by))
                 else:
                     options.append(selectinload(rel))
             else:
@@ -137,6 +155,20 @@ class AnnotationTaskAPI(
         )
         # Don't use unique() - just return the scalars directly
         objs = result.scalars().all()
+
+        # Load sound event tags separately if requested
+        if include_sound_event_tags:
+            task_ids = [obj.id for obj in objs]
+            sound_event_tags_map = await self._load_sound_event_tags(session, task_ids)
+            tasks_with_tags = []
+            for obj in objs:
+                task = self._schema.model_validate(obj)
+                tags_for_task = sound_event_tags_map.get(obj.id, [])
+                # Use model_copy with update to add sound_event_tags
+                task_with_tags = task.model_copy(update={"sound_event_tags": tags_for_task})
+                tasks_with_tags.append(task_with_tags)
+            return tasks_with_tags, count
+
         return [self._schema.model_validate(obj) for obj in objs], count
 
     async def get(
@@ -147,11 +179,15 @@ class AnnotationTaskAPI(
         include_recording: bool = False,
         include_annotation_project: bool = False,
         include_sound_event_annotations: bool = False,
+        include_sound_event_tags: bool = False,
         include_tags: bool = False,
         include_notes: bool = False,
         include_features: bool = False,
         include_status_badges: bool = False,
         include_status_badge_users: bool = False,
+        include_sound_event_annotation_features: bool = False,
+        include_sound_event_annotation_users: bool = False,
+        include_note_users: bool = False,
     ) -> schemas.AnnotationTask:
         """Get an annotation task by primary key.
 
@@ -215,6 +251,20 @@ class AnnotationTaskAPI(
                 if name == "status_badges" and include_status_badge_users:
                     # Chain load users when requested
                     options.append(selectinload(rel).selectinload(models.AnnotationStatusBadge.user))
+                elif name == "sound_event_annotations":
+                    # Handle nested relationships for sound events
+                    # Add base loader for sound_event_annotations
+                    options.append(selectinload(rel))
+                    # Add independent loaders for each nested relationship
+                    if include_sound_event_annotation_features:
+                        options.append(selectinload(rel).selectinload(models.SoundEventAnnotation.features))
+                    if include_sound_event_annotation_users:
+                        options.append(selectinload(rel).selectinload(models.SoundEventAnnotation.created_by))
+                    # Always load tags for sound events when loading the sound events
+                    options.append(selectinload(rel).selectinload(models.SoundEventAnnotation.tags))
+                elif name == "notes" and include_note_users:
+                    # Chain load users for notes when requested
+                    options.append(selectinload(rel).selectinload(models.Note.created_by))
                 else:
                     options.append(selectinload(rel))
             else:
@@ -229,6 +279,13 @@ class AnnotationTaskAPI(
             raise exceptions.NotFoundError(f"AnnotationTask with id {pk} not found")
 
         data = self._schema.model_validate(obj)
+
+        # Load sound event tags separately if requested
+        if include_sound_event_tags:
+            sound_event_tags_map = await self._load_sound_event_tags(session, [obj.id])
+            # Use model_copy with update to add sound_event_tags
+            data = data.model_copy(update={"sound_event_tags": sound_event_tags_map.get(obj.id, [])})
+
         self._update_cache(data)
         return data
 
@@ -770,6 +827,62 @@ class AnnotationTaskAPI(
             return_all=True,
         )
         return task_features
+
+    async def _load_sound_event_tags(
+        self,
+        session: AsyncSession,
+        task_ids: list[int],
+    ) -> dict[int, list[schemas.Tag]]:
+        """Load aggregated tags from sound event annotations for tasks.
+
+        Parameters
+        ----------
+        session
+            Database session.
+        task_ids
+            List of task IDs to load tags for.
+
+        Returns
+        -------
+        dict[int, list[schemas.Tag]]
+            Mapping from task ID to list of unique tags from its sound events.
+        """
+        # Handle empty task_ids
+        if not task_ids:
+            return {}
+
+        # Query to get sound event annotation tags for the given tasks
+        # Use distinct on both task_id and tag_id to get unique combinations
+        query = (
+            select(
+                models.SoundEventAnnotation.annotation_task_id,
+                models.Tag.id,
+                models.Tag.key,
+                models.Tag.value,
+            )
+            .select_from(models.SoundEventAnnotation)
+            .join(
+                models.SoundEventAnnotationTag,
+                models.SoundEventAnnotation.id == models.SoundEventAnnotationTag.sound_event_annotation_id,
+            )
+            .join(models.Tag, models.SoundEventAnnotationTag.tag_id == models.Tag.id)
+            .where(models.SoundEventAnnotation.annotation_task_id.in_(task_ids))
+            .distinct()
+        )
+
+        result = await session.execute(query)
+        rows = result.all()
+
+        # Group tags by task ID
+        tags_by_task: dict[int, list[schemas.Tag]] = {}
+        for task_id, tag_id, tag_key, tag_value in rows:
+            if task_id not in tags_by_task:
+                tags_by_task[task_id] = []
+            # Check if tag already added (for uniqueness by id)
+            if not any(t.id == tag_id for t in tags_by_task[task_id]):
+                tags_by_task[task_id].append(schemas.Tag(id=tag_id, key=tag_key, value=tag_value))
+
+        return tags_by_task
 
     def _key_fn(self, obj: dict):
         return (
