@@ -17,7 +17,6 @@ import useCanvas from "@/hooks/draw/useCanvas";
 import useSpectrogram from "@/hooks/spectrogram/useSpectrogram";
 import useSpectrogramTrackAudio from "@/hooks/spectrogram/useSpectrogramTrackAudio";
 import { getInitialViewingWindow } from "@/utils/windows";
-import type { TagFilter } from "@/api/tags";
 import type { AnnotateMode } from "@/hooks/annotation/useAnnotateTask";
 import type { MotionMode as SpectrogramMode } from "@/hooks/spectrogram/useSpectrogramMotions";
 import type {

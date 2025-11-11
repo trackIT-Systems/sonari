@@ -1,8 +1,8 @@
 import { useCallback, useState } from "react";
 import { mergeProps } from "react-aria";
 
-import useSpectrogramDrag from "@/hooks/spectrogram/useSpectrogramDrag";
 import useSpectrogramZoom from "@/hooks/spectrogram/useSpectrogramZoom";
+import useWindowMotions from "@/hooks/window/useWindowMotions";
 import useWindowScroll from "@/hooks/window/useWindowScroll";
 
 import type { Position, SpectrogramWindow } from "@/types";
@@ -53,12 +53,44 @@ export default function useSpectrogramMotions({
     enabled ? "drag" : "idle",
   );
 
-  const { dragProps } = useSpectrogramDrag({
+  const [initialWindow, setInitialWindow] = useState(window);
+
+  const handleDragMoveStart = useCallback(() => {
+    if (!enabled || motionMode !== "drag") return;
+    setInitialWindow(window);
+    onDragStart?.();
+  }, [onDragStart, window, enabled, motionMode]);
+
+  const handleDragMove = useCallback(
+    ({ shift }: { shift: Position }) => {
+      if (!enabled || motionMode !== "drag") return;
+      const newWindow = {
+        time: {
+          min: initialWindow.time.min - shift.time,
+          max: initialWindow.time.max - shift.time,
+        },
+        freq: {
+          min: initialWindow.freq.min + shift.freq,
+          max: initialWindow.freq.max + shift.freq,
+        },
+      };
+      onDrag?.(newWindow);
+    },
+    [onDrag, initialWindow, enabled, motionMode],
+  );
+
+  const handleDragMoveEnd = useCallback(() => {
+    if (!enabled || motionMode !== "drag") return;
+    setInitialWindow(window);
+    onDragEnd?.();
+  }, [onDragEnd, window, enabled, motionMode]);
+
+  const { props: dragProps } = useWindowMotions({
     window,
     dimensions,
-    onDragStart,
-    onDrag,
-    onDragEnd,
+    onMoveStart: handleDragMoveStart,
+    onMove: handleDragMove,
+    onMoveEnd: handleDragMoveEnd,
     onDoubleClick,
     enabled: enabled && motionMode === "drag",
   });
