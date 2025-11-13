@@ -73,7 +73,6 @@ export function useExportSelection(options: UseExportSelectionOptions = {}) {
   
   // Tag selection state
   const [selectedTags, setSelectedTags] = useState<Tag[]>([]);
-  
   // Status selection state
   const [selectedStatuses, setSelectedStatuses] = useState<(AnnotationStatus | string)[]>([]);
   const allStatusOptions = [...Object.values(AnnotationStatusSchema.enum), "no"] as const;
@@ -131,6 +130,10 @@ export function useExportSelection(options: UseExportSelectionOptions = {}) {
       if (includeStatuses) {
         setSelectedStatuses([]);
       }
+      return;
+    }
+    if (includeStatuses) {
+      setSelectedStatuses([]);
     }
   }, [selectedProjects, includeStatuses]);
 
@@ -212,11 +215,11 @@ export function useExportSelection(options: UseExportSelectionOptions = {}) {
   // Selection validation
   const getSelectionValidation = () => {
     const hasProjects = selectedProjects.length > 0;
-    const hasTags = !includeTags || selectedTags.length > 0;
-    const hasStatuses = !includeStatuses || selectedStatuses.length > 0;
+    const hasTags = selectedTags.length > 0;
+    const hasStatuses = selectedStatuses.length > 0;
     
     return {
-      isValid: hasProjects && hasTags && hasStatuses,
+      isValid: hasProjects,
       hasProjects,
       hasTags,
       hasStatuses

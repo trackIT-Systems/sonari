@@ -249,7 +249,6 @@ export const AnnotationProjectSchema = z.object({
   name: z.string(),
   description: z.string(),
   annotation_instructions: z.string().nullish(),
-  tags: z.array(TagSchema).nullish(),
   created_on: z.coerce.date(),
 });
 
