@@ -3,6 +3,7 @@ import { type WheelEvent, useMemo } from "react";
 import { scaleXToWindow, scaleYToWindow } from "@/utils/geometry";
 
 import type { SpectrogramWindow } from "@/types";
+import { CANVAS_DIMENSIONS } from "@/constants";
 
 /**
  * The `useWindowScroll` hook provides functionality to handle window scrolling
@@ -11,7 +12,6 @@ import type { SpectrogramWindow } from "@/types";
  */
 export default function useWindowScroll({
   window,
-  dimensions,
   onScroll,
   shift = false,
   ctrl = false,
@@ -21,8 +21,6 @@ export default function useWindowScroll({
 }: {
   /** The current spectrogram window being displayed in the canvas. */
   window: SpectrogramWindow;
-  /** The dimensions of the spectrogram canvas. */
-  dimensions: { width: number; height: number };
   /** The callback function to handle scroll events. */
   onScroll?: ({
     time,
@@ -56,13 +54,11 @@ export default function useWindowScroll({
           const deltaTime = scaleXToWindow(
             deltaX,
             window,
-            dimensions.width,
             true,
           );
           const deltaFreq = scaleYToWindow(
             deltaY,
             window,
-            dimensions.height,
             true,
           );
           return onScroll?.({ time: deltaTime, freq: -deltaFreq });
@@ -80,16 +76,15 @@ export default function useWindowScroll({
         // Handle vertical scroll (existing behavior)
         switch (true) {
           case shiftKey && relative:
-            return onScroll?.({ timeRatio: deltaY / dimensions.width });
+            return onScroll?.({ timeRatio: deltaY / CANVAS_DIMENSIONS.width });
 
           case !shiftKey && relative:
-            return onScroll?.({ freqRatio: deltaY / dimensions.height });
+            return onScroll?.({ freqRatio: deltaY / CANVAS_DIMENSIONS.height });
 
           case shiftKey && !relative:
             const deltaTime = scaleXToWindow(
               deltaY,
               window,
-              dimensions.width,
               true,
             );
             return onScroll?.({ time: deltaTime });
@@ -98,14 +93,13 @@ export default function useWindowScroll({
             const deltaFreq = scaleYToWindow(
               deltaY,
               window,
-              dimensions.height,
               true,
             );
             return onScroll?.({ freq: -deltaFreq });
         }
       },
     };
-  }, [enabled, onScroll, dimensions, ctrl, shift, alt, relative, window]);
+  }, [enabled, onScroll, ctrl, shift, alt, relative, window]);
 
   return {
     scrollProps,

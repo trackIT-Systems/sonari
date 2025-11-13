@@ -24,7 +24,6 @@ export default function useAnnotationDraw({
     (ctx: CanvasRenderingContext2D) => {
       for (const item of annotations) {
         const geometry = scaleGeometryToWindow(
-          { width: ctx.canvas.width, height: ctx.canvas.height },
           // @ts-ignore
           item.geometry,
           window,

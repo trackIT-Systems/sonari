@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { SpectrogramWindow, SpectrogramParameters, Recording } from "@/types";
+import { SpectrogramWindow, SpectrogramParameters } from "@/types";
 
 type SpectrogramSegmentKey = string;
 
@@ -56,13 +56,13 @@ class SpectrogramCache {
      */
     generateKey(
         recordingId: number,
-        window: SpectrogramWindow,
+        segment: SpectrogramWindow,
         parameters: SpectrogramParameters,
         lowRes: boolean,
     ): SpectrogramSegmentKey {
         return JSON.stringify({
             recordingId,
-            window,
+            segment,
             parameters,
             lowRes,
         });
@@ -73,11 +73,11 @@ class SpectrogramCache {
      */
     get(
         recordingId: number,
-        window: SpectrogramWindow,
+        segment: SpectrogramWindow,
         parameters: SpectrogramParameters,
         lowRes: boolean,
     ): HTMLImageElement | null {
-        const key = this.generateKey(recordingId, window, parameters, lowRes);
+        const key = this.generateKey(recordingId, segment, parameters, lowRes);
         const entry = this.cache.get(key);
 
         if (entry) {
@@ -89,15 +89,15 @@ class SpectrogramCache {
 
     async getOrLoad(
         recordingId: number,
-        window: SpectrogramWindow,
+        segment: SpectrogramWindow,
         parameters: SpectrogramParameters,
         lowRes: boolean,
         loadFn: () => Promise<{ image: HTMLImageElement, size: number }>
     ): Promise<HTMLImageElement> {
-        const key = this.generateKey(recordingId, window, parameters, lowRes);
+        const key = this.generateKey(recordingId, segment, parameters, lowRes);
 
         // Check cache first
-        const cached = this.get(recordingId, window, parameters, lowRes);
+        const cached = this.get(recordingId, segment, parameters, lowRes);
         if (cached) return cached;
 
         // Check if already loading
@@ -107,7 +107,7 @@ class SpectrogramCache {
             loadingPromise = (async () => {
                 try {
                     const { image, size } = await loadFn();
-                    await this.set(recordingId, window, parameters, lowRes, image, size);
+                    await this.set(recordingId, segment, parameters, lowRes, image, size);
                 } finally {
                     this.loadingPromises.delete(key);
                 }
@@ -117,7 +117,7 @@ class SpectrogramCache {
 
         // Wait for load to complete
         await loadingPromise;
-        return this.get(recordingId, window, parameters, lowRes)!;
+        return this.get(recordingId, segment, parameters, lowRes)!;
     }
 
     isLoading(key: string): boolean {
@@ -129,7 +129,7 @@ class SpectrogramCache {
      */
     async set(
         recordingId: number,
-        window: SpectrogramWindow,
+        segment: SpectrogramWindow,
         parameters: SpectrogramParameters,
         lowRes: boolean,
         image: HTMLImageElement,
@@ -144,7 +144,7 @@ class SpectrogramCache {
             }
             await image.decode();
 
-            const key = this.generateKey(recordingId, window, parameters, lowRes);
+            const key = this.generateKey(recordingId, segment, parameters, lowRes);
 
             // If this single image is larger than max size, don't cache it
             if (imageSize > this.maxSize) {
@@ -211,15 +211,15 @@ export const spectrogramCache = new SpectrogramCache(1024);
  * Hook to use the spectrogram cache
  */
 export function useSpectrogramCache({
-    recording,
-    window,
+    recording_id,
+    segment,
     parameters,
     lowRes,
     withSpectrogram,
     url,
 }: {
-    recording: Recording;
-    window?: SpectrogramWindow;
+    recording_id: number;
+    segment: SpectrogramWindow;
     parameters: SpectrogramParameters;
     lowRes: boolean;
     withSpectrogram: boolean;
@@ -230,7 +230,7 @@ export function useSpectrogramCache({
     const [currentImage, setCurrentImage] = useState<HTMLImageElement | null>(null);
 
     useEffect(() => {
-        if (!withSpectrogram || !window) {
+        if (!withSpectrogram) {
             setLoading(false);
             return;
         }
@@ -240,8 +240,8 @@ export function useSpectrogramCache({
         const loadImage = async () => {
             try {
                 const image = await spectrogramCache.getOrLoad(
-                    recording.id,
-                    window,
+                    recording_id,
+                    segment,
                     parameters,
                     lowRes,
                     async () => {
@@ -283,7 +283,7 @@ export function useSpectrogramCache({
         return () => {
             isMounted = false;
         };
-    }, [recording.id, window, parameters, lowRes, withSpectrogram, url]);
+    }, [recording_id, segment, parameters, lowRes, withSpectrogram, url]);
 
     return {
         image: currentImage,

@@ -1,11 +1,11 @@
 import {
   DEFAULT_CMAP,
   DEFAULT_FILTER_ORDER,
-  DEFAULT_HOP_SIZE,
+  DEFAULT_OVERLAP_PERCENT,
   DEFAULT_CONF_PRESET,
   DEFAULT_SCALE,
   DEFAULT_WINDOW,
-  DEFAULT_WINDOW_SIZE,
+  DEFAULT_WINDOW_SIZE_SAMPLES,
   MIN_DB,
 } from "@/constants";
 import { IntervalSchema, SpectrogramParametersSchema } from "@/schemas";
@@ -15,7 +15,6 @@ import { AxiosInstance } from "axios";
 
 const DEFAULT_ENDPOINTS = {
   get: "/api/v1/spectrograms/",
-  getLow: "/api/v1/spectrograms/low"
 };
 
 export const DEFAULT_SPECTROGRAM_PARAMETERS: SpectrogramParameters = {
@@ -23,8 +22,8 @@ export const DEFAULT_SPECTROGRAM_PARAMETERS: SpectrogramParameters = {
   resample: false,
   scale: DEFAULT_SCALE,
   pcen: false,
-  window_size: DEFAULT_WINDOW_SIZE,
-  hop_size: DEFAULT_HOP_SIZE,
+  window_size_samples: DEFAULT_WINDOW_SIZE_SAMPLES,
+  overlap_percent: DEFAULT_OVERLAP_PERCENT,
   cmap: DEFAULT_CMAP,
   window: DEFAULT_WINDOW,
   filter_order: DEFAULT_FILTER_ORDER,
@@ -42,12 +41,12 @@ export function registerSpectrogramAPI(
   endpoints: typeof DEFAULT_ENDPOINTS = DEFAULT_ENDPOINTS,
 ) {
   function getUrl({
-    recording,
+    recording_id,
     segment,
     parameters = DEFAULT_SPECTROGRAM_PARAMETERS,
     lowRes = false,
   }: {
-    recording: Recording;
+    recording_id: number;
     segment: Interval;
     parameters?: SpectrogramParameters;
     lowRes?: boolean;
@@ -58,7 +57,7 @@ export function registerSpectrogramAPI(
 
     // Construct query
     const query = {
-      recording_id: recording.id,
+      recording_id,
       start_time: parsed_segment.min,
       end_time: parsed_segment.max,
       low_res: lowRes,

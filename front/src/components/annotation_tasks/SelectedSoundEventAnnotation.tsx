@@ -12,6 +12,7 @@ import type { AnnotationTask, SoundEventAnnotation, Tag } from "@/types";
 export default function SelectedSoundEventAnnotation({
   soundEventAnnotation: data,
   annotationTask,
+  samplerate,
   tagFilter,
   withSpectrogram,
   parameters,
@@ -21,6 +22,7 @@ export default function SelectedSoundEventAnnotation({
   soundEventAnnotation: SoundEventAnnotation;
   /** The annotation task to which the sound event annotation belongs */
   annotationTask: AnnotationTask;
+  samplerate: number,
   /** The tag filter to apply in case more tags want to be added */
   tagFilter?: TagFilter;
   withSpectrogram: boolean;
@@ -54,7 +56,8 @@ export default function SelectedSoundEventAnnotation({
       <Card className="grow">
         <SoundEventAnnotationSpectrogramView
           soundEventAnnotation={currentAnnotation}
-          recording={annotationTask.recording!}
+          task={annotationTask}
+          samplerate={samplerate}
           parameters={parameters}
           withSpectrogram={withSpectrogram}
         />

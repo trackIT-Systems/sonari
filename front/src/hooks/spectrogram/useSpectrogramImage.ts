@@ -1,10 +1,10 @@
 import { useEffect } from "react";
-import useRecordingSegments from "@/hooks/spectrogram/useRecordingSegments";
-import useSpectrogramWindow from "./useSpectrogramWindow";
+import useSpectrogramSegmentation from "@/hooks/spectrogram/useSpectrogramSegmentation";
+import useSpectrogramSegment from "./useSpectrogramSegment";
 import { spectrogramCache } from "@/utils/spectrogram_cache";
 
 import type {
-  Recording,
+  AnnotationTask,
   SpectrogramParameters,
   SpectrogramWindow,
 } from "@/types";
@@ -12,31 +12,35 @@ import type {
 import api from "@/app/api";
 
 export default function useSpectrogramImage({
-  recording,
+  task,
+  samplerate,
   window,
   parameters,
   withSpectrogram,
-  strict,
   preload = true,
   onAllSegmentsLoaded,
 }: {
-  recording: Recording;
-  window?: SpectrogramWindow;
+  task: AnnotationTask,
+  samplerate: number,
+  window: SpectrogramWindow;
   parameters: SpectrogramParameters;
   withSpectrogram: boolean;
-  strict?: boolean;
   preload: boolean;
   onAllSegmentsLoaded?: () => void;
 }) {
-  const { selected, allSegments } = useRecordingSegments({
-    recording,
+  const { selected, allSegments } = useSpectrogramSegmentation({
+    startTime: task.start_time,
+    endTime: task.end_time,
+    samplerate,
     window,
-    strict,
   });
 
-  const image = useSpectrogramWindow({
-    recording,
-    window: selected,
+  console.log('Segment selection window:', window);
+
+  const image = useSpectrogramSegment({
+    recording_id: task.recording_id,
+    samplerate,
+    segment: selected,
     parameters,
     withSpectrogram,
   });
@@ -51,13 +55,13 @@ export default function useSpectrogramImage({
 
         await Promise.all(segmentsToLoad.map(segment =>
           spectrogramCache.getOrLoad(
-            recording.id,
+            task.recording_id,
             segment,
             parameters,
             false,
             async () => {
               const url = api.spectrograms.getUrl({
-                recording,
+                recording_id: task.recording_id,
                 segment: { min: segment.time.min, max: segment.time.max },
                 parameters,
               });
@@ -96,7 +100,7 @@ export default function useSpectrogramImage({
     }
 
     loadSegments();
-  }, [recording, parameters, allSegments, selected, withSpectrogram, onAllSegmentsLoaded, preload]);
+  }, [task.recording_id, parameters, allSegments, selected, withSpectrogram, onAllSegmentsLoaded, preload]);
 
   return image;
 }

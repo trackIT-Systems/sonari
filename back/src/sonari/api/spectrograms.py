@@ -65,12 +65,24 @@ def compute_spectrogram(
     channel_to_use = spectrogram_parameters.channel if spectrogram_parameters.channel < available_channels else 0
     wav = wav[dict(channel=[channel_to_use])]
 
-    hop_size = spectrogram_parameters.hop_size * spectrogram_parameters.window_size
-    window_size = spectrogram_parameters.window_size
+    # Get samplerate from wav
+    samplerate = recording.samplerate
+
+    # Convert samples to seconds
+    window_size_samples = spectrogram_parameters.window_size_samples
+    overlap_percent = spectrogram_parameters.overlap_percent
 
     if low_res:
-        window_size = spectrogram_parameters.window_size / 10
-        hop_size = hop_size * 10
+        window_size_samples = window_size_samples * 10
+        overlap_percent = max(50.0, overlap_percent - 25.0)
+
+    # Calculate hop size from overlap
+    overlap_samples = int(window_size_samples * overlap_percent / 100)
+    hop_size_samples = window_size_samples - overlap_samples
+
+    # Convert to seconds for soundevent
+    window_size = window_size_samples / samplerate
+    hop_size = hop_size_samples / samplerate
 
     spectrogram = audio.compute_spectrogram(
         wav,

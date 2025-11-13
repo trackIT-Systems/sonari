@@ -16,12 +16,10 @@ import type {
 
 export default function useHoveredAnnotations({
   window,
-  dimensions,
   annotations,
   enabled: enabled = true,
 }: {
   window: SpectrogramWindow;
-  dimensions: Dimensions;
   annotations: SoundEventAnnotation[];
   enabled?: boolean;
 }) {
@@ -71,16 +69,15 @@ export default function useHoveredAnnotations({
   const scaledGeometries = useMemo(() => {
     if (!enabled) return [];
     return annotationsInWindow.map(({ geometry }) => {
-      return scaleGeometryToWindow(dimensions, geometry, window);
+      return scaleGeometryToWindow(geometry, window);
     });
-  }, [enabled, annotationsInWindow, window, dimensions]);
+  }, [enabled, annotationsInWindow, window]);
 
   const handleOnHover = useCallback(
     (position: Position) => {
       if (!enabled) return;
       const { time, freq } = position;
       const [x, y] = scalePositionToWindow(
-        dimensions,
         [time, freq],
         window,
       );
@@ -97,7 +94,7 @@ export default function useHoveredAnnotations({
       const annotation = annotationsInWindow[index];
       setHoveredAnnotation(annotation ?? null);
     },
-    [scaledGeometries, annotationsInWindow, window, dimensions, enabled],
+    [scaledGeometries, annotationsInWindow, window, enabled],
   );
 
   useEffect(() => {
@@ -109,7 +106,6 @@ export default function useHoveredAnnotations({
   const props = useWindowHover({
     enabled,
     window,
-    dimensions,
     onHover: handleOnHover,
   });
 

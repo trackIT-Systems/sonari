@@ -15,13 +15,11 @@ import type {
 
 export default function useCreateTimeStamp({
   window,
-  dimensions,
   enabled = true,
   style = DEFAULT_ONSET_STYLE,
   onCreate,
 }: {
   window: SpectrogramWindow;
-  dimensions: Dimensions;
   enabled?: boolean;
   style?: Style;
   onCreate?: (timeStamp: TimeStamp) => void;
@@ -51,7 +49,6 @@ export default function useCreateTimeStamp({
   const { props, isDragging } = useWindowMotions({
     enabled,
     window,
-    dimensions,
     onMoveStart: handleMoveStart,
     onMove: handleMove,
     onMoveEnd: handleMoveEnd,
@@ -64,10 +61,10 @@ export default function useCreateTimeStamp({
   const draw = useCallback(
     (ctx: CanvasRenderingContext2D) => {
       if (!enabled || timeStamp == null) return;
-      const scaled = scaleGeometryToWindow(dimensions, timeStamp, window);
+      const scaled = scaleGeometryToWindow(timeStamp, window);
       drawGeometry(ctx, scaled, style);
     },
-    [enabled, timeStamp, style, dimensions, window],
+    [enabled, timeStamp, style, window],
   );
 
   return {

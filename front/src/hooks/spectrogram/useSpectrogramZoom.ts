@@ -76,13 +76,11 @@ function enforceAspectRatio(
 
 export default function useSpectrogramZoom({
   window,
-  dimensions,
   onZoom,
   fixedAspectRatio,
   enabled = true,
 }: {
   window: SpectrogramWindow;
-  dimensions: { width: number; height: number };
   onZoom?: (window: SpectrogramWindow) => void;
   fixedAspectRatio: boolean;
   enabled?: boolean;
@@ -138,7 +136,6 @@ export default function useSpectrogramZoom({
   const { props, isDragging } = useWindowMotions({
     enabled,
     window,
-    dimensions,
     onMoveStart: handleMoveStart,
     onMove: handleMove,
     onMoveEnd: handleMoveEnd,
@@ -151,9 +148,7 @@ export default function useSpectrogramZoom({
       if (currentZoomWindow == null) return;
       ctx.canvas.style.cursor = "nwse-resize";
 
-      const dimensions = ctx.canvas.getBoundingClientRect();
       const bbox = scaleBBoxToWindow(
-        dimensions,
         [
           currentZoomWindow.time.min,
           currentZoomWindow.freq.min,

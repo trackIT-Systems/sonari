@@ -7,13 +7,10 @@ import type { DOMAttributes, MouseEvent } from "react";
 
 export default function useWindowHover<T extends HTMLElement>({
   window,
-  dimensions,
   enabled = true,
   onHover,
 }: {
   window: SpectrogramWindow;
-  /** The dimensions of the canvas. */
-  dimensions: Dimensions;
   /** Whether the motion is enabled. */
   enabled?: boolean;
   /** Callback when a click occurs */
@@ -27,11 +24,11 @@ export default function useWindowHover<T extends HTMLElement>({
           x: e.nativeEvent.offsetX,
           y: e.nativeEvent.offsetY,
         };
-        const position = scalePixelsToWindow(point, window, dimensions);
+        const position = scalePixelsToWindow(point, window);
         onHover?.(position);
       },
     };
-  }, [window, dimensions, enabled, onHover]);
+  }, [window, enabled, onHover]);
   if (!enabled) return {};
   return hoverProps;
 }

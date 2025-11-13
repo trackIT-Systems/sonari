@@ -6,12 +6,11 @@ import useElementHover from "@/hooks/draw/useElementHover";
 import useDrag from "@/hooks/utils/useDrag";
 
 import type { Style } from "@/draw/styles";
-import type { Dimensions, Pixel } from "@/types";
+import type { Pixel } from "@/types";
 import type { DOMAttributes } from "react";
 import type { EventKeys } from "@/hooks/utils/useDrag";
 
 interface UseEditObjectProps<J> {
-  dimensions: Dimensions;
   object: J | null;
   enabled: boolean;
   style?: Style;
@@ -33,12 +32,10 @@ const EDIT_STYLE = {
 export default function createEditHook<J, T>(
   createEditableElementsFn: (
     object: J,
-    dimensions: Dimensions,
   ) => EditableElement<J>[],
   shiftObject: (object: J, start: Pixel, end: Pixel) => J,
 ) {
   function useEdit({
-    dimensions,
     object,
     enabled,
     style: style = EDIT_STYLE,
@@ -62,8 +59,8 @@ export default function createEditHook<J, T>(
 
     const editableElements: EditableElement<J>[] = useMemo(() => {
       if (object == null) return [];
-      return createEditableElementsFn(object, dimensions);
-    }, [object, dimensions]);
+      return createEditableElementsFn(object);
+    }, [object]);
 
     const { hovered, hoverProps } = useElementHover({
       elements: editableElements,
@@ -147,10 +144,7 @@ export default function createEditHook<J, T>(
           }
         }
 
-        const els = createEditableElementsFn(tmpObject ?? object, {
-          width: ctx.canvas.width,
-          height: ctx.canvas.height,
-        });
+        const els = createEditableElementsFn(tmpObject ?? object);
 
         els.forEach((element) =>
           drawEditableElement(ctx, element, style, element.id === hovered?.id),

@@ -1,24 +1,7 @@
 /* Functions for handling spectrogram parameters */
-import {
-  MAX_FFT_SIZE,
-  MAX_HOP_FRACTION,
-  MIN_FFT_SIZE,
-  MIN_HOP_FRACTION,
-} from "@/constants";
-
 import type { SpectrogramParameters } from "@/types";
 
 export type ParameterConstraints = {
-  /* Acceptable window sizes for the spectrogram */
-  windowSize: {
-    min: number;
-    max: number;
-  };
-  /* Acceptable hop sizes for the spectrogram */
-  hopSize: {
-    min: number;
-    max: number;
-  };
   /* Frequency range of the displayed audio */
   frequencyRange: {
     min: number;
@@ -44,17 +27,7 @@ export type ParameterConstraints = {
  * based on the samplerate and channel count of the audio
  */
 export function computeConstraints(samplerate: number, maxChannels: number = 1): ParameterConstraints {
-  const minWindowSize = MIN_FFT_SIZE / (samplerate/2);
-  const maxWindowSize = MAX_FFT_SIZE / (samplerate/2);
   return {
-    windowSize: {
-      min: minWindowSize,
-      max: maxWindowSize,
-    },
-    hopSize: {
-      min: MIN_HOP_FRACTION,
-      max: MAX_HOP_FRACTION,
-    },
     frequencyRange: {
       min: 0,
       max: samplerate / 2, // Nyquist frequency
@@ -94,8 +67,6 @@ export function validateParameters(
       ? undefined
       : clamp(parameters.high_freq, constraints.frequencyRange);
 
-  const windowSize = clamp(parameters.window_size, constraints.windowSize);
-  const hopSize = clamp(parameters.hop_size, constraints.hopSize);
   const gamma = clamp(parameters.gamma, constraints.gamma);
   const channel = clamp(parameters.channel, constraints.channels);
 
@@ -104,8 +75,6 @@ export function validateParameters(
     samplerate,
     low_freq: lowFreq,
     high_freq: highFreq,
-    window_size: windowSize,
-    hop_size: hopSize,
     gamma: gamma,
     channel: channel,
   };

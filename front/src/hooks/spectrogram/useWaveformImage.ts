@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo, useCallback } from "react";
 import type { Recording, SpectrogramParameters, WaveformWindow } from "@/types";
 import api from "@/app/api";
 import { z } from "zod";
+import { CANVAS_DIMENSIONS } from "@/constants";
 
 type UseWaveformImageParams = {
   recording: Recording;
@@ -38,8 +39,8 @@ export default function useWaveformImage({ recording, window, parameters }: UseW
     if (!image) return;
     const { min, max } = window.time;
     const duration = recording.duration;
-    const canvasWidth = ctx.canvas.width;
-    const canvasHeight = ctx.canvas.height;
+    const canvasWidth = CANVAS_DIMENSIONS.width;
+    const canvasHeight = CANVAS_DIMENSIONS.height;
   
     const cropX = (min / duration) * image.width;
     const cropWidth = ((max - min) / duration) * image.width;

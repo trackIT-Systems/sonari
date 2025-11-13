@@ -15,13 +15,11 @@ import type {
 
 export default function useCreateInterval({
   window,
-  dimensions,
   enabled = true,
   style = DEFAULT_INTERVAL_STYLE,
   onCreate,
 }: {
   window: SpectrogramWindow;
-  dimensions: Dimensions;
   enabled?: boolean;
   style?: Style;
   onCreate?: (interval: TimeInterval) => void;
@@ -54,7 +52,6 @@ export default function useCreateInterval({
   const { props, isDragging } = useWindowMotions({
     enabled,
     window,
-    dimensions,
     onMoveStart: handleMoveStart,
     onMove: handleMove,
     onMoveEnd: handleMoveEnd,
@@ -67,10 +64,10 @@ export default function useCreateInterval({
   const draw = useCallback(
     (ctx: CanvasRenderingContext2D) => {
       if (!enabled || !isDragging || interval == null) return;
-      const scaled = scaleGeometryToWindow(dimensions, interval, window);
+      const scaled = scaleGeometryToWindow(interval, window);
       drawGeometry(ctx, scaled, style);
     },
-    [enabled, interval, style, isDragging, dimensions, window],
+    [enabled, interval, style, isDragging, window],
   );
 
   return {

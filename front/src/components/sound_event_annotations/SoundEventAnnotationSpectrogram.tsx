@@ -1,11 +1,15 @@
 import { useRef, useMemo } from "react";
 import useCanvas from "@/hooks/draw/useCanvas";
 import useSpectrogram from "@/hooks/spectrogram/useSpectrogram";
-import type { Recording, SoundEventAnnotation, SpectrogramParameters } from "@/types";
+import type { AnnotationTask, SoundEventAnnotation, SpectrogramParameters } from "@/types";
 import { H4 } from "../Headings";
 import { ExplorationIcon } from "../icons";
+import {
+  calculateTimeFrames,
+  frequencyRangeToBinRange,
+} from "@/utils/spectrogram_calculations";
 
-function getWindowFromGeometry(annotation: SoundEventAnnotation, recording: Recording) {
+function getWindowFromGeometry(annotation: SoundEventAnnotation, duration: number, samplerate: number) {
     const { geometry, geometry_type } = annotation;
     switch (geometry_type) {
         case "TimeInterval":
@@ -14,11 +18,11 @@ function getWindowFromGeometry(annotation: SoundEventAnnotation, recording: Reco
             return {
                 time: {
                     min: Math.max(0, ti_coordinates[0] - duration_margin),
-                    max: Math.min(ti_coordinates[1] + duration_margin, recording.duration),
+                    max: Math.min(ti_coordinates[1] + duration_margin, duration),
                 },
                 freq: {
                     min: 0,
-                    max: recording.samplerate / 2,
+                    max: samplerate / 2,
                 },
             };
 
@@ -29,22 +33,22 @@ function getWindowFromGeometry(annotation: SoundEventAnnotation, recording: Reco
             return {
                 time: {
                     min: Math.max(0, bb_coordinates[0] - duration_margin),
-                    max: Math.min(bb_coordinates[2] + duration_margin, recording.duration),
+                    max: Math.min(bb_coordinates[2] + duration_margin, duration),
                 },
                 freq: {
                     min: Math.max(0, bb_coordinates[1] - bandwidth_margin),
-                    max: Math.min(bb_coordinates[3] + bandwidth_margin, recording.samplerate / 2),
+                    max: Math.min(bb_coordinates[3] + bandwidth_margin, samplerate / 2),
                 },
             };
         default:
             return {
                 time: {
                     min: 0,
-                    max: recording.duration,
+                    max: duration,
                 },
                 freq: {
                     min: 0,
-                    max: recording.samplerate / 2,
+                    max: samplerate / 2,
                 },
             }
     }
@@ -126,20 +130,23 @@ function calculateSpectrogramDimensions(
     maxWidth = 455,
     maxHeight = 225
 ) {
-    // Convert window size from seconds to samples
-    const windowSizeSamples = Math.floor(parameters.window_size * samplerate);
-
-    // Calculate hop length in samples (hop_size is a fraction of window size)
-    const hopLengthSamples = Math.floor(windowSizeSamples * parameters.hop_size);
-
-    // Calculate time axis pixels
     const duration = window.time.max - window.time.min;
-    const timePixels = Math.ceil((duration * samplerate) / hopLengthSamples);
 
-    // Calculate frequency axis pixels
-    const freqBins = Math.floor(windowSizeSamples / 2) + 1;
-    const minBin = Math.floor((window.freq.min * windowSizeSamples) / samplerate);
-    const maxBin = Math.ceil((window.freq.max * windowSizeSamples) / samplerate);
+    // Calculate time axis pixels using utility function
+    const timePixels = calculateTimeFrames(
+        duration,
+        samplerate,
+        parameters.window_size_samples,
+        parameters.overlap_percent
+    );
+
+    // Calculate frequency axis pixels using utility function
+    const { minBin, maxBin } = frequencyRangeToBinRange(
+        window.freq.min,
+        window.freq.max,
+        parameters.window_size_samples,
+        samplerate
+    );
     const freqPixels = maxBin - minBin;
 
     // Calculate scaling to fit within max dimensions while maintaining aspect ratio
@@ -155,12 +162,14 @@ function calculateSpectrogramDimensions(
 
 export default function SoundEventAnnotationSpectrogramView({
     soundEventAnnotation,
-    recording,
+    task,
+    samplerate,
     parameters,
     withSpectrogram,
 }: {
     soundEventAnnotation: SoundEventAnnotation;
-    recording: Recording;
+    task: AnnotationTask,
+    samplerate: number,
     parameters: SpectrogramParameters;
     withSpectrogram: boolean;
 }) {
@@ -168,8 +177,8 @@ export default function SoundEventAnnotationSpectrogramView({
     const canvasRef = useRef<HTMLCanvasElement>(null);
 
     const window = useMemo(
-        () => getWindowFromGeometry(soundEventAnnotation, recording),
-        [soundEventAnnotation, recording]
+        () => getWindowFromGeometry(soundEventAnnotation, task.end_time - task.start_time, samplerate),
+        [soundEventAnnotation, samplerate]
     );
 
     const soundEventCoords = useMemo(
@@ -178,13 +187,13 @@ export default function SoundEventAnnotationSpectrogramView({
     );
 
     const dimensions = useMemo(
-        () => calculateSpectrogramDimensions(window, parameters, recording.samplerate),
-        [window, parameters, recording.samplerate]
+        () => calculateSpectrogramDimensions(window, parameters, samplerate),
+        [window, parameters, samplerate]
     );
 
     const spectrogram = useSpectrogram({
-        recording,
-        dimensions,
+        task,
+        samplerate,
         bounds: window,
         initial: window,
         parameters,

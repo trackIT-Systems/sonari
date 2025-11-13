@@ -66,8 +66,6 @@ export default function useAnnotateTask(props: {
   annotationTaskProps: ReturnType<typeof useAnnotationTask>;
   /** Current spectrogram window */
   window: SpectrogramWindow;
-  /** Dimensions of the spectrogram canvas */
-  dimensions: Dimensions;
   /** Initial annotation mode */
   mode?: AnnotateMode;
   /** Tags to add to new sound event annotations by default */
@@ -95,7 +93,6 @@ export default function useAnnotateTask(props: {
   const {
     annotationTaskProps,
     window,
-    dimensions,
     defaultTags,
     selectedTag,
     mode: initialMode = "select",
@@ -162,7 +159,6 @@ export default function useAnnotateTask(props: {
   // Measurement hook for spectrogram - measurements here will be reflected in waveform
   const { props: spectrogramMeasureProps, draw: drawSpectrogramMeasure } = useAnnotationCreate({
     window,
-    dimensions,
     geometryType: "LineString",
     enabled: active && mode === "measure" && !disabled && (activeMeasurementCanvas === null || activeMeasurementCanvas === "spectrogram"),
     onCreate: (geometry: Geometry) => {
@@ -200,7 +196,6 @@ export default function useAnnotateTask(props: {
   // Measurement hook for waveform - measurements here stay only in waveform
   const { props: waveformMeasureProps, draw: drawWaveformMeasure } = useCreateWaveformMeasurement({
     window,
-    dimensions,
     enabled: active && mode === "measure" && !disabled && (activeMeasurementCanvas === null || activeMeasurementCanvas === "waveform"),
     onCreate: (geometry: Geometry) => {
       // Only clear spectrogram measurement if this was actually a waveform interaction
@@ -221,7 +216,6 @@ export default function useAnnotateTask(props: {
 
   const { props: createProps, draw: drawCreate } = useAnnotationCreate({
     window,
-    dimensions,
     geometryType,
     enabled: active && mode === "draw" && !disabled,
     onCreate: handleCreate,
@@ -229,7 +223,6 @@ export default function useAnnotateTask(props: {
 
   const { props: selectProps, draw: drawSelect } = useAnnotationSelect({
     window,
-    dimensions,
     annotations: soundEvents,
     onSelect: setSelectedSoundEventAnnotation,
     onDeselect,
@@ -261,7 +254,6 @@ export default function useAnnotateTask(props: {
 
   const { props: deleteProps, draw: drawDelete } = useAnnotationDelete({
     window,
-    dimensions,
     annotations: soundEvents,
     onDelete: handleDelete,
     onDeselect,
@@ -377,7 +369,6 @@ export default function useAnnotateTask(props: {
 
   const { props: editProps, draw: drawEdit } = useAnnotationEdit({
     window,
-    dimensions,
     annotation: selectedSoundEventAnnotation,
     onDeselect,
     onEdit: handleEdit,
@@ -410,7 +401,6 @@ export default function useAnnotateTask(props: {
   const tags = useSpectrogramTags({
     annotations: soundEvents,
     window,
-    dimensions,
     onClickTag: handleOnClickTag,
     onAddTag: handleOnAddTag,
     active: mode !== "draw" && mode !== "delete",

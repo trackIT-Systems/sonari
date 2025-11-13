@@ -4,6 +4,7 @@ import { BLUE, GREEN } from "@/draw/styles";
 import { scaleTimeToWindow } from "@/utils/geometry";
 
 import type { SoundEventAnnotation, SpectrogramWindow } from "@/types";
+import { CANVAS_DIMENSIONS } from "@/constants";
 
 // Same styles as spectrogram but adapted for waveform
 const IDLE_STYLE = {
@@ -83,14 +84,12 @@ export default function useAnnotationDrawWaveform({
 }) {
   const draw = useCallback(
     (ctx: CanvasRenderingContext2D) => {
-      const { width, height } = ctx.canvas;
-      
       for (const soundEventAnnotation of soundEventAnnotations) {
         const [startTime, endTime] = getAnnotationTimeBounds(soundEventAnnotation);
         
         // Convert time bounds to x coordinates
-        const startX = scaleTimeToWindow(startTime, window, width);
-        const endX = scaleTimeToWindow(endTime, window, width);
+        const startX = scaleTimeToWindow(startTime, window);
+        const endX = scaleTimeToWindow(endTime, window);
         
         // Determine style based on annotation state and mode
         let style = IDLE_STYLE;
@@ -107,18 +106,18 @@ export default function useAnnotationDrawWaveform({
           // Point in time - draw a vertical line
           ctx.beginPath();
           ctx.moveTo(startX, 0);
-          ctx.lineTo(startX, height);
+          ctx.lineTo(startX, CANVAS_DIMENSIONS.height);
           ctx.stroke();
         } else {
           // Time interval - draw a rectangle spanning the full height
           const rectWidth = Math.max(endX - startX, 1); // Minimum 1px width
           
           // Fill the rectangle
-          ctx.fillRect(startX, 0, rectWidth, height);
+          ctx.fillRect(startX, 0, rectWidth, CANVAS_DIMENSIONS.height);
           
           // Draw border
           ctx.globalAlpha = 1; // Full opacity for border
-          ctx.strokeRect(startX, 0, rectWidth, height);
+          ctx.strokeRect(startX, 0, rectWidth, CANVAS_DIMENSIONS.height);
         }
       }
       

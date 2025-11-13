@@ -14,7 +14,6 @@ import type {
 export default function useSpectrogramTags({
   annotations,
   window,
-  dimensions,
   onClickTag,
   onAddTag,
   active = true,
@@ -22,7 +21,6 @@ export default function useSpectrogramTags({
 }: {
   annotations: SoundEventAnnotation[];
   window: SpectrogramWindow;
-  dimensions: Dimensions;
   onClickTag?: (annotation: SoundEventAnnotation, tag: Tag) => void;
   onAddTag?: (annotation: SoundEventAnnotation, tag: Tag) => void;
   active?: boolean;
@@ -37,7 +35,7 @@ export default function useSpectrogramTags({
 
   const groups: TagGroup[] = useMemo(() => {
     return annotationsInWindow.map((annotation) => {
-      const position = getLabelPosition(annotation, window, dimensions);
+      const position = getLabelPosition(annotation, window);
 
       const group: TagElement[] =
         annotation.tags?.map((tag) => {
@@ -59,7 +57,6 @@ export default function useSpectrogramTags({
   }, [
     annotationsInWindow,
     window,
-    dimensions,
     active,
     onClickTag,
     onAddTag,

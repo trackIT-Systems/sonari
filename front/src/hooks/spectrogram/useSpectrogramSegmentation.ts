@@ -7,7 +7,7 @@ const DURATIONS = [0.125, 0.25, 0.5, 1, 2, 4, 8, 16, 32, 64, 128, 256];
 export const OVERLAP = 0.4;
 
 /**
- * The `useRecordingSegments` hook provides functionality to compute and manage
+ * The `useSpectrogramSegmentation` hook provides functionality to compute and manage
  * segments of a spectrogram window for a given recording.
  *
  * @description
@@ -24,35 +24,36 @@ export const OVERLAP = 0.4;
  * preload these segments for smoother transitions, eliminating loading times
  * during navigation of the spectrogram.
  */
-export default function useRecordingSegments({
-  recording,
+export default function useSpectrogramSegmentation({
+  startTime,
+  endTime,
+  samplerate,
   window,
-  strict,
 }: {
-  recording: Recording;
-  window?: SpectrogramWindow;
-  strict?: boolean;
+  startTime: number,
+  endTime: number,
+  samplerate: number,
+  window: SpectrogramWindow;
 }) {
   // The bounds of the spectrogram
   const bounds = useMemo(
     () => ({
-      time: { min: 0, max: recording.duration },
-      freq: { min: 0, max: recording.samplerate / 2 },
+      time: { min: startTime, max: endTime },  // Use absolute times
+      freq: { min: 0, max: samplerate / 2 },
     }),
-    [recording],
+    [startTime, endTime, samplerate],  // Update deps
   );
 
   // Compute the segments that cover the window
   const segments = useMemo(() => {
-    if (!window) return [bounds];
-    const duration = getCoveringSegmentDuration(window, strict);
+    const duration = getCoveringSegmentDuration(window);
     const segments = getSegments(bounds, duration, OVERLAP);
     return segments;
-  }, [bounds, window, strict]);
+  }, [bounds, window]);
 
   // Select the segment that best covers the window
   const indexSelected = useMemo(
-    () => window ? getCoveringSegment(segments, window) : 0,
+    () => getCoveringSegment(segments, window),
     [segments, window],
   );
 
@@ -81,11 +82,8 @@ export default function useRecordingSegments({
 }
 
 /** Compute the minimum segment duration that covers the given window. */
-export function getCoveringSegmentDuration(window: SpectrogramWindow, strict?: boolean) {
+export function getCoveringSegmentDuration(window: SpectrogramWindow) {
   const duration = window.time.max - window.time.min;
-  if (strict) {
-    return duration
-  }
   return (
     DURATIONS.find((d) => d >= 3 * duration) ?? DURATIONS[DURATIONS.length - 1]
   );
@@ -119,7 +117,7 @@ export function getSegments(
       return {
         time: {
           min: start,
-          max: start + duration,
+          max: Math.min(start + duration, bounds.time.max),
         },
         freq: bounds.freq,
       };

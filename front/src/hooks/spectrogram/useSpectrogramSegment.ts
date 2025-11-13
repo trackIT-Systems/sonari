@@ -6,51 +6,52 @@ import { useSpectrogramCache } from "@/utils/spectrogram_cache";
 
 import type {
   Interval,
-  Recording,
   SpectrogramParameters,
   SpectrogramWindow,
 } from "@/types";
+import { CANVAS_DIMENSIONS } from "@/constants";
 
 type GetUrlFn = ({
-  recording,
+  recording_id,
   segment,
   parameters,
   lowRes,
 }: {
-  recording: Recording;
+  recording_id: number;
   segment: Interval;
   parameters: SpectrogramParameters;
   lowRes?: boolean;
 }) => string;
-export default function useSpectrogramWindow({
-  recording,
-  window,
+
+export default function useSpectrogramSegment({
+  recording_id,
+  samplerate,
+  segment,
   parameters = DEFAULT_SPECTROGRAM_PARAMETERS,
   getSpectrogramImageUrl = api.spectrograms.getUrl,
   withSpectrogram,
   lowRes = false,
 }: {
-  recording: Recording;
-  window?: SpectrogramWindow;
+  recording_id: number;
+  samplerate: number;
+  segment: SpectrogramWindow;
   parameters?: SpectrogramParameters;
   getSpectrogramImageUrl?: GetUrlFn;
   withSpectrogram: boolean;
   lowRes?: boolean;
 }) {
   const url = useMemo(() => {
-    if (!window) return '';
-    
     return getSpectrogramImageUrl({
-      recording,
-      segment: window.time,
+      recording_id,
+      segment: segment.time,
       parameters,
       lowRes,
     });
-  }, [recording, window, parameters, lowRes, getSpectrogramImageUrl]);
+  }, [recording_id, segment, parameters, lowRes, getSpectrogramImageUrl]);
 
   const imageStatus = useSpectrogramCache({
-    recording,
-    window,
+    recording_id,
+    segment,
     parameters,
     withSpectrogram,
     lowRes,
@@ -82,34 +83,34 @@ export default function useSpectrogramWindow({
   }, [imageStatus.image, imageStatus.isError]);
 
   const draw = useCallback(
-    (ctx: CanvasRenderingContext2D, currentWindow: SpectrogramWindow) => {
+    (ctx: CanvasRenderingContext2D, window: SpectrogramWindow) => {
       if (!withSpectrogram) {
         ctx.fillStyle = "rgb(156 163 175)";
-        ctx.roundRect(0, 0, ctx.canvas.width, ctx.canvas.height, 10);
+        ctx.roundRect(0, 0, CANVAS_DIMENSIONS.width, CANVAS_DIMENSIONS.height, 10);
         ctx.fill();
         return;
       }
 
-      if (imageStatus.image && window) {
+      if (imageStatus.image && segment) {
         drawImage({
           ctx,
           image: imageStatus.image,
-          window: currentWindow,
-          bounds: window,
+          window,
+          segment,
         });
       } else {
         // Loading indicator
         ctx.fillStyle = "rgb(200 200 200)";
-        ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+        ctx.fillRect(0, 0, CANVAS_DIMENSIONS.width, CANVAS_DIMENSIONS.height);
       }
     },
-    [imageStatus.image, window, withSpectrogram],
+    [imageStatus.image, segment, withSpectrogram],
   );
 
 
   return {
     image: imageStatus.image,
-    window,
+    segment,
     isLoading: imageStatus.isLoading || !isImageReady,
     isError: imageStatus.isError,
     draw,

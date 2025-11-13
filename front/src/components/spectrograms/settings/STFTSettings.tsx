@@ -2,21 +2,44 @@ import { type Control, Controller } from "react-hook-form";
 
 import { InputGroup } from "@/components/inputs/index";
 import Select from "@/components/inputs/Select";
-import Slider from "@/components/inputs/Slider";
 import { type ParameterConstraints } from "@/utils/spectrogram_parameters";
+import { WINDOW_SIZE_OPTIONS, OVERLAP_OPTIONS } from "@/constants";
 
 import SettingsSection from "./SettingsSection";
 
 import type { SpectrogramParameters } from "@/types";
 
-const SPECTROGRAM_WINDOWS: Record<
-  string,
-  {
-    id: string;
-    value: string;
-    label: string;
-  }
-> = {
+type SelectOption = {
+  id: string;
+  value: string;
+  label: string;
+};
+
+type SelectOptionsRecord = Record<string, SelectOption>;
+
+const WINDOW_SIZE_SELECT_OPTIONS: SelectOptionsRecord = Object.fromEntries(
+  WINDOW_SIZE_OPTIONS.map((size) => [
+    size.toString(),
+    {
+      id: size.toString(),
+      value: size.toString(),
+      label: size.toString(),
+    },
+  ])
+);
+
+const OVERLAP_SELECT_OPTIONS: SelectOptionsRecord = Object.fromEntries(
+  OVERLAP_OPTIONS.map((overlap) => [
+    overlap.toString(),
+    {
+      id: overlap.toString(),
+      value: overlap.toString(),
+      label: `${overlap}%`,
+    },
+  ])
+);
+
+const SPECTROGRAM_WINDOWS: SelectOptionsRecord = {
   hann: { id: "hann", value: "hann", label: "Hann" },
   hamming: { id: "hamming", value: "hamming", label: "Hamming" },
   boxcar: { id: "boxcar", value: "boxcar", label: "Boxcar" },
@@ -46,43 +69,37 @@ export default function STFTSettings({
   return (
     <SettingsSection>
       <Controller
-        name="window_size"
+        name="window_size_samples"
         control={control}
         render={({ field, fieldState }) => (
           <InputGroup
-            name="windowSize"
+            name="windowSizeSamples"
             label="Window size"
-            help="Select the size of the window used for the STFT, in seconds."
+            help="Select the FFT window size in samples."
             error={fieldState.error?.message}
           >
-            <Slider
-              label="Window size"
-              value={field.value}
+            <Select
+              selected={WINDOW_SIZE_SELECT_OPTIONS[field.value]}
               onChange={field.onChange}
-              minValue={constraints.windowSize.min}
-              maxValue={constraints.windowSize.max}
-              step={0.001}
+              options={Object.values(WINDOW_SIZE_SELECT_OPTIONS)}
             />
           </InputGroup>
         )}
       />
       <Controller
-        name="hop_size"
+        name="overlap_percent"
         control={control}
         render={({ field, fieldState }) => (
           <InputGroup
-            name="hopSize"
-            label="Hop size"
-            help="Select the fraction of window size to use for the hop size."
+            name="overlapPercent"
+            label="Overlap"
+            help="Select the percentage of overlap between consecutive windows."
             error={fieldState.error?.message}
           >
-            <Slider
-              label="Hop size"
-              value={field.value}
+            <Select
+              selected={OVERLAP_SELECT_OPTIONS[field.value]}
               onChange={field.onChange}
-              minValue={constraints.hopSize.min}
-              maxValue={constraints.hopSize.max}
-              step={0.01}
+              options={Object.values(OVERLAP_SELECT_OPTIONS)}
             />
           </InputGroup>
         )}

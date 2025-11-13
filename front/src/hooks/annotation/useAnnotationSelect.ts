@@ -22,13 +22,11 @@ const SELECT_STYLE = {
 export default function useAnnotationSelect({
   annotations,
   window,
-  dimensions,
   enabled = true,
   onSelect,
   onDeselect,
 }: {
   annotations: SoundEventAnnotation[];
-  dimensions: Dimensions;
   window: SpectrogramWindow;
   enabled: boolean;
   onSelect?: (annotation: SoundEventAnnotation) => void;
@@ -37,7 +35,6 @@ export default function useAnnotationSelect({
   const { props: hoverProps, hoveredAnnotation: hovered } =
     useHoveredAnnotation({
       window,
-      dimensions,
       annotations,
       enabled,
     });
@@ -63,7 +60,6 @@ export default function useAnnotationSelect({
       ctx.canvas.style.cursor = "pointer";
 
       const geometry = scaleGeometryToWindow(
-        { width: ctx.canvas.width, height: ctx.canvas.height },
         // @ts-ignore
         hovered.geometry,
         window,

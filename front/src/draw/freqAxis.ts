@@ -1,3 +1,4 @@
+import { CANVAS_DIMENSIONS } from "@/constants";
 import {
   type AxisStyle,
   DEFAULT_AXIS_STYLE,
@@ -36,7 +37,7 @@ function drawFreqTick(
   ctx.moveTo(0, y);
   if (length == -1) {
     ctx.setLineDash([3, 10])
-    ctx.lineTo(ctx.canvas.width, y)
+    ctx.lineTo(CANVAS_DIMENSIONS.width, y)
   } else {
     ctx.lineTo(length, y);
   }

@@ -14,13 +14,11 @@ import type {
 
 export default function useCreateBBox({
   window,
-  dimensions,
   enabled,
   style = DEFAULT_BBOX_STYLE,
   onCreate,
 }: {
   window: SpectrogramWindow;
-  dimensions: Dimensions;
   enabled: boolean;
   style?: BBoxStyle;
   onCreate?: (bbox: BoundingBox) => void;
@@ -56,7 +54,6 @@ export default function useCreateBBox({
   const { props, isDragging } = useWindowMotions({
     enabled,
     window,
-    dimensions,
     onMoveStart: handleMoveStart,
     onMove: handleMove,
     onMoveEnd: handleMoveEnd,
@@ -70,10 +67,10 @@ export default function useCreateBBox({
   const draw = useCallback(
     (ctx: CanvasRenderingContext2D) => {
       if (!enabled || bbox == null) return;
-      const scaled = scaleGeometryToWindow(dimensions, bbox, window);
+      const scaled = scaleGeometryToWindow(bbox, window);
       drawGeometry(ctx, scaled, style);
     },
-    [enabled, bbox, style, window, dimensions],
+    [enabled, bbox, style, window],
   );
 
   return {

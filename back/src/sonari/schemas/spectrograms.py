@@ -32,22 +32,14 @@ Window = Literal[
 class STFTParameters(BaseModel):
     """Parameters for STFT computation."""
 
-    window_size: float = 0.025
-    """Size of FFT window in seconds."""
+    window_size_samples: int = 1024
+    """Size of FFT window in samples."""
 
-    hop_size: float = Field(default=0.5, gt=0.0, le=1.0)
-    """Hop size as a fraction of window size."""
+    overlap_percent: float = Field(default=75.0, ge=50.0, le=99.0)
+    """Overlap percentage between consecutive windows."""
 
     window: Window = "hann"
     """Window function."""
-
-    @field_validator("window_size", "hop_size")
-    @classmethod
-    def check_positive(cls, value):
-        """Check that window size and hop size are positive."""
-        if value <= 0:
-            raise ValueError("Window size and hop size must be positive.")
-        return value
 
 
 Scale = Literal["amplitude", "power", "dB"]

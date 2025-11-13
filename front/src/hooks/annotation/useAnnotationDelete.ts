@@ -22,13 +22,11 @@ const DELETE_STYLE = {
 export default function useAnnotationDelete({
   annotations,
   window,
-  dimensions,
   enabled = true,
   onDelete,
   onDeselect,
 }: {
   annotations: SoundEventAnnotation[];
-  dimensions: Dimensions;
   window: SpectrogramWindow;
   enabled: boolean;
   onDelete?: (annotation: SoundEventAnnotation) => void;
@@ -40,7 +38,6 @@ export default function useAnnotationDelete({
     clear,
   } = useHoveredAnnotation({
     window,
-    dimensions,
     annotations,
     enabled,
   });
@@ -65,7 +62,6 @@ export default function useAnnotationDelete({
       if (!enabled || hovered == null) return;
       ctx.canvas.style.cursor = "pointer";
       const geometry = scaleGeometryToWindow(
-        { width: ctx.canvas.width, height: ctx.canvas.height },
         hovered.geometry,
         window,
       );

@@ -20,8 +20,8 @@ async def test_get_spectrogram_not_found(auth_client: AsyncClient):
             "samplerate": 44100,
             "filter_order": 5,
             # Spectrogram parameters (defaults)
-            "window_size": 0.025,
-            "hop_size": 0.5,
+            "window_size_samples": 1024,
+            "overlap_percent": 75.0,
             "window": "hann",
             "scale": "dB",
             "clamp": False,
@@ -54,8 +54,8 @@ async def test_get_spectrogram(auth_client: AsyncClient):
             "samplerate": 200000,
             "filter_order": 5,
             # Spectrogram parameters (defaults)
-            "window_size": 0.00319,
-            "hop_size": 0.03125,
+            "window_size_samples": 256,
+            "overlap_percent": 75.0,
             "window": "blackmanharris",
             "scale": "dB",
             "clamp": True,
@@ -99,8 +99,8 @@ async def test_get_spectrogram_low_res(auth_client: AsyncClient):
             "samplerate": 200000,
             "filter_order": 5,
             # Spectrogram parameters (defaults)
-            "window_size": 0.00319,
-            "hop_size": 0.03125,
+            "window_size_samples": 256,
+            "overlap_percent": 75.0,
             "window": "blackmanharris",
             "scale": "dB",
             "clamp": True,

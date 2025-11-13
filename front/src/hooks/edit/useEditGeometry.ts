@@ -4,7 +4,6 @@ import { shiftGeometry, shiftPolygon } from "@/utils/geometry";
 import type { EditableElement } from "@/draw/edit";
 import type {
   BoundingBox,
-  Dimensions,
   Geometry,
   LineString,
   MultiLineString,
@@ -16,10 +15,10 @@ import type {
   TimeInterval,
   TimeStamp,
 } from "@/types";
+import { CANVAS_DIMENSIONS } from "@/constants";
 
 export function getTimeStampEditableElements(
   geometry: TimeStamp,
-  { height }: { height: number },
 ): EditableElement<TimeStamp>[] {
   const onset = geometry.coordinates;
   return [
@@ -28,7 +27,7 @@ export function getTimeStampEditableElements(
       type: "Edge",
       coords: [
         [onset, 0],
-        [onset, height],
+        [onset, CANVAS_DIMENSIONS.height],
       ],
       drag: (current: TimeStamp, start: Pixel, end: Pixel) => {
         const dx = end.x - start.x;
@@ -43,11 +42,6 @@ export function getTimeStampEditableElements(
 
 export function getTimeIntervalEditableElements(
   geom: TimeInterval,
-  {
-    height,
-  }: {
-    height: number;
-  },
 ): EditableElement<TimeInterval>[] {
   const [left, right] = geom.coordinates;
   return [
@@ -56,7 +50,7 @@ export function getTimeIntervalEditableElements(
       type: "Edge",
       coords: [
         [left, 0],
-        [left, height],
+        [left, CANVAS_DIMENSIONS.height],
       ],
       drag: (current: TimeInterval, start: Pixel, end: Pixel) => {
         const dx = end.x - start.x;
@@ -72,7 +66,7 @@ export function getTimeIntervalEditableElements(
       type: "Edge",
       coords: [
         [right, 0],
-        [right, height],
+        [right, CANVAS_DIMENSIONS.height],
       ],
       drag: (current: TimeInterval, start: Pixel, end: Pixel) => {
         const dx = end.x - start.x;
@@ -88,10 +82,10 @@ export function getTimeIntervalEditableElements(
       type: "Area",
       coords: [
         [
-          [left, height],
+          [left, CANVAS_DIMENSIONS.height],
           [left, 0],
           [right, 0],
-          [right, height],
+          [right, CANVAS_DIMENSIONS.height],
         ],
       ],
       drag: (current: TimeInterval, start: Pixel, end: Pixel) => {
@@ -495,20 +489,17 @@ export function getMultiPolygonEditableElements(
 
 export function getGeometryEditableElements(
   geom: Geometry,
-  dimensions: Dimensions,
 ): EditableElement<Geometry>[] {
   const { type } = geom;
   switch (type) {
     case "TimeStamp":
       return getTimeStampEditableElements(
         geom,
-        dimensions,
       ) as EditableElement<Geometry>[];
 
     case "TimeInterval":
       return getTimeIntervalEditableElements(
         geom,
-        dimensions,
       ) as EditableElement<Geometry>[];
 
     case "BoundingBox":

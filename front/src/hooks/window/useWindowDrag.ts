@@ -4,7 +4,7 @@ import { useMove } from "react-aria";
 import { scalePixelsToWindow } from "@/utils/geometry";
 
 import type { EventKeys } from "@/hooks/utils/useDrag";
-import type { Dimensions, Position, SpectrogramWindow } from "@/types";
+import type { Position, SpectrogramWindow } from "@/types";
 
 /**
  * The `useDrag` hook manages dragging behavior for an object
@@ -13,13 +13,11 @@ import type { Dimensions, Position, SpectrogramWindow } from "@/types";
  */
 export default function useWindowDrag({
   window,
-  dimensions,
   onMoveStart,
   onMove,
   onMoveEnd,
 }: {
   window: SpectrogramWindow;
-  dimensions: Dimensions;
   onMoveStart?: (moveStartProps?: EventKeys) => void;
   onMove?: (moveProps: { shift: Position } & EventKeys) => void;
   onMoveEnd?: (moveEndProps?: EventKeys) => void;
@@ -43,7 +41,6 @@ export default function useWindowDrag({
           y: position.y + deltaY,
         },
         window,
-        dimensions,
         true,
       );
       onMove?.({
@@ -54,7 +51,7 @@ export default function useWindowDrag({
         metaKey,
       });
     },
-    [dimensions, position, window, onMove],
+    [position, window, onMove],
   );
 
   const handleMoveStart = useCallback(

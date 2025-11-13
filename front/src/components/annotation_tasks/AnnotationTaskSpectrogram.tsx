@@ -14,7 +14,7 @@ import TagComponent, { getTagKey } from "@/components/tags/Tag";
 import useAnnotateTask from "@/hooks/annotation/useAnnotateTask";
 import useAudio from "@/hooks/audio/useAudio";
 import useCanvas from "@/hooks/draw/useCanvas";
-import useSpectrogram from "@/hooks/spectrogram/useSpectrogram";
+import useSpectrogram, { clampSamplerate } from "@/hooks/spectrogram/useSpectrogram";
 import useSpectrogramTrackAudio from "@/hooks/spectrogram/useSpectrogramTrackAudio";
 import { getInitialViewingWindow } from "@/utils/windows";
 import type { AnnotateMode } from "@/hooks/annotation/useAnnotateTask";
@@ -30,12 +30,12 @@ import useWaveform from "@/hooks/spectrogram/useWaveform";
 import useAnnotationDrawWaveform from "@/hooks/annotation/useAnnotationDrawWaveform";
 import useAnnotationTask from "@/hooks/api/useAnnotationTask";
 import { NoIcon } from "../icons";
+import { CANVAS_DIMENSIONS } from "@/constants";
 
 export default function AnnotationTaskSpectrogram({
   annotationTaskProps,
   parameters = DEFAULT_SPECTROGRAM_PARAMETERS,
   disabled = false,
-  height = 384,
   withBar = true,
   withPlayer = true,
   withControls = true,
@@ -86,57 +86,17 @@ export default function AnnotationTaskSpectrogram({
 }) {
   const {data: annotationTask} = annotationTaskProps;
   
-  // Early return if no annotation task or recording - must be before any hooks
-  if (!annotationTask || !annotationTask.recording) {
-    return (<NoIcon className="inline-block ms-2 stroke-inherit" />)
-  }
-
   const [isAnnotating, setIsAnnotating] = useState(false);
   const spectrogramCanvasRef = useRef<HTMLCanvasElement>(null);
   const waveformCanvasRef = useRef<HTMLCanvasElement>(null);
-  const dimensions = spectrogramCanvasRef.current?.getBoundingClientRect() ?? {
-    width: 0,
-    height: 0,
-  };
   
-  // Extract recording - now safe since we've checked both are not null
-  const recording = annotationTask.recording;
+  // Extract recording with null safety
+  const { recording, start_time: taskStartTime, end_time: taskEndTime } = annotationTask!;
   
-  const taskStartTime = annotationTask.start_time;
-  const taskEndTime = annotationTask.end_time;
   const taskSoundEventAnnotations = useMemo(
-    () => annotationTask.sound_event_annotations ?? [],
-    [annotationTask.sound_event_annotations]
+    () => annotationTask?.sound_event_annotations ?? [],
+    [annotationTask?.sound_event_annotations]
   );
-
-  const initialParameters = useMemo(() => {
-    const shouldBeHSR = recording.samplerate > 96000;
-    const currentPreset = parameters.conf_preset;
-    
-
-    var params = parameters;
-    if (shouldBeHSR && currentPreset !== 'hsr') {
-      params = {
-        ...parameters,
-        conf_preset: 'hsr',
-        window_size: 0.00319,
-      };
-    } else if (!shouldBeHSR && currentPreset !== 'lsr') {
-      params = {
-        ...parameters,
-        conf_preset: 'lsr',
-        window_size: 0.03,
-      };
-    }
-    
-    return params;
-  }, [recording.samplerate, parameters]);
-
-  useEffect(() => {
-    if (initialParameters !== parameters) {
-      onParameterSave?.(initialParameters);
-    }
-  }, [initialParameters, parameters, onParameterSave]);
 
   /**
    * Task bounds - The single source of truth for navigable area.
@@ -144,38 +104,42 @@ export default function AnnotationTaskSpectrogram({
    * the effective frequency range based on current parameters.
    */
   const taskBounds = useMemo<SpectrogramWindow>(() => {
-    const effectiveSamplerate = initialParameters.resample
-      ? initialParameters.samplerate ?? recording.samplerate
-      : recording.samplerate;
+    const baseSamplerate = recording!.samplerate;
+    const effectiveSamplerate = clampSamplerate(parameters, baseSamplerate)
     
     return {
       time: { min: taskStartTime, max: taskEndTime },
       freq: { min: 0, max: effectiveSamplerate / 2 },
     };
-  }, [taskStartTime, taskEndTime, recording.samplerate, initialParameters.resample, initialParameters.samplerate]);
+  }, [taskStartTime, taskEndTime, parameters, recording?.samplerate]);
 
   /**
    * Initial window - Determines the starting view when component mounts.
-   * If spectrogram is enabled, calculates an optimal initial zoom level.
-   * Otherwise, shows the full task range.
+   * If spectrogram is enabled, calculates an optimal initial zoom level based on
+   * canvas dimensions. Otherwise, shows the full task range.
    */
   const initial = useMemo(
     () => {
+      const baseSamplerate = recording!.samplerate;
+      const effectiveSamplerate = clampSamplerate(parameters, baseSamplerate)
       if (withSpectrogram) {
-        return getInitialViewingWindow({
+        
+        const _initial = getInitialViewingWindow({
           startTime: taskStartTime,
           endTime: taskEndTime,
-          samplerate: recording.samplerate,
+          samplerate: effectiveSamplerate,
           parameters,
         })
+        console.log(JSON.stringify(_initial))
+        return _initial
       } else {
         return {
           time: { min: taskStartTime, max: taskEndTime },
-          freq: { min: 0, max: recording.samplerate / 2 },
+          freq: { min: 0, max: effectiveSamplerate / 2 },
         }
       }
     },
-    [recording.samplerate, taskStartTime, taskEndTime, parameters, withSpectrogram],
+    [recording?.samplerate, taskStartTime, taskEndTime, withSpectrogram, parameters],
   );
 
   const getPlaybackBounds = useCallback(() => {
@@ -219,12 +183,12 @@ export default function AnnotationTaskSpectrogram({
     }
   }, [selectedSoundEventAnnotation, taskStartTime, taskEndTime]);
 
-  const { startTime, endTime } = useMemo(() => getPlaybackBounds(), [getPlaybackBounds]);
+  const { startTime: playbackStartTime, endTime: playbackEndTime } = useMemo(() => getPlaybackBounds(), [getPlaybackBounds]);
 
   const audio = useAudio({
-    recording,
-    endTime: endTime,
-    startTime: startTime,
+    recording: recording!,
+    endTime: playbackEndTime,
+    startTime: playbackStartTime,
     withShortcuts: withAudioShortcuts,
     withAutoplay: withAutoplay,
     onWithAutoplayChange: onWithAutoplayChange,
@@ -250,11 +214,11 @@ export default function AnnotationTaskSpectrogram({
   );
 
   const spectrogram = useSpectrogram({
-    dimensions,
-    recording,
+    task: annotationTask!,
+    samplerate: recording!.samplerate,
     bounds: taskBounds,
     initial,
-    parameters: initialParameters,
+    parameters: parameters,
     onDoubleClick: handleDoubleClick,
     onModeChange: handleSpectrogramModeChange,
     enabled: !isAnnotating && !audio.isPlaying,
@@ -270,7 +234,7 @@ export default function AnnotationTaskSpectrogram({
   }, [onParameterSave, spectrogram.parameters]);
 
   const waveform = useWaveform({
-    recording,
+    recording: recording!,
     parameters: spectrogram.parameters,
     window: spectrogram.window,
   });
@@ -307,7 +271,6 @@ export default function AnnotationTaskSpectrogram({
     annotationTaskProps,
     window: spectrogram.window,
     onCenterOn: handleTimeChange,
-    dimensions,
     defaultTags,
     selectedTag,
     onModeChange: handleAnnotationModeChange,
@@ -416,6 +379,15 @@ export default function AnnotationTaskSpectrogram({
   const finalSpectrogramProps = isAnnotating ? annotate?.spectrogramProps : spectrogramProps;
   const finalWaveformProps = isAnnotating ? annotate?.waveformProps : {};
 
+  // Return early if no annotation task or recording (after all hooks have been called)
+  if (!annotationTask || !recording) {
+    return (
+      <div className="flex items-center justify-center p-4">
+        <NoIcon className="inline-block ms-2 stroke-inherit" />
+      </div>
+    );
+  }
+
   return (
     <Card>
       <div className="flex flex-row gap-4">
@@ -465,7 +437,7 @@ export default function AnnotationTaskSpectrogram({
         )}
         {withPlayer && <Player {...audio} />}
       </div>
-      <div className="relative overflow-visible rounded-md" style={{ height }}>
+      <div className="relative overflow-visible rounded-md" style={{ height: CANVAS_DIMENSIONS.height }}>
         <SpectrogramTags
           disabled={disabled}
           tags={annotate?.tags ?? []}
@@ -504,7 +476,8 @@ export default function AnnotationTaskSpectrogram({
           bounds={taskBounds}
           window={withSpectrogram ? spectrogram.window : taskBounds}
           onMove={spectrogram.drag}
-          recording={recording}
+          recording_id={recording.id}
+          samplerate={recording.samplerate}
           parameters={spectrogram.parameters}
           withSpectrogram={withSpectrogram}
         />

@@ -14,15 +14,11 @@ import type {
 
 export default function useCreateWaveformMeasurement({
   window,
-  dimensions,
   enabled = true,
-  style = DEFAULT_LINESTRING_STYLE,
   onCreate,
 }: {
   window: SpectrogramWindow;
-  dimensions: Dimensions;
   enabled?: boolean;
-  style?: BorderStyle;
   onCreate?: (lineString: LineString) => void;
 }) {
   const [coordinates, setCoordinates] = useState<Coordinates[] | null>(null);
@@ -111,7 +107,6 @@ export default function useCreateWaveformMeasurement({
   const { props, isDragging } = useWindowMotions({
     enabled,
     window,
-    dimensions,
     onClick: handleClick,
     onMoveStart: handleMoveStart,
     onMove: handleMove,

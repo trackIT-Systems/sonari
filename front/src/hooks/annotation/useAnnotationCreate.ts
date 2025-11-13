@@ -21,20 +21,17 @@ const CREATE_STYLE = {
 
 export default function useAnnotationCreate({
   window,
-  dimensions,
   enabled = true,
   geometryType = "TimeStamp",
   onCreate,
 }: {
   window: SpectrogramWindow;
-  dimensions: Dimensions;
   enabled?: boolean;
   geometryType: GeometryType;
   onCreate: (geometry: Geometry) => void;
 }) {
   const { props: propsBBox, draw: drawBBox } = useCreateBBox({
     window,
-    dimensions,
     onCreate,
     style: CREATE_STYLE,
     enabled: enabled && geometryType === "BoundingBox",
@@ -42,7 +39,6 @@ export default function useAnnotationCreate({
 
   const { props: propsInterval, draw: drawInterval } = useCreateInterval({
     window,
-    dimensions,
     onCreate,
     style: CREATE_STYLE,
     enabled: enabled && geometryType === "TimeInterval",
@@ -50,7 +46,6 @@ export default function useAnnotationCreate({
 
   const { props: propsTimeStamp, draw: drawTimeStamp } = useCreateTimeStamp({
     window,
-    dimensions,
     onCreate,
     style: CREATE_STYLE,
     enabled: enabled && geometryType === "TimeStamp",
@@ -58,7 +53,6 @@ export default function useAnnotationCreate({
 
   const { props: propsLineString, draw: drawLineString } = useCreateLineString({
     window,
-    dimensions,
     onCreate,
     style: CREATE_STYLE,
     enabled: enabled && geometryType === "LineString",

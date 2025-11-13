@@ -7,7 +7,6 @@ import useSpectrogramImage from "@/hooks/spectrogram//useSpectrogramImage";
 import useSpectrogramMotions from "@/hooks/spectrogram/useSpectrogramMotions";
 import useSpectrogramKeyShortcuts from "@/hooks/spectrogram/useSpectrogramKeyShortcuts";
 import {
-  getInitialViewingWindow,
   adjustWindowToBounds,
   centerWindowOn,
   scaleWindow,
@@ -16,8 +15,8 @@ import {
 
 import type { MotionMode } from "@/hooks/spectrogram/useSpectrogramMotions";
 import type {
+  AnnotationTask,
   Position,
-  Recording,
   SpectrogramParameters,
   SpectrogramWindow,
 } from "@/types";
@@ -197,11 +196,11 @@ function drawFrequencyLines(
  * for managing and displaying a spectrogram of an audio recording.
  */
 export default function useSpectrogram({
-  recording,
+  task,
+  samplerate,
   bounds,
-  initial,
-  dimensions,
-  parameters: initialParameters = DEFAULT_SPECTROGRAM_PARAMETERS,
+  initial: initialWindow,
+  parameters: initialParameters,
   onParameterChange,
   onModeChange,
   onDoubleClick,
@@ -213,12 +212,12 @@ export default function useSpectrogram({
   toggleFixedAspectRatio,
   onSegmentsLoaded,
 }: {
-  recording: Recording;
-  dimensions: { width: number; height: number };
-  bounds?: SpectrogramWindow;
+  task: AnnotationTask;
+  samplerate: number,
+  bounds: SpectrogramWindow;
   /** The starting window position - required, must be provided by parent */
   initial: SpectrogramWindow;
-  parameters?: SpectrogramParameters;
+  parameters: SpectrogramParameters;
   onParameterChange?: (parameters: SpectrogramParameters) => void;
   onModeChange?: (mode: MotionMode) => void;
   onDoubleClick?: (dblClickProps: { position: Position }) => void;
@@ -236,39 +235,13 @@ export default function useSpectrogram({
   SpectrogramControls {
 
   const [parameters, setParameters] = useState<SpectrogramParameters>(
-    validateParameters(initialParameters, recording),
+    validateParameters(initialParameters, samplerate),
   );
 
   // Update internal parameters when external parameters change
   useEffect(() => {
-    setParameters(validateParameters(initialParameters, recording));
-  }, [initialParameters, recording]);
-
-  /**
-   * The maximum navigable area. Defines the outer limits of where the window can be positioned.
-   * Typically set by annotation task boundaries and current spectrogram parameters.
-   * If not provided, defaults to full recording extent.
-   */
-  const spectrogramBounds = useMemo<SpectrogramWindow>(() => {
-    if (bounds) return bounds;
-
-    // Use the effective samplerate for frequency bounds calculation
-    const effectiveSamplerate = parameters.resample
-      ? parameters.samplerate ?? recording.samplerate
-      : recording.samplerate;
-
-    return {
-      time: { min: 0, max: recording.duration },
-      freq: { min: 0, max: effectiveSamplerate / 2 },
-    };
-  }, [bounds, recording.duration, recording.samplerate, parameters.resample, parameters.samplerate]);
-
-  /**
-   * The starting window position when the component first renders.
-   * This defines what portion of the bounds the user sees initially.
-   * Provided by parent component which has more context about the viewing scenario.
-   */
-  const initialWindow = initial;
+    setParameters(validateParameters(initialParameters, samplerate));
+  }, [initialParameters, samplerate]);
 
   /**
    * The currently visible window within the bounds.
@@ -287,16 +260,14 @@ export default function useSpectrogram({
   ) => {
     setWindow((prev) => {
       const newWindow = typeof updater === 'function' ? updater(prev) : updater;
-      return adjustWindowToBounds(newWindow, spectrogramBounds);
+      return adjustWindowToBounds(newWindow, bounds);
     });
-  }, [spectrogramBounds]);
+  }, [bounds]);
 
   // Handle significant parameter changes that affect frequency bounds (e.g., resampling)
   // When resampling changes, reset window to show full new frequency range
   useEffect(() => {
-    const effectiveSamplerate = parameters.resample
-      ? parameters.samplerate ?? recording.samplerate
-      : recording.samplerate;
+    const effectiveSamplerate = clampSamplerate(parameters, samplerate)
     
     const prevEffectiveSamplerate = window.freq.max * 2; // Reverse calculate from current window
     const freqBoundsChanged = Math.abs(effectiveSamplerate / 2 - prevEffectiveSamplerate) > 1000; // 1kHz threshold
@@ -308,7 +279,7 @@ export default function useSpectrogram({
         freq: { min: 0, max: effectiveSamplerate / 2 },
       }));
     }
-  }, [parameters.resample, parameters.samplerate, recording.samplerate, setConstrainedWindow]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [parameters, samplerate, setConstrainedWindow]); // eslint-disable-line react-hooks/exhaustive-deps
   // Note: window intentionally not in deps to avoid infinite loop
 
   const zoom = useCallback(
@@ -349,10 +320,10 @@ export default function useSpectrogram({
   // changes. This usually happens when the visualised clip
   // changes.
   useEffect(() => {
-    if (initial != null) {
-      setConstrainedWindow(initial);
+    if (initialWindow != null) {
+      setConstrainedWindow(initialWindow);
     }
-  }, [initial, setConstrainedWindow]);
+  }, [initialWindow, setConstrainedWindow]);
 
 
   const {
@@ -360,7 +331,8 @@ export default function useSpectrogram({
     isLoading,
     isError,
   } = useSpectrogramImage({
-    recording,
+    task,
+    samplerate,
     window,
     parameters,
     withSpectrogram,
@@ -439,18 +411,18 @@ export default function useSpectrogram({
 
   const handleSetParameters = useCallback(
     (newParameters: SpectrogramParameters) => {
-      const validated = validateParameters(newParameters, recording);
+      const validated = validateParameters(newParameters, samplerate);
       onParameterChange?.(validated);
       setParameters(validated);
     },
-    [recording, onParameterChange],
+    [samplerate, onParameterChange],
   );
 
   const handleResetParameters = useCallback(() => {
-    const validated = validateParameters(initialParameters, recording);
+    const validated = validateParameters(initialParameters, samplerate);
     setParameters(validated);
     onParameterChange?.(validated);
-  }, [initialParameters, recording, onParameterChange]);
+  }, [initialParameters, samplerate, onParameterChange]);
 
 
 
@@ -472,7 +444,6 @@ export default function useSpectrogram({
     onScrollZoomFreq: handleScale,
     onDoubleClick,
     onModeChange,
-    dimensions,
     enabled,
     fixedAspectRatio,
   });
@@ -583,7 +554,7 @@ export default function useSpectrogram({
   });
 
   return {
-    bounds: spectrogramBounds,
+    bounds,
     parameters,
     window,
     isLoading,
@@ -608,9 +579,15 @@ export default function useSpectrogram({
   };
 }
 
+export function clampSamplerate(parameters: SpectrogramParameters, samplerate: number): number {
+  return parameters.resample
+      ? parameters.samplerate ?? samplerate
+      : samplerate;
+}
+
 function validateParameters(
   parameters: SpectrogramParameters,
-  recording: Recording,
+  samplerate: number,
 ): SpectrogramParameters {
   const constrained: Partial<SpectrogramParameters> = {};
 
@@ -619,13 +596,12 @@ function validateParameters(
   if (parameters.high_freq != null) {
     // Use the samplerate of the recording, or the target sampling rate
     // if resampling is enabled.
-    const samplerate = parameters.resample
-      ? parameters.samplerate ?? recording.samplerate
-      : recording.samplerate;
+    
+    const valid_samplerate = clampSamplerate(parameters, samplerate)
 
     // The maximum frequency is half the sampling rate, minus a bit
     // to avoid aliasing.
-    const maxValue = Math.round((samplerate / 2) * 0.95);
+    const maxValue = Math.round((valid_samplerate / 2) * 0.95);
     constrained.high_freq = Math.min(parameters.high_freq, maxValue);
 
     // Check that the low frequency is not higher than the high frequency.

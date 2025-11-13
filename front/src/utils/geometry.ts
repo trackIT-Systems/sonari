@@ -1,13 +1,12 @@
 import { bbox }  from "@turf/bbox";
 import { booleanPointInPolygon } from "@turf/boolean-point-in-polygon";
 
-import { MAX_FREQ } from "@/constants";
+import { MAX_FREQ, CANVAS_DIMENSIONS } from "@/constants";
 
 import type {
   BoundingBox,
   Box,
   Coordinates,
-  Dimensions,
   Geometry,
   LineString,
   MultiLineString,
@@ -34,89 +33,79 @@ export function bboxIntersection(bbox1: Box, bbox2: Box): Box | null {
 export function scaleTimeToWindow(
   value: number,
   window: SpectrogramWindow,
-  width: number,
 ): number {
   const { time } = window;
   if (time.max === time.min) return time.max;
-  return (width * (value - time.min)) / (time.max - time.min);
+  return (CANVAS_DIMENSIONS.width * (value - time.min)) / (time.max - time.min);
 }
 
 /** Transform x coordinates to time */
 export function scaleXToWindow(
   value: number,
   window: SpectrogramWindow,
-  width: number,
   relative: boolean = false,
 ): number {
   const { time } = window;
   const duration = time.max - time.min;
   if (relative) {
-    return (duration * value) / width;
+    return (duration * value) / CANVAS_DIMENSIONS.width;
   }
-  return time.min + (duration * value) / width;
+  return time.min + (duration * value) / CANVAS_DIMENSIONS.width;
 }
 
 /** Transform y coordinates to frequency */
 export function scaleFreqToWindow(
   value: number,
   window: SpectrogramWindow,
-  height: number,
 ): number {
   const { freq } = window;
   if (freq.max === freq.min) return freq.max;
-  return (height * (freq.max - value)) / (freq.max - freq.min);
+  return (CANVAS_DIMENSIONS.height * (freq.max - value)) / (freq.max - freq.min);
 }
 
 export function scaleYToWindow(
   value: number,
   window: SpectrogramWindow,
-  height: number,
   relative: boolean = false,
 ): number {
   const { freq } = window;
   const bandwidth = freq.max - freq.min;
   if (relative) {
-    return (bandwidth * value) / height;
+    return (bandwidth * value) / CANVAS_DIMENSIONS.height;
   }
-  return freq.max - (bandwidth * value) / height;
+  return freq.max - (bandwidth * value) / CANVAS_DIMENSIONS.height;
 }
 
 export function scalePixelsToWindow(
   position: { x: number; y: number },
   window: SpectrogramWindow,
-  dims: Dimensions,
   relative: boolean = false,
 ): { time: number; freq: number } {
-  const { width, height } = dims;
   const { x, y } = position;
-  const time = scaleXToWindow(x, window, width, relative);
-  const freq = scaleYToWindow(y, window, height, relative);
+  const time = scaleXToWindow(x, window, relative);
+  const freq = scaleYToWindow(y, window, relative);
   return { time, freq };
 }
 
 export function scaleIntervalToWindow(
-  dims: Dimensions,
   interval: Coordinates,
   window: SpectrogramWindow,
 ): Coordinates {
-  const { width } = dims;
   let [start, end] = interval;
-  start = scaleTimeToWindow(start, window, width);
-  end = scaleTimeToWindow(end, window, width);
+  start = scaleTimeToWindow(start, window);
+  end = scaleTimeToWindow(end, window);
   return [start, end];
 }
 
 export function scaleBBoxToWindow(
-  dims: Dimensions,
   bbox: Box,
   window: SpectrogramWindow,
 ): Box {
-  const { width, height } = dims;
   const [startTime, lowFreq, endTime, highFreq] = bbox;
-  const start = scaleTimeToWindow(startTime, window, width);
-  const end = scaleTimeToWindow(endTime, window, width);
-  const top = scaleFreqToWindow(highFreq, window, height);
-  const bottom = scaleFreqToWindow(lowFreq, window, height);
+  const start = scaleTimeToWindow(startTime, window);
+  const end = scaleTimeToWindow(endTime, window);
+  const top = scaleFreqToWindow(highFreq, window);
+  const bottom = scaleFreqToWindow(lowFreq, window);
   return [
     Math.min(start, end),
     Math.min(top, bottom),
@@ -126,35 +115,31 @@ export function scaleBBoxToWindow(
 }
 
 export function scalePositionToWindow(
-  { width, height }: Dimensions,
   position: Coordinates,
   window: SpectrogramWindow,
 ): Coordinates {
   let [x, y] = position;
-  x = scaleTimeToWindow(x, window, width);
-  y = scaleFreqToWindow(y, window, height);
+  x = scaleTimeToWindow(x, window);
+  y = scaleFreqToWindow(y, window);
   return [x, y];
 }
 
 function scalePathToWindow(
-  dims: Dimensions,
   path: Coordinates[],
   window: SpectrogramWindow,
 ): Coordinates[] {
-  return path.map((pos) => scalePositionToWindow(dims, pos, window));
+  return path.map((pos) => scalePositionToWindow(pos, window));
 }
 
 function scalePathArrayToWindow(
-  dims: Dimensions,
   pathArray: Coordinates[][],
   window: SpectrogramWindow,
 ): Coordinates[][] {
-  return pathArray.map((path) => scalePathToWindow(dims, path, window));
+  return pathArray.map((path) => scalePathToWindow(path, window));
 }
 
 
 export function scaleGeometryToWindow<T extends Geometry>(
-  dims: Dimensions,
   geometry: T,
   window: SpectrogramWindow,
 ): T {
@@ -167,14 +152,12 @@ export function scaleGeometryToWindow<T extends Geometry>(
         coordinates: scaleTimeToWindow(
           geometry.coordinates,
           window,
-          dims.width,
         ),
       };
     case "TimeInterval":
       return {
         ...geometry,
         coordinates: scaleIntervalToWindow(
-          dims,
           // @ts-ignore
           geometry.coordinates,
           window,
@@ -184,7 +167,6 @@ export function scaleGeometryToWindow<T extends Geometry>(
       return {
         ...geometry,
         coordinates: scalePositionToWindow(
-          dims,
           geometry.coordinates,
           window,
         ),
@@ -193,23 +175,22 @@ export function scaleGeometryToWindow<T extends Geometry>(
       return {
         ...geometry,
         // @ts-ignore
-        coordinates: scaleBBoxToWindow(dims, geometry.coordinates, window),
+        coordinates: scaleBBoxToWindow(geometry.coordinates, window),
       };
     case "MultiPoint":
       return {
         ...geometry,
-        coordinates: scalePathToWindow(dims, geometry.coordinates, window),
+        coordinates: scalePathToWindow(geometry.coordinates, window),
       };
     case "LineString":
       return {
         ...geometry,
-        coordinates: scalePathToWindow(dims, geometry.coordinates, window),
+        coordinates: scalePathToWindow(geometry.coordinates, window),
       };
     case "MultiLineString":
       return {
         ...geometry,
         coordinates: scalePathArrayToWindow(
-          dims,
           geometry.coordinates,
           window,
         ),
@@ -218,7 +199,6 @@ export function scaleGeometryToWindow<T extends Geometry>(
       return {
         ...geometry,
         coordinates: scalePathArrayToWindow(
-          dims,
           geometry.coordinates,
           window,
         ),
@@ -227,7 +207,7 @@ export function scaleGeometryToWindow<T extends Geometry>(
       return {
         ...geometry,
         coordinates: geometry.coordinates.map((polygon) =>
-          scalePathArrayToWindow(dims, polygon, window),
+          scalePathArrayToWindow(polygon, window),
         ),
       };
 

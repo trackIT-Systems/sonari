@@ -16,13 +16,11 @@ import type {
 
 export default function useCreateLineString({
   window,
-  dimensions,
   enabled = true,
   style = DEFAULT_LINESTRING_STYLE,
   onCreate,
 }: {
   window: SpectrogramWindow;
-  dimensions: Dimensions;
   enabled?: boolean;
   style?: BorderStyle;
   onCreate?: (lineString: LineString) => void;
@@ -113,7 +111,6 @@ export default function useCreateLineString({
   const { props, isDragging } = useWindowMotions({
     enabled,
     window,
-    dimensions,
     onClick: handleClick,
     onMoveStart: handleMoveStart,
     onMove: handleMove,
@@ -127,7 +124,7 @@ export default function useCreateLineString({
 
       if (coordinates != null) {
         const geometry: LineString = { type: "LineString", coordinates };
-        const scaled = scaleGeometryToWindow(dimensions, geometry, window);
+        const scaled = scaleGeometryToWindow(geometry, window);
         drawGeometry(ctx, scaled, style);
         
         // Helper function to draw text with outline for better visibility
@@ -259,7 +256,6 @@ export default function useCreateLineString({
 
       if (vertex != null) {
         const scaledVertex = scaleGeometryToWindow(
-          dimensions,
           { type: "Point", coordinates: [vertex.time, vertex.freq] },
           window,
         );
@@ -292,11 +288,11 @@ export default function useCreateLineString({
           type: "LineString",
           coordinates: [lastVertex, [vertex.time, vertex.freq]],
         };
-        const scaled = scaleGeometryToWindow(dimensions, geometry, window);
+        const scaled = scaleGeometryToWindow(geometry, window);
         drawGeometry(ctx, scaled, style);
       }
     },
-    [enabled, coordinates, style, window, dimensions, vertex],
+    [enabled, coordinates, style, window, vertex],
   );
 
   useEffect(() => {

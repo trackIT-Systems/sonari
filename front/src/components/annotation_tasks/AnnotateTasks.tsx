@@ -28,6 +28,7 @@ import type {
 } from "@/types";
 import AnnotationTaskNotes from "./AnnotationTaskNotes";
 import AnnotationTaskTags from "@/components/annotation_tasks/AnnotationTaskTags";
+import { CANVAS_DIMENSIONS } from "@/constants";
 
 export default function AnnotateTasks({
   taskFilter,
@@ -319,7 +320,7 @@ export default function AnnotateTasks({
   return (
     <div className="w-full flex flex-col gap-4">
       <div className="flex flex-row gap-4">
-        <div className="min-w-[63rem]">
+        <div className={`${CANVAS_DIMENSIONS.width}px`}>
           <AnnotationProgress
             current={tasks.current}
             tasks={tasks.tasks}
@@ -344,7 +345,7 @@ export default function AnnotateTasks({
       </div>
       <div className="flex flex-col gap-4">
         <div className="flex flex-row gap-4">
-          <div className="min-w-[63rem]">
+          <div className={`${CANVAS_DIMENSIONS.width}px`}>
             {annotationTaskProps.isLoading ? (
               <Loading />
             ) : annotationTask == null ? (
@@ -400,6 +401,7 @@ export default function AnnotateTasks({
             <div className="w-[35rem] flex-none mt-5">
               <SelectedSoundEventAnnotation
                 annotationTask={annotationTask}
+                samplerate={annotationTask.recording!.samplerate}
                 soundEventAnnotation={selectedSoundEventAnnotation}
                 parameters={parameters}
                 withSpectrogram={withSpectrogram}
@@ -412,7 +414,7 @@ export default function AnnotateTasks({
 
         {annotationTask && (
           <div className="flex flex-row gap-4 w-full">
-            <div className="min-w-[63rem] flex flex-col gap-4">
+            <div className="min-w-[64.7rem] flex flex-col gap-4">
               <RecordingTagBar
                 recording={annotationTask.recording!}
               />
@@ -423,7 +425,7 @@ export default function AnnotateTasks({
                 currentUser={currentUser}
               />
             </div>
-            <div className="min-w-[35rem]">
+            <div className={`${CANVAS_DIMENSIONS.width}px`}>
               <AnnotationTaskTags
                 annotationTask={annotationTask}
                 onReplaceTagInSoundEventAnnotations={handleReplaceTagInSoundEventAnnotations}

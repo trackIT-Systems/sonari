@@ -1,3 +1,4 @@
+import { CANVAS_DIMENSIONS } from "@/constants";
 import { RefObject, useCallback, useEffect, useState } from "react";
 import { useEvent, useMount } from "react-use";
 
@@ -32,8 +33,8 @@ export default function useCanvas({
     // Sync the canvas size attributes with the parent element size
     // This is particularly useful if the canvas is meant to fill the parent
     // element
-    canvas.width = canvas.parentElement?.offsetWidth ?? canvas.offsetWidth;
-    canvas.height = canvas.parentElement?.offsetHeight ?? canvas.offsetHeight;
+    canvas.width = CANVAS_DIMENSIONS.width
+    canvas.height = CANVAS_DIMENSIONS.height
 
     // Get the drawing context
     const context = canvas.getContext("2d");
@@ -54,8 +55,8 @@ export default function useCanvas({
   const handleOnResize = useCallback(() => {
     const { current: canvas } = ref;
     if (canvas != null && ctx != null) {
-      canvas.width = canvas.parentElement?.offsetWidth ?? canvas.offsetWidth;
-      canvas.height = canvas.parentElement?.offsetHeight ?? canvas.offsetHeight;
+      canvas.width = CANVAS_DIMENSIONS.width
+      canvas.height = CANVAS_DIMENSIONS.height
 
       draw(ctx);
       onResize?.(ctx);

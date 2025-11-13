@@ -14,6 +14,7 @@ import type {
   TimeInterval,
   TimeStamp,
 } from "@/types";
+import { CANVAS_DIMENSIONS } from "@/constants";
 
 export type TagElement = {
   tag: Tag;
@@ -40,11 +41,9 @@ export type TagGroup = {
 function getTimeIntervalLabelPosition({
   annotation,
   window,
-  dimensions,
 }: {
   annotation: SoundEventAnnotation;
   window: SpectrogramWindow;
-  dimensions: Dimensions;
 }): Position {
   const geometry = annotation.geometry as TimeInterval;
   const {
@@ -56,13 +55,13 @@ function getTimeIntervalLabelPosition({
     throw new Error("Annotation is not in the window");
   }
 
-  const x = scaleTimeToWindow(start, window, dimensions.width);
-  const x2 = scaleTimeToWindow(end, window, dimensions.width);
+  const x = scaleTimeToWindow(start, window);
+  const x2 = scaleTimeToWindow(end, window);
 
-  const y = 50 * (dimensions.height - 100);
+  const y = 50 * (CANVAS_DIMENSIONS.height - 100);
 
   const tooLeft = x < 50;
-  const tooRight = x2 > dimensions.width - 50;
+  const tooRight = x2 > CANVAS_DIMENSIONS.width - 50;
 
   if (tooLeft && tooRight) {
     return {
@@ -102,11 +101,9 @@ function getTimeIntervalLabelPosition({
 function getTimeStampLabelPosition({
   annotation,
   window,
-  dimensions,
 }: {
   annotation: SoundEventAnnotation;
   window: SpectrogramWindow;
-  dimensions: Dimensions;
 }): Position {
   const geometry = annotation.geometry as TimeStamp;
   const {
@@ -118,10 +115,10 @@ function getTimeStampLabelPosition({
     throw new Error("Annotation is not in the window");
   }
 
-  const x = scaleTimeToWindow(time, window, dimensions.width);
+  const x = scaleTimeToWindow(time, window);
 
   // Get random height between 50 and dimensions.height - 50
-  const y = 50 + Math.random() * (dimensions.height - 100);
+  const y = 50 + Math.random() * (CANVAS_DIMENSIONS.height - 100);
 
   const tooLeft = x < 50;
 
@@ -145,23 +142,20 @@ function getTimeStampLabelPosition({
 export function getLabelPosition(
   annotation: SoundEventAnnotation,
   window: SpectrogramWindow,
-  dimensions: Dimensions,
 ): Position {
   const { geometry } = annotation;
 
   if (geometry.type === "TimeStamp") {
     return getTimeStampLabelPosition({
       annotation,
-      window,
-      dimensions,
+      window
     });
   }
 
   if (geometry.type === "TimeInterval") {
     return getTimeIntervalLabelPosition({
       annotation,
-      window,
-      dimensions,
+      window
     });
   }
 
@@ -180,14 +174,13 @@ export function getLabelPosition(
   }
 
   const [left, top, right, bottom] = scaleBBoxToWindow(
-    dimensions,
     intersection,
     window,
   );
 
   const tooLeft = left < 50;
-  const tooBottom = bottom > dimensions.height;
-  const tooRight = right > dimensions.width;
+  const tooBottom = bottom > CANVAS_DIMENSIONS.height;
+  const tooRight = right > CANVAS_DIMENSIONS.width;
   const tooTop = top < 50;
 
   switch (true) {

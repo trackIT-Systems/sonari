@@ -7,7 +7,6 @@ import {
 } from "@/utils/geometry";
 
 import type {
-  Dimensions,
   Geometry,
   SoundEventAnnotation,
   SpectrogramWindow,
@@ -15,7 +14,6 @@ import type {
 
 export default function useEditAnnotationGeometry({
   window,
-  dimensions,
   soundEventAnnotation,
   enabled = true,
   onChange,
@@ -24,7 +22,6 @@ export default function useEditAnnotationGeometry({
   style,
 }: {
   window: SpectrogramWindow;
-  dimensions: Dimensions;
   soundEventAnnotation: SoundEventAnnotation | null;
   enabled?: boolean;
   onChange?: (geometry: Geometry) => void;
@@ -36,29 +33,28 @@ export default function useEditAnnotationGeometry({
 
   const scaledGeometry = useMemo(() => {
     if (geometry == null) return null;
-    return scaleGeometryToWindow(dimensions, geometry, window);
-  }, [geometry, window, dimensions]);
+    return scaleGeometryToWindow(geometry, window);
+  }, [geometry, window]);
 
   const handleOnChange = useCallback(
     (geometry?: Geometry) => {
       if (geometry == null) return;
-      const rescaled = scaleGeometryToWindow(dimensions, geometry, window);
+      const rescaled = scaleGeometryToWindow(geometry, window);
       onChange?.(rescaled);
     },
-    [onChange, window, dimensions],
+    [onChange, window],
   );
 
   const handleOnCopy = useCallback(
     (geometry?: Geometry) => {
       if (geometry == null) return;
-      const rescaled = scaleGeometryToWindow(dimensions, geometry, window);
+      const rescaled = scaleGeometryToWindow(geometry, window);
       onCopy?.(rescaled);
     },
-    [onCopy, window, dimensions],
+    [onCopy, window],
   );
 
   const ret = useEditGeometry({
-    dimensions,
     object: scaledGeometry,
     enabled: enabled,
     style: style,
@@ -69,8 +65,8 @@ export default function useEditAnnotationGeometry({
 
   const reconstructed = useMemo(() => {
     if (ret.object === null) return null;
-    return scaleGeometryToWindow(dimensions, ret.object, window);
-  }, [dimensions, window, ret.object]);
+    return scaleGeometryToWindow(ret.object, window);
+  }, [window, ret.object]);
 
   return {
     ...ret,

@@ -3,11 +3,11 @@ import { z } from "zod";
 import {
   DEFAULT_CMAP,
   DEFAULT_FILTER_ORDER,
-  DEFAULT_HOP_SIZE,
+  DEFAULT_OVERLAP_PERCENT,
   DEFAULT_CONF_PRESET,
   DEFAULT_SCALE,
   DEFAULT_WINDOW,
-  DEFAULT_WINDOW_SIZE,
+  DEFAULT_WINDOW_SIZE_SAMPLES,
   MAX_SAMPLERATE,
   MIN_DB,
   MIN_SAMPLERATE,
@@ -326,13 +326,15 @@ export const SpectrogramParametersSchema = z
       .positive()
       .int()
       .default(DEFAULT_FILTER_ORDER),
-    window_size: z.coerce.number().positive().default(DEFAULT_WINDOW_SIZE),
-    hop_size: z.coerce
+    window_size_samples: z.coerce
+      .number()
+      .int()
+      .positive()
+      .default(DEFAULT_WINDOW_SIZE_SAMPLES),
+    overlap_percent: z.coerce
       .number()
       .positive()
-      .gt(0)
-      .lte(1)
-      .default(DEFAULT_HOP_SIZE),
+      .default(DEFAULT_OVERLAP_PERCENT),
     window: z.string().default(DEFAULT_WINDOW),
     scale: z.enum(["amplitude", "power", "dB"]).default(DEFAULT_SCALE),
     clamp: z.boolean().default(true),

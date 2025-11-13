@@ -25,8 +25,7 @@ export default function useSpectrogramTrackAudio({
 
   const drawOnsetAt = useCallback(
     (ctx: CanvasRenderingContext2D, time: number) => {
-      const { width } = ctx.canvas;
-      const x = scaleTimeToWindow(time, window, width);
+      const x = scaleTimeToWindow(time, window);
       drawOnset(ctx, x);
     },
     [window],

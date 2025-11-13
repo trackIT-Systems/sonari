@@ -1,3 +1,4 @@
+import { CANVAS_DIMENSIONS } from "@/constants";
 import type { SpectrogramWindow } from "@/types";
 
 const FONT_SIZE = 30;
@@ -68,7 +69,7 @@ export function drawText(
   ctx.textAlign = textAlign;
   ctx.textBaseline = textBaseline;
 
-  const lines = getLines(ctx, text, maxWidth ?? ctx.canvas.width);
+  const lines = getLines(ctx, text, maxWidth ?? CANVAS_DIMENSIONS.width);
   const verticalOffset = (FONT_SIZE * (lines.length - 1)) / 2;
 
   lines.forEach((line, index) => {
@@ -105,13 +106,13 @@ export function drawImageOnCanvas(
   ctx: CanvasRenderingContext2D,
   image: HTMLImageElement,
   window: SpectrogramWindow,
-  bounds: SpectrogramWindow,
+  segment: SpectrogramWindow,
 ) {
   ctx.fillStyle = COLORS.BACKGROUND;
-  ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+  ctx.clearRect(0, 0, CANVAS_DIMENSIONS.width, CANVAS_DIMENSIONS.height);
 
-  const interval = bounds.time;
-  const maxFreq = bounds.freq.max;
+  const interval = segment.time;
+  const maxFreq = segment.freq.max;
 
   const totalDuration = interval.max - interval.min;
   const startTimeRel = (window.time.min - interval.min) / totalDuration;
@@ -119,32 +120,33 @@ export function drawImageOnCanvas(
 
   const sx = startTimeRel * image.width;
   const sy = (1 - highFreqRel) * image.height;
-  const sWidth =
-    ((window.time.max - window.time.min) * image.width) / totalDuration;
-  const sHeight =
-    ((window.freq.max - window.freq.min) * image.height) / maxFreq;
-  const dx = 0;
-  const dy = 0;
-  const dWidth = ctx.canvas.width;
-  const dHeight = ctx.canvas.height;
+  const sWidth = ((window.time.max - window.time.min) * image.width) / totalDuration;
+  const sHeight = ((window.freq.max - window.freq.min) * image.height) / maxFreq;
+
+  console.log('Drawing:', {
+    windowTime: `${window.time.min}-${window.time.max} (${window.time.max - window.time.min}s)`,
+    segmentTime: `${segment.time.min}-${segment.time.max} (${segment.time.max - segment.time.min}s)`,
+    imageSize: `${image.width}x${image.height}`,
+    calculated: { sx, sy, sWidth, sHeight, totalDuration }
+  });
 
   ctx.globalAlpha = 1;
-  ctx.drawImage(image, sx, sy, sWidth, sHeight, dx, dy, dWidth, dHeight);
+  ctx.drawImage(image, sx, sy, sWidth, sHeight, 0, 0, CANVAS_DIMENSIONS.width, CANVAS_DIMENSIONS.height);
 }
 
 export interface DrawImageProps {
   ctx: CanvasRenderingContext2D;
   image: HTMLImageElement;
   window: SpectrogramWindow;
-  bounds: SpectrogramWindow;
+  segment: SpectrogramWindow;
 }
 
 export default function drawImage({
   ctx,
   image,
   window,
-  bounds,
+  segment,
 }: DrawImageProps) {
   ctx.canvas.setAttribute("class", "");
-  drawImageOnCanvas(ctx, image, window, bounds);
+  drawImageOnCanvas(ctx, image, window, segment);
 }
