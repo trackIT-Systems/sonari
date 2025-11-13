@@ -85,7 +85,7 @@ export default function useSpectrogramSegmentation({
 export function getCoveringSegmentDuration(window: SpectrogramWindow) {
   const duration = window.time.max - window.time.min;
   return (
-    DURATIONS.find((d) => d >= 3 * duration) ?? DURATIONS[DURATIONS.length - 1]
+    DURATIONS[1]
   );
 }
 
