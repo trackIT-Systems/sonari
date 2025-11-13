@@ -249,7 +249,6 @@ export const AnnotationProjectSchema = z.object({
   name: z.string(),
   description: z.string(),
   annotation_instructions: z.string().nullish(),
-  tags: z.array(TagSchema).nullish(),
   created_on: z.coerce.date(),
 });
 
@@ -261,7 +260,6 @@ const AnnotationTaskBaseSchema = z.object({
   start_time: z.number(),
   end_time: z.number(),
   annotation_project: AnnotationProjectSchema.nullish(),
-  tags: z.array(TagSchema).nullish(),
   sound_event_tags: z.array(TagSchema).nullish(),
   features: z.array(FeatureSchema).nullish(),
   status_badges: z.array(AnnotationStatusBadgeSchema),
