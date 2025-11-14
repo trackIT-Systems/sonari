@@ -14,7 +14,7 @@ import type { Tag } from "@/types";
 
 const TagPageSchema = Page(TagSchema);
 
-export type TagPage = z.infer<typeof TagPageSchema>;
+type TagPage = z.infer<typeof TagPageSchema>;
 
 const TagCreateSchema = z.object({
   key: z.string(),
@@ -39,7 +39,7 @@ const GetTagsQuerySchema = z.intersection(
   TagFilterSchema,
 );
 
-export type GetTagsQuery = z.input<typeof GetTagsQuerySchema>;
+type GetTagsQuery = z.input<typeof GetTagsQuerySchema>;
 
 const DEFAULT_ENDPOINTS = {
   get: "/api/v1/tags/",

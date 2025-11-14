@@ -1,7 +1,7 @@
 import type { BorderStyle, FillStyle } from "@/draw/styles";
 import type { Coordinates, MultiPolygon, Polygon } from "@/types";
 
-export type PolygonStyle = BorderStyle & FillStyle;
+type PolygonStyle = BorderStyle & FillStyle;
 
 const DEFAULT_BORDER_ALPHA = 1;
 const DEFAULT_BORDER_WIDTH = 1;

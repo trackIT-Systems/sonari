@@ -16,7 +16,7 @@ import type { Feature, Recording, Tag } from "@/types";
 
 const RecordingPageSchema = Page(RecordingSchema);
 
-export type RecordingPage = z.infer<typeof RecordingPageSchema>;
+type RecordingPage = z.infer<typeof RecordingPageSchema>;
 
 const RecordingUpdateSchema = z.object({
   date: z.coerce.date().nullish(),
@@ -27,7 +27,7 @@ const RecordingUpdateSchema = z.object({
   time_expansion: z.coerce.number().optional(),
 });
 
-export type RecordingUpdate = z.input<typeof RecordingUpdateSchema>;
+type RecordingUpdate = z.input<typeof RecordingUpdateSchema>;
 
 const RecordingFilterSchema = z.object({
   search: z.string().optional(),
@@ -48,7 +48,7 @@ const GetRecordingsQuerySchema = z.intersection(
   RecordingFilterSchema,
 );
 
-export type GetRecordingsQuery = z.input<typeof GetRecordingsQuerySchema>;
+type GetRecordingsQuery = z.input<typeof GetRecordingsQuerySchema>;
 
 const DEFAULT_ENDPOINTS = {
   getMany: "/api/v1/recordings/",

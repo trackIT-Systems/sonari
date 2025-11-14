@@ -13,14 +13,14 @@ export type DatasetFilter = z.input<typeof DatasetFilterSchema>;
 
 const DatasetPageSchema = Page(DatasetSchema);
 
-export type DatasetPage = z.infer<typeof DatasetPageSchema>;
+type DatasetPage = z.infer<typeof DatasetPageSchema>;
 
 const GetDatasetsQuerySchema = z.intersection(
   GetManySchema,
   DatasetFilterSchema,
 );
 
-export type GetDatasetsQuery = z.input<typeof GetDatasetsQuerySchema>;
+type GetDatasetsQuery = z.input<typeof GetDatasetsQuerySchema>;
 
 const DEFAULT_ENDPOINTS = {
   getMany: "/api/v1/datasets/",

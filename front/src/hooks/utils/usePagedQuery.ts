@@ -34,7 +34,7 @@ export type Pagination = {
 /**
  * Represents a paged list with items, total count, and pagination information.
  */
-export type PagedList<T> = {
+type PagedList<T> = {
   /** The list of items. */
   items: T[];
   /** The total count of items. */

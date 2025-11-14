@@ -12,7 +12,7 @@ import type { Note } from "@/types";
 
 const NotePageSchema = Page(NoteSchema);
 
-export type NotePage = z.infer<typeof NotePageSchema>;
+type NotePage = z.infer<typeof NotePageSchema>;
 
 const NoteCreateSchema = z.object({
   message: z.string(),
@@ -26,7 +26,7 @@ const NoteUpdateSchema = z.object({
   is_issue: z.boolean().optional(),
 });
 
-export type NoteUpdate = z.input<typeof NoteUpdateSchema>;
+type NoteUpdate = z.input<typeof NoteUpdateSchema>;
 
 const NoteFilterSchema = z.object({
   is_issue: z.boolean().optional(),
@@ -40,7 +40,7 @@ const GetNotesQuerySchema = z.intersection(
   NoteFilterSchema,
 );
 
-export type GetNotesQuery = z.input<typeof GetNotesQuerySchema>;
+type GetNotesQuery = z.input<typeof GetNotesQuerySchema>;
 
 const DEFAULT_ENDPOINTS = {
   getMany: "/api/v1/notes/",

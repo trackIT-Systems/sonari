@@ -130,7 +130,6 @@ export default function AnnotationTaskSpectrogram({
           samplerate: effectiveSamplerate,
           parameters,
         })
-        console.log(JSON.stringify(_initial))
         return _initial
       } else {
         return {

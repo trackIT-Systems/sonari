@@ -5,7 +5,6 @@ import drawFrequencyAxis from "@/draw/freqAxis";
 import drawTimeAxis from "@/draw/timeAxis";
 import { drawStitchedImage } from "@/draw/image";
 import useSpectrogramImages from "@/hooks/spectrogram/useSpectrogramImages";
-import useSpectrogramMotions from "@/hooks/spectrogram/useSpectrogramMotions";
 import useSpectrogramKeyShortcuts from "@/hooks/spectrogram/useSpectrogramKeyShortcuts";
 import {
   adjustWindowToBounds,
@@ -14,7 +13,7 @@ import {
   shiftWindow,
 } from "@/utils/windows";
 
-import type { MotionMode } from "@/hooks/spectrogram/useSpectrogramMotions";
+import useSpectrogramMotions, { MotionMode } from "@/hooks/spectrogram/useSpectrogramMotions";
 import type {
   AnnotationTask,
   Position,
@@ -45,7 +44,7 @@ const FREQ_LINE_COLORS = [
 /**
  * A function type representing the drawing function for a spectrogram.
  */
-export type DrawFn = (
+type DrawFn = (
   ctx: CanvasRenderingContext2D,
   options?: { withAxes?: boolean }
 ) => void;
@@ -54,7 +53,7 @@ export type DrawFn = (
  * Represents the state of a spectrogram, including parameters, bounds, and
  * window.
  */
-export type SpectrogramState = {
+type SpectrogramState = {
   parameters: SpectrogramParameters;
   bounds: SpectrogramWindow;
   window: SpectrogramWindow;
@@ -67,7 +66,7 @@ export type SpectrogramState = {
 /**
  * A set of controls for manipulating and interacting with a spectrogram.
  */
-export type SpectrogramControls = {
+type SpectrogramControls = {
   reset: () => void;
   zoom: (window: SpectrogramWindow) => void;
   moveLeft: () => void,

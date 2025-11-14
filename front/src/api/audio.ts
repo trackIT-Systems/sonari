@@ -18,7 +18,7 @@ const IntervalSchema = z
     path: ["min"],
   });
 
-export type Interval = z.input<typeof IntervalSchema>;
+type Interval = z.input<typeof IntervalSchema>;
 
 const AudioParametersSchema = z
   .object({
@@ -39,7 +39,7 @@ const AudioParametersSchema = z
     },
   );
 
-export type AudioParameters = z.input<typeof AudioParametersSchema>;
+type AudioParameters = z.input<typeof AudioParametersSchema>;
 
 const DEFAULT_AUDIO_PARAMETERS: AudioParameters = {
   resample: false,

@@ -210,7 +210,7 @@ export const spectrogramCache = new SpectrogramCache(1024);
 /**
  * Hook to use the spectrogram cache
  */
-export function useSpectrogramCache({
+function useSpectrogramCache({
     recording_id,
     segment,
     parameters,

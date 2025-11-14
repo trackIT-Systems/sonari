@@ -15,7 +15,7 @@ import type {
   SpectrogramWindow,
 } from "@/types";
 
-export interface ChunkWithImage {
+interface ChunkWithImage {
   chunk: Chunk;
   image: HTMLImageElement | null;
   isLoading: boolean;

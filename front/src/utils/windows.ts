@@ -4,6 +4,7 @@ import type {
   SpectrogramWindow,
 } from "@/types";
 import { calculateHopDuration, calculateTimeFrames } from "./spectrogram_calculations";
+import { SPECTROGRAM_CANVAS_DIMENSIONS } from "@/constants";
 
 const STRETCH_FACTOR = 3
 
@@ -96,7 +97,7 @@ export function getInitialViewingWindow({
  * Since the spectrogram computation is O(n^2) in the window size, we want to
  * avoid huge windows.
  */
-export function getInitialDuration({
+function getInitialDuration({
   interval,
   samplerate,
   window_size_samples,
@@ -108,15 +109,15 @@ export function getInitialDuration({
   overlap_percent: number;
 }) {
   const duration = interval.max - interval.min;
-  const hopDuration = calculateHopDuration(window_size_samples, overlap_percent, samplerate)
-  const timeFrames = calculateTimeFrames(hopDuration, samplerate, window_size_samples, overlap_percent) / STRETCH_FACTOR
-  return Math.min(duration, timeFrames);
+  const hopDuration = calculateHopDuration(window_size_samples, overlap_percent, samplerate);
+  const idealDuration = SPECTROGRAM_CANVAS_DIMENSIONS.width * hopDuration;
+  return Math.min(duration, idealDuration);
 }
 
 /**
  * Compute the intersection of two intervals
  */
-export function intersectIntervals(
+function intersectIntervals(
   interval1: Interval,
   interval2: Interval,
 ): Interval | null {
@@ -133,7 +134,7 @@ export function intersectIntervals(
 /**
  * Compute the intersection of two spectrogram windows
  */
-export function intersectWindows(
+function intersectWindows(
   window1: SpectrogramWindow,
   window2: SpectrogramWindow,
 ): SpectrogramWindow | null {
@@ -147,7 +148,7 @@ export function intersectWindows(
   };
 }
 
-export function getWindowDimensions(window: SpectrogramWindow): {
+function getWindowDimensions(window: SpectrogramWindow): {
   time: number;
   freq: number;
 } {

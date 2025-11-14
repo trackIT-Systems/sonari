@@ -17,7 +17,7 @@ import type {
 } from "@/types";
 import { SPECTROGRAM_CANVAS_DIMENSIONS } from "@/constants";
 
-export function getTimeStampEditableElements(
+function getTimeStampEditableElements(
   geometry: TimeStamp,
 ): EditableElement<TimeStamp>[] {
   const onset = geometry.coordinates;
@@ -40,7 +40,7 @@ export function getTimeStampEditableElements(
   ];
 }
 
-export function getTimeIntervalEditableElements(
+function getTimeIntervalEditableElements(
   geom: TimeInterval,
 ): EditableElement<TimeInterval>[] {
   const [left, right] = geom.coordinates;
@@ -100,7 +100,7 @@ export function getTimeIntervalEditableElements(
   ];
 }
 
-export function getBBoxEditableElements(
+function getBBoxEditableElements(
   geometry: BoundingBox,
 ): EditableElement<BoundingBox>[] {
   const [left, top, right, bottom] = geometry.coordinates;
@@ -249,7 +249,7 @@ export function getBBoxEditableElements(
   ];
 }
 
-export function getPointEditableElements(
+function getPointEditableElements(
   geom: Point,
 ): EditableElement<Point>[] {
   return [
@@ -270,7 +270,7 @@ export function getPointEditableElements(
   ];
 }
 
-export function getMultiPointEditableElements(
+function getMultiPointEditableElements(
   geom: MultiPoint,
 ): EditableElement<MultiPoint>[] {
   return geom.coordinates.map((p, index) => {
@@ -293,7 +293,7 @@ export function getMultiPointEditableElements(
   });
 }
 
-export function getLineStringEditableElements(
+function getLineStringEditableElements(
   linestring: LineString,
   close = false,
 ): EditableElement<LineString>[] {
@@ -380,7 +380,7 @@ function _adaptEditableElemToMultiLineString(
   };
 }
 
-export function getMultiLineStringEditableElements(
+function getMultiLineStringEditableElements(
   geom: MultiLineString,
   closed = false,
 ): EditableElement<MultiLineString>[] {
@@ -421,7 +421,7 @@ function _adaptMultiLineStringEditableElemToPolygon(
   };
 }
 
-export function getPolygonEditableElements(
+function getPolygonEditableElements(
   geom: Polygon,
 ): EditableElement<Polygon>[] {
   const elems = getMultiLineStringEditableElements(
@@ -472,7 +472,7 @@ function _adaptPolygonEditableElemToMultiPolygon(
   };
 }
 
-export function getMultiPolygonEditableElements(
+function getMultiPolygonEditableElements(
   geom: MultiPolygon,
 ): EditableElement<MultiPolygon>[] {
   const elems: EditableElement<MultiPolygon>[] = [];
@@ -487,7 +487,7 @@ export function getMultiPolygonEditableElements(
   return elems;
 }
 
-export function getGeometryEditableElements(
+function getGeometryEditableElements(
   geom: Geometry,
 ): EditableElement<Geometry>[] {
   const { type } = geom;

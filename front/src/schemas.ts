@@ -25,7 +25,7 @@ export const TagSchema = z.object({
   value: z.string(),
 });
 
-export type Tag = z.infer<typeof TagSchema>;
+type Tag = z.infer<typeof TagSchema>;
 
 export const FeatureSchema = z.object({
   name: z.string(),

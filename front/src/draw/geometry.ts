@@ -8,7 +8,7 @@ import { drawMultiPolygon, drawPolygon } from "@/draw/polygon";
 import type { BorderStyle, FillStyle } from "@/draw/styles";
 import type { Geometry } from "@/types";
 
-export type Style = BorderStyle & FillStyle;
+type Style = BorderStyle & FillStyle;
 
 export default function drawGeometry(
   ctx: CanvasRenderingContext2D,

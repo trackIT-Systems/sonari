@@ -1,7 +1,7 @@
 import { useCallback, useState } from "react";
 import type { Chunk } from "@/utils/chunks";
 
-export type ChunkState = {
+type ChunkState = {
   /** The time interval covered by this chunk */
   interval: { min: number; max: number };
   /** The extended interval including buffer zones */
@@ -16,7 +16,7 @@ export type ChunkState = {
   isError: boolean;
 };
 
-export type ChunksState = {
+type ChunksState = {
   /** Array of chunk states */
   chunks: ChunkState[];
   /** Mark a chunk as having an error */

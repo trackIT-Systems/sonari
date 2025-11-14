@@ -28,7 +28,7 @@ import useKeyFilter from "@/hooks/utils/useKeyFilter";
 import { useKeyPressEvent } from "react-use";
 import  FreqLineSettings  from "./settings/FreqLineSettings";
 
-export const SpectrogramSettingForm = memo(function SpectrogramSettingForm({
+const SpectrogramSettingForm = memo(function SpectrogramSettingForm({
   settings,
   samplerate: recordingSamplerate,
   maxChannels = 1,

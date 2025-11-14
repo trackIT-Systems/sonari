@@ -33,33 +33,12 @@ import type { SpectrogramParameters } from "@/types";
  * // Returns 256 (window advances by 256 samples each frame)
  * ```
  */
-export function calculateHopSize(
+function calculateHopSize(
   windowSizeSamples: number,
   overlapPercent: number
 ): number {
   const overlapSamples = Math.floor(windowSizeSamples * overlapPercent / 100);
   return windowSizeSamples - overlapSamples;
-}
-
-/**
- * Calculate the number of frequency bins in the spectrogram output.
- * 
- * For real-valued input signals, the FFT produces symmetric output.
- * We only keep the positive frequencies, which gives us (N/2 + 1) bins,
- * where N is the window size.
- * 
- * @param windowSizeSamples - FFT window size in samples
- * @returns Number of frequency bins in the output
- * 
- * @example
- * ```typescript
- * // With 1024 sample window
- * const bins = calculateFrequencyBins(1024);
- * // Returns 513 bins (0 Hz to Nyquist)
- * ```
- */
-export function calculateFrequencyBins(windowSizeSamples: number): number {
-  return Math.floor(windowSizeSamples / 2) + 1;
 }
 
 /**
@@ -121,46 +100,6 @@ export function calculateHopDuration(
 }
 
 /**
- * Calculate spectrogram dimensions (time frames × frequency bins).
- * 
- * This provides the complete shape of the spectrogram output for a given
- * duration and parameters. Useful for pre-allocating arrays or estimating
- * computation costs.
- * 
- * @param durationSeconds - Duration of audio in seconds
- * @param samplerate - Sample rate in Hz
- * @param parameters - Spectrogram parameters (must include window_size_samples and overlap_percent)
- * @returns Object with timeFrames and frequencyBins
- * 
- * @example
- * ```typescript
- * const shape = calculateSpectrogramShape(1.0, 44100, {
- *   window_size_samples: 1024,
- *   overlap_percent: 75
- * });
- * // Returns { timeFrames: 172, frequencyBins: 513 }
- * ```
- */
-export function calculateSpectrogramShape(
-  durationSeconds: number,
-  samplerate: number,
-  parameters: Pick<SpectrogramParameters, "window_size_samples" | "overlap_percent">
-): {
-  timeFrames: number;
-  frequencyBins: number;
-} {
-  return {
-    timeFrames: calculateTimeFrames(
-      durationSeconds,
-      samplerate,
-      parameters.window_size_samples,
-      parameters.overlap_percent
-    ),
-    frequencyBins: calculateFrequencyBins(parameters.window_size_samples),
-  };
-}
-
-/**
  * Convert frequency range (Hz) to frequency bin indices.
  * 
  * Maps a frequency range in Hz to the corresponding indices in the
@@ -188,36 +127,5 @@ export function frequencyRangeToBinRange(
   return {
     minBin: Math.floor((freqMin * windowSizeSamples) / samplerate),
     maxBin: Math.ceil((freqMax * windowSizeSamples) / samplerate),
-  };
-}
-
-/**
- * Convert frequency bin indices to frequency range (Hz).
- * 
- * Maps FFT bin indices back to their corresponding frequency values.
- * This is the inverse of frequencyRangeToBinRange.
- * 
- * @param minBin - Minimum bin index
- * @param maxBin - Maximum bin index
- * @param windowSizeSamples - FFT window size in samples
- * @param samplerate - Sample rate in Hz
- * @returns Frequency range in Hz
- * 
- * @example
- * ```typescript
- * // Convert bins 23-116 back to Hz
- * const freqs = binRangeToFrequencyRange(23, 116, 1024, 44100);
- * // Returns { min: ~990 Hz, max: ~5000 Hz }
- * ```
- */
-export function binRangeToFrequencyRange(
-  minBin: number,
-  maxBin: number,
-  windowSizeSamples: number,
-  samplerate: number
-): { min: number; max: number } {
-  return {
-    min: (minBin * samplerate) / windowSizeSamples,
-    max: (maxBin * samplerate) / windowSizeSamples,
   };
 }

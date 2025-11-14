@@ -4,7 +4,7 @@ import type { Tag, AnnotationStatus, AnnotationProject } from "@/types";
 import api from "@/app/api";
 import type { Option } from "@/components/inputs/Select";
 
-export interface ExportSelectionState {
+interface ExportSelectionState {
   // Project selection
   selectedProjects: AnnotationProject[];
   availableProjects: Option<AnnotationProject>[];
@@ -29,7 +29,7 @@ export interface ExportSelectionState {
   totalProjects: number;
 }
 
-export interface ExportSelectionActions {
+interface ExportSelectionActions {
   // Project actions
   handleProjectSelect: (tag: Tag) => void;
   handleProjectDeselect: (tag: Tag) => void;
@@ -50,7 +50,7 @@ export interface ExportSelectionActions {
   setIsExporting: (isExporting: boolean) => void;
 }
 
-export interface UseExportSelectionOptions {
+interface UseExportSelectionOptions {
   includeTags?: boolean;
   includeStatuses?: boolean;
   includeDateRange?: boolean;

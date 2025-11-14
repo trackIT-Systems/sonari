@@ -6,7 +6,7 @@ import { scaleBBoxToWindow } from "@/utils/geometry";
 
 import type { Position, SpectrogramWindow } from "@/types";
 
-export const VALID_STYLE = {
+const VALID_STYLE = {
   fillAlpha: 0.3,
   fillColor: "yellow",
   borderWidth: 1,
@@ -14,7 +14,7 @@ export const VALID_STYLE = {
   borderDash: [4, 4],
 };
 
-export const INVALID_STYLE = {
+const INVALID_STYLE = {
   fillAlpha: 0.3,
   fillColor: "red",
   borderWidth: 1,

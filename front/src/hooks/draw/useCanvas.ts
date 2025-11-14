@@ -2,7 +2,7 @@ import { SPECTROGRAM_CANVAS_DIMENSIONS } from "@/constants";
 import { RefObject, useCallback, useEffect, useState } from "react";
 import { useEvent, useMount } from "react-use";
 
-export type DrawFunction = (ctx: CanvasRenderingContext2D) => void;
+type DrawFunction = (ctx: CanvasRenderingContext2D) => void;
 
 export default function useCanvas({
   ref,

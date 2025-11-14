@@ -103,13 +103,13 @@ export type SpectrogramWindow = z.infer<typeof SpectrogramWindowSchema>;
 
 export type SpectrogramParameters = z.infer<typeof SpectrogramParametersSchema>;
 
-export type JSONValue = string | number | boolean | JSONObject | JSONArray;
+type JSONValue = string | number | boolean | JSONObject | JSONArray;
 
-export interface JSONObject {
+interface JSONObject {
   [x: string]: JSONValue;
 }
 
-export type JSONArray = Array<JSONValue>;
+type JSONArray = Array<JSONValue>;
 
 export type NumberFilter = z.input<typeof NumberFilterSchema>;
 

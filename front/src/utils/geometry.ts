@@ -54,7 +54,7 @@ export function scaleXToWindow(
 }
 
 /** Transform y coordinates to frequency */
-export function scaleFreqToWindow(
+function scaleFreqToWindow(
   value: number,
   window: SpectrogramWindow,
 ): number {
@@ -87,7 +87,7 @@ export function scalePixelsToWindow(
   return { time, freq };
 }
 
-export function scaleIntervalToWindow(
+function scaleIntervalToWindow(
   interval: Coordinates,
   window: SpectrogramWindow,
 ): Coordinates {
@@ -220,7 +220,7 @@ export function scaleGeometryToWindow<T extends Geometry>(
 
 const IS_CLOSE_THRESHOLD = 5;
 
-export function isCloseTonumber(
+function isCloseTonumber(
   position: Coordinates,
   onset: number,
   threshold = IS_CLOSE_THRESHOLD,
@@ -229,7 +229,7 @@ export function isCloseTonumber(
   return Math.abs(onset - x) < threshold;
 }
 
-export function isCloseToInterval(
+function isCloseToInterval(
   position: Coordinates,
   interval: Coordinates,
   threshold = IS_CLOSE_THRESHOLD,
@@ -239,7 +239,7 @@ export function isCloseToInterval(
   return x > start - threshold && x < end + threshold;
 }
 
-export function isCloseToBBox(
+function isCloseToBBox(
   position: Coordinates,
   bbox: Box,
   threshold = IS_CLOSE_THRESHOLD,
@@ -260,7 +260,7 @@ function distance(point1: Coordinates, point2: Coordinates): number {
   return Math.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2);
 }
 
-export function isCloseToPoint(
+function isCloseToPoint(
   position: Coordinates,
   geometry: Point,
   threshold = IS_CLOSE_THRESHOLD,
@@ -268,7 +268,7 @@ export function isCloseToPoint(
   return distance(position, geometry.coordinates) < threshold;
 }
 
-export function isCloseToMultiPoint(
+function isCloseToMultiPoint(
   position: Coordinates,
   geometry: MultiPoint,
   threshold = IS_CLOSE_THRESHOLD,
@@ -313,7 +313,7 @@ function pointToLineDistance(
   return Math.min(...distances);
 }
 
-export function isCloseToLineString(
+function isCloseToLineString(
   position: Coordinates,
   geometry: LineString,
   threshold = IS_CLOSE_THRESHOLD,
@@ -325,7 +325,7 @@ export function isCloseToLineString(
   return dist < threshold;
 }
 
-export function isCloseToMultiLineString(
+function isCloseToMultiLineString(
   position: Coordinates,
   geometry: MultiLineString,
   threshold = IS_CLOSE_THRESHOLD,
@@ -342,14 +342,14 @@ export function isCloseToMultiLineString(
   );
 }
 
-export function isCloseToPolygon(
+function isCloseToPolygon(
   position: Coordinates,
   geometry: Polygon,
 ): boolean {
   return booleanPointInPolygon(position, geometry);
 }
 
-export function isCloseToMultiPolygon(
+function isCloseToMultiPolygon(
   position: Coordinates,
   geometry: MultiPolygon,
 ): boolean {
@@ -392,7 +392,7 @@ export function isCloseToGeometry(
   }
 }
 
-export function shiftPoint(
+function shiftPoint(
   geom: Point,
   start: Coordinates,
   end: Coordinates,
@@ -406,7 +406,7 @@ export function shiftPoint(
   };
 }
 
-export function shiftMultiPoint(
+function shiftMultiPoint(
   geom: MultiPoint,
   start: Coordinates,
   end: Coordinates,
@@ -419,7 +419,7 @@ export function shiftMultiPoint(
   };
 }
 
-export function shiftLineString(
+function shiftLineString(
   geom: LineString,
   start: Coordinates,
   end: Coordinates,
@@ -435,7 +435,7 @@ export function shiftLineString(
   };
 }
 
-export function shiftMultiLineString(
+function shiftMultiLineString(
   geom: MultiLineString,
   start: Coordinates,
   end: Coordinates,
@@ -465,7 +465,7 @@ export function shiftPolygon(
   };
 }
 
-export function shiftMultiPolygon(
+function shiftMultiPolygon(
   geom: MultiPolygon,
   start: Coordinates,
   end: Coordinates,
@@ -480,7 +480,7 @@ export function shiftMultiPolygon(
   };
 }
 
-export function shiftTimeStamp(
+function shiftTimeStamp(
   geom: TimeStamp,
   start: Coordinates,
   end: Coordinates,
@@ -492,7 +492,7 @@ export function shiftTimeStamp(
   };
 }
 
-export function shiftTimeInterval(
+function shiftTimeInterval(
   geom: TimeInterval,
   start: Coordinates,
   end: Coordinates,
@@ -504,7 +504,7 @@ export function shiftTimeInterval(
   };
 }
 
-export function shiftBoundingBBox(
+function shiftBoundingBBox(
   geom: BoundingBox,
   start: Coordinates,
   end: Coordinates,
@@ -561,7 +561,7 @@ export function shiftGeometry(
   }
 }
 
-export function isTimeStampInWindow(
+function isTimeStampInWindow(
   geom: TimeStamp,
   window: SpectrogramWindow,
 ): boolean {
@@ -569,7 +569,7 @@ export function isTimeStampInWindow(
   return geom.coordinates >= time.min && geom.coordinates <= time.max;
 }
 
-export function isTimeIntervalInWindow(
+function isTimeIntervalInWindow(
   geom: TimeInterval,
   window: SpectrogramWindow,
 ): boolean {
@@ -578,7 +578,7 @@ export function isTimeIntervalInWindow(
   return end >= time.min && start <= time.max;
 }
 
-export function isBoundingBoxInWindow(
+function isBoundingBoxInWindow(
   geom: BoundingBox,
   window: SpectrogramWindow,
 ) {
@@ -592,13 +592,13 @@ export function isBoundingBoxInWindow(
   );
 }
 
-export function isPointInWindow(geom: Point, window: SpectrogramWindow) {
+function isPointInWindow(geom: Point, window: SpectrogramWindow) {
   const { time, freq } = window;
   const [x, y] = geom.coordinates;
   return x <= time.max && x >= time.min && y <= freq.max && y >= freq.min;
 }
 
-export function isLineStringInWindow(
+function isLineStringInWindow(
   geom: LineString,
   window: SpectrogramWindow,
 ) {
@@ -609,7 +609,7 @@ export function isLineStringInWindow(
   );
 }
 
-export function isPolygonInWindow(geom: Polygon, window: SpectrogramWindow) {
+function isPolygonInWindow(geom: Polygon, window: SpectrogramWindow) {
   const bbox = computeGeometryBBox(geom);
   return isBoundingBoxInWindow(
     { type: "BoundingBox", coordinates: bbox },
@@ -617,7 +617,7 @@ export function isPolygonInWindow(geom: Polygon, window: SpectrogramWindow) {
   );
 }
 
-export function isMultiPointInWindow(
+function isMultiPointInWindow(
   geom: MultiPoint,
   window: SpectrogramWindow,
 ) {
@@ -627,7 +627,7 @@ export function isMultiPointInWindow(
   });
 }
 
-export function isMultiLineStringInWindow(
+function isMultiLineStringInWindow(
   geom: MultiLineString,
   window: SpectrogramWindow,
 ) {
@@ -642,7 +642,7 @@ export function isMultiLineStringInWindow(
   });
 }
 
-export function isMultiPolygonInWindow(
+function isMultiPolygonInWindow(
   geom: MultiPolygon,
   window: SpectrogramWindow,
 ) {
@@ -697,15 +697,15 @@ export function isGeometryInWindow(
   }
 }
 
-export function computeTimeStampBBox(geometry: TimeStamp): Box {
+function computeTimeStampBBox(geometry: TimeStamp): Box {
   return [geometry.coordinates, 0, geometry.coordinates, MAX_FREQ];
 }
 
-export function computeTimeIntervalBBox(geometry: TimeInterval): Box {
+function computeTimeIntervalBBox(geometry: TimeInterval): Box {
   return [geometry.coordinates[0], 0, geometry.coordinates[1], MAX_FREQ];
 }
 
-export function computeBoundingBoxBBox(geometry: BoundingBox): Box {
+function computeBoundingBoxBBox(geometry: BoundingBox): Box {
   // @ts-ignore
   return geometry.coordinates;
 }

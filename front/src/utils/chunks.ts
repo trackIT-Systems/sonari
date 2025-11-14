@@ -4,7 +4,7 @@ import type { Interval } from "@/types";
 /**
  * Number of extra STFT windows to include as buffer on each side of a chunk
  */
-export const SPECTROGRAM_CHUNK_BUFFER = 3;
+const SPECTROGRAM_CHUNK_BUFFER = 3;
 
 /**
  * Represents a chunk of spectrogram data with its time interval and buffer
@@ -83,7 +83,7 @@ export function calculateSpectrogramChunks({
 /**
  * Determines if a chunk's interval intersects with a given time range
  */
-export function chunkIntersectsTimeRange(
+function chunkIntersectsTimeRange(
   chunk: Chunk,
   timeMin: number,
   timeMax: number,

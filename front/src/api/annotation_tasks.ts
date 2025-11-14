@@ -106,7 +106,7 @@ const GetAnnotationTasksQuerySchema = z.intersection(
   AnnotationTaskFilterSchema,
 );
 
-export type GetAnnotationTasksQuery = z.input<
+type GetAnnotationTasksQuery = z.input<
   typeof GetAnnotationTasksQuerySchema
 >;
 

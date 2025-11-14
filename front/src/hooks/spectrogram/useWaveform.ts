@@ -3,7 +3,7 @@ import useWaveformImage from "@/hooks/spectrogram/useWaveformImage";
 import type { Recording, SpectrogramParameters, SpectrogramWindow, WaveformWindow } from "@/types";
 
 // Convert a 2D SpectrogramWindow to 1D WaveformWindow
-export function toWaveformWindow(window: SpectrogramWindow): WaveformWindow {
+function toWaveformWindow(window: SpectrogramWindow): WaveformWindow {
   return {
     time: { ...window.time }, // New object to trigger updates
   };

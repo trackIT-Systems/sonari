@@ -57,7 +57,7 @@ export function getTagColor(tagStr: string): {color: string, level: number} {
   return { color: name, level };
 }
 
-export function getTagClassNames(color: string, level: number) {
+function getTagClassNames(color: string, level: number) {
   const background = `bg-${color}-${level}00 dark:bg-${color}-${10 - level}00`;
   const border = `border-${color}-${level + 2}00 dark:border-${color}-${10 - level - 2
     }00`;
@@ -132,5 +132,3 @@ export default function Tag({
     </div>
   );
 }
-
-export { ALL_COLORS, COLOR_NAMES, LEVELS, getTagClassNames as getClassNames };

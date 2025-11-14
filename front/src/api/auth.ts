@@ -10,7 +10,7 @@ const LoginSchema = z.object({
   password: z.string(),
 });
 
-export type Login = z.input<typeof LoginSchema>;
+type Login = z.input<typeof LoginSchema>;
 
 const DEFAULT_ENDPOINTS = {
   login: "/api/v1/auth/login",

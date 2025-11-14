@@ -1,11 +1,7 @@
 import { memo } from "react";
 
 import { RecordingIcon } from "@/components/icons";
-import Link from "@/components/Link";
 import RecordingDate from "@/components/recordings/RecordingDate";
-import {
-  getBaseName,
-} from "@/components/recordings/RecordingHeader";
 import RecordingLocation from "@/components/recordings/RecordingLocation";
 import RecordingTime from "@/components/recordings/RecordingTime";
 import useRecording from "@/hooks/api/useRecording";
@@ -22,7 +18,7 @@ const RecordingAnnotationContext = memo(function RecordingAnnotationContext({
   totalTasks?: number;
 }) {
   const { path } = recording;
-  const baseName = getBaseName(path) ?? "";
+  const baseName = path.split("\\").pop()?.split("/").pop() ?? "";
 
   const { downloadURL }  = useRecording({
     id: recording.id,

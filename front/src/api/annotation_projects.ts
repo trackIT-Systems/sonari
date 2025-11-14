@@ -15,7 +15,7 @@ const AnnotationProjectProgressSchema = z.object({
   pending: z.number(),
 });
 
-export type AnnotationProjectProgress = z.infer<typeof AnnotationProjectProgressSchema>;
+type AnnotationProjectProgress = z.infer<typeof AnnotationProjectProgressSchema>;
 
 const DEFAULT_ENDPOINTS = {
   getMany: "/api/v1/annotation_projects/",
@@ -33,14 +33,14 @@ export type AnnotationProjectFilter = z.input<
 
 const AnnotationProjectPageSchema = Page(AnnotationProjectSchema);
 
-export type AnnotationProjectPage = z.infer<typeof AnnotationProjectPageSchema>;
+type AnnotationProjectPage = z.infer<typeof AnnotationProjectPageSchema>;
 
 const GetAnnotationProjectsQuerySchema = z.intersection(
   GetManySchema,
   AnnotationProjectFilterSchema,
 );
 
-export type GetAnnotationProjectsQuery = z.input<
+type GetAnnotationProjectsQuery = z.input<
   typeof GetAnnotationProjectsQuerySchema
 >;
 

@@ -18,7 +18,7 @@ const SoundEventAnnotationCreateSchema = z.object({
   tags: z.array(TagSchema).optional(),
 });
 
-export type SoundEventAnnotationCreate = z.input<
+type SoundEventAnnotationCreate = z.input<
   typeof SoundEventAnnotationCreateSchema
 >;
 
@@ -26,7 +26,7 @@ const SoundEventAnnotationUpdateSchema = z.object({
   geometry: GeometrySchema,
 });
 
-export type SoundEventAnnotationUpdate = z.input<
+type SoundEventAnnotationUpdate = z.input<
   typeof SoundEventAnnotationUpdateSchema
 >;
 

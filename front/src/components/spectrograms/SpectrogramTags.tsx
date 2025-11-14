@@ -50,7 +50,7 @@ function TagBarPopover({
   );
 }
 
-export function SpectrogramTag({
+function SpectrogramTag({
   tag,
   onClick,
   disabled = false,
@@ -82,7 +82,7 @@ export function SpectrogramTag({
   );
 }
 
-export function AddTagButton({
+function AddTagButton({
   filter,
   onCreate,
   onAdd,

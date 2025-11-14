@@ -17,9 +17,9 @@ export interface FillStyle {
   fillColor?: Color;
 }
 
-export type FontWeight = "normal" | "bold" | "lighter" | "bolder" | number;
+type FontWeight = "normal" | "bold" | "lighter" | "bolder" | number;
 
-export interface FontStyle {
+interface FontStyle {
   fontFamily?: string;
   fontSize?: number;
   fontStyle?: "normal" | "italic" | "oblique";

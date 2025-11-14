@@ -17,8 +17,6 @@ import useAnnotationTasks from "@/hooks/api/useAnnotationTasks";
 import { type Filter } from "@/hooks/utils/useFilter";
 
 import type { AnnotationStatus, Recording, AnnotationTask } from "@/types";
-import { spectrogramCache } from "@/utils/spectrogram_cache";
-import { getInitialViewingWindow } from "@/utils/windows";
 
 type AnnotationState = {
   /** Currently selected annotation task index */
@@ -141,70 +139,6 @@ export default function useAnnotateTasks({
 
 
   const parameters = useStore((state) => state.spectrogramSettings);
-
-  // const preloadSpectrogramSegments = useCallback(async (recording: Recording) => {
-  //   if (!recording) return;
-
-  //   // Calculate initial window to get segment size (using default canvas dimensions)
-  //   const initial = getInitialViewingWindow({
-  //     startTime: 0,
-  //     endTime: recording.duration,
-  //     samplerate: recording.samplerate,
-  //     canvasWidth: 800,
-  //     canvasHeight: 384,
-  //   });
-
-  //   // Calculate bounds
-  //   const bounds = {
-  //     time: { min: 0, max: recording.duration },
-  //     freq: { min: 0, max: recording.samplerate / 2 },
-  //   };
-
-  //   // Get segment duration
-  //   const duration = getCoveringSegmentDuration(initial, false);
-
-  //   // Get all segments
-  //   const segments = getSegments(bounds, duration, OVERLAP);
-
-  //   // Load all segments
-  //   segments.forEach(async segment => {
-  //     // Skip if already cached
-  //     if (spectrogramCache.get(recording.id, segment, parameters, false)) {
-  //       return;
-  //     }
-
-  //     const url = api.spectrograms.getUrl({
-  //       recording_id: recording.id,
-  //       segment: { min: segment.time.min, max: segment.time.max },
-  //       parameters
-  //     });
-
-  //     try {
-  //       const response = await fetch(url);
-  //       const size = parseInt(response.headers.get('content-length') || '0', 10);
-  //       const blob = await response.blob();
-  //       const objectUrl = URL.createObjectURL(blob);
-
-  //       const img = new Image();
-  //       img.onload = async () => {
-  //         try {
-  //           await img.decode();
-  //           await spectrogramCache.set(recording.id, segment, parameters, false, img, size);
-  //         } finally {
-  //           URL.revokeObjectURL(objectUrl);
-  //         }
-  //       };
-
-  //       img.onerror = () => {
-  //         URL.revokeObjectURL(objectUrl);
-  //       };
-
-  //       img.src = objectUrl;
-  //     } catch (error) {
-  //       console.error('Failed to preload segment:', error);
-  //     }
-  //   });
-  // }, [parameters]);
 
   const goToTask = useCallback(
     (task: AnnotationTask) => {

@@ -4,7 +4,7 @@ import { useCallback, useEffect } from "react";
 import type { AxiosError } from "axios";
 import type { SetStateAction } from "react";
 
-export function useObjectDestruction<T>({
+function useObjectDestruction<T>({
   id,
   query,
   client,
@@ -56,7 +56,7 @@ export function useObjectDestruction<T>({
   });
 }
 
-export function useObjectMutation<T, K, J = T>({
+function useObjectMutation<T, K, J = T>({
   id,
   query,
   client,
@@ -113,7 +113,7 @@ export function useObjectMutation<T, K, J = T>({
   });
 }
 
-export function useObjectQuery<T, K>({
+function useObjectQuery<T, K>({
   id,
   query,
   queryFn,
@@ -156,7 +156,7 @@ export function useObjectQuery<T, K>({
   });
 }
 
-export type UseObjectProps<T> = {
+type UseObjectProps<T> = {
   id?: number;
   name: string;
   enabled?: boolean;
