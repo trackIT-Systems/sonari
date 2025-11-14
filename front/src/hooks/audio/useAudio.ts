@@ -65,11 +65,13 @@ export default function useAudio({
   withShortcuts = true,
   withAutoplay,
   onWithAutoplayChange,
+  spectrogramsReady = true,
 }: {
   recording: Recording;
   withShortcuts?: boolean;
   withAutoplay: boolean;
   onWithAutoplayChange: () => void;
+  spectrogramsReady?: boolean;
 } & Partial<PlayerState>): PlayerState & PlayerControls {
   const audio = useRef<HTMLAudioElement>(new Audio());
 
@@ -130,9 +132,13 @@ export default function useAudio({
         setIsPlaying(false);
       }
       
-      current.preload = "auto";
+      // Dynamic preload: prioritize spectrograms, but allow audio during playback
+      const shouldPreload = spectrogramsReady || isPlaying;
+      current.preload = shouldPreload ? "auto" : "none";
       current.src = fullAudioUrl;
-      current.load();
+      if (shouldPreload) {
+        current.load();
+      }
     }
     
     current.loop = loop;
@@ -215,7 +221,16 @@ export default function useAudio({
         setIsPlaying(false);
       }
     };
-  }, [fullAudioUrl, speed, playbackStartTime, playbackEndTime, loop, volume, withAutoplay]);
+  }, [fullAudioUrl, speed, playbackStartTime, playbackEndTime, loop, volume, withAutoplay, spectrogramsReady, isPlaying]);
+
+  // Trigger audio load when spectrograms become ready
+  useEffect(() => {
+    const { current } = audio;
+    if (spectrogramsReady && current.preload === "none") {
+      current.preload = "auto";
+      current.load();
+    }
+  }, [spectrogramsReady]);
 
   // Cleanup audio on component unmount
   useEffect(() => {

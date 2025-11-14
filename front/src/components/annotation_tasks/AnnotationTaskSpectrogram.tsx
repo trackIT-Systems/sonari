@@ -87,6 +87,7 @@ export default function AnnotationTaskSpectrogram({
   const {data: annotationTask} = annotationTaskProps;
   
   const [isAnnotating, setIsAnnotating] = useState(false);
+  const [spectrogramsReady, setSpectrogramsReady] = useState(false);
   const spectrogramCanvasRef = useRef<HTMLCanvasElement>(null);
   const waveformCanvasRef = useRef<HTMLCanvasElement>(null);
   
@@ -191,6 +192,7 @@ export default function AnnotationTaskSpectrogram({
     withShortcuts: withAudioShortcuts,
     withAutoplay: withAutoplay,
     onWithAutoplayChange: onWithAutoplayChange,
+    spectrogramsReady: spectrogramsReady,
   });
 
   const handleSpectrogramModeChange = useCallback(
@@ -212,6 +214,11 @@ export default function AnnotationTaskSpectrogram({
     [seek, audio],
   );
 
+  const handleSegmentsLoaded = useCallback(() => {
+    setSpectrogramsReady(true);
+    onSegmentsLoaded();
+  }, [onSegmentsLoaded]);
+
   const spectrogram = useSpectrogram({
     task: annotationTask!,
     samplerate: recording!.samplerate,
@@ -225,18 +232,18 @@ export default function AnnotationTaskSpectrogram({
     withSpectrogram: withSpectrogram,
     fixedAspectRatio: fixedAspectRatio,
     toggleFixedAspectRatio: toggleFixedAspectRatio,
-    onSegmentsLoaded,
+    onSegmentsLoaded: handleSegmentsLoaded,
   });
 
   const handleParameterSave = useCallback(() => {
     onParameterSave?.(spectrogram.parameters);
   }, [onParameterSave, spectrogram.parameters]);
 
-  const waveform = useWaveform({
-    recording: recording!,
-    parameters: spectrogram.parameters,
-    window: spectrogram.window,
-  });
+  // const waveform = useWaveform({
+  //   recording: recording!,
+  //   parameters: spectrogram.parameters,
+  //   window: spectrogram.window,
+  // });
 
   const { centerOn } = spectrogram;
 
@@ -330,35 +337,40 @@ export default function AnnotationTaskSpectrogram({
     audio.currentTime,
   ]);
 
-  const drawWaveformCanvas = useCallback((ctx: CanvasRenderingContext2D) => {
-    if (waveform.isLoading) {
-      ctx.canvas.style.cursor = "wait";
-      return;
-    }
-    ctx.canvas.style.cursor = "default";
+  // const drawWaveformCanvas = useCallback((ctx: CanvasRenderingContext2D) => {
+  //   if (waveform.isLoading) {
+  //     ctx.canvas.style.cursor = "wait";
+  //     return;
+  //   }
+  //   ctx.canvas.style.cursor = "default";
     
-    // Draw waveform first
-    waveform.draw(ctx);
+  //   // Draw waveform first
+  //   waveform.draw(ctx);
     
-    // Draw the audio tracking onset over the waveform
-    if (trackingAudio) {
-      drawTrackAudio(ctx);
-    } else {
-      // Draw static onset when not playing
-      drawOnsetAt?.(ctx, audio.currentTime);
-    }
+  //   // Draw the audio tracking onset over the waveform
+  //   if (trackingAudio) {
+  //     drawTrackAudio(ctx);
+  //   } else {
+  //     // Draw static onset when not playing
+  //     drawOnsetAt?.(ctx, audio.currentTime);
+  //   }
     
-    // Always draw sound event annotations when enabled
-    if (withSoundEvent && soundEventAnnotations.length > 0) {
-      drawWaveformAnnotationsLegacy(ctx);
-    }
+  //   // Always draw sound event annotations when enabled
+  //   if (withSoundEvent && soundEventAnnotations.length > 0) {
+  //     drawWaveformAnnotationsLegacy(ctx);
+  //   }
     
-    // Draw measurement-aware annotations (includes measurement reflection from spectrogram)
-    annotate?.drawWaveform(ctx);
-  }, [waveform, trackingAudio, drawTrackAudio, drawOnsetAt, audio.currentTime, withSoundEvent, soundEventAnnotations, annotate, drawWaveformAnnotationsLegacy]);
+  //   // Draw measurement-aware annotations (includes measurement reflection from spectrogram)
+  //   annotate?.drawWaveform(ctx);
+  // }, [waveform, trackingAudio, drawTrackAudio, drawOnsetAt, audio.currentTime, withSoundEvent, soundEventAnnotations, annotate, drawWaveformAnnotationsLegacy]);
 
   useCanvas({ ref: spectrogramCanvasRef as React.RefObject<HTMLCanvasElement>, draw: drawSpectrogramCanvas });
-  useCanvas({ ref: waveformCanvasRef as React.RefObject<HTMLCanvasElement>, draw: drawWaveformCanvas });
+  // useCanvas({ ref: waveformCanvasRef as React.RefObject<HTMLCanvasElement>, draw: drawWaveformCanvas });
+
+  // Reset spectrogram ready state when window changes (scrolling/navigation)
+  useEffect(() => {
+    setSpectrogramsReady(false);
+  }, [spectrogram.window.time.min, spectrogram.window.time.max]);
 
   useEffect(() => {
     if (waveformCanvasRef.current) {

@@ -60,14 +60,17 @@ async def stream_recording_audio(
     start = int(start)
     end = None if len(end) == 0 else int(end)
 
-    data, start, end, filesize = api.load_clip_bytes(
-        path=audio_dir / recording.path,
-        start=start,
-        end=end,
-        time_expansion=recording.time_expansion,
-        speed=speed,
+    # Use cached audio for streaming
+    # This will load the full file once and cache it, then subsequent
+    # chunk requests will be served from the cache
+    data, start, end, filesize = api.load_audio_bytes_from_cache(
+        recording=recording,
+        start_byte=start,
+        end_byte=end,
+        audio_dir=audio_dir,
         start_time=start_time,
         end_time=end_time,
+        speed=speed,
     )
 
     headers = {

@@ -128,7 +128,9 @@ export default function useSpectrogramImages({
                 parameters,
               });
 
-              const response = await fetch(url);
+              const response = await fetch(url, {
+                priority: 'high'
+              } as RequestInit & { priority?: string });
               const size = parseInt(
                 response.headers.get("content-length") || "0",
                 10,
