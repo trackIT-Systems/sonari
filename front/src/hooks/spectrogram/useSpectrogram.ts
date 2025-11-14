@@ -3,7 +3,8 @@ import { useCallback, useEffect, useMemo, useState, useRef } from "react";
 import { DEFAULT_SPECTROGRAM_PARAMETERS } from "@/api/spectrograms";
 import drawFrequencyAxis from "@/draw/freqAxis";
 import drawTimeAxis from "@/draw/timeAxis";
-import useSpectrogramImage from "@/hooks/spectrogram//useSpectrogramImage";
+import { drawStitchedImage } from "@/draw/image";
+import useSpectrogramImages from "@/hooks/spectrogram/useSpectrogramImages";
 import useSpectrogramMotions from "@/hooks/spectrogram/useSpectrogramMotions";
 import useSpectrogramKeyShortcuts from "@/hooks/spectrogram/useSpectrogramKeyShortcuts";
 import {
@@ -327,16 +328,15 @@ export default function useSpectrogram({
 
 
   const {
-    draw: drawImage,
+    chunks,
     isLoading,
     isError,
-  } = useSpectrogramImage({
+  } = useSpectrogramImages({
     task,
     samplerate,
     window,
     parameters,
     withSpectrogram,
-    preload,
     onAllSegmentsLoaded: onSegmentsLoaded,
   });
 
@@ -458,7 +458,21 @@ export default function useSpectrogram({
       } else {
         ctx.canvas.style.cursor = "default";
       }
-      drawImage(ctx, window);
+      
+      // Draw spectrogram chunks
+      if (withSpectrogram) {
+        drawStitchedImage({
+          ctx,
+          viewport: window,
+          chunks,
+          samplerate,
+        });
+      } else {
+        // Clear canvas if spectrogram is disabled
+        ctx.fillStyle = "rgb(156 163 175)";
+        ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+      }
+      
       if (withSpectrogram && options.withAxes) {
         drawTimeAxis(ctx, window.time);
         drawFrequencyAxis(ctx, window.freq);
@@ -477,7 +491,7 @@ export default function useSpectrogram({
       }
 
     },
-    [drawImage, drawMotions, window, canDrag, canZoom, withSpectrogram, parameters.freqLines],
+    [chunks, drawMotions, window, canDrag, canZoom, withSpectrogram, parameters.freqLines, samplerate],
   );
 
   const handleMoveLeft = useCallback(() => {

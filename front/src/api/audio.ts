@@ -8,7 +8,7 @@ const DEFAULT_ENDPOINTS = {
   stream: "/api/v1/audio/stream/",
 };
 
-export const IntervalSchema = z
+const IntervalSchema = z
   .object({
     min: z.number(),
     max: z.number(),
@@ -20,7 +20,7 @@ export const IntervalSchema = z
 
 export type Interval = z.input<typeof IntervalSchema>;
 
-export const AudioParametersSchema = z
+const AudioParametersSchema = z
   .object({
     resample: z.boolean().default(false),
     samplerate: z.number().positive().int().optional(),
@@ -41,7 +41,7 @@ export const AudioParametersSchema = z
 
 export type AudioParameters = z.input<typeof AudioParametersSchema>;
 
-export const DEFAULT_AUDIO_PARAMETERS: AudioParameters = {
+const DEFAULT_AUDIO_PARAMETERS: AudioParameters = {
   resample: false,
 };
 

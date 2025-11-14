@@ -8,6 +8,7 @@ import {
   calculateTimeFrames,
   frequencyRangeToBinRange,
 } from "@/utils/spectrogram_calculations";
+import tasksFilterDefs from "../filters/tasks";
 
 function getWindowFromGeometry(annotation: SoundEventAnnotation, duration: number, samplerate: number) {
     const { geometry, geometry_type } = annotation;
@@ -178,7 +179,7 @@ export default function SoundEventAnnotationSpectrogramView({
 
     const window = useMemo(
         () => getWindowFromGeometry(soundEventAnnotation, task.end_time - task.start_time, samplerate),
-        [soundEventAnnotation, samplerate]
+        [soundEventAnnotation, samplerate, task.start_time, task.end_time]
     );
 
     const soundEventCoords = useMemo(

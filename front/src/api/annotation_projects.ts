@@ -6,7 +6,7 @@ import { AnnotationProjectSchema } from "@/schemas";
 
 import type { AnnotationProject } from "@/types";
 
-export const AnnotationProjectProgressSchema = z.object({
+const AnnotationProjectProgressSchema = z.object({
   total: z.number(),
   verified: z.number(),
   rejected: z.number(),

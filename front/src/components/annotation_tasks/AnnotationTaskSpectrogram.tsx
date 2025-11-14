@@ -111,7 +111,7 @@ export default function AnnotationTaskSpectrogram({
       time: { min: taskStartTime, max: taskEndTime },
       freq: { min: 0, max: effectiveSamplerate / 2 },
     };
-  }, [taskStartTime, taskEndTime, parameters, recording?.samplerate]);
+  }, [taskStartTime, taskEndTime, parameters, recording]);
 
   /**
    * Initial window - Determines the starting view when component mounts.
@@ -139,7 +139,7 @@ export default function AnnotationTaskSpectrogram({
         }
       }
     },
-    [recording?.samplerate, taskStartTime, taskEndTime, withSpectrogram, parameters],
+    [recording, taskStartTime, taskEndTime, withSpectrogram, parameters],
   );
 
   const getPlaybackBounds = useCallback(() => {

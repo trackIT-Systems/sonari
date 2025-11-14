@@ -16,7 +16,7 @@ const TagPageSchema = Page(TagSchema);
 
 export type TagPage = z.infer<typeof TagPageSchema>;
 
-export const TagCreateSchema = z.object({
+const TagCreateSchema = z.object({
   key: z.string(),
   value: z.string(),
 });

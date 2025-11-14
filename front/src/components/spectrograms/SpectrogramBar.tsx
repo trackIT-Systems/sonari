@@ -1,6 +1,5 @@
 import { useMemo, useRef, useState } from "react";
 import useCanvas from "@/hooks/draw/useCanvas";
-import useSpectrogramSegment from "@/hooks/spectrogram/useSpectrogramSegment";
 import useWindowDrag from "@/hooks/window/useWindowDrag";
 import { getWindowPosition } from "@/utils/windows";
 
@@ -45,25 +44,25 @@ export default function SpectrogramBar({
   const [intialWindow, setInitialWindow] = useState(window);
 
   // Get the complete spectrogram image
-  const { draw: drawFullSpectrogram } = useSpectrogramSegment({
-    recording_id,
-    samplerate,
-    segment: bounds,
-    parameters,
-    withSpectrogram,
-    lowRes: true,
-  });
+  // const { draw: drawFullSpectrogram } = useSpectrogramSegment({
+  //   recording_id,
+  //   samplerate,
+  //   segment: bounds,
+  //   parameters,
+  //   withSpectrogram,
+  //   lowRes: true,
+  // });
 
-  // Draw function for the canvas
-  const draw = useMemo(
-    () => (ctx: CanvasRenderingContext2D) => {
-      // Draw the full spectrogram
-      drawFullSpectrogram(ctx, bounds);
-    },
-    [drawFullSpectrogram, bounds]
-  );
+  // // Draw function for the canvas
+  // const draw = useMemo(
+  //   () => (ctx: CanvasRenderingContext2D) => {
+  //     // Draw the full spectrogram
+  //     drawFullSpectrogram(ctx, bounds);
+  //   },
+  //   [drawFullSpectrogram, bounds]
+  // );
 
-  useCanvas({ ref: canvasRef as React.RefObject<HTMLCanvasElement>, draw });
+  // useCanvas({ ref: canvasRef as React.RefObject<HTMLCanvasElement>, draw });
 
   const { moveProps } = useWindowDrag({
     window: bounds,

@@ -19,7 +19,6 @@ import { type Filter } from "@/hooks/utils/useFilter";
 import type { AnnotationStatus, Recording, AnnotationTask } from "@/types";
 import { spectrogramCache } from "@/utils/spectrogram_cache";
 import { getInitialViewingWindow } from "@/utils/windows";
-import { getCoveringSegmentDuration, getSegments, OVERLAP } from "../spectrogram/useSpectrogramSegmentation";
 
 type AnnotationState = {
   /** Currently selected annotation task index */
