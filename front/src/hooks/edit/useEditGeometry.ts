@@ -15,7 +15,7 @@ import type {
   TimeInterval,
   TimeStamp,
 } from "@/types";
-import { CANVAS_DIMENSIONS } from "@/constants";
+import { SPECTROGRAM_CANVAS_DIMENSIONS } from "@/constants";
 
 export function getTimeStampEditableElements(
   geometry: TimeStamp,
@@ -27,7 +27,7 @@ export function getTimeStampEditableElements(
       type: "Edge",
       coords: [
         [onset, 0],
-        [onset, CANVAS_DIMENSIONS.height],
+        [onset, SPECTROGRAM_CANVAS_DIMENSIONS.height],
       ],
       drag: (current: TimeStamp, start: Pixel, end: Pixel) => {
         const dx = end.x - start.x;
@@ -50,7 +50,7 @@ export function getTimeIntervalEditableElements(
       type: "Edge",
       coords: [
         [left, 0],
-        [left, CANVAS_DIMENSIONS.height],
+        [left, SPECTROGRAM_CANVAS_DIMENSIONS.height],
       ],
       drag: (current: TimeInterval, start: Pixel, end: Pixel) => {
         const dx = end.x - start.x;
@@ -66,7 +66,7 @@ export function getTimeIntervalEditableElements(
       type: "Edge",
       coords: [
         [right, 0],
-        [right, CANVAS_DIMENSIONS.height],
+        [right, SPECTROGRAM_CANVAS_DIMENSIONS.height],
       ],
       drag: (current: TimeInterval, start: Pixel, end: Pixel) => {
         const dx = end.x - start.x;
@@ -82,10 +82,10 @@ export function getTimeIntervalEditableElements(
       type: "Area",
       coords: [
         [
-          [left, CANVAS_DIMENSIONS.height],
+          [left, SPECTROGRAM_CANVAS_DIMENSIONS.height],
           [left, 0],
           [right, 0],
-          [right, CANVAS_DIMENSIONS.height],
+          [right, SPECTROGRAM_CANVAS_DIMENSIONS.height],
         ],
       ],
       drag: (current: TimeInterval, start: Pixel, end: Pixel) => {

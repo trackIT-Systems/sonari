@@ -1,4 +1,4 @@
-import { CANVAS_DIMENSIONS } from "@/constants";
+import { SPECTROGRAM_CANVAS_DIMENSIONS } from "@/constants";
 import type { Interval } from "@/types";
 
 /**
@@ -21,7 +21,7 @@ export interface Chunk {
 /**
  * Calculates the time intervals for spectrogram chunks based on recording and settings.
  * 
- * Uses pixel-based sizing where each chunk targets CANVAS_DIMENSIONS.height × CANVAS_DIMENSIONS.height pixels.
+ * Uses pixel-based sizing where each chunk targets SPECTROGRAM_CANVAS_DIMENSIONS.height × SPECTROGRAM_CANVAS_DIMENSIONS.height pixels.
  * This creates consistent-sized chunks regardless of spectrogram parameters.
  * 
  * @param duration - The duration of the recording in seconds
@@ -44,7 +44,7 @@ export function calculateSpectrogramChunks({
   // Height of spectrogram = number of frequency bins
   const freqBins = windowSize / 2;
   
-  const chunkPixels = CANVAS_DIMENSIONS.height * CANVAS_DIMENSIONS.height;
+  const chunkPixels = SPECTROGRAM_CANVAS_DIMENSIONS.height * SPECTROGRAM_CANVAS_DIMENSIONS.height;
 
   // Calculate how many time bins we need to achieve target pixel count
   const timeBins = chunkPixels / freqBins;

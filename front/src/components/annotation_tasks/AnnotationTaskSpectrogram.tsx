@@ -30,7 +30,7 @@ import useWaveform from "@/hooks/spectrogram/useWaveform";
 import useAnnotationDrawWaveform from "@/hooks/annotation/useAnnotationDrawWaveform";
 import useAnnotationTask from "@/hooks/api/useAnnotationTask";
 import { NoIcon } from "../icons";
-import { CANVAS_DIMENSIONS } from "@/constants";
+import { SPECTROGRAM_CANVAS_DIMENSIONS, WAVEFORM_CANVAS_DIMENSIONS } from "@/constants";
 
 export default function AnnotationTaskSpectrogram({
   annotationTaskProps,
@@ -361,15 +361,13 @@ export default function AnnotationTaskSpectrogram({
   useCanvas({ ref: spectrogramCanvasRef as React.RefObject<HTMLCanvasElement>, draw: drawSpectrogramCanvas });
   useCanvas({ ref: waveformCanvasRef as React.RefObject<HTMLCanvasElement>, draw: drawWaveformCanvas });
 
-  const waveformHeight = spectrogramCanvasRef.current ? spectrogramCanvasRef.current.height / 6 : 0
-
   useEffect(() => {
     if (waveformCanvasRef.current) {
-      waveformCanvasRef.current.style.height = `${waveformHeight}px`;
+      waveformCanvasRef.current.style.height = `${WAVEFORM_CANVAS_DIMENSIONS.height}px`;
       // Set actual canvas height (drawing resolution)
-      waveformCanvasRef.current.height = waveformHeight;
+      waveformCanvasRef.current.height = WAVEFORM_CANVAS_DIMENSIONS.height;
     }
-  }, [spectrogramCanvasRef, waveformCanvasRef, waveformHeight]); 
+  }, [spectrogramCanvasRef, waveformCanvasRef, WAVEFORM_CANVAS_DIMENSIONS.height]); 
 
   const handleClearSelectedTag = useCallback(() => {
     onClearSelectedTag(null);
@@ -437,7 +435,7 @@ export default function AnnotationTaskSpectrogram({
         )}
         {withPlayer && <Player {...audio} />}
       </div>
-      <div className="relative overflow-visible rounded-md" style={{ height: CANVAS_DIMENSIONS.height }}>
+      <div className="relative overflow-visible rounded-md" style={{ height: SPECTROGRAM_CANVAS_DIMENSIONS.height }}>
         <SpectrogramTags
           disabled={disabled}
           tags={annotate?.tags ?? []}
@@ -463,7 +461,7 @@ export default function AnnotationTaskSpectrogram({
           </div>
         )}
       </div>
-      <div className="relative overflow-hidden rounded-md" style={{ height: waveformHeight }}>
+      <div className="relative overflow-hidden rounded-md" style={{ height: WAVEFORM_CANVAS_DIMENSIONS.height }}>
           <canvas
           ref={waveformCanvasRef}
             {...finalWaveformProps}

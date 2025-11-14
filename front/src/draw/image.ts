@@ -1,4 +1,4 @@
-import { CANVAS_DIMENSIONS } from "@/constants";
+import { SPECTROGRAM_CANVAS_DIMENSIONS } from "@/constants";
 import type { SpectrogramWindow } from "@/types";
 import type { Chunk } from "@/utils/chunks";
 
@@ -71,7 +71,7 @@ export function drawText(
   ctx.textAlign = textAlign;
   ctx.textBaseline = textBaseline;
 
-  const lines = getLines(ctx, text, maxWidth ?? CANVAS_DIMENSIONS.width);
+  const lines = getLines(ctx, text, maxWidth ?? SPECTROGRAM_CANVAS_DIMENSIONS.width);
   const verticalOffset = (FONT_SIZE * (lines.length - 1)) / 2;
 
   lines.forEach((line, index) => {
@@ -170,7 +170,7 @@ export function drawImageOnCanvas(
   segment: SpectrogramWindow,
 ) {
   ctx.fillStyle = COLORS.BACKGROUND;
-  ctx.clearRect(0, 0, CANVAS_DIMENSIONS.width, CANVAS_DIMENSIONS.height);
+  ctx.clearRect(0, 0, SPECTROGRAM_CANVAS_DIMENSIONS.width, SPECTROGRAM_CANVAS_DIMENSIONS.height);
 
   const interval = segment.time;
   const maxFreq = segment.freq.max;
@@ -192,7 +192,7 @@ export function drawImageOnCanvas(
   });
 
   ctx.globalAlpha = 1;
-  ctx.drawImage(image, sx, sy, sWidth, sHeight, 0, 0, CANVAS_DIMENSIONS.width, CANVAS_DIMENSIONS.height);
+  ctx.drawImage(image, sx, sy, sWidth, sHeight, 0, 0, SPECTROGRAM_CANVAS_DIMENSIONS.width, SPECTROGRAM_CANVAS_DIMENSIONS.height);
 }
 
 export interface DrawImageProps {
@@ -241,8 +241,8 @@ function drawChunk({
   // Show loading state for this chunk region
   if (isLoading || !image) {
     const position = getViewportPosition({
-      width: CANVAS_DIMENSIONS.width,
-      height: CANVAS_DIMENSIONS.height,
+      width: SPECTROGRAM_CANVAS_DIMENSIONS.width,
+      height: SPECTROGRAM_CANVAS_DIMENSIONS.height,
       viewport: intersection,
       bounds: viewport,
     });
@@ -254,8 +254,8 @@ function drawChunk({
   // Show error state for this chunk region
   if (isError) {
     const position = getViewportPosition({
-      width: CANVAS_DIMENSIONS.width,
-      height: CANVAS_DIMENSIONS.height,
+      width: SPECTROGRAM_CANVAS_DIMENSIONS.width,
+      height: SPECTROGRAM_CANVAS_DIMENSIONS.height,
       viewport: intersection,
       bounds: viewport,
     });
@@ -274,8 +274,8 @@ function drawChunk({
 
   // Calculate destination rectangle (where to draw on canvas)
   const destination = getViewportPosition({
-    width: CANVAS_DIMENSIONS.width,
-    height: CANVAS_DIMENSIONS.height,
+    width: SPECTROGRAM_CANVAS_DIMENSIONS.width,
+    height: SPECTROGRAM_CANVAS_DIMENSIONS.height,
     viewport: intersection,
     bounds: viewport,
   });
@@ -317,9 +317,9 @@ export function drawStitchedImage({
   samplerate,
 }: DrawStitchedImageProps) {
   // Clear the canvas
-  ctx.clearRect(0, 0, CANVAS_DIMENSIONS.width, CANVAS_DIMENSIONS.height);
+  ctx.clearRect(0, 0, SPECTROGRAM_CANVAS_DIMENSIONS.width, SPECTROGRAM_CANVAS_DIMENSIONS.height);
   ctx.fillStyle = COLORS.BACKGROUND;
-  ctx.fillRect(0, 0, CANVAS_DIMENSIONS.width, CANVAS_DIMENSIONS.height);
+  ctx.fillRect(0, 0, SPECTROGRAM_CANVAS_DIMENSIONS.width, SPECTROGRAM_CANVAS_DIMENSIONS.height);
 
   // Draw each chunk
   chunks.forEach(({ chunk, image, isLoading, isError }) => {

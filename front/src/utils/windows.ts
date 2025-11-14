@@ -1,13 +1,11 @@
-import { DEFAULT_SPECTROGRAM_PARAMETERS } from "@/api/spectrograms";
-
 import type {
   Interval,
   SpectrogramParameters,
   SpectrogramWindow,
 } from "@/types";
-import { calculateHopDuration } from "./spectrogram_calculations";
+import { calculateHopDuration, calculateTimeFrames } from "./spectrogram_calculations";
 
-const SPECTROGRAM_STRETCH_FACTOR = 6;
+const STRETCH_FACTOR = 3
 
 /**
  * Spectrogram Window System Documentation
@@ -53,32 +51,29 @@ const SPECTROGRAM_STRETCH_FACTOR = 6;
 /**
  * Calculate the initial window for a spectrogram.
  * 
- * This determines what the user sees when the spectrogram first loads. The goal is to
- * show enough detail to be useful without overwhelming the user with too much data.
+ * This determines what the user sees when the spectrogram first loads using a
+ * straightforward pixel-based approach:
  * 
- * The time range is calculated to balance:
- * - Showing a good overview of the audio
- * - Keeping spectrogram computation fast (smaller windows compute faster)
- * - Providing enough detail for the given parameters
  * 
- * The frequency range always shows the full spectrum (0 to Nyquist frequency).
+ * The initial window is constrained by:
+ * - Available task duration (won't exceed endTime - startTime)
+ * - Available frequency range (won't exceed Nyquist frequency)
  * 
  * @param startTime - Start time of the available audio (usually task start)
  * @param endTime - End time of the available audio (usually task end)
  * @param samplerate - Sample rate of the audio in Hz
- * @param parameters - Spectrogram computation parameters (affects optimal window size)
- * @returns The initial window window showing a reasonable starting view
+ * @returns The initial window showing a pixel-perfect view
  */
 export function getInitialViewingWindow({
   startTime,
   endTime,
   samplerate,
-  parameters = DEFAULT_SPECTROGRAM_PARAMETERS,
+  parameters,
 }: {
   startTime: number;
   endTime: number;
   samplerate: number;
-  parameters?: SpectrogramParameters;
+  parameters: SpectrogramParameters;
 }): SpectrogramWindow {
   const duration = getInitialDuration({
     interval: { min: startTime, max: endTime },
@@ -113,11 +108,9 @@ export function getInitialDuration({
   overlap_percent: number;
 }) {
   const duration = interval.max - interval.min;
-  const specHeight = Math.floor(window_size_samples / 2) + 1;
-  const specWidth = specHeight * SPECTROGRAM_STRETCH_FACTOR;
-  const hopDuration = calculateHopDuration(window_size_samples, overlap_percent, samplerate);
-  const windowWidth = specWidth * hopDuration;
-  return Math.min(duration, windowWidth);
+  const hopDuration = calculateHopDuration(window_size_samples, overlap_percent, samplerate)
+  const timeFrames = calculateTimeFrames(hopDuration, samplerate, window_size_samples, overlap_percent) / STRETCH_FACTOR
+  return Math.min(duration, timeFrames);
 }
 
 /**

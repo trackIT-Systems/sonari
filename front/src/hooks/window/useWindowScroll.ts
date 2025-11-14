@@ -3,7 +3,7 @@ import { type WheelEvent, useMemo } from "react";
 import { scaleXToWindow, scaleYToWindow } from "@/utils/geometry";
 
 import type { SpectrogramWindow } from "@/types";
-import { CANVAS_DIMENSIONS } from "@/constants";
+import { SPECTROGRAM_CANVAS_DIMENSIONS } from "@/constants";
 
 /**
  * The `useWindowScroll` hook provides functionality to handle window scrolling
@@ -76,10 +76,10 @@ export default function useWindowScroll({
         // Handle vertical scroll (existing behavior)
         switch (true) {
           case shiftKey && relative:
-            return onScroll?.({ timeRatio: deltaY / CANVAS_DIMENSIONS.width });
+            return onScroll?.({ timeRatio: deltaY / SPECTROGRAM_CANVAS_DIMENSIONS.width });
 
           case !shiftKey && relative:
-            return onScroll?.({ freqRatio: deltaY / CANVAS_DIMENSIONS.height });
+            return onScroll?.({ freqRatio: deltaY / SPECTROGRAM_CANVAS_DIMENSIONS.height });
 
           case shiftKey && !relative:
             const deltaTime = scaleXToWindow(

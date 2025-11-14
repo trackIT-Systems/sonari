@@ -1,7 +1,7 @@
 import { bbox }  from "@turf/bbox";
 import { booleanPointInPolygon } from "@turf/boolean-point-in-polygon";
 
-import { MAX_FREQ, CANVAS_DIMENSIONS } from "@/constants";
+import { MAX_FREQ, SPECTROGRAM_CANVAS_DIMENSIONS } from "@/constants";
 
 import type {
   BoundingBox,
@@ -36,7 +36,7 @@ export function scaleTimeToWindow(
 ): number {
   const { time } = window;
   if (time.max === time.min) return time.max;
-  return (CANVAS_DIMENSIONS.width * (value - time.min)) / (time.max - time.min);
+  return (SPECTROGRAM_CANVAS_DIMENSIONS.width * (value - time.min)) / (time.max - time.min);
 }
 
 /** Transform x coordinates to time */
@@ -48,9 +48,9 @@ export function scaleXToWindow(
   const { time } = window;
   const duration = time.max - time.min;
   if (relative) {
-    return (duration * value) / CANVAS_DIMENSIONS.width;
+    return (duration * value) / SPECTROGRAM_CANVAS_DIMENSIONS.width;
   }
-  return time.min + (duration * value) / CANVAS_DIMENSIONS.width;
+  return time.min + (duration * value) / SPECTROGRAM_CANVAS_DIMENSIONS.width;
 }
 
 /** Transform y coordinates to frequency */
@@ -60,7 +60,7 @@ export function scaleFreqToWindow(
 ): number {
   const { freq } = window;
   if (freq.max === freq.min) return freq.max;
-  return (CANVAS_DIMENSIONS.height * (freq.max - value)) / (freq.max - freq.min);
+  return (SPECTROGRAM_CANVAS_DIMENSIONS.height * (freq.max - value)) / (freq.max - freq.min);
 }
 
 export function scaleYToWindow(
@@ -71,9 +71,9 @@ export function scaleYToWindow(
   const { freq } = window;
   const bandwidth = freq.max - freq.min;
   if (relative) {
-    return (bandwidth * value) / CANVAS_DIMENSIONS.height;
+    return (bandwidth * value) / SPECTROGRAM_CANVAS_DIMENSIONS.height;
   }
-  return freq.max - (bandwidth * value) / CANVAS_DIMENSIONS.height;
+  return freq.max - (bandwidth * value) / SPECTROGRAM_CANVAS_DIMENSIONS.height;
 }
 
 export function scalePixelsToWindow(

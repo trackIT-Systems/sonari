@@ -26,4 +26,5 @@ export const MAX_FREQ = 500_000;
 /** Factor to zoom in and out of a spectrogram */
 export const ZOOM_FACTOR = 0.2;
 
-export const CANVAS_DIMENSIONS: Dimensions = {height: 384, width: 1000}
+export const SPECTROGRAM_CANVAS_DIMENSIONS: Dimensions = {height: 384, width: 1000}
+export const WAVEFORM_CANVAS_DIMENSIONS: Dimensions = {height: SPECTROGRAM_CANVAS_DIMENSIONS.height / 6, width: SPECTROGRAM_CANVAS_DIMENSIONS.width}

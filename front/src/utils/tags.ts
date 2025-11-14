@@ -14,7 +14,7 @@ import type {
   TimeInterval,
   TimeStamp,
 } from "@/types";
-import { CANVAS_DIMENSIONS } from "@/constants";
+import { SPECTROGRAM_CANVAS_DIMENSIONS } from "@/constants";
 
 export type TagElement = {
   tag: Tag;
@@ -58,10 +58,10 @@ function getTimeIntervalLabelPosition({
   const x = scaleTimeToWindow(start, window);
   const x2 = scaleTimeToWindow(end, window);
 
-  const y = 50 * (CANVAS_DIMENSIONS.height - 100);
+  const y = 50 * (SPECTROGRAM_CANVAS_DIMENSIONS.height - 100);
 
   const tooLeft = x < 50;
-  const tooRight = x2 > CANVAS_DIMENSIONS.width - 50;
+  const tooRight = x2 > SPECTROGRAM_CANVAS_DIMENSIONS.width - 50;
 
   if (tooLeft && tooRight) {
     return {
@@ -118,7 +118,7 @@ function getTimeStampLabelPosition({
   const x = scaleTimeToWindow(time, window);
 
   // Get random height between 50 and dimensions.height - 50
-  const y = 50 + Math.random() * (CANVAS_DIMENSIONS.height - 100);
+  const y = 50 + Math.random() * (SPECTROGRAM_CANVAS_DIMENSIONS.height - 100);
 
   const tooLeft = x < 50;
 
@@ -179,8 +179,8 @@ export function getLabelPosition(
   );
 
   const tooLeft = left < 50;
-  const tooBottom = bottom > CANVAS_DIMENSIONS.height;
-  const tooRight = right > CANVAS_DIMENSIONS.width;
+  const tooBottom = bottom > SPECTROGRAM_CANVAS_DIMENSIONS.height;
+  const tooRight = right > SPECTROGRAM_CANVAS_DIMENSIONS.width;
   const tooTop = top < 50;
 
   switch (true) {
