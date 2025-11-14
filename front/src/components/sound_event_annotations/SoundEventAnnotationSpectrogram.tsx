@@ -202,7 +202,7 @@ export default function SoundEventAnnotationSpectrogramView({
         withSpectrogram,
         withShortcuts: false,
         fixedAspectRatio: false,
-        preload: false,
+        preload: true,
         toggleFixedAspectRatio: () => { },
         onSegmentsLoaded: () => null,
     });

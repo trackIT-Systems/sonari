@@ -40,7 +40,7 @@ export default function useWaveformImage({ recording, window, parameters }: UseW
     const { min, max } = window.time;
     const duration = recording.duration;
     const canvasWidth = CANVAS_DIMENSIONS.width;
-    const canvasHeight = CANVAS_DIMENSIONS.height;
+    const canvasHeight = CANVAS_DIMENSIONS.height/6;
   
     const cropX = (min / duration) * image.width;
     const cropWidth = ((max - min) / duration) * image.width;
