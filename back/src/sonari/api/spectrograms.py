@@ -11,10 +11,7 @@ from soundevent import arrays, audio
 
 import sonari.api.audio as audio_api
 from sonari import schemas
-from sonari.core.spectrograms import (
-    compute_spectrogram_from_samples,
-    normalize_spectrogram,
-)
+from sonari.core.spectrograms import normalize_spectrogram
 
 __all__ = [
     "compute_spectrogram",
@@ -68,7 +65,10 @@ def compute_spectrogram(
     channel_to_use = spectrogram_parameters.channel if spectrogram_parameters.channel < available_channels else 0
     wav = wav[dict(channel=[channel_to_use])]
 
-    # Get spectrogram parameters
+    # Get samplerate from wav
+    samplerate = recording.samplerate
+
+    # Convert samples to seconds
     window_size_samples = spectrogram_parameters.window_size_samples
     overlap_percent = spectrogram_parameters.overlap_percent
 
@@ -76,16 +76,18 @@ def compute_spectrogram(
         window_size_samples = window_size_samples * 10
         overlap_percent = max(50.0, overlap_percent - 25.0)
 
-    # Calculate hop size from overlap (in samples)
+    # Calculate hop size from overlap
     overlap_samples = int(window_size_samples * overlap_percent / 100)
     hop_size_samples = window_size_samples - overlap_samples
 
-    # Use our optimized sample-based spectrogram computation
-    # This avoids redundant time <-> sample conversions
-    spectrogram = compute_spectrogram_from_samples(
+    # Convert to seconds for soundevent
+    window_size = window_size_samples / samplerate
+    hop_size = hop_size_samples / samplerate
+
+    spectrogram = audio.compute_spectrogram(
         wav,
-        window_size_samples=window_size_samples,
-        hop_size_samples=hop_size_samples,
+        window_size=window_size,
+        hop_size=hop_size,
         window_type=spectrogram_parameters.window,
     )
 

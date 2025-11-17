@@ -50,6 +50,7 @@ async def get_spectrogram(
         Spectrogram image.
 
     """
+    print(f"{start_time}" + " " + f"{end_time}" + " " + f"{audio_parameters}" + " " + f"{spectrogram_parameters}")
     recording = await api.recordings.get(session, recording_id)
 
     # Close session BEFORE expensive computation
