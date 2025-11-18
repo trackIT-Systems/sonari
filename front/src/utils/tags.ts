@@ -58,7 +58,7 @@ function getTimeIntervalLabelPosition({
   const x = scaleTimeToWindow(start, window);
   const x2 = scaleTimeToWindow(end, window);
 
-  const y = 50 * (SPECTROGRAM_CANVAS_DIMENSIONS.height - 100);
+  const y = 50;
 
   const tooLeft = x < 50;
   const tooRight = x2 > SPECTROGRAM_CANVAS_DIMENSIONS.width - 50;

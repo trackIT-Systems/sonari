@@ -269,6 +269,7 @@ export default function AnnotationTaskSpectrogram({
   const annotate = useAnnotateTask({
     annotationTaskProps,
     window: spectrogram.window,
+    canvasRef: spectrogramCanvasRef,
     onCenterOn: handleTimeChange,
     defaultTags,
     selectedTag,

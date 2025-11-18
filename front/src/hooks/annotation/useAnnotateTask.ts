@@ -12,7 +12,6 @@ import useCreateWaveformMeasurement from "@/hooks/draw/useCreateWaveformMeasurem
 import { ABORT_SHORTCUT } from "@/utils/keyboard";
 
 import type {
-  Dimensions,
   Geometry,
   GeometryType,
   LineString,
@@ -66,6 +65,8 @@ export default function useAnnotateTask(props: {
   annotationTaskProps: ReturnType<typeof useAnnotationTask>;
   /** Current spectrogram window */
   window: SpectrogramWindow;
+  /** Canvas ref for scaling tag positions */
+  canvasRef?: React.RefObject<HTMLCanvasElement | null>;
   /** Initial annotation mode */
   mode?: AnnotateMode;
   /** Tags to add to new sound event annotations by default */
@@ -93,6 +94,7 @@ export default function useAnnotateTask(props: {
   const {
     annotationTaskProps,
     window,
+    canvasRef,
     defaultTags,
     selectedTag,
     mode: initialMode = "select",
@@ -401,6 +403,7 @@ export default function useAnnotateTask(props: {
   const tags = useSpectrogramTags({
     annotations: soundEvents,
     window,
+    canvasRef,
     onClickTag: handleOnClickTag,
     onAddTag: handleOnAddTag,
     active: mode !== "draw" && mode !== "delete",
