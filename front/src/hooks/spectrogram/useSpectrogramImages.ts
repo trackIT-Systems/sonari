@@ -117,7 +117,6 @@ export default function useSpectrogramImages({
             task.recording_id,
             chunkWindow,
             parameters,
-            false,
             async () => {
               const url = api.spectrograms.getUrl({
                 recording_id: task.recording_id,

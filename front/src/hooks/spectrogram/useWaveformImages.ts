@@ -94,9 +94,6 @@ export default function useWaveformImages({
       startLoading([index]);
 
       try {
-        // Create a unique cache key for waveforms
-        const cacheKey = `waveform_${recording.id}_${chunk.buffer.min}_${chunk.buffer.max}_${parameters.gamma}_${parameters.cmap}`;
-        
         const image = await spectrogramCache.getOrLoad(
           recording.id,
           {
@@ -107,18 +104,17 @@ export default function useWaveformImages({
             freq: { min: 0, max: 1 }, // Dummy freq for cache key
           },
           parameters,
-          false,
           async () => {
-            // const url = api.waveforms.getUrl({
-            //   recording,
-            //   segment: {
-            //     min: chunk.buffer.min,
-            //     max: chunk.buffer.max,
-            //   },
-            //   parameters,
-            // });
+            const url = api.waveforms.getUrl({
+              recording,
+              segment: {
+                min: chunk.buffer.min,
+                max: chunk.buffer.max,
+              },
+              parameters,
+            });
 
-            const response = await fetch("");
+            const response = await fetch(url);
             const size = parseInt(
               response.headers.get("content-length") || "0",
               10,

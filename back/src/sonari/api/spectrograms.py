@@ -1,17 +1,14 @@
 """API functions to generate spectrograms."""
 
-from io import BytesIO
 from pathlib import Path
 
-import matplotlib.pyplot as plt
 import numpy as np
-from matplotlib import colormaps
-from PIL import Image
 from soundevent import arrays, audio
+from soundevent.arrays import Dimensions, get_dim_step
 
 import sonari.api.audio as audio_api
 from sonari import schemas
-from sonari.core.spectrograms import normalize_spectrogram
+from sonari.core.spectrograms import compute_spectrogram_from_samples, normalize_spectrogram
 
 __all__ = [
     "compute_spectrogram",
@@ -25,7 +22,6 @@ def compute_spectrogram(
     end_time: float,
     audio_parameters: schemas.AudioParameters,
     spectrogram_parameters: schemas.SpectrogramParameters,
-    low_res: bool = False,
     audio_dir: Path | None = None,
 ) -> np.ndarray:
     """Compute a spectrogram for a recording.
@@ -65,8 +61,15 @@ def compute_spectrogram(
     channel_to_use = spectrogram_parameters.channel if spectrogram_parameters.channel < available_channels else 0
     wav = wav[dict(channel=[channel_to_use])]
 
-    # Get samplerate from wav
-    samplerate = recording.samplerate
+    if spectrogram_parameters.overlap_percent == 1:
+        # Decimate to 8 kHz by skipping samples
+        current_samplerate = 1 / get_dim_step(wav, Dimensions.time.value)
+        target_samplerate = 8000
+        decimation_factor = int(current_samplerate / target_samplerate)
+
+        if decimation_factor > 1:
+            # Skip samples by taking every Nth sample along the time dimension
+            wav = wav[{Dimensions.time.value: slice(None, None, decimation_factor)}]
 
     # Convert samples to seconds
     window_size_samples = spectrogram_parameters.window_size_samples
@@ -76,14 +79,10 @@ def compute_spectrogram(
     overlap_samples = int(window_size_samples * overlap_percent / 100)
     hop_size_samples = window_size_samples - overlap_samples
 
-    # Convert to seconds for soundevent
-    window_size = window_size_samples / samplerate
-    hop_size = hop_size_samples / samplerate
-
-    spectrogram = audio.compute_spectrogram(
+    spectrogram = compute_spectrogram_from_samples(
         wav,
-        window_size=window_size,
-        hop_size=hop_size,
+        window_size_samples,
+        hop_size_samples,
         window_type=spectrogram_parameters.window,
     )
 
@@ -117,12 +116,12 @@ def compute_spectrogram(
 
 def compute_waveform(
     recording: schemas.Recording,
+    start_time: float,
+    end_time: float,
     audio_parameters: schemas.AudioParameters,
+    spectrogram_parameters: schemas.SpectrogramParameters,
     audio_dir: Path | None = None,
-    return_image: bool = False,
-    cmap: str = "plasma",
-    gamma: float = 1.0,
-) -> np.ndarray | bytes:
+) -> np.ndarray:
     """Compute waveform for a recording segment.
 
     Parameters
@@ -135,23 +134,24 @@ def compute_waveform(
         End time in seconds.
     audio_parameters : AudioParameters
         Audio loading parameters.
+    spectrogram_parameters : SpectrogramParameters
+        Spectrogram parameters used to calculate image dimensions.
     audio_dir : Path | None
         Directory where audio files are stored.
-    return_image : bool
-        If True, return a PNG image buffer of the waveform. Otherwise return data array.
 
     Returns
     -------
-    np.ndarray or bytes
-        Waveform data array or PNG image buffer.
+    np.ndarray
+        Waveform data as a 2D array with values between 0 and 1.
+        Width matches the number of STFT time bins for proper stitching.
     """
     if audio_dir is None:
         audio_dir = Path.cwd()
 
     wav = audio_api.load_audio(
         recording,
-        0,
-        recording.duration,
+        start_time,
+        end_time,
         audio_parameters=audio_parameters,
         audio_dir=audio_dir,
     )
@@ -160,51 +160,69 @@ def compute_waveform(
     wav = wav[dict(channel=[0])]
     waveform = wav.data.squeeze()
 
-    if return_image:
-        time = np.linspace(0, recording.duration, waveform.shape[-1])
+    # Calculate dimensions based on STFT parameters
+    # This ensures pixel-to-time ratio matches spectrograms for proper image stitching
+    duration = end_time - start_time
+    window_size_samples = spectrogram_parameters.window_size_samples
+    overlap_percent = spectrogram_parameters.overlap_percent
 
-        # --- 1. Create figure and plot ---
-        width_inches = 12
-        height_inches = 1
+    # Get actual samplerate from loaded audio (important if audio was resampled)
+    actual_samplerate = 1 / get_dim_step(wav, Dimensions.time.value)
 
-        fig, ax = plt.subplots(figsize=(width_inches, height_inches), dpi=500)
-        ax.plot(time, waveform, linewidth=0.1, color="white")
+    # Calculate hop size
+    overlap_samples = int(window_size_samples * overlap_percent / 100)
+    hop_size_samples = window_size_samples - overlap_samples
+    hop_size_seconds = hop_size_samples / actual_samplerate
 
-        for spine in ax.spines.values():
-            spine.set_visible(False)
-        ax.set_xticks([])
-        ax.set_yticks([])
-        ax.set_xticklabels([])
-        ax.set_yticklabels([])
+    # Width = number of STFT time bins
+    width = int(np.ceil(duration / hop_size_seconds))
 
-        fig.patch.set_facecolor("black")
-        ax.set_facecolor("black")
+    # Height matches frontend WAVEFORM_CANVAS_DIMENSIONS.height
+    height = 64
 
-        ax.set_xlim(time[0], time[-1])
-        plt.subplots_adjust(left=0, right=1, top=1, bottom=0)
+    # Resample waveform to match target width
+    # Use min/max downsampling for better visual representation
+    samples_per_pixel = len(waveform) // width
 
-        # --- 2. Save to buffer (grayscale image) ---
-        buf = BytesIO()
-        fig.savefig(buf, format="png", dpi=500, bbox_inches="tight", pad_inches=0)
-        plt.close(fig)
-        buf.seek(0)
+    if samples_per_pixel > 1:
+        # Reshape and compute min/max for each pixel column
+        truncated_length = (len(waveform) // samples_per_pixel) * samples_per_pixel
+        reshaped = waveform[:truncated_length].reshape(-1, samples_per_pixel)
+        waveform_max = reshaped.max(axis=1)
+        waveform_min = reshaped.min(axis=1)
+    else:
+        # If we have fewer samples than pixels, just use the waveform as-is
+        # and pad or interpolate if needed
+        waveform_max = waveform[:width] if len(waveform) >= width else np.pad(waveform, (0, width - len(waveform)))
+        waveform_min = waveform_max
 
-        # --- 3. Load image with PIL ---
-        image = Image.open(buf).convert("L")  # grayscale
+    # Create 2D array for the waveform visualization
+    canvas = np.zeros((height, width), dtype=np.float32)
 
-        # --- 4. Normalize and apply gamma ---
-        arr = np.array(image).astype(np.float32) / 255.0
-        arr = np.power(arr, 1 / gamma)
+    # Normalize waveform to [0, height-1] range
+    # Center line is at height // 2
+    center = height // 2
 
-        # --- 5. Apply colormap ---
-        cmap_fn = colormaps.get_cmap(cmap)
-        rgba = cmap_fn(arr, bytes=True)
-        colored_img = Image.fromarray(rgba)
+    # Normalize amplitude to use available height
+    # Find max absolute value for symmetric scaling
+    max_amp = max(abs(waveform_max.max()), abs(waveform_min.min()))
+    if max_amp > 0:
+        scale = (height // 2 - 1) / max_amp
+    else:
+        scale = 1
 
-        # --- 6. Return final image buffer ---
-        out_buf = BytesIO()
-        colored_img.save(out_buf, format="PNG")
-        out_buf.seek(0)
-        return out_buf.read()
+    # For each x position, fill from min to max amplitude
+    for x in range(min(width, len(waveform_max))):
+        y_max = int(center - waveform_max[x] * scale)
+        y_min = int(center - waveform_min[x] * scale)
 
-    return waveform
+        # Clamp to valid range
+        y_max = max(0, min(height - 1, y_max))
+        y_min = max(0, min(height - 1, y_min))
+
+        # Fill from min to max (or max to min if inverted)
+        start_y = min(y_max, y_min)
+        end_y = max(y_max, y_min) + 1
+        canvas[start_y:end_y, x] = 1.0
+
+    return canvas

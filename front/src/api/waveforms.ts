@@ -17,21 +17,21 @@ export function registerWaveformsAPI(
     recording,
     segment,
     parameters = DEFAULT_SPECTROGRAM_PARAMETERS,
-    lowRes = false,
   }: {
     recording: Recording;
     segment?: Interval;
     parameters?: SpectrogramParameters;
-    lowRes?: boolean;
   }) {
     const parsed_params = SpectrogramParametersSchema.parse(parameters);
-    const { gamma, cmap } = parsed_params;
+    const { gamma, cmap, window_size_samples, overlap_percent } = parsed_params;
     
     // Construct query
     const query: Record<string, string | number | boolean> = {
       recording_id: recording.id,
       gamma,
       cmap,
+      window_size_samples,
+      overlap_percent,
     };
 
     // Add segment parameters if provided
@@ -39,10 +39,6 @@ export function registerWaveformsAPI(
       const parsed_segment = IntervalSchema.parse(segment);
       query.start_time = parsed_segment.min;
       query.end_time = parsed_segment.max;
-    }
-
-    if (lowRes) {
-      query.low_res = true;
     }
 
     const params = new URLSearchParams(

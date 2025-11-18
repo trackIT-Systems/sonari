@@ -58,13 +58,11 @@ class SpectrogramCache {
         recordingId: number,
         segment: SpectrogramWindow,
         parameters: SpectrogramParameters,
-        lowRes: boolean,
     ): SpectrogramSegmentKey {
         return JSON.stringify({
             recordingId,
             segment,
             parameters,
-            lowRes,
         });
     }
 
@@ -75,9 +73,8 @@ class SpectrogramCache {
         recordingId: number,
         segment: SpectrogramWindow,
         parameters: SpectrogramParameters,
-        lowRes: boolean,
     ): HTMLImageElement | null {
-        const key = this.generateKey(recordingId, segment, parameters, lowRes);
+        const key = this.generateKey(recordingId, segment, parameters);
         const entry = this.cache.get(key);
 
         if (entry) {
@@ -91,13 +88,12 @@ class SpectrogramCache {
         recordingId: number,
         segment: SpectrogramWindow,
         parameters: SpectrogramParameters,
-        lowRes: boolean,
         loadFn: () => Promise<{ image: HTMLImageElement, size: number }>
     ): Promise<HTMLImageElement> {
-        const key = this.generateKey(recordingId, segment, parameters, lowRes);
+        const key = this.generateKey(recordingId, segment, parameters);
 
         // Check cache first
-        const cached = this.get(recordingId, segment, parameters, lowRes);
+        const cached = this.get(recordingId, segment, parameters);
         if (cached) return cached;
 
         // Check if already loading
@@ -107,7 +103,7 @@ class SpectrogramCache {
             loadingPromise = (async () => {
                 try {
                     const { image, size } = await loadFn();
-                    await this.set(recordingId, segment, parameters, lowRes, image, size);
+                    await this.set(recordingId, segment, parameters, image, size);
                 } finally {
                     this.loadingPromises.delete(key);
                 }
@@ -117,7 +113,7 @@ class SpectrogramCache {
 
         // Wait for load to complete
         await loadingPromise;
-        return this.get(recordingId, segment, parameters, lowRes)!;
+        return this.get(recordingId, segment, parameters)!;
     }
 
     isLoading(key: string): boolean {
@@ -131,7 +127,6 @@ class SpectrogramCache {
         recordingId: number,
         segment: SpectrogramWindow,
         parameters: SpectrogramParameters,
-        lowRes: boolean,
         image: HTMLImageElement,
         imageSize: number
     ): Promise<void> {
@@ -144,7 +139,7 @@ class SpectrogramCache {
             }
             await image.decode();
 
-            const key = this.generateKey(recordingId, segment, parameters, lowRes);
+            const key = this.generateKey(recordingId, segment, parameters);
 
             // If this single image is larger than max size, don't cache it
             if (imageSize > this.maxSize) {
@@ -214,14 +209,12 @@ function useSpectrogramCache({
     recording_id,
     segment,
     parameters,
-    lowRes,
     withSpectrogram,
     url,
 }: {
     recording_id: number;
     segment: SpectrogramWindow;
     parameters: SpectrogramParameters;
-    lowRes: boolean;
     withSpectrogram: boolean;
     url: string;
 }) {
@@ -243,7 +236,6 @@ function useSpectrogramCache({
                     recording_id,
                     segment,
                     parameters,
-                    lowRes,
                     async () => {
                         const response = await fetch(url);
                         const size = parseInt(response.headers.get('content-length') || '0', 10);
@@ -283,7 +275,7 @@ function useSpectrogramCache({
         return () => {
             isMounted = false;
         };
-    }, [recording_id, segment, parameters, lowRes, withSpectrogram, url]);
+    }, [recording_id, segment, parameters, withSpectrogram, url]);
 
     return {
         image: currentImage,

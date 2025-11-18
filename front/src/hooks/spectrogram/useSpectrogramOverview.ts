@@ -42,7 +42,6 @@ export default function useSpectrogramOverview({
           recording_id,
           segment,
           parameters,
-          false, // lowRes = true for overview
           async () => {
             const url = api.spectrograms.getUrl({
               recording_id,
@@ -51,7 +50,6 @@ export default function useSpectrogramOverview({
                 max: segment.time.max,
               },
               parameters,
-              lowRes: false,
             });
 
             const response = await fetch(url);

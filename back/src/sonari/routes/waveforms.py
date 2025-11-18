@@ -5,6 +5,7 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, Response
 
 from sonari import api, schemas
+from sonari.core import images
 from sonari.routes.dependencies import Session, SonariSettings
 
 __all__ = ["waveform_router"]
@@ -21,7 +22,13 @@ async def get_waveform(
     recording_id: int,
     cmap: str,
     gamma: float,
+    start_time: float,
+    end_time: float,
     audio_parameters: Annotated[schemas.AudioParameters, Depends(schemas.AudioParameters)],
+    spectrogram_parameters: Annotated[
+        schemas.SpectrogramParameters,
+        Depends(schemas.SpectrogramParameters),
+    ],
 ) -> Response:
     """Get a waveform image for a recording segment.
 
@@ -48,21 +55,31 @@ async def get_waveform(
     # Close session BEFORE expensive computation
     await session.close()
 
-    # Compute waveform image
-    buffer_bytes = api.compute_waveform(
+    # Compute waveform array
+    data = api.compute_waveform(
         recording,
+        start_time,
+        end_time,
         audio_parameters=audio_parameters,
+        spectrogram_parameters=spectrogram_parameters,
         audio_dir=settings.audio_dir,
-        cmap=cmap,
-        gamma=gamma,
-        return_image=True,
     )
 
+    # Convert array to image with colormap and gamma
+    image = images.array_to_image(
+        data,
+        cmap=cmap,
+        gamma=gamma,
+    )
+
+    # Convert image to buffer
+    buffer, buffer_size, fmt = images.image_to_buffer(image)
+
     return Response(
-        content=buffer_bytes,
-        media_type="image/png",
+        content=buffer.read(),
+        media_type=f"image/{fmt}",
         headers={
-            "content-length": str(len(buffer_bytes)),
+            "content-length": str(buffer_size),
             "Cache-Control": "no-store, no-cache, must-revalidate, max-age=0",
             "Pragma": "no-cache",
             "Expires": "0",

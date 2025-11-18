@@ -46,35 +46,24 @@ export default function SpectrogramBar({
 
   const [intialWindow, setInitialWindow] = useState(window);
 
-  const overlapPercent = useMemo(() => {
-    return calculateOverlapPercent(
-      10000,
-      bounds.time.max - bounds.time.min,
-      samplerate,
-      128,
-    );
-  }, [bounds.time.max - bounds.time.min, task.end_time - task.start_time, samplerate]);
+  //Get the complete spectrogram image
+  const { draw: drawFullSpectrogram } = useSpectrogramOverview({
+    recording_id: task.recording_id,
+    segment: bounds,
+    parameters: {...parameters, window_size_samples: 128, overlap_percent: 1}, // Use hardcoded settings for low res bar preview
+    withSpectrogram: true,
+  });
 
-  console.log(overlapPercent);
+  // Draw function for the canvas
+  const draw = useMemo(
+    () => (ctx: CanvasRenderingContext2D) => {
+      // Draw the full spectrogram
+      drawFullSpectrogram(ctx, bounds);
+    },
+    [drawFullSpectrogram, bounds]
+  );
 
-  // //Get the complete spectrogram image
-  // const { draw: drawFullSpectrogram } = useSpectrogramOverview({
-  //   recording_id: task.recording_id,
-  //   segment: bounds,
-  //   parameters: {...parameters, window_size_samples: 128, overlap_percent: 1},
-  //   withSpectrogram: true,
-  // });
-
-  // // Draw function for the canvas
-  // const draw = useMemo(
-  //   () => (ctx: CanvasRenderingContext2D) => {
-  //     // Draw the full spectrogram
-  //     drawFullSpectrogram(ctx, bounds);
-  //   },
-  //   [drawFullSpectrogram, bounds]
-  // );
-
-  // useCanvas({ ref: canvasRef as React.RefObject<HTMLCanvasElement>, draw });
+  useCanvas({ ref: canvasRef as React.RefObject<HTMLCanvasElement>, draw });
 
   const { moveProps } = useWindowDrag({
     window: bounds,

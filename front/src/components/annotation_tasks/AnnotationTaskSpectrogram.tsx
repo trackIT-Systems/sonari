@@ -342,7 +342,7 @@ export default function AnnotationTaskSpectrogram({
     ctx.canvas.style.cursor = "default";
     
     // Draw complete waveform
-    //waveform.draw(ctx);
+    waveform.draw(ctx);
     
     // Draw the audio tracking onset over the waveform
     if (trackingAudio) {
