@@ -139,14 +139,14 @@ export function TagGroup({
         {
           "pointer-events-none": !group.active,
         },
-        "h-5 flex flex-col absolute px-2 text-stone-300 hover:z-50 z-40",
+        "h-5 flex flex-col absolute text-stone-300 hover:z-50 z-40",
       )}
       style={{
         left: x,
         top: y,
       }}
     >
-      <div className="-ms-2 relative flex flex-col right-0 hover:gap-2">
+      <div className="relative flex flex-col hover:gap-2">
         {group.tags.map((tagElement) => (
           <SpectrogramTag
             key={`${tagElement.tag.key}:${tagElement.tag.value}`}

@@ -360,7 +360,7 @@ export default function AnnotationTaskSpectrogram({
     
     // Draw measurement-aware annotations (includes measurement reflection from spectrogram)
     //annotate?.drawWaveform(ctx);
-  }, [waveform, trackingAudio, drawTrackAudio, drawOnsetAt, audio.currentTime, withSoundEvent, soundEventAnnotations, annotate, drawWaveformAnnotationsLegacy]);
+  }, [waveform, trackingAudio, drawTrackAudio, drawOnsetAt, audio.currentTime, withSoundEvent, soundEventAnnotations, drawWaveformAnnotationsLegacy]);
 
   useCanvas({ ref: spectrogramCanvasRef as React.RefObject<HTMLCanvasElement>, draw: drawSpectrogramCanvas });
   useCanvas({ ref: waveformCanvasRef as React.RefObject<HTMLCanvasElement>, draw: drawWaveformCanvas });
@@ -371,7 +371,7 @@ export default function AnnotationTaskSpectrogram({
       // Set actual canvas height (drawing resolution)
       waveformCanvasRef.current.height = WAVEFORM_CANVAS_DIMENSIONS.height;
     }
-  }, [spectrogramCanvasRef, waveformCanvasRef, WAVEFORM_CANVAS_DIMENSIONS.height]); 
+  }, [spectrogramCanvasRef, waveformCanvasRef]); 
 
   const handleClearSelectedTag = useCallback(() => {
     onClearSelectedTag(null);

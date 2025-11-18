@@ -2,6 +2,7 @@ import { useCallback, useState } from "react";
 import { useMove } from "react-aria";
 
 import { scalePixelsToWindow } from "@/utils/geometry";
+import { SPECTROGRAM_CANVAS_DIMENSIONS } from "@/constants";
 
 import type { EventKeys } from "@/hooks/utils/useDrag";
 import type { Position, SpectrogramWindow } from "@/types";
@@ -13,11 +14,13 @@ import type { Position, SpectrogramWindow } from "@/types";
  */
 export default function useWindowDrag({
   window,
+  elementRef,
   onMoveStart,
   onMove,
   onMoveEnd,
 }: {
   window: SpectrogramWindow;
+  elementRef?: React.RefObject<HTMLElement | null>;
   onMoveStart?: (moveStartProps?: EventKeys) => void;
   onMove?: (moveProps: { shift: Position } & EventKeys) => void;
   onMoveEnd?: (moveEndProps?: EventKeys) => void;
@@ -34,11 +37,34 @@ export default function useWindowDrag({
       ctrlKey,
       metaKey,
     }: { deltaX: number; deltaY: number } & EventKeys) => {
-      setPosition(({ x, y }) => ({ x: x + deltaX, y: y + deltaY }));
+      // Normalize deltas from screen space to canvas space
+      let normalizedDeltaX = deltaX;
+      let normalizedDeltaY = deltaY;
+      
+      if (elementRef?.current) {
+        const element = elementRef.current;
+        const rect = element.getBoundingClientRect();
+        
+        // Check if it's a canvas element
+        if (element instanceof HTMLCanvasElement) {
+          const scaleX = element.width / rect.width;
+          const scaleY = element.height / rect.height;
+          normalizedDeltaX = deltaX * scaleX;
+          normalizedDeltaY = deltaY * scaleY;
+        } else {
+          // For other elements (like divs), normalize to SPECTROGRAM_CANVAS_DIMENSIONS
+          const scaleX = SPECTROGRAM_CANVAS_DIMENSIONS.width / rect.width;
+          const scaleY = SPECTROGRAM_CANVAS_DIMENSIONS.height / rect.height;
+          normalizedDeltaX = deltaX * scaleX;
+          normalizedDeltaY = deltaY * scaleY;
+        }
+      }
+      
+      setPosition(({ x, y }) => ({ x: x + normalizedDeltaX, y: y + normalizedDeltaY }));
       const shift = scalePixelsToWindow(
         {
-          x: position.x + deltaX,
-          y: position.y + deltaY,
+          x: position.x + normalizedDeltaX,
+          y: position.y + normalizedDeltaY,
         },
         window,
         true,
@@ -51,7 +77,7 @@ export default function useWindowDrag({
         metaKey,
       });
     },
-    [position, window, onMove],
+    [position, window, onMove, elementRef],
   );
 
   const handleMoveStart = useCallback(

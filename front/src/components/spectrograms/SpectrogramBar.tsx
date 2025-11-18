@@ -67,6 +67,7 @@ export default function SpectrogramBar({
 
   const { moveProps } = useWindowDrag({
     window: bounds,
+    elementRef: barRef as React.RefObject<HTMLElement | null>,
     onMoveStart: () => setInitialWindow(window),
     onMove: ({ shift: { time, freq } }) => {
       onMove?.({

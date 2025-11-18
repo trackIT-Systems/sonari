@@ -6,12 +6,14 @@ import { scalePixelsToWindow } from "@/utils/geometry";
 
 import type { EventKeys } from "@/hooks/utils/useDrag";
 import type { Position, SpectrogramWindow } from "@/types";
+import { SPECTROGRAM_CANVAS_DIMENSIONS } from "@/constants";
 
 /**
  * Hook for handling window motions on a spectrogram.
  */
 export default function useWindowMotions({
   window,
+  elementRef,
   enabled = true,
   onClick,
   onDoubleClick,
@@ -21,6 +23,8 @@ export default function useWindowMotions({
 }: {
   /** The current spectrogram window displayed on canvas. */
   window: SpectrogramWindow;
+  /** Optional ref to the canvas/element for coordinate normalization. */
+  elementRef?: React.RefObject<HTMLElement | null>;
   /** Whether the motion is enabled. */
   enabled?: boolean;
   /** Callback when a click occurs */
@@ -57,9 +61,25 @@ export default function useWindowMotions({
   const clickProps = useMemo(() => {
     const handleClick = (e: MouseEvent) => {
       if (!enabled) return;
+      
+      // Normalize mouse coordinates from screen space to canvas space
+      const element = e.currentTarget as unknown as HTMLElement;
+      const rect = element.getBoundingClientRect();
+      let scaleX = 1;
+      let scaleY = 1;
+      
+      if (element instanceof HTMLCanvasElement) {
+        scaleX = element.width / rect.width;
+        scaleY = element.height / rect.height;
+      } else {
+        // For other elements, normalize to SPECTROGRAM_CANVAS_DIMENSIONS
+        scaleX = SPECTROGRAM_CANVAS_DIMENSIONS.width / rect.width;
+        scaleY = SPECTROGRAM_CANVAS_DIMENSIONS.height / rect.height;
+      }
+      
       const point = {
-        x: e.nativeEvent.offsetX,
-        y: e.nativeEvent.offsetY,
+        x: e.nativeEvent.offsetX * scaleX,
+        y: e.nativeEvent.offsetY * scaleY,
       };
       const position = scalePixelsToWindow(point, window);
       setInitialPosition(position);
@@ -141,6 +161,7 @@ export default function useWindowMotions({
 
   const { moveProps, isDragging } = useWindowDrag({
     window,
+    elementRef,
     onMoveStart: handleMoveStart,
     onMove: handleMove,
     onMoveEnd: handleMoveEnd,

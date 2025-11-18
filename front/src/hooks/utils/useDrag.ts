@@ -1,6 +1,8 @@
 import { useCallback, useMemo, useState } from "react";
 import { mergeProps, useMove } from "react-aria";
 
+import { SPECTROGRAM_CANVAS_DIMENSIONS } from "@/constants";
+
 import type { Pixel } from "@/types";
 import type { DOMAttributes, MouseEvent } from "react";
 
@@ -45,9 +47,25 @@ export default function useDrag<T>({
 
     const handleClick = (e: MouseEvent<T>) => {
       if (!enabled) return;
+      
+      // Normalize mouse coordinates from screen space to canvas space
+      const element = e.currentTarget as unknown as HTMLElement;
+      const rect = element.getBoundingClientRect();
+      let scaleX = 1;
+      let scaleY = 1;
+      
+      if (element instanceof HTMLCanvasElement) {
+        scaleX = element.width / rect.width;
+        scaleY = element.height / rect.height;
+      } else {
+        // For other elements, normalize to SPECTROGRAM_CANVAS_DIMENSIONS
+        scaleX = SPECTROGRAM_CANVAS_DIMENSIONS.width / rect.width;
+        scaleY = SPECTROGRAM_CANVAS_DIMENSIONS.height / rect.height;
+      }
+      
       const point = {
-        x: e.nativeEvent.offsetX,
-        y: e.nativeEvent.offsetY,
+        x: e.nativeEvent.offsetX * scaleX,
+        y: e.nativeEvent.offsetY * scaleY,
       };
       setInitialPosition(point);
       onClick?.({

@@ -195,7 +195,7 @@ export function getLabelPosition(
     case tooLeft && tooBottom:
       return {
         x: right,
-        y: top,
+        y: top + 5,
         offset: 5,
         placement: "right",
       };
@@ -211,7 +211,7 @@ export function getLabelPosition(
     case tooRight && tooBottom:
       return {
         x: left,
-        y: top,
+        y: top + 5,
         offset: 5,
         placement: "left",
       };
@@ -219,7 +219,7 @@ export function getLabelPosition(
     case tooLeft:
       return {
         x: right,
-        y: top,
+        y: top + 5,
         offset: 5,
         placement: "right",
       };
@@ -227,7 +227,7 @@ export function getLabelPosition(
     case tooRight:
       return {
         x: left,
-        y: top,
+        y: top + 5,
         offset: 5,
         placement: "left",
       };
@@ -243,7 +243,7 @@ export function getLabelPosition(
     case tooBottom:
       return {
         x: right,
-        y: top,
+        y: top + 5,
         offset: 5,
         placement: "right",
       };
@@ -251,7 +251,7 @@ export function getLabelPosition(
     default:
       return {
         x: right,
-        y: top,
+        y: top + 5,
         offset: 5,
         placement: "right",
       };
