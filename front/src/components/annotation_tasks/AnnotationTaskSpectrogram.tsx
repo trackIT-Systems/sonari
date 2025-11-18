@@ -302,6 +302,7 @@ export default function AnnotationTaskSpectrogram({
   });
 
   const drawSpectrogramCanvas = useMemo(() => {
+    // Wait until all visible chunks are loaded before displaying
     if (spectrogramIsLoading) {
       return (ctx: CanvasRenderingContext2D) => {
         ctx.canvas.style.cursor = "wait";
@@ -309,12 +310,14 @@ export default function AnnotationTaskSpectrogram({
     }
     if (trackingAudio) {
       return (ctx: CanvasRenderingContext2D) => {
+        ctx.canvas.style.cursor = "default";
         drawSpectrogram(ctx);
         drawTrackAudio(ctx);
         annotate?.drawSpectrogram(ctx);
       };
     }
     return (ctx: CanvasRenderingContext2D) => {
+      ctx.canvas.style.cursor = "default";
       drawSpectrogram(ctx);
       // Draw the onset line even when not playing
       drawOnsetAt?.(ctx, audio.currentTime);
@@ -331,14 +334,15 @@ export default function AnnotationTaskSpectrogram({
   ]);
 
   const drawWaveformCanvas = useCallback((ctx: CanvasRenderingContext2D) => {
+    // Wait until all visible chunks are loaded before displaying
     if (waveform.isLoading) {
       ctx.canvas.style.cursor = "wait";
       return;
     }
     ctx.canvas.style.cursor = "default";
     
-    // Draw waveform first
-    waveform.draw(ctx);
+    // Draw complete waveform
+    //waveform.draw(ctx);
     
     // Draw the audio tracking onset over the waveform
     if (trackingAudio) {
@@ -354,7 +358,7 @@ export default function AnnotationTaskSpectrogram({
     }
     
     // Draw measurement-aware annotations (includes measurement reflection from spectrogram)
-    annotate?.drawWaveform(ctx);
+    //annotate?.drawWaveform(ctx);
   }, [waveform, trackingAudio, drawTrackAudio, drawOnsetAt, audio.currentTime, withSoundEvent, soundEventAnnotations, annotate, drawWaveformAnnotationsLegacy]);
 
   useCanvas({ ref: spectrogramCanvasRef as React.RefObject<HTMLCanvasElement>, draw: drawSpectrogramCanvas });
@@ -470,10 +474,10 @@ export default function AnnotationTaskSpectrogram({
       </div>
       {withBar && (
         <SpectrogramBar
+          task={annotationTask!}
           bounds={taskBounds}
           window={withSpectrogram ? spectrogram.window : taskBounds}
           onMove={spectrogram.drag}
-          recording_id={recording.id}
           samplerate={recording.samplerate}
           parameters={spectrogram.parameters}
           withSpectrogram={withSpectrogram}

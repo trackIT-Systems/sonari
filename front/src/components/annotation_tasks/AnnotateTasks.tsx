@@ -8,7 +8,7 @@ import AnnotationTaskStatus from "@/components/annotation_tasks/AnnotationTaskSt
 import AnnotationTaskSpectrogram from "@/components/annotation_tasks/AnnotationTaskSpectrogram";
 import Empty from "@/components/Empty";
 import Loading from "@/components/Loading";
-import useAnnotationTasks from "@/hooks/annotation/useAnnotateTasks";
+import useAnnotateTasks from "@/hooks/annotation/useAnnotateTasks";
 import type useAnnotationTask from "@/hooks/api/useAnnotationTask";
 import RecordingTagBar from "../recordings/RecordingTagBar";
 
@@ -65,7 +65,7 @@ export default function AnnotateTasks({
   const [selectedSoundEventAnnotation, setSelectedSoundEventAnnotation] = useState<SoundEventAnnotation | null>(null);
   const onDeselectSoundEventAnnotation = useCallback(() => {
     setSelectedSoundEventAnnotation(null);
-  }, [setSelectedSoundEventAnnotation]);
+  }, []);
 
   const onUpdateSelectedSoundEventAnnotation = useCallback((annotation: SoundEventAnnotation) => {
     setSelectedSoundEventAnnotation(annotation);
@@ -102,7 +102,7 @@ export default function AnnotateTasks({
 
   const {data: annotationTask, addNote, removeNote, removeTagFromSoundEventAnnotation, addTagToSoundEventAnnotation} = annotationTaskProps
 
-  const tasks = useAnnotationTasks({
+  const tasks = useAnnotateTasks({
     filter: taskFilter,
     annotationTask: annotationTask,
     onChangeTask,

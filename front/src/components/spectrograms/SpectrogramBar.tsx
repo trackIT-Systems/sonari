@@ -3,20 +3,23 @@ import useCanvas from "@/hooks/draw/useCanvas";
 import useWindowDrag from "@/hooks/window/useWindowDrag";
 import { getWindowPosition } from "@/utils/windows";
 
-import type { SpectrogramWindow, SpectrogramParameters } from "@/types";
+import type { SpectrogramWindow, SpectrogramParameters, AnnotationTask } from "@/types";
+import useSpectrogram from "@/hooks/spectrogram/useSpectrogram";
+import useSpectrogramOverview from "@/hooks/spectrogram/useSpectrogramOverview";
+import { calculateOverlapPercent } from "@/utils/spectrogram_calculations";
 
 export default function SpectrogramBar({
+  task,
   bounds,
   window,
   onMove,
-  recording_id,
   samplerate,
   parameters,
   withSpectrogram,
 }: {
+  task: AnnotationTask;
   bounds: SpectrogramWindow;
   window: SpectrogramWindow;
-  recording_id: number;
   samplerate: number;
   parameters: SpectrogramParameters;
   withSpectrogram: boolean;
@@ -43,14 +46,23 @@ export default function SpectrogramBar({
 
   const [intialWindow, setInitialWindow] = useState(window);
 
-  // Get the complete spectrogram image
-  // const { draw: drawFullSpectrogram } = useSpectrogramSegment({
-  //   recording_id,
-  //   samplerate,
+  const overlapPercent = useMemo(() => {
+    return calculateOverlapPercent(
+      10000,
+      bounds.time.max - bounds.time.min,
+      samplerate,
+      128,
+    );
+  }, [bounds.time.max - bounds.time.min, task.end_time - task.start_time, samplerate]);
+
+  console.log(overlapPercent);
+
+  // //Get the complete spectrogram image
+  // const { draw: drawFullSpectrogram } = useSpectrogramOverview({
+  //   recording_id: task.recording_id,
   //   segment: bounds,
-  //   parameters,
-  //   withSpectrogram,
-  //   lowRes: true,
+  //   parameters: {...parameters, window_size_samples: 128, overlap_percent: 1},
+  //   withSpectrogram: true,
   // });
 
   // // Draw function for the canvas

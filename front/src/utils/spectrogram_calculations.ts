@@ -73,6 +73,39 @@ export function calculateTimeFrames(
 }
 
 /**
+ * Calculate overlap percentage from number of time frames.
+ * 
+ * This is the inverse of calculateTimeFrames - given the number of frames
+ * in a spectrogram, determines what overlap percentage was used to generate them.
+ * Useful for reverse-engineering spectrogram parameters or validating consistency.
+ * 
+ * @param timeFrames - Number of time frames in the spectrogram
+ * @param durationSeconds - Duration of audio in seconds
+ * @param samplerate - Sample rate in Hz
+ * @param windowSizeSamples - FFT window size in samples
+ * @returns Overlap percentage (0-100)
+ * 
+ * @example
+ * ```typescript
+ * // Given 172 frames over 1 second at 44100 Hz with 1024 window
+ * const overlap = calculateOverlapPercent(172, 1.0, 44100, 1024);
+ * // Returns ~75
+ * ```
+ */
+export function calculateOverlapPercent(
+  timeFrames: number,
+  durationSeconds: number,
+  samplerate: number,
+  windowSizeSamples: number
+): number {
+  const totalSamples = durationSeconds * samplerate;
+  const hopSize = totalSamples / timeFrames;
+  const overlapSamples = windowSizeSamples - hopSize;
+  const overlapPercent = (overlapSamples / windowSizeSamples) * 100;
+  return Math.max(0, Math.min(100, overlapPercent)); // Clamp to 0-100
+}
+
+/**
  * Calculate hop duration in seconds.
  * 
  * This is the time interval between consecutive spectrogram frames.

@@ -105,6 +105,73 @@ export function getVisibleChunks(
 }
 
 /**
+ * Calculates the time intervals for waveform chunks based on recording and settings.
+ * 
+ * Uses moderately sized chunks optimized for waveforms - balances progressive loading
+ * with reducing HTTP request overhead. Each chunk is approximately 2/3 of canvas width
+ * to ensure 1-2 chunks are visible in viewport for reasonable progressive loading
+ * while keeping total request count manageable.
+ * 
+ * @param duration - The duration of the recording in seconds
+ * @param windowSize - The size of each STFT window in samples
+ * @param overlap - The overlap fraction between consecutive windows (0-1)
+ * @param samplerate - The audio sample rate in Hz
+ * @returns Array of chunks with their time intervals and buffers
+ */
+export function calculateWaveformChunks({
+  duration,
+  windowSize,
+  overlap,
+  samplerate
+}: {
+  duration: number;
+  windowSize: number;
+  overlap: number;
+  samplerate: number;
+}): Chunk[] {
+  // For waveforms, target ~2/3 canvas width chunks
+  // Balance between progressive loading and minimizing HTTP request overhead
+  const targetTimePixels = (SPECTROGRAM_CANVAS_DIMENSIONS.width * 2) / 3;
+  
+  // Height of spectrogram = number of frequency bins (used for pixel calculation)
+  const freqBins = windowSize / 2;
+  const chunkPixels = targetTimePixels * SPECTROGRAM_CANVAS_DIMENSIONS.height;
+  
+  // Calculate how many time bins we need to achieve target pixel count
+  const timeBins = chunkPixels / freqBins;
+  
+  // Duration of each hop between STFT windows
+  const hopSize = (1 - overlap) * (windowSize / samplerate);
+  
+  // Duration covered by one chunk
+  const chunkDuration = timeBins * hopSize;
+  
+  // Buffer duration to add on each side
+  const bufferDuration = (SPECTROGRAM_CHUNK_BUFFER - 1) * hopSize + (windowSize / samplerate);
+  
+  // Calculate number of chunks needed
+  const numChunks = Math.ceil(duration / chunkDuration);
+  
+  // Generate chunks
+  return Array.from({ length: numChunks }, (_, i) => {
+    const startTime = i * chunkDuration;
+    const endTime = Math.min((i + 1) * chunkDuration, duration);
+    
+    return {
+      interval: {
+        min: startTime,
+        max: endTime,
+      },
+      buffer: {
+        min: Math.max(0, startTime - bufferDuration),
+        max: Math.min(duration, endTime + bufferDuration),
+      },
+      index: i,
+    };
+  });
+}
+
+/**
  * Gets chunks to load: visible chunks plus their immediate neighbors for preloading
  */
 export function getChunksToLoad(

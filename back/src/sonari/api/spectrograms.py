@@ -72,10 +72,6 @@ def compute_spectrogram(
     window_size_samples = spectrogram_parameters.window_size_samples
     overlap_percent = spectrogram_parameters.overlap_percent
 
-    if low_res:
-        window_size_samples = window_size_samples * 10
-        overlap_percent = max(50.0, overlap_percent - 25.0)
-
     # Calculate hop size from overlap
     overlap_samples = int(window_size_samples * overlap_percent / 100)
     hop_size_samples = window_size_samples - overlap_samples

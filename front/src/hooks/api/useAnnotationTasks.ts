@@ -23,15 +23,15 @@ export default function useAnnotationTasks({
     fixed
   });
 
-  // Always include recording and status badge data in the filter
+  // Apply defaults only if not explicitly set in the filter
   const filterWithDefaults = useMemo(() => ({
-    ...filter.filter,
     include_recording: true,
     include_sound_event_tags: true,
     include_tags: true,
     include_notes: true,
     include_status_badges: true,
     include_status_badge_users: true,
+    ...filter.filter,
   }), [filter.filter]);
 
   const { query, pagination, items, total, queryKey } = usePagedQuery({

@@ -111,13 +111,14 @@ export default function useAnnotateTasks({
       include_tags: false,
       include_notes: false,
       include_sound_event_annotations: false,
+      include_sound_event_tags: false,
       include_features: false,
     }),
     [initialFilter],
   );
 
   const {
-    items: initialItems,
+    items,
     filter,
     isLoading,
     isError,
@@ -127,10 +128,6 @@ export default function useAnnotateTasks({
     filter: minimalFilter,
     fixed: Object.keys(initialFilter) as (keyof AnnotationTaskFilter)[],
   });
-
-  const items = useMemo(() => {
-    return initialItems;
-  }, [initialItems]);
 
   const index = useMemo(() => {
     if (currentTask === null) return -1;
@@ -183,25 +180,25 @@ export default function useAnnotateTasks({
   }, [index, items, hasPrevTask, goToTask]);
 
   const loadedTasksRef = useRef<Set<number>>(new Set());
-  const handleCurrentSegmentsLoaded = useCallback(() => {}, []);
-  // const handleCurrentSegmentsLoaded = useCallback(async () => {
-  //   if (!items || index === -1 || index >= items.length - 1) return;
-  //   if (!hasNextTask) return;
+  //const handleCurrentSegmentsLoaded = useCallback(() => {}, []);
+  const handleCurrentSegmentsLoaded = useCallback(async () => {
+    if (!items || index === -1 || index >= items.length - 1) return;
+    if (!hasNextTask) return;
 
-  //   const nextTask = items[index + 1];
-  //   if (loadedTasksRef.current.has(nextTask.id)) return;
-  //   loadedTasksRef.current.add(nextTask.id);
+    const nextTask = items[index + 1];
+    if (loadedTasksRef.current.has(nextTask.id)) return;
+    loadedTasksRef.current.add(nextTask.id);
 
-  //   try {
-  //     const completeData = await api.annotationTasks.get(nextTask.id);
-  //     if (!completeData.recording) return;
+    // try {
+    //   const completeData = await api.annotationTasks.get(nextTask.id);
+    //   if (!completeData.recording) return;
   
-  //     await preloadSpectrogramSegments(completeData.recording);
-  //   } catch (error) {
-  //     console.error('Failed to preload next task:', error);
-  //   }
+    //   //await preloadSpectrogramSegments(completeData.recording);
+    // } catch (error) {
+    //   console.error('Failed to preload next task:', error);
+    // }
 
-  // }, [items, index, preloadSpectrogramSegments, hasNextTask]);
+  }, [items, index, hasNextTask]);
 
   const { set: setFilterKeyValue } = filter;
   const setFilter = useCallback(

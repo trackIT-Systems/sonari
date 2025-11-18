@@ -35,7 +35,7 @@ class STFTParameters(BaseModel):
     window_size_samples: int = 1024
     """Size of FFT window in samples."""
 
-    overlap_percent: float = Field(default=75.0, ge=50.0, le=99.0)
+    overlap_percent: float = Field(default=75.0, ge=1.0, le=99.0)
     """Overlap percentage between consecutive windows."""
 
     window: Window = "hann"
