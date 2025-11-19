@@ -139,12 +139,11 @@ export default function useAnnotateTasks({
 
   const goToTask = useCallback(
     (task: AnnotationTask) => {
-      client.setQueryData(["annotation_task", task.id], task);
       setCurrentTask(task);
       onChangeTask?.(task);
       onDeselectSoundEventAnnotation();
     },
-    [onChangeTask, client, onDeselectSoundEventAnnotation],
+    [onChangeTask, onDeselectSoundEventAnnotation],
   );
 
   const hasNextTask = useMemo(() => {
@@ -214,7 +213,6 @@ export default function useAnnotateTasks({
 
   const updateTaskData = useCallback(
     (task: AnnotationTask) => {
-      client.setQueryData(["annotation_task", task.id], task);
       client.setQueryData(queryKey, (old: AnnotationTaskPage) => {
         if (old == null) return old;
         return {

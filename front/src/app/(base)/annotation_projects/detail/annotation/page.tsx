@@ -21,13 +21,14 @@ export default function Page() {
   const search = useSearchParams();
   // This is a bug in nextjs. usePathname() should already return the correct
   // path, but it does not. So we use this workaround...
-  const pathname = HOST + usePathname();
+  const pathname = usePathname();
   const router = useRouter();
 
   const project = useContext(AnnotationProjectContext);
   const user = useContext(UserContext);
 
   const annotationTaskID = search.get("annotation_task_id");
+
 
   // All hooks must be called before any conditional returns
   const handleError = useCallback((error: AxiosError) => {
@@ -45,6 +46,7 @@ export default function Page() {
     include_features: true,
     include_note_users: true,  // For note author display
   });
+
 
   const parameters = useStore((state) => state.spectrogramSettings);
   const setParameters = useStore((state) => state.setSpectrogramSettings);
@@ -71,37 +73,37 @@ export default function Page() {
 
   const handleCompleteTask = useCallback(() => {
     toast(
-      <div className="flex items-center gap-2">
+      <span className="flex items-center gap-2">
         <CompleteIcon className="w-5 h-5 text-emerald-500" />
         <span>Accepted</span>
-      </div>
+      </span>
     );
   }, []);
 
   const handleUnsureTask = useCallback(() => {
     toast(
-      <div className="flex items-center gap-2">
+      <span className="flex items-center gap-2">
         <HelpIcon className="w-5 h-5 text-amber-500" />
         <span>Unsure</span>
-      </div>
+      </span>
     );
   }, []);
 
   const handleRejectTask = useCallback(() => {
     toast(
-      <div className="flex items-center gap-2">
+      <span className="flex items-center gap-2">
         <NeedsReviewIcon className="w-5 h-5 text-red-500" />
         <span>Rejected</span>
-      </div>
+      </span>
     );
   }, []);
 
   const handleVerifyTask = useCallback(() => {
     toast(
-      <div className="flex items-center gap-2">
+      <span className="flex items-center gap-2">
         <VerifiedIcon className="w-5 h-5 text-blue-500" />
         <span>Verified</span>
-      </div>
+      </span>
     );
   }, []);
 
@@ -122,6 +124,8 @@ export default function Page() {
   if (annotationTask.isLoading && !annotationTask.data) {
     return <Loading />;
   }
+
+  console.log("annotationTask", JSON.stringify(annotationTask.data?.sound_event_annotations))
 
   return (
     <div className="w-full">
