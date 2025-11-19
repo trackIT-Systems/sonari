@@ -1,6 +1,6 @@
 "use client";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { useCallback, useContext, useMemo, useState } from "react";
+import { useCallback, useContext, useMemo } from "react";
 import toast from "react-hot-toast";
 import { HOST } from "@/api/common";
 import { AxiosError } from "axios";
@@ -10,7 +10,6 @@ import AnnotateTasks from "@/components/annotation_tasks/AnnotateTasks";
 import Loading from "@/components/Loading";
 import { CompleteIcon, NeedsReviewIcon, HelpIcon, VerifiedIcon } from "@/components/icons";
 import useAnnotationTask from "@/hooks/api/useAnnotationTask";
-import useAnnotateTasks from "@/hooks/annotation/useAnnotateTasks";
 import useStore from "@/store";
 import { changeURLParam } from "@/utils/url";
 
@@ -35,6 +34,18 @@ export default function Page() {
     toast.error(error.message)
   }, []);
 
+  const annotationTask = useAnnotationTask({
+    id: annotationTaskID ? parseInt(annotationTaskID) : 0,
+    enabled: !!annotationTaskID,
+    onError: handleError,
+    include_recording: true,
+    include_notes: true,
+    include_sound_event_annotations: true,  // Full sound events needed here
+    include_tags: true,
+    include_features: true,
+    include_note_users: true,  // For note author display
+  });
+
   const parameters = useStore((state) => state.spectrogramSettings);
   const setParameters = useStore((state) => state.setSpectrogramSettings);
 
@@ -44,11 +55,6 @@ export default function Page() {
     },
     [setParameters],
   );
-
-  const [selectedSoundEventAnnotation, setSelectedSoundEventAnnotation] = useState<SoundEventAnnotation | null>(null);
-  const onDeselectSoundEventAnnotation = useCallback(() => {
-    setSelectedSoundEventAnnotation(null);
-  }, []);
 
   const onChangeTask = useCallback(
     (task: AnnotationTask) => {
@@ -106,41 +112,15 @@ export default function Page() {
     [project],
   );
 
-  // Use useAnnotateTasks as the primary source of truth for current task
-  const tasks = useAnnotateTasks({
-    filter,
-    annotationTask: undefined, // Will be set from URL or first task
-    onChangeTask,
-    onCompleteTask: handleCompleteTask,
-    onUnsureTask: handleUnsureTask,
-    onRejectTask: handleRejectTask,
-    onVerifyTask: handleVerifyTask,
-    onDeselectSoundEventAnnotation,
-  });
-
-  // Use the current task from useAnnotateTasks to drive useAnnotationTask
-  const currentTaskId = tasks.task?.id;
-
-  const annotationTask = useAnnotationTask({
-    id: currentTaskId || 0,
-    enabled: !!currentTaskId,
-    onError: handleError,
-    annotationTask: tasks.task || undefined,
-    include_recording: true,
-    include_notes: true,
-    include_sound_event_annotations: true,  // Full sound events needed here
-    include_tags: true,
-    include_features: true,
-    include_note_users: true,  // For note author display
-  });
-
-  // Handle loading state
-  if (tasks.isLoading) {
-    return <Loading />;
+  // Now handle conditional cases after all hooks have been called
+  if (annotationTaskID == null) {
+    toast.error("Annotation task not found.");
+    router.back()
+    return null;
   }
 
-  if (tasks.isError) {
-    return <div>Error loading annotation tasks</div>;
+  if (annotationTask.isLoading && !annotationTask.data) {
+    return <Loading />;
   }
 
   return (
@@ -148,10 +128,14 @@ export default function Page() {
       <AnnotateTasks
         taskFilter={filter}
         annotationTaskProps={annotationTask}
-        tasks={tasks}
         parameters={parameters}
+        onChangeTask={onChangeTask}
         currentUser={user}
         onParameterSave={onParameterSave}
+        onCompleteTask={handleCompleteTask}
+        onUnsureTask={handleUnsureTask}
+        onRejectTask={handleRejectTask}
+        onVerifyTask={handleVerifyTask}
       />
     </div>
   );

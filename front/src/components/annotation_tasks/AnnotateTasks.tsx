@@ -8,7 +8,7 @@ import AnnotationTaskStatus from "@/components/annotation_tasks/AnnotationTaskSt
 import AnnotationTaskSpectrogram from "@/components/annotation_tasks/AnnotationTaskSpectrogram";
 import Empty from "@/components/Empty";
 import Loading from "@/components/Loading";
-import type useAnnotateTasks from "@/hooks/annotation/useAnnotateTasks";
+import useAnnotateTasks from "@/hooks/annotation/useAnnotateTasks";
 import type useAnnotationTask from "@/hooks/api/useAnnotationTask";
 import RecordingTagBar from "../recordings/RecordingTagBar";
 
@@ -34,9 +34,13 @@ export default function AnnotateTasks({
   taskFilter,
   parameters = DEFAULT_SPECTROGRAM_PARAMETERS,
   annotationTaskProps,
-  tasks,
   currentUser,
+  onChangeTask,
   onParameterSave,
+  onCompleteTask,
+  onUnsureTask,
+  onRejectTask,
+  onVerifyTask,
 }: {
   /** Filter to select which tasks are to be annotated */
   taskFilter?: AnnotationTaskFilter;
@@ -44,11 +48,16 @@ export default function AnnotateTasks({
   parameters?: SpectrogramParameters;
   /** An optional annotation task to use initially */
   annotationTaskProps: ReturnType<typeof useAnnotationTask>;
-  /** The tasks object from useAnnotateTasks */
-  tasks: ReturnType<typeof useAnnotateTasks>;
   /** The user who is annotating */
   currentUser: User;
+  onChangeTask?: (annotationTask: AnnotationTask) => void;
+  onAddStatusBadge?: (task: AnnotationTask) => void;
+  onRemoveStatusBadge?: (task: AnnotationTask) => void;
   onParameterSave?: (parameters: SpectrogramParameters) => void;
+  onCompleteTask?: () => void;
+  onUnsureTask?: () => void;
+  onRejectTask?: () => void;
+  onVerifyTask?: () => void;
 }) {
   const [tagPalette, setTagPalette] = useState<Tag[]>([]);
   const [selectedTag, setSelectedTag] = useState<{ tag: Tag; count: number } | null>(null);
@@ -91,16 +100,22 @@ export default function AnnotateTasks({
     setFixedAspectRatio(prev => !prev);
   }, []);
 
-  // Safely destructure annotationTaskProps with null checks
-  const annotationTask = annotationTaskProps?.data || null;
-  const addNote = annotationTaskProps?.addNote;
-  const removeNote = annotationTaskProps?.removeNote;
-  const removeTagFromSoundEventAnnotation = annotationTaskProps?.removeTagFromSoundEventAnnotation;
-  const addTagToSoundEventAnnotation = annotationTaskProps?.addTagToSoundEventAnnotation;
+  const {data: annotationTask, addNote, removeNote, removeTagFromSoundEventAnnotation, addTagToSoundEventAnnotation} = annotationTaskProps
+
+  const tasks = useAnnotateTasks({
+    filter: taskFilter,
+    annotationTask: annotationTask,
+    onChangeTask,
+    onCompleteTask,
+    onUnsureTask,
+    onRejectTask,
+    onVerifyTask,
+    onDeselectSoundEventAnnotation,
+  });
 
   const handleRemoveTagFromSoundEventAnnotations = useCallback(
     async (tagToRemove: Tag) => {
-      if (!annotationTask?.sound_event_annotations || !removeTagFromSoundEventAnnotation) return;
+      if (!annotationTask?.sound_event_annotations) return;
       // For each sound event annotation that has this tag
       const promises = annotationTask.sound_event_annotations
         .filter(soundEventAnnotation =>
@@ -200,7 +215,7 @@ export default function AnnotateTasks({
 
   const handleDeleteTagFromAll = useCallback(
     async (tagWithCount: { tag: Tag; count: number }, shouldDelete: boolean) => {
-      if (shouldDelete && removeTagFromSoundEventAnnotation) {
+      if (shouldDelete) {
         if (selectedSoundEventAnnotation) {
           // If an annotation is selected, only remove tag from it
           await removeTagFromSoundEventAnnotation.mutateAsync({
@@ -228,7 +243,7 @@ export default function AnnotateTasks({
 
   const handleReplaceTagInSoundEventAnnotations = useCallback(
     async (oldTag: Tag | null, newTag: Tag | null, currentAnnotation?: SoundEventAnnotation | null) => {
-      if (!annotationTask?.sound_event_annotations || !removeTagFromSoundEventAnnotation || !addTagToSoundEventAnnotation) return;
+      if (!annotationTask?.sound_event_annotations) return;
 
       let soundEventAnnotationsToUpdate: SoundEventAnnotation[] = [];
       if (currentAnnotation) {
@@ -333,7 +348,7 @@ export default function AnnotateTasks({
           <div className={`${SPECTROGRAM_CANVAS_DIMENSIONS.width}px`}>
             {annotationTaskProps.isLoading ? (
               <Loading />
-            ) : annotationTask == null || !annotationTask.recording ? (
+            ) : annotationTask == null ? (
               <NoTaskSelected />
             ) : (() => {
               // Calculate annotation task position among annotation tasks from the same recording
@@ -345,7 +360,7 @@ export default function AnnotateTasks({
               return (
               <div className="flex flex-col gap-2">
                 <RecordingAnnotationContext
-                  recording={annotationTask.recording}
+                  recording={annotationTask.recording!}
                   currentTaskIndex={currentTaskIndex >= 0 ? currentTaskIndex + 1 : undefined}
                   totalTasks={sortedTasks.length}
                 />
@@ -375,7 +390,7 @@ export default function AnnotateTasks({
             })()}
           </div>
 
-          {selectedSoundEventAnnotation == null || annotationTask == null || !annotationTask.recording ? (
+          {selectedSoundEventAnnotation == null || annotationTask == null ? (
             <div className="w-[35rem] flex-none mt-9">
               <Empty
                 padding="p-0">
@@ -386,7 +401,7 @@ export default function AnnotateTasks({
             <div className="w-[35rem] flex-none mt-5">
               <SelectedSoundEventAnnotation
                 annotationTask={annotationTask}
-                samplerate={annotationTask.recording.samplerate}
+                samplerate={annotationTask.recording!.samplerate}
                 soundEventAnnotation={selectedSoundEventAnnotation}
                 parameters={parameters}
                 withSpectrogram={withSpectrogram}
@@ -397,15 +412,15 @@ export default function AnnotateTasks({
         </div>
 
 
-        {annotationTask && annotationTask.recording && (
+        {annotationTask && (
           <div className="flex flex-row gap-4 w-full">
             <div className="min-w-[64.7rem] flex flex-col gap-4">
               <RecordingTagBar
-                recording={annotationTask.recording}
+                recording={annotationTask.recording!}
               />
               <AnnotationTaskNotes
-                onCreateNote={addNote?.mutate}
-                onDeleteNote={removeNote?.mutate}
+                onCreateNote={addNote.mutate}
+                onDeleteNote={removeNote.mutate}
                 annotationTask={annotationTask}
                 currentUser={currentUser}
               />
