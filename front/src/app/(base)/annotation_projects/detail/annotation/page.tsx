@@ -12,10 +12,12 @@ import { CompleteIcon, NeedsReviewIcon, HelpIcon, VerifiedIcon } from "@/compone
 import useAnnotationTask from "@/hooks/api/useAnnotationTask";
 import useStore from "@/store";
 import { changeURLParam } from "@/utils/url";
+import api from "@/app/api";
 
 import AnnotationProjectContext from "../context";
 
-import type { AnnotationTask, SpectrogramParameters, Tag, SoundEventAnnotation } from "@/types";
+import type { AnnotationTask, AnnotationStatus, SpectrogramParameters } from "@/types";
+import type { NoteCreate } from "@/api/notes";
 
 export default function Page() {
   const search = useSearchParams();
@@ -35,7 +37,7 @@ export default function Page() {
     toast.error(error.message)
   }, []);
 
-  const annotationTask = useAnnotationTask({
+  const annotationTaskQuery = useAnnotationTask({
     id: annotationTaskID ? parseInt(annotationTaskID) : 0,
     enabled: !!annotationTaskID,
     onError: handleError,
@@ -44,9 +46,25 @@ export default function Page() {
     include_sound_event_annotations: true,  // Full sound events needed here
     include_tags: true,
     include_features: true,
+    include_status_badges: true,
+    include_status_badge_users: true,
     include_note_users: true,  // For note author display
   });
 
+  // Extract data and mutation functions
+  const {
+    data: annotationTask,
+    isLoading: isLoadingTask,
+    addNote,
+    removeNote,
+    addBadge,
+    removeBadge,
+    addTagToSoundEventAnnotation,
+    removeTagFromSoundEventAnnotation,
+    addSoundEventAnnotation,
+    removeSoundEventAnnotation,
+    updateSoundEventAnnotation,
+  } = annotationTaskQuery;
 
   const parameters = useStore((state) => state.spectrogramSettings);
   const setParameters = useStore((state) => state.setSpectrogramSettings);
@@ -56,6 +74,61 @@ export default function Page() {
       setParameters(parameters);
     },
     [setParameters],
+  );
+
+  // Wrap mutation functions in useCallback for reference stability
+  const handleAddNote = useCallback(
+    (note: NoteCreate) => addNote.mutate(note),
+    [addNote]
+  );
+
+  const handleRemoveNote = useCallback(
+    (note: any) => removeNote.mutate(note),
+    [removeNote]
+  );
+
+  const handleAddTagToSoundEventAnnotation = useCallback(
+    (params: any) => addTagToSoundEventAnnotation.mutateAsync(params),
+    [addTagToSoundEventAnnotation]
+  );
+
+  const handleRemoveTagFromSoundEventAnnotation = useCallback(
+    (params: any) => removeTagFromSoundEventAnnotation.mutateAsync(params),
+    [removeTagFromSoundEventAnnotation]
+  );
+
+  const handleAddSoundEventAnnotation = useCallback(
+    async (params: any) => {
+      const result = await addSoundEventAnnotation.mutateAsync(params);
+      return result;
+    },
+    [addSoundEventAnnotation]
+  );
+
+  const handleRemoveSoundEventAnnotation = useCallback(
+    (annotation: any) => removeSoundEventAnnotation.mutate(annotation),
+    [removeSoundEventAnnotation]
+  );
+
+  const handleUpdateSoundEventAnnotation = useCallback(
+    (params: any) => updateSoundEventAnnotation.mutate(params),
+    [updateSoundEventAnnotation]
+  );
+
+  const handleAddBadge = useCallback(
+    async (task: AnnotationTask, state: AnnotationStatus) => {
+      const result = await addBadge.mutateAsync(state);
+      return result;
+    },
+    [addBadge]
+  );
+  
+  const handleRemoveBadge = useCallback(
+    async (task: AnnotationTask, state: AnnotationStatus, userId?: string) => {
+      const result = await removeBadge.mutateAsync(state);
+      return result;
+    },
+    [removeBadge]
   );
 
   const onChangeTask = useCallback(
@@ -121,17 +194,16 @@ export default function Page() {
     return null;
   }
 
-  if (annotationTask.isLoading && !annotationTask.data) {
+  if (isLoadingTask && !annotationTask) {
     return <Loading />;
   }
-
-  console.log("annotationTask", JSON.stringify(annotationTask.data?.sound_event_annotations))
 
   return (
     <div className="w-full">
       <AnnotateTasks
         taskFilter={filter}
-        annotationTaskProps={annotationTask}
+        annotationTask={annotationTask}
+        isLoadingTask={isLoadingTask}
         parameters={parameters}
         onChangeTask={onChangeTask}
         currentUser={user}
@@ -140,6 +212,15 @@ export default function Page() {
         onUnsureTask={handleUnsureTask}
         onRejectTask={handleRejectTask}
         onVerifyTask={handleVerifyTask}
+        onAddBadge={handleAddBadge}
+        onRemoveBadge={handleRemoveBadge}
+        onAddNote={handleAddNote}
+        onRemoveNote={handleRemoveNote}
+        onAddTagToSoundEventAnnotation={handleAddTagToSoundEventAnnotation}
+        onRemoveTagFromSoundEventAnnotation={handleRemoveTagFromSoundEventAnnotation}
+        onAddSoundEventAnnotation={handleAddSoundEventAnnotation}
+        onRemoveSoundEventAnnotation={handleRemoveSoundEventAnnotation}
+        onUpdateSoundEventAnnotation={handleUpdateSoundEventAnnotation}
       />
     </div>
   );

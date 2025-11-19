@@ -25,15 +25,16 @@ import type {
   SpectrogramParameters,
   SpectrogramWindow,
   Tag,
+  Geometry,
 } from "@/types";
 import useWaveform from "@/hooks/spectrogram/useWaveform";
 import useAnnotationDrawWaveform from "@/hooks/annotation/useAnnotationDrawWaveform";
-import useAnnotationTask from "@/hooks/api/useAnnotationTask";
 import { NoIcon } from "../icons";
 import { SPECTROGRAM_CANVAS_DIMENSIONS, WAVEFORM_CANVAS_DIMENSIONS } from "@/constants";
+import type { AnnotationTask } from "@/types";
 
 export default function AnnotationTaskSpectrogram({
-  annotationTaskProps,
+  annotationTask,
   parameters = DEFAULT_SPECTROGRAM_PARAMETERS,
   disabled = false,
   withBar = true,
@@ -57,8 +58,13 @@ export default function AnnotationTaskSpectrogram({
   onParameterSave,
   onSelectSoundEventAnnotation,
   onSegmentsLoaded,
+  onAddTagToSoundEventAnnotation,
+  onRemoveTagFromSoundEventAnnotation,
+  onAddSoundEventAnnotation,
+  onRemoveSoundEventAnnotation,
+  onUpdateSoundEventAnnotation,
 }: {
-  annotationTaskProps: ReturnType<typeof useAnnotationTask>;
+  annotationTask?: AnnotationTask;
   parameters?: SpectrogramParameters;
   disabled?: boolean;
   defaultTags?: Tag[];
@@ -83,8 +89,12 @@ export default function AnnotationTaskSpectrogram({
   onParameterSave?: (params: SpectrogramParameters) => void;
   onSelectSoundEventAnnotation?: (soundEventAnnotation: SoundEventAnnotation | null) => void;
   onSegmentsLoaded: () => void;
+  onAddTagToSoundEventAnnotation?: (params: { soundEventAnnotation: SoundEventAnnotation; tag: Tag }) => Promise<SoundEventAnnotation>;
+  onRemoveTagFromSoundEventAnnotation?: (params: { soundEventAnnotation: SoundEventAnnotation; tag: Tag }) => Promise<SoundEventAnnotation>;
+  onAddSoundEventAnnotation?: (params: { geometry: Geometry; tags: Tag[] }) => Promise<SoundEventAnnotation>;
+  onRemoveSoundEventAnnotation?: (annotation: SoundEventAnnotation) => void;
+  onUpdateSoundEventAnnotation?: (params: { soundEventAnnotation: SoundEventAnnotation; geometry: Geometry }) => void;
 }) {
-  const {data: annotationTask} = annotationTaskProps;
   
   const [isAnnotating, setIsAnnotating] = useState(false);
   const spectrogramCanvasRef = useRef<HTMLCanvasElement>(null);
@@ -267,7 +277,7 @@ export default function AnnotationTaskSpectrogram({
   }, [onSelectSoundEventAnnotation]);
 
   const annotate = useAnnotateTask({
-    annotationTaskProps,
+    annotationTask,
     window: spectrogram.window,
     canvasRef: spectrogramCanvasRef,
     onCenterOn: handleTimeChange,
@@ -279,6 +289,11 @@ export default function AnnotationTaskSpectrogram({
     onSelectSoundEventAnnotation,
     disabled,
     withSoundEvent,
+    onAddSoundEventAnnotation,
+    onRemoveSoundEventAnnotation,
+    onUpdateSoundEventAnnotation,
+    onAddTagToSoundEventAnnotation,
+    onRemoveTagFromSoundEventAnnotation,
   });
 
   const {

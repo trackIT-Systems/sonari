@@ -1,4 +1,4 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient, keepPreviousData } from "@tanstack/react-query";
 import { useCallback, useEffect } from "react";
 
 import type { AxiosError } from "axios";
@@ -150,7 +150,6 @@ function useObjectQuery<T, K>({
     queryFn: trueQueryFn,
     queryKey: [name, id, secondaryName],
     enabled: status !== "pending" && status !== "error" && enabled,
-    staleTime: Infinity,
     refetchOnWindowFocus: false,
     gcTime: 60 * 60 * 1000, // when the gcTime expires, react will re-fetch the data. This might lead to the problem that set filters in annotation task are lost. Therefore, we set a hopefully large enough time.
   });
@@ -204,9 +203,9 @@ export default function useObject<T>({
       return failureCount < 3;
     },
     initialData: initial,
-    staleTime: Infinity,
     refetchOnWindowFocus: false,
     gcTime: 60 * 60 * 1000, // when the gcTime expires, react will re-fetch the data. This might lead to the problem that set filters in annotation task are lost. Therefore, we set a hopefully large enough time.
+    placeholderData: keepPreviousData,
     enabled: enabled && id != null,
   });
 

@@ -531,6 +531,8 @@ class AnnotationTaskAPI(
             user_id=user.id if user else None,
         )
 
+        await session.refresh(badge, attribute_names=["user"])
+
         obj = obj.model_copy(
             update=dict(
                 status_badges=[

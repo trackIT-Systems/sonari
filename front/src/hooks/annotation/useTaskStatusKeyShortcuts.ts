@@ -19,7 +19,6 @@ export default function useTaskStatusKeyShortcuts(props: {
   onMarkUnsure?: () => void;
   onMarkRejected?: () => void;
   onMarkVerified?: () => void;
-  onSearchReplaceTags?: () => void;
   onAddTags?: () => void;
   enabled?: boolean;
 }) {
@@ -30,7 +29,6 @@ export default function useTaskStatusKeyShortcuts(props: {
     onMarkUnsure,
     onMarkRejected,
     onMarkVerified,
-    onSearchReplaceTags,
     onAddTags,
     enabled = true,
   } = props;

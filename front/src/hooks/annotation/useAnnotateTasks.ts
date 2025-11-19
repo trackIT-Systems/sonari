@@ -1,9 +1,6 @@
 import {
-  type UseMutationResult,
-  useMutation,
   useQueryClient,
 } from "@tanstack/react-query";
-import { type AxiosError } from "axios";
 import { useCallback, useEffect, useMemo, useState, useRef } from "react";
 import useStore from "@/store";
 
@@ -11,12 +8,10 @@ import {
   AnnotationTaskFilter,
   type AnnotationTaskPage,
 } from "@/api/annotation_tasks";
-import api from "@/app/api";
-import useAnnotateTasksKeyShortcuts from "@/hooks/annotation/useTaskStatusKeyShortcuts";
 import useAnnotationTasks from "@/hooks/api/useAnnotationTasks";
 import { type Filter } from "@/hooks/utils/useFilter";
 
-import type { AnnotationStatus, Recording, AnnotationTask } from "@/types";
+import type { AnnotationTask } from "@/types";
 
 type AnnotationState = {
   /** Currently selected annotation task index */
@@ -53,16 +48,6 @@ type AnnotationControls = {
   ) => void;
   /** Select a random annotation task */
   getFirstTask: () => void;
-  /** Mark the current task as completed */
-  markCompleted: UseMutationResult<AnnotationTask, AxiosError, void>;
-  /** Mark the current task as unsure */
-  markUnsure: UseMutationResult<AnnotationTask, AxiosError, void>;
-  /** Mark the current task as rejected */
-  markRejected: UseMutationResult<AnnotationTask, AxiosError, void>;
-  /** Mark the current task as verified */
-  markVerified: UseMutationResult<AnnotationTask, AxiosError, void>;
-  /** Remove a badge from the current task */
-  removeBadge: UseMutationResult<AnnotationTask, AxiosError, { state: AnnotationStatus, userId?: string }>;
 };
 
 const empty = {};
@@ -71,10 +56,6 @@ export default function useAnnotateTasks({
   filter: initialFilter = empty,
   annotationTask: initialTask,
   onChangeTask,
-  onCompleteTask,
-  onUnsureTask,
-  onRejectTask,
-  onVerifyTask,
   onDeselectSoundEventAnnotation,
 }: {
   /** Initial filter to select which annotation tasks to show */
@@ -230,93 +211,6 @@ export default function useAnnotateTasks({
     [client, queryKey],
   );
 
-  const markCompletedFn = useCallback(async () => {
-    if (currentTask == null) {
-      throw new Error("No selected task");
-    }
-    return api.annotationTasks.addBadge(currentTask, "completed");
-  }, [currentTask]);
-
-  const markCompleted = useMutation<AnnotationTask, AxiosError>({
-    mutationFn: markCompletedFn,
-    onSuccess: (task) => {
-      let updatedTask = task;
-      onCompleteTask?.(updatedTask);
-      updateTaskData(updatedTask);
-      nextTask();
-    },
-  });
-
-  const markUnsureFn = useCallback(async () => {
-    if (currentTask == null) {
-      throw new Error("No selected task");
-    }
-    return api.annotationTasks.addBadge(currentTask, "assigned");
-  }, [currentTask]);
-
-  const markUnsure = useMutation<AnnotationTask, AxiosError>({
-    mutationFn: markUnsureFn,
-    onSuccess: (task) => {
-      let updatedTask = task;
-      onUnsureTask?.(updatedTask);
-      updateTaskData(updatedTask);
-      nextTask();
-    },
-  });
-
-  const markRejectedFn = useCallback(async () => {
-    if (currentTask == null) {
-      throw new Error("No selected task");
-    }
-    return api.annotationTasks.addBadge(currentTask, "rejected");
-  }, [currentTask]);
-
-  const markRejected = useMutation<AnnotationTask, AxiosError>({
-    mutationFn: markRejectedFn,
-    onSuccess: (task) => {
-      let updatedTask = task;
-      onRejectTask?.(updatedTask);
-      updateTaskData(updatedTask);
-      nextTask();
-    },
-  });
-
-  const markVerifiedFn = useCallback(async () => {
-    if (currentTask == null) {
-      throw new Error("No selected task");
-    }
-    return api.annotationTasks.addBadge(currentTask, "verified");
-  }, [currentTask]);
-
-  const markVerified = useMutation<AnnotationTask, AxiosError>({
-    mutationFn: markVerifiedFn,
-    onSuccess: (task) => {
-      let updatedTask = task;
-      onVerifyTask?.(updatedTask);
-      updateTaskData(updatedTask);
-      nextTask();
-    },
-  });
-
-  const removeBadgeFn = useCallback(
-    async (status: AnnotationStatus, userId?: string) => {
-      if (currentTask == null) {
-        throw new Error("No selected task");
-      }
-      return api.annotationTasks.removeBadge(currentTask, status, userId);
-    },
-    [currentTask],
-  );
-
-  const removeBadge = useMutation<AnnotationTask, AxiosError, { state: AnnotationStatus, userId?: string }>(
-    {
-      mutationFn: ({ state, userId }) => removeBadgeFn(state, userId),
-      onSuccess: (task) => {
-        updateTaskData(task);
-      },
-    },
-  );
-
   const getFirstTask = useCallback(() => {
     if (items.length === 0) return;
     const task = items[0];
@@ -329,15 +223,6 @@ export default function useAnnotateTasks({
       goToTask(items[0]);
     }
   }, [currentTask, items, goToTask]);
-
-  useAnnotateTasksKeyShortcuts({
-    onGoNext: nextTask,
-    onGoPrevious: prevTask,
-    onMarkCompleted: markCompleted.mutate,
-    onMarkUnsure: markUnsure.mutate,
-    onMarkRejected: markRejected.mutate,
-    onMarkVerified: markVerified.mutate,
-  });
 
   return {
     current: index,
@@ -352,11 +237,6 @@ export default function useAnnotateTasks({
     nextTask,
     prevTask,
     setFilter,
-    markCompleted,
-    markUnsure,
-    markRejected,
-    markVerified,
-    removeBadge,
     getFirstTask,
     handleCurrentSegmentsLoaded,
     _filter: filter,
