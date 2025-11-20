@@ -61,15 +61,15 @@ def compute_spectrogram(
     channel_to_use = spectrogram_parameters.channel if spectrogram_parameters.channel < available_channels else 0
     wav = wav[dict(channel=[channel_to_use])]
 
-    if spectrogram_parameters.overlap_percent == 1:
-        # Decimate to 8 kHz by skipping samples
-        current_samplerate = 1 / get_dim_step(wav, Dimensions.time.value)
-        target_samplerate = 8000
-        decimation_factor = int(current_samplerate / target_samplerate)
+    # if spectrogram_parameters.overlap_percent == 1:
+    #     # Decimate to 8 kHz by skipping samples
+    #     current_samplerate = 1 / get_dim_step(wav, Dimensions.time.value)
+    #     target_samplerate = 8000
+    #     decimation_factor = int(current_samplerate / target_samplerate)
 
-        if decimation_factor > 1:
-            # Skip samples by taking every Nth sample along the time dimension
-            wav = wav[{Dimensions.time.value: slice(None, None, decimation_factor)}]
+    #     if decimation_factor > 1:
+    #         # Skip samples by taking every Nth sample along the time dimension
+    #         wav = wav[{Dimensions.time.value: slice(None, None, decimation_factor)}]
 
     # Convert samples to seconds
     window_size_samples = spectrogram_parameters.window_size_samples

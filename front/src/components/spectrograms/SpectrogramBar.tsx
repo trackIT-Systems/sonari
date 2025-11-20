@@ -50,21 +50,20 @@ export default function SpectrogramBar({
     [parameters]
   );
 
-  //Get the complete spectrogram image
-  const { draw: drawFullSpectrogram } = useSpectrogramOverview({
+  // Get the spectrogram image(s) - automatically handles chunked loading for long recordings
+  const { draw: drawSpectrogram } = useSpectrogramOverview({
     recording_id: recordingId,
     segment: bounds,
     parameters: overviewParameters,
-    withSpectrogram: true,
+    withSpectrogram: withSpectrogram,
   });
 
   // Draw function for the canvas
   const draw = useMemo(
     () => (ctx: CanvasRenderingContext2D) => {
-      // Draw the full spectrogram
-      drawFullSpectrogram(ctx, bounds);
+      drawSpectrogram(ctx, bounds);
     },
-    [drawFullSpectrogram, bounds]
+    [drawSpectrogram, bounds]
   );
 
   useCanvas({ ref: canvasRef as React.RefObject<HTMLCanvasElement>, draw });
