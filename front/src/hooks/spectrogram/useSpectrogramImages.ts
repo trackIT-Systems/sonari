@@ -64,11 +64,17 @@ export default function useSpectrogramImages({
   ]);
 
   // Track loading state for each chunk
-  const { chunks: chunkStates, setReady, setError, startLoading } =
+  const { chunks: chunkStates, setReady, setError, startLoading, setChunks } =
     useSpectrogramChunksState(allChunks);
 
   // Store loaded images
   const [images, setImages] = useState<Map<number, HTMLImageElement>>(new Map());
+
+  // Reset chunk states and clear images when parameters change
+  useEffect(() => {
+    setChunks(allChunks);
+    setImages(new Map());
+  }, [parameters, allChunks, setChunks]);
 
   // Find chunks that are visible in current viewport
   const visibleChunks = useMemo(() => {
