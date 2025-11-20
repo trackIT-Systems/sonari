@@ -380,14 +380,6 @@ export default function AnnotationTaskSpectrogram({
   useCanvas({ ref: spectrogramCanvasRef as React.RefObject<HTMLCanvasElement>, draw: drawSpectrogramCanvas });
   useCanvas({ ref: waveformCanvasRef as React.RefObject<HTMLCanvasElement>, draw: drawWaveformCanvas });
 
-  useEffect(() => {
-    if (waveformCanvasRef.current) {
-      waveformCanvasRef.current.style.height = `${WAVEFORM_CANVAS_DIMENSIONS.height}px`;
-      // Set actual canvas height (drawing resolution)
-      waveformCanvasRef.current.height = WAVEFORM_CANVAS_DIMENSIONS.height;
-    }
-  }, [spectrogramCanvasRef, waveformCanvasRef]); 
-
   const handleClearSelectedTag = useCallback(() => {
     onClearSelectedTag(null);
   }, [onClearSelectedTag]);
@@ -454,7 +446,7 @@ export default function AnnotationTaskSpectrogram({
         )}
         {withPlayer && <Player {...audio} />}
       </div>
-      <div className="relative overflow-visible rounded-md" style={{ height: SPECTROGRAM_CANVAS_DIMENSIONS.height }}>
+      <div className="relative overflow-visible rounded-md" style={{ height: SPECTROGRAM_CANVAS_DIMENSIONS.height, width: SPECTROGRAM_CANVAS_DIMENSIONS.width }}>
         <SpectrogramTags
           disabled={disabled}
           tags={annotate?.tags ?? []}
@@ -466,6 +458,8 @@ export default function AnnotationTaskSpectrogram({
             {...finalSpectrogramProps}
             className="absolute w-full h-full"
             id="main-spectrogram-canvas"
+            width={SPECTROGRAM_CANVAS_DIMENSIONS.width}
+            height={SPECTROGRAM_CANVAS_DIMENSIONS.height}
           />
         </SpectrogramTags>
         {selectedTag && (
@@ -480,12 +474,14 @@ export default function AnnotationTaskSpectrogram({
           </div>
         )}
       </div>
-      <div className="relative overflow-hidden rounded-md" style={{ height: WAVEFORM_CANVAS_DIMENSIONS.height }}>
+      <div className="relative overflow-hidden rounded-md" style={{ height: WAVEFORM_CANVAS_DIMENSIONS.height, width: WAVEFORM_CANVAS_DIMENSIONS.width }}>
           <canvas
           ref={waveformCanvasRef}
             {...finalWaveformProps}
             className="absolute w-full h-full"
-            id="main-waveform-canvas" 
+            id="main-waveform-canvas"
+            width={WAVEFORM_CANVAS_DIMENSIONS.width}
+            height={WAVEFORM_CANVAS_DIMENSIONS.height}
           />
       </div>
       {withBar && (

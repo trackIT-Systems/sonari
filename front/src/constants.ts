@@ -28,3 +28,8 @@ export const ZOOM_FACTOR = 0.2;
 
 export const SPECTROGRAM_CANVAS_DIMENSIONS: Dimensions = {height: 384, width: 1000}
 export const WAVEFORM_CANVAS_DIMENSIONS: Dimensions = {height: SPECTROGRAM_CANVAS_DIMENSIONS.height / 6, width: SPECTROGRAM_CANVAS_DIMENSIONS.width}
+
+/** Card padding is p-4 which equals 16px on each side (32px total horizontal padding) */
+export const CARD_HORIZONTAL_PADDING = 36;
+/** Container width that accounts for Card padding to achieve 1000px content width */
+export const SPECTROGRAM_CONTAINER_WIDTH = SPECTROGRAM_CANVAS_DIMENSIONS.width + CARD_HORIZONTAL_PADDING;

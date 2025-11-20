@@ -31,10 +31,12 @@ export default function useCanvas({
     if (canvas == null) return;
 
     // Sync the canvas size attributes with the parent element size
-    // This is particularly useful if the canvas is meant to fill the parent
-    // element
-    canvas.width = SPECTROGRAM_CANVAS_DIMENSIONS.width
-    canvas.height = SPECTROGRAM_CANVAS_DIMENSIONS.height
+      // If the canvas already has width/height set (via attributes), use those
+    // Otherwise fall back to default spectrogram dimensions
+    if (!canvas.width || !canvas.height) {
+      canvas.width = SPECTROGRAM_CANVAS_DIMENSIONS.width
+      canvas.height = SPECTROGRAM_CANVAS_DIMENSIONS.height
+    }
 
     // Get the drawing context
     const context = canvas.getContext("2d");
@@ -55,8 +57,12 @@ export default function useCanvas({
   const handleOnResize = useCallback(() => {
     const { current: canvas } = ref;
     if (canvas != null && ctx != null) {
-      canvas.width = SPECTROGRAM_CANVAS_DIMENSIONS.width
-      canvas.height = SPECTROGRAM_CANVAS_DIMENSIONS.height
+      // Preserve the canvas's original dimensions on resize
+      // Don't overwrite with default dimensions
+      const width = canvas.width || SPECTROGRAM_CANVAS_DIMENSIONS.width;
+      const height = canvas.height || SPECTROGRAM_CANVAS_DIMENSIONS.height;
+      canvas.width = width;
+      canvas.height = height;
 
       draw(ctx);
       onResize?.(ctx);
