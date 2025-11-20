@@ -111,7 +111,8 @@ async def extract_events_with_datetime(
         .options(
             selectinload(models.AnnotationTask.annotation_project),
             selectinload(models.AnnotationTask.recording),
-            selectinload(models.AnnotationTask.sound_event_annotations),
+            selectinload(models.AnnotationTask.sound_event_annotations).selectinload(models.SoundEventAnnotation.tags),
+            selectinload(models.AnnotationTask.status_badges),
         )
     )
     result = await session.execute(query)

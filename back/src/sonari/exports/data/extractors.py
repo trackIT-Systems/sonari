@@ -21,7 +21,7 @@ async def extract_batch(
         .options(
             # Essential relationships with optimized eager loading
             selectinload(models.SoundEventAnnotation.features),
-            joinedload(models.SoundEventAnnotation.recording).selectinload(models.Recording.recording_tags),
+            joinedload(models.SoundEventAnnotation.recording).selectinload(models.Recording.tags),
             joinedload(models.SoundEventAnnotation.recording)
             .selectinload(models.Recording.recording_datasets)
             .joinedload(models.DatasetRecording.dataset),
@@ -110,8 +110,8 @@ async def extract_annotation_data(annotation: models.SoundEventAnnotation) -> Di
 
     # Extract recording tags
     recording_tags = []
-    for tag_rel in recording.recording_tags:
-        recording_tags.append(tag_rel.tag.value)
+    for tag in recording.tags:
+        recording_tags.append(tag.value)
     recording_tags_str = ", ".join(recording_tags)
 
     # Extract task status badges per user

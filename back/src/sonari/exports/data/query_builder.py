@@ -1,7 +1,7 @@
 """Database query construction utilities for exports."""
 
 from sqlalchemy import and_, or_, select
-from sqlalchemy.orm import joinedload
+from sqlalchemy.orm import joinedload, selectinload
 
 from sonari import api, models
 from sonari.routes.dependencies import Session
@@ -70,7 +70,10 @@ async def get_filtered_annotation_tasks(
         .options(
             joinedload(models.AnnotationTask.recording)
             .selectinload(models.Recording.recording_datasets)
-            .joinedload(models.DatasetRecording.dataset)
+            .joinedload(models.DatasetRecording.dataset),
+            selectinload(models.AnnotationTask.status_badges).joinedload(models.AnnotationStatusBadge.user),
+            selectinload(models.AnnotationTask.sound_event_annotations).selectinload(models.SoundEventAnnotation.tags),
+            selectinload(models.AnnotationTask.notes),
         )
     )
 
