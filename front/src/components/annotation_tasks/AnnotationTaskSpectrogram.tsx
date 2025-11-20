@@ -490,7 +490,7 @@ export default function AnnotationTaskSpectrogram({
       </div>
       {withBar && (
         <SpectrogramBar
-          task={annotationTask!}
+          recordingId={recording.id}
           bounds={taskBounds}
           window={withSpectrogram ? spectrogram.window : taskBounds}
           onMove={spectrogram.drag}
