@@ -67,21 +67,29 @@ export default function useSpectrogramKeyShortcuts(props: {
 
 
   useKeyPressEvent(useKeyFilter({ enabled, key: MOVE_LEFT_SHORTCUT }), (event: KeyboardEvent) => {
+    // Only move if no modifier keys are pressed
+    if (event.shiftKey || event.ctrlKey || event.altKey || event.metaKey) return;
     event.preventDefault();
     event.stopPropagation();
     onMoveLeft();
   });
   useKeyPressEvent(useKeyFilter({ enabled, key: MOVE_RIGHT_SHORTCUT }), (event: KeyboardEvent) => {
+    // Only move if no modifier keys are pressed
+    if (event.shiftKey || event.ctrlKey || event.altKey || event.metaKey) return;
     event.preventDefault();
     event.stopPropagation();
     onMoveRight();
   });
   useKeyPressEvent(useKeyFilter({ enabled, key: MOVE_UP_SHORTCUT }), (event: KeyboardEvent) => {
+    // Only move if no modifier keys are pressed
+    if (event.shiftKey || event.ctrlKey || event.altKey || event.metaKey) return;
     event.preventDefault();
     event.stopPropagation();
     onMoveUp();
   });
   useKeyPressEvent(useKeyFilter({ enabled, key: MOVE_DOWN_SHORTCUT }), (event: KeyboardEvent) => {
+    // Only move if no modifier keys are pressed
+    if (event.shiftKey || event.ctrlKey || event.altKey || event.metaKey) return;
     event.preventDefault();
     event.stopPropagation();
     onMoveDown();
