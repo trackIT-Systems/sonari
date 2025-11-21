@@ -44,6 +44,156 @@ class AnnotationTaskAPI(
         "status_badges": models.AnnotationTask.status_badges,
     }
 
+    async def get_index(
+        self,
+        session: AsyncSession,
+        *,
+        limit: int | None = None,
+        offset: int | None = 0,
+        filters: Sequence[Filter | _ColumnExpressionArgument] | None = None,
+        sort_by: _ColumnExpressionArgument | str | None = "-created_on",
+    ) -> tuple[Sequence[schemas.AnnotationTaskIndex], int]:
+        """Get minimal task index for navigation.
+
+        Parameters
+        ----------
+        session
+            The database session to use.
+        limit
+            Maximum number of objects to return. None means no limit.
+        offset
+            Offset for pagination.
+        filters
+            List of filters to apply.
+        sort_by
+            Column to sort by.
+
+        Returns
+        -------
+        tasks : Sequence[schemas.AnnotationTaskIndex]
+            The minimal annotation task indices.
+        count : int
+            Total number of tasks matching filters.
+        """
+        from sonari.api.common.utils import get_objects_from_query
+
+        # Query only the minimal fields needed for navigation
+        query = select(
+            models.AnnotationTask.id,
+            models.AnnotationTask.recording_id,
+            models.AnnotationTask.start_time,
+        )
+
+        result, count = await get_objects_from_query(
+            session,
+            models.AnnotationTask,
+            query,
+            limit=limit,
+            offset=offset,
+            filters=filters,
+            sort_by=sort_by,
+        )
+
+        # Extract rows and convert to schema objects
+        rows = result.all()
+        indices = [
+            schemas.AnnotationTaskIndex(
+                id=row[0],
+                recording_id=row[1],
+                start_time=row[2],
+            )
+            for row in rows
+        ]
+
+        return indices, count
+
+    async def get_stats(
+        self,
+        session: AsyncSession,
+        *,
+        filters: Sequence[Filter | _ColumnExpressionArgument] | None = None,
+    ) -> schemas.AnnotationTaskStats:
+        """Get aggregate statistics for annotation tasks.
+
+        Matches the logic from frontend's computeAnnotationTasksProgress function.
+
+        Parameters
+        ----------
+        session
+            The database session to use.
+        filters
+            List of filters to apply.
+
+        Returns
+        -------
+        schemas.AnnotationTaskStats
+            Aggregate statistics for tasks.
+        """
+        from sqlalchemy.orm import selectinload
+
+        # Get all tasks with their status badges
+        query = select(models.AnnotationTask).options(
+            selectinload(models.AnnotationTask.status_badges)
+        )
+
+        # Apply filters (same pattern as get_objects_from_query)
+        for filter_ in filters or []:
+            if isinstance(filter_, Filter):
+                query = filter_.filter(query)
+            else:
+                query = query.where(filter_)
+
+        result = await session.execute(query)
+        tasks = result.scalars().all()
+
+        # Initialize counters
+        total = len(tasks)
+        pending_count = 0
+        done_count = 0
+        verified_count = 0
+        rejected_count = 0
+        completed_count = 0
+        assigned_count = 0
+
+        # Count tasks by status (matching frontend logic)
+        for task in tasks:
+            if not task.status_badges or len(task.status_badges) == 0:
+                pending_count += 1
+                continue
+
+            # Check for each state
+            is_verified = any(b.state == "verified" for b in task.status_badges)
+            is_rejected = any(b.state == "rejected" for b in task.status_badges)
+            is_completed = any(b.state == "completed" for b in task.status_badges)
+            is_assigned = any(b.state == "assigned" for b in task.status_badges)
+
+            # Count specific states
+            if is_verified:
+                verified_count += 1
+            if is_rejected:
+                rejected_count += 1
+            if is_completed:
+                completed_count += 1
+            if is_assigned:
+                assigned_count += 1
+
+            # Determine if task is done or pending
+            is_done = is_verified or is_rejected or is_completed
+            if is_done:
+                done_count += 1
+            else:
+                pending_count += 1
+
+        return schemas.AnnotationTaskStats(
+            total=total,
+            done_count=done_count,
+            verified_count=verified_count,
+            rejected_count=rejected_count,
+            completed_count=completed_count,
+            pending_count=pending_count,
+            assigned_count=assigned_count,
+        )
+
     async def get_many(
         self,
         session: AsyncSession,

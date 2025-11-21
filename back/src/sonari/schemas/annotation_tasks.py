@@ -23,6 +23,8 @@ __all__ = [
     "AnnotationTaskCreate",
     "AnnotationTaskUpdate",
     "AnnotationTaskTag",
+    "AnnotationTaskIndex",
+    "AnnotationTaskStats",
 ]
 
 
@@ -121,3 +123,41 @@ class AnnotationTaskUpdate(BaseModel):
 
     end_time: float | None = None
     """The end time of the audio segment in seconds."""
+
+
+class AnnotationTaskIndex(BaseModel):
+    """Minimal schema for annotation task index (navigation only)."""
+
+    id: int
+    """Database ID of the task."""
+
+    recording_id: int
+    """Recording from which this task's audio segment is taken."""
+
+    start_time: float
+    """The start time of the audio segment in seconds."""
+
+
+class AnnotationTaskStats(BaseModel):
+    """Schema for annotation task aggregate statistics."""
+
+    total: int
+    """Total number of tasks."""
+
+    done_count: int
+    """Number of tasks that are done (verified, rejected, or completed)."""
+
+    verified_count: int
+    """Number of tasks with verified status."""
+
+    rejected_count: int
+    """Number of tasks with rejected status."""
+
+    completed_count: int
+    """Number of tasks with completed status."""
+
+    pending_count: int
+    """Number of tasks that are pending (not done)."""
+
+    assigned_count: int
+    """Number of tasks with assigned status."""

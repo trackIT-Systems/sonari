@@ -409,7 +409,8 @@ export default function AnnotateTasks({
         <div style={{ width: `${SPECTROGRAM_CONTAINER_WIDTH}px` }}>
           <AnnotationProgress
             current={tasks.current}
-            tasks={tasks.tasks}
+            taskCount={tasks.tasks.length}
+            stats={tasks.stats}
             filter={tasks._filter}
             isLoading={tasks.isLoading}
             onNext={tasks.nextTask}

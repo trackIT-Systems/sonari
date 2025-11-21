@@ -70,10 +70,26 @@ export default function useAnnotationTask({
 
   const addBadge = useMutation({
     mutationFn: api.annotationTasks.addBadge,
+    onSuccess: () => {
+      // Invalidate stats queries to refresh the remaining tasks count
+      client.invalidateQueries({ queryKey: ["annotation_tasks_stats"] });
+      // Invalidate task list queries to refresh badges in the table
+      client.invalidateQueries({ queryKey: ["annotation_tasks"] });
+      // Invalidate task index queries to ensure navigation stays in sync
+      client.invalidateQueries({ queryKey: ["annotation_tasks_index"] });
+    },
   });
 
   const removeBadge = useMutation({
     mutationFn: api.annotationTasks.removeBadge,
+    onSuccess: () => {
+      // Invalidate stats queries to refresh the remaining tasks count
+      client.invalidateQueries({ queryKey: ["annotation_tasks_stats"] });
+      // Invalidate task list queries to refresh badges in the table
+      client.invalidateQueries({ queryKey: ["annotation_tasks"] });
+      // Invalidate task index queries to ensure navigation stays in sync
+      client.invalidateQueries({ queryKey: ["annotation_tasks_index"] });
+    },
   });
 
   const addNote = useMutation({

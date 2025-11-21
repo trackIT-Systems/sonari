@@ -186,6 +186,49 @@ def get_annotation_tasks_router(settings: SonariSettings) -> APIRouter:
             offset=offset,
         )
 
+    @annotation_tasks_router.get(
+        "/index",
+        response_model=schemas.Page[schemas.AnnotationTaskIndex],
+    )
+    async def get_tasks_index(
+        session: Session,
+        filter: Annotated[AnnotationTaskFilter, Depends(AnnotationTaskFilter)],  # type: ignore
+        limit: Limit | None = None,
+        offset: Offset = 0,
+        sort_by: str = "recording_datetime",
+    ):
+        """Get minimal task index for navigation."""
+        tasks, total = await api.annotation_tasks.get_index(
+            session,
+            limit=limit,
+            offset=offset,
+            filters=[filter],
+            sort_by=sort_by,
+        )
+
+        return schemas.Page(
+            items=tasks,
+            total=total,
+            limit=limit or total,
+            offset=offset,
+        )
+
+    @annotation_tasks_router.get(
+        "/stats",
+        response_model=schemas.AnnotationTaskStats,
+    )
+    async def get_tasks_stats(
+        session: Session,
+        filter: Annotated[AnnotationTaskFilter, Depends(AnnotationTaskFilter)],  # type: ignore
+    ):
+        """Get aggregate statistics for tasks."""
+        stats = await api.annotation_tasks.get_stats(
+            session,
+            filters=[filter],
+        )
+
+        return stats
+
     @annotation_tasks_router.delete(
         "/detail/",
         response_model=schemas.AnnotationTask,

@@ -10,12 +10,11 @@ import Tooltip from "@/components/Tooltip";
 import KeyboardKey from "@/components/KeyboardKey";
 import ShortcutHelper from "@/components/ShortcutHelper";
 import Spinner from "@/components/Spinner";
-import { computeAnnotationTasksProgress } from "@/utils/annotation_tasks";
 import { useKeyPressEvent } from "react-use";
 
 import type { AnnotationTaskFilter } from "@/api/annotation_tasks";
 import type { Filter } from "@/hooks/utils/useFilter";
-import type { AnnotationTask } from "@/types";
+import type { AnnotationTaskStats } from "@/types";
 import {
   NEXT_TASK_SHORTCUT,
   PREV_TASK_SHORTCUT,
@@ -46,20 +45,21 @@ const SHORTCUTS = [
 
 export default function AnnotationProgress({
   current,
-  tasks,
+  taskCount,
+  stats,
   filter,
   isLoading = false,
   onNext,
   onPrevious,
 }: {
   current?: number | null;
-  tasks: AnnotationTask[];
+  taskCount: number;
+  stats?: AnnotationTaskStats;
   filter: Filter<AnnotationTaskFilter>;
   isLoading?: boolean;
   onNext?: () => void;
   onPrevious?: () => void;
 }) {
-  const progress = useMemo(() => computeAnnotationTasksProgress(tasks), [tasks]);
 
 
   const filterButtonRef = useRef<HTMLButtonElement>(null);
@@ -110,15 +110,15 @@ export default function AnnotationProgress({
           <ShortcutHelper shortcuts={SHORTCUTS} />
           <span className="text-sm inline-flex gap-1 items-center whitespace-nowrap text-stone-500">
             <span className="text-stone-500">Current task:</span>
-            <span className="font-bold text-blue-500">{current ? current + 1 : 0}</span>
+            <span className="font-bold text-blue-500">{current !== null && current !== undefined && current >= 0 ? current + 1 : 0}</span>
           </span>
           <span className="text-sm inline-flex gap-1 items-center whitespace-nowrap text-stone-500">
             <span>Remaining tasks:</span>
-            <span className="font-medium text-blue-500">{progress.pending.count}</span>
+            <span className="font-medium text-blue-500">{stats?.pending_count ?? 0}</span>
           </span>
           <span className="text-sm inline-flex gap-1 items-center whitespace-nowrap text-stone-500">
             <span>Total tasks:</span>
-            <span className="font-medium text-blue-500">{progress.total}</span>
+            <span className="font-medium text-blue-500">{stats?.total ?? taskCount}</span>
           </span>
           {isLoading ? (
             <div className="flex items-center justify-center px-3 py-1">

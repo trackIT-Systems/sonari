@@ -23,6 +23,8 @@ from sonari.schemas.annotation_tasks import (
     AnnotationStatusBadgeUpdate,
     AnnotationTask,
     AnnotationTaskCreate,
+    AnnotationTaskIndex,
+    AnnotationTaskStats,
     AnnotationTaskTag,
     AnnotationTaskUpdate,
 )

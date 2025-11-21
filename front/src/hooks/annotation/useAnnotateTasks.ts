@@ -8,10 +8,11 @@ import {
   AnnotationTaskFilter,
   type AnnotationTaskPage,
 } from "@/api/annotation_tasks";
-import useAnnotationTasks from "@/hooks/api/useAnnotationTasks";
+import useAnnotationTaskIndex from "@/hooks/api/useAnnotationTaskIndex";
+import useAnnotationTaskStats from "@/hooks/api/useAnnotationTaskStats";
 import { type Filter } from "@/hooks/utils/useFilter";
 
-import type { AnnotationTask } from "@/types";
+import type { AnnotationTask, AnnotationTaskIndex, AnnotationTaskStats } from "@/types";
 
 type AnnotationState = {
   /** Currently selected annotation task index */
@@ -20,8 +21,10 @@ type AnnotationState = {
   task: AnnotationTask | null;
   /** Filter used to select which annotation tasks to show */
   filter: AnnotationTaskFilter;
-  /** List of annotation tasks matching the filter */
-  tasks: AnnotationTask[];
+  /** List of annotation task indices (minimal data for navigation) */
+  tasks: AnnotationTaskIndex[];
+  /** Aggregate statistics for annotation tasks */
+  stats?: AnnotationTaskStats;
   /** Whether the annotation tasks are currently being fetched */
   isLoading: boolean;
   /** Whether there was an error fetching the annotation tasks */
@@ -80,35 +83,31 @@ export default function useAnnotateTasks({
   );
   const client = useQueryClient();
 
-  // Memoize the filter to prevent infinite re-renders
-  const minimalFilter = useMemo(
-    () => ({
-      ...initialFilter,
-      // Explicitly exclude all heavy data for navigation
-      // Full data will be loaded when task is selected via useAnnotationTask
-      include_recording: false,
-      include_status_badges: false,
-      include_status_badge_users: false,
-      include_tags: false,
-      include_notes: false,
-      include_sound_event_annotations: false,
-      include_sound_event_tags: false,
-      include_features: false,
-    }),
-    [initialFilter],
-  );
-
+  // Fetch minimal task index for navigation
   const {
-    items,
+    items: indexItems,
     filter,
-    isLoading,
-    isError,
-    queryKey,
-  } = useAnnotationTasks({
+    isLoading: isLoadingIndex,
+    isError: isErrorIndex,
+    queryKey: indexQueryKey,
+  } = useAnnotationTaskIndex({
     pageSize: -1,
-    filter: minimalFilter,
+    filter: initialFilter,
     fixed: Object.keys(initialFilter) as (keyof AnnotationTaskFilter)[],
   });
+
+  // Fetch aggregate statistics using the current filter state
+  const {
+    stats,
+    isLoading: isLoadingStats,
+    isError: isErrorStats,
+  } = useAnnotationTaskStats({
+    filter: filter.filter,
+  });
+
+  const isLoading = isLoadingIndex || isLoadingStats;
+  const isError = isErrorIndex || isErrorStats;
+  const items = indexItems;
 
   const index = useMemo(() => {
     if (currentTask === null) return -1;
@@ -133,11 +132,11 @@ export default function useAnnotateTasks({
 
   const nextTask = useCallback(() => {
     if (!hasNextTask) return;
-    if (index === -1) {
-      goToTask(items[0]);
-    } else {
-      goToTask(items[index + 1]);
-    }
+    const nextIndex = index === -1 ? 0 : index + 1;
+    const nextTaskIndex = items[nextIndex];
+    // Cast minimal index to AnnotationTask for navigation
+    // Only id is actually used by onChangeTask
+    goToTask(nextTaskIndex as unknown as AnnotationTask);
   }, [index, items, hasNextTask, goToTask]);
 
   const hasPrevTask = useMemo(() => {
@@ -149,11 +148,11 @@ export default function useAnnotateTasks({
 
   const prevTask = useCallback(() => {
     if (!hasPrevTask) return;
-    if (index === -1) {
-      goToTask(items[0]);
-    } else {
-      goToTask(items[index - 1]);
-    }
+    const prevIndex = index === -1 ? 0 : index - 1;
+    const prevTaskIndex = items[prevIndex];
+    // Cast minimal index to AnnotationTask for navigation
+    // Only id is actually used by onChangeTask
+    goToTask(prevTaskIndex as unknown as AnnotationTask);
   }, [index, items, hasPrevTask, goToTask]);
 
   const loadedTasksRef = useRef<Set<number>>(new Set());
@@ -181,14 +180,17 @@ export default function useAnnotateTasks({
 
   const getFirstTask = useCallback(() => {
     if (items.length === 0) return;
-    const task = items[0];
+    const taskIndex = items[0];
+    // Cast minimal index to AnnotationTask for navigation
+    const task = taskIndex as unknown as AnnotationTask;
     setCurrentTask(task);
     onChangeTask?.(task);
   }, [items, onChangeTask]);
 
   useEffect(() => {
     if (currentTask == null && items.length > 0) {
-      goToTask(items[0]);
+      // Cast minimal index to AnnotationTask for navigation
+      goToTask(items[0] as unknown as AnnotationTask);
     }
   }, [currentTask, items, goToTask]);
 
@@ -197,6 +199,7 @@ export default function useAnnotateTasks({
     task: currentTask,
     filter: filter.filter,
     tasks: items,
+    stats: stats,
     isLoading,
     isError,
     goToTask,

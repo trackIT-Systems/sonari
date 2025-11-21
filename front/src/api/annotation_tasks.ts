@@ -15,6 +15,8 @@ import type { NoteCreate } from "@/api/notes";
 import type {
   AnnotationStatus,
   AnnotationTask,
+  AnnotationTaskIndex,
+  AnnotationTaskStats,
   Note,
   Tag,
 } from "@/types";
@@ -24,6 +26,16 @@ import { formatDateForAPI } from "@/components/filters/DateRangeFilter";
 const AnnotationTaskPageSchema = Page(AnnotationTaskSchema);
 
 export type AnnotationTaskPage = z.infer<typeof AnnotationTaskPageSchema>;
+
+const AnnotationTaskIndexSchema = z.object({
+  id: z.number(),
+  recording_id: z.number(),
+  start_time: z.number(),
+});
+
+const AnnotationTaskIndexPageSchema = Page(AnnotationTaskIndexSchema);
+
+export type AnnotationTaskIndexPage = z.infer<typeof AnnotationTaskIndexPageSchema>;
 
 const AnnotationTaskFilterSchema = z.object({
   dataset: z.union([
@@ -112,6 +124,8 @@ type GetAnnotationTasksQuery = z.input<
 
 const DEFAULT_ENDPOINTS = {
   getMany: "/api/v1/annotation_tasks/",
+  getIndex: "/api/v1/annotation_tasks/index",
+  getStats: "/api/v1/annotation_tasks/stats",
   get: "/api/v1/annotation_tasks/detail/",
   delete: "/api/v1/annotation_tasks/detail/",
   addBadge: "/api/v1/annotation_tasks/detail/badges/",
@@ -211,6 +225,151 @@ export function registerAnnotationTasksAPI(
       },
     });
     return AnnotationTaskPageSchema.parse(response.data);
+  }
+
+  async function getIndex(
+    query: GetAnnotationTasksQuery,
+  ): Promise<AnnotationTaskIndexPage> {
+    const params = GetAnnotationTasksQuerySchema.parse(query);
+
+    const response = await instance.get(endpoints.getIndex, {
+      params: {
+        limit: params.limit,
+        offset: params.offset,
+        sort_by: params.sort_by,
+        dataset__lst: params.dataset
+          ? (Array.isArray(params.dataset)
+            ? params.dataset.map(d => d.id).join(',')
+            : params.dataset.id)
+          : undefined,
+        annotation_project__eq: params.annotation_project?.id,
+        annotation_task_tag__key: params.annotation_task_tag?.key,
+        annotation_task_tag__value: params.annotation_task_tag?.value,
+        sound_event_annotation_tag__keys: params.sound_event_annotation_tag
+          ? (Array.isArray(params.sound_event_annotation_tag)
+            ? params.sound_event_annotation_tag.map(t => t.key).join(',')
+            : params.sound_event_annotation_tag.key)
+          : undefined,
+        sound_event_annotation_tag__values: params.sound_event_annotation_tag
+          ? (Array.isArray(params.sound_event_annotation_tag)
+            ? params.sound_event_annotation_tag.map(t => t.value).join(',')
+            : params.sound_event_annotation_tag.value)
+          : undefined,
+        pending__eq: params.pending,
+        empty__eq: params.empty,
+        assigned__eq: params.assigned,
+        verified__eq: params.verified,
+        rejected__eq: params.rejected,
+        completed__eq: params.completed,
+        assigned_to__eq: params.assigned_to?.id,
+        search_recordings: params.search_recordings,
+        date__start_dates: params.date_range
+          ? (Array.isArray(params.date_range)
+            ? params.date_range.map(d => formatDateForAPI(d.start_date)).join(',')
+            : formatDateForAPI(params.date_range.start_date))
+          : undefined,
+        date__end_dates: params.date_range
+          ? (Array.isArray(params.date_range)
+            ? params.date_range.map(d => formatDateForAPI(d.end_date)).join(',')
+            : formatDateForAPI(params.date_range.end_date))
+          : undefined,
+        date__start_times: params.date_range
+          ? (Array.isArray(params.date_range)
+            ? params.date_range.map(d => formatDateForAPI(d.start_time)).join(',')
+            : formatDateForAPI(params.date_range.start_time))
+          : undefined,
+        date__end_times: params.date_range
+          ? (Array.isArray(params.date_range)
+            ? params.date_range.map(d => formatDateForAPI(d.end_time)).join(',')
+            : formatDateForAPI(params.date_range.end_time))
+          : undefined,
+        detection_confidence__gt: params.detection_confidence?.gt,
+        detection_confidence__lt: params.detection_confidence?.lt,
+        species_confidence__gt: params.species_confidence?.gt,
+        species_confidence__lt: params.species_confidence?.lt,
+        sound_event_annotation_min_frequency__gt: params.sound_event_annotation_min_frequency?.gt,
+        sound_event_annotation_min_frequency__lt: params.sound_event_annotation_min_frequency?.lt,
+        sound_event_annotation_max_frequency__gt: params.sound_event_annotation_max_frequency?.gt,
+        sound_event_annotation_max_frequency__lt: params.sound_event_annotation_max_frequency?.lt,
+        night__eq: params.night?.eq,
+        night__tz: params.night?.timezone,
+        day__eq: params.day?.eq,
+        day__tz: params.day?.timezone,
+        sample__eq: params.sample?.eq,
+      },
+    });
+    return AnnotationTaskIndexPageSchema.parse(response.data);
+  }
+
+  async function getStats(
+    filter: AnnotationTaskFilter,
+  ): Promise<AnnotationTaskStats> {
+    const params = AnnotationTaskFilterSchema.parse(filter);
+
+    const response = await instance.get(endpoints.getStats, {
+      params: {
+        dataset__lst: params.dataset
+          ? (Array.isArray(params.dataset)
+            ? params.dataset.map(d => d.id).join(',')
+            : params.dataset.id)
+          : undefined,
+        annotation_project__eq: params.annotation_project?.id,
+        annotation_task_tag__key: params.annotation_task_tag?.key,
+        annotation_task_tag__value: params.annotation_task_tag?.value,
+        sound_event_annotation_tag__keys: params.sound_event_annotation_tag
+          ? (Array.isArray(params.sound_event_annotation_tag)
+            ? params.sound_event_annotation_tag.map(t => t.key).join(',')
+            : params.sound_event_annotation_tag.key)
+          : undefined,
+        sound_event_annotation_tag__values: params.sound_event_annotation_tag
+          ? (Array.isArray(params.sound_event_annotation_tag)
+            ? params.sound_event_annotation_tag.map(t => t.value).join(',')
+            : params.sound_event_annotation_tag.value)
+          : undefined,
+        pending__eq: params.pending,
+        empty__eq: params.empty,
+        assigned__eq: params.assigned,
+        verified__eq: params.verified,
+        rejected__eq: params.rejected,
+        completed__eq: params.completed,
+        assigned_to__eq: params.assigned_to?.id,
+        search_recordings: params.search_recordings,
+        date__start_dates: params.date_range
+          ? (Array.isArray(params.date_range)
+            ? params.date_range.map(d => formatDateForAPI(d.start_date)).join(',')
+            : formatDateForAPI(params.date_range.start_date))
+          : undefined,
+        date__end_dates: params.date_range
+          ? (Array.isArray(params.date_range)
+            ? params.date_range.map(d => formatDateForAPI(d.end_date)).join(',')
+            : formatDateForAPI(params.date_range.end_date))
+          : undefined,
+        date__start_times: params.date_range
+          ? (Array.isArray(params.date_range)
+            ? params.date_range.map(d => formatDateForAPI(d.start_time)).join(',')
+            : formatDateForAPI(params.date_range.start_time))
+          : undefined,
+        date__end_times: params.date_range
+          ? (Array.isArray(params.date_range)
+            ? params.date_range.map(d => formatDateForAPI(d.end_time)).join(',')
+            : formatDateForAPI(params.date_range.end_time))
+          : undefined,
+        detection_confidence__gt: params.detection_confidence?.gt,
+        detection_confidence__lt: params.detection_confidence?.lt,
+        species_confidence__gt: params.species_confidence?.gt,
+        species_confidence__lt: params.species_confidence?.lt,
+        sound_event_annotation_min_frequency__gt: params.sound_event_annotation_min_frequency?.gt,
+        sound_event_annotation_min_frequency__lt: params.sound_event_annotation_min_frequency?.lt,
+        sound_event_annotation_max_frequency__gt: params.sound_event_annotation_max_frequency?.gt,
+        sound_event_annotation_max_frequency__lt: params.sound_event_annotation_max_frequency?.lt,
+        night__eq: params.night?.eq,
+        night__tz: params.night?.timezone,
+        day__eq: params.day?.eq,
+        day__tz: params.day?.timezone,
+        sample__eq: params.sample?.eq,
+      },
+    });
+    return response.data as AnnotationTaskStats;
   }
 
   async function getAnnotationTask(
@@ -348,6 +507,8 @@ export function registerAnnotationTasksAPI(
 
   return {
     getMany,
+    getIndex,
+    getStats,
     get: getAnnotationTask,
     delete: deleteAnnotationTask,
     addBadge,

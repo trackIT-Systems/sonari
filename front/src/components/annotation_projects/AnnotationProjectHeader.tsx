@@ -25,18 +25,7 @@ export default function AnnotationProjectHeader({
   const [isLoadingFirstTask, setIsLoadingFirstTask] = useState(false);
 
   const handleAnnotateClick = useCallback(async () => {
-    // Check if we already have an annotation_task_id in params
-    const existingTaskId = params.get("annotation_task_id");
-    
-    if (existingTaskId) {
-      // Already have a task ID, just navigate
-      router.push(
-        `/annotation_projects/detail/annotation/?${params.toString()}`,
-      );
-      return;
-    }
-
-    // Need to fetch the first task
+    // Always fetch the first task, don't remember the previous one
     setIsLoadingFirstTask(true);
     try {
       const response = await api.annotationTasks.getMany({

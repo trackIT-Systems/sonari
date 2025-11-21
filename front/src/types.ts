@@ -72,6 +72,22 @@ export type AnnotationStatusBadge = z.infer<typeof AnnotationStatusBadgeSchema>;
 
 export type AnnotationTask = z.infer<typeof AnnotationTaskSchema>;
 
+export type AnnotationTaskIndex = {
+  id: number;
+  recording_id: number;
+  start_time: number;
+};
+
+export type AnnotationTaskStats = {
+  total: number;
+  done_count: number;
+  verified_count: number;
+  rejected_count: number;
+  completed_count: number;
+  pending_count: number;
+  assigned_count: number;
+};
+
 export type AnnotationProject = z.infer<typeof AnnotationProjectSchema>;
 
 export type Position = {
