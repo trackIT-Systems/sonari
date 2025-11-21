@@ -32,7 +32,7 @@ import type {
 } from "@/types";
 import AnnotationTaskNotes from "./AnnotationTaskNotes";
 import AnnotationTaskTags from "@/components/annotation_tasks/AnnotationTaskTags";
-import { SPECTROGRAM_CANVAS_DIMENSIONS, SPECTROGRAM_CONTAINER_WIDTH } from "@/constants";
+import { SPECTROGRAM_CONTAINER_WIDTH } from "@/constants";
 
 export default function AnnotateTasks({
   taskFilter,

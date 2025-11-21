@@ -115,9 +115,6 @@ export default function useAnnotateTasks({
     return items.findIndex((item) => item.id === currentTask.id);
   }, [currentTask, items]);
 
-
-  const parameters = useStore((state) => state.spectrogramSettings);
-
   const goToTask = useCallback(
     (task: AnnotationTask) => {
       setCurrentTask(task);
@@ -169,15 +166,6 @@ export default function useAnnotateTasks({
     if (loadedTasksRef.current.has(nextTask.id)) return;
     loadedTasksRef.current.add(nextTask.id);
 
-    // try {
-    //   const completeData = await api.annotationTasks.get(nextTask.id);
-    //   if (!completeData.recording) return;
-  
-    //   //await preloadSpectrogramSegments(completeData.recording);
-    // } catch (error) {
-    //   console.error('Failed to preload next task:', error);
-    // }
-
   }, [items, index, hasNextTask]);
 
   const { set: setFilterKeyValue } = filter;
@@ -189,26 +177,6 @@ export default function useAnnotateTasks({
       setFilterKeyValue(key, value);
     },
     [setFilterKeyValue],
-  );
-
-
-  const updateTaskData = useCallback(
-    (task: AnnotationTask) => {
-      client.setQueryData(queryKey, (old: AnnotationTaskPage) => {
-        if (old == null) return old;
-        return {
-          ...old,
-          items: old.items.map((item) => {
-            if (item.id === task.id) {
-              return task;
-            }
-            return item;
-          }),
-        };
-      });
-      setCurrentTask(task);
-    },
-    [client, queryKey],
   );
 
   const getFirstTask = useCallback(() => {

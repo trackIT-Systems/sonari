@@ -26,12 +26,12 @@ import type {
   SpectrogramWindow,
   Tag,
   Geometry,
+  AnnotationTask
 } from "@/types";
 import useWaveform from "@/hooks/spectrogram/useWaveform";
 import useAnnotationDrawWaveform from "@/hooks/annotation/useAnnotationDrawWaveform";
 import { NoIcon } from "../icons";
 import { SPECTROGRAM_CANVAS_DIMENSIONS, WAVEFORM_CANVAS_DIMENSIONS } from "@/constants";
-import type { AnnotationTask } from "@/types";
 
 export default function AnnotationTaskSpectrogram({
   annotationTask,
