@@ -205,17 +205,21 @@ export default function useSpectrogramImages({
   ]);
 
   // Combine chunk data with images and states for rendering
+  // Return all chunks that have loaded images, not just visible ones
+  // This prevents flickering during scroll by keeping previously loaded chunks visible
   const chunksWithImages: ChunkWithImage[] = useMemo(() => {
-    return visibleChunks.map((chunk) => {
-      const state = chunkStates[chunk.index];
-      return {
-        chunk,
-        image: images.get(chunk.index) || null,
-        isLoading: state?.isLoading || false,
-        isError: state?.isError || false,
-      };
-    });
-  }, [visibleChunks, chunkStates, images]);
+    return allChunks
+      .filter((chunk) => images.has(chunk.index))
+      .map((chunk) => {
+        const state = chunkStates[chunk.index];
+        return {
+          chunk,
+          image: images.get(chunk.index) || null,
+          isLoading: state?.isLoading || false,
+          isError: state?.isError || false,
+        };
+      });
+  }, [allChunks, chunkStates, images]);
 
   return {
     chunks: chunksWithImages,

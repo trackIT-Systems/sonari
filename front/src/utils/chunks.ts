@@ -19,33 +19,24 @@ export interface Chunk {
 }
 
 /**
- * Calculates the time intervals for spectrogram chunks based on recording and settings.
- * 
- * Uses pixel-based sizing where each chunk targets SPECTROGRAM_CANVAS_DIMENSIONS.height × SPECTROGRAM_CANVAS_DIMENSIONS.height pixels.
- * This creates consistent-sized chunks regardless of spectrogram parameters.
- * 
- * @param duration - The duration of the recording in seconds
- * @param windowSize - The size of each STFT window in samples
- * @param overlap - The overlap fraction between consecutive windows (0-1)
- * @param samplerate - The audio sample rate in Hz
- * @returns Array of chunks with their time intervals and buffers
+ * Core logic for calculating chunks based on pixel count
  */
-export function calculateSpectrogramChunks({
+function calculateChunksFromPixels({
   duration,
   windowSize,
   overlap,
-  samplerate
+  samplerate,
+  chunkPixels,
 }: {
   duration: number;
   windowSize: number;
   overlap: number;
   samplerate: number;
+  chunkPixels: number;
 }): Chunk[] {
   // Height of spectrogram = number of frequency bins
   const freqBins = windowSize / 2;
   
-  const chunkPixels = SPECTROGRAM_CANVAS_DIMENSIONS.height * SPECTROGRAM_CANVAS_DIMENSIONS.height;
-
   // Calculate how many time bins we need to achieve target pixel count
   const timeBins = chunkPixels / freqBins;
   
@@ -56,7 +47,7 @@ export function calculateSpectrogramChunks({
   const chunkDuration = timeBins * hopSize;
   
   // Buffer duration to add on each side
-  const bufferDuration = (SPECTROGRAM_CHUNK_BUFFER - 1) * hopSize + (windowSize / samplerate);
+  const bufferDuration = SPECTROGRAM_CHUNK_BUFFER * hopSize + (windowSize / samplerate);
   
   // Calculate number of chunks needed
   const numChunks = Math.ceil(duration / chunkDuration);
@@ -78,6 +69,28 @@ export function calculateSpectrogramChunks({
       index: i,
     };
   });
+}
+
+/**
+ * Calculates the time intervals for spectrogram chunks based on recording and settings.
+ * 
+ * Uses pixel-based sizing where each chunk targets SPECTROGRAM_CANVAS_DIMENSIONS.height × SPECTROGRAM_CANVAS_DIMENSIONS.height pixels.
+ * This creates consistent-sized chunks regardless of spectrogram parameters.
+ * 
+ * @param duration - The duration of the recording in seconds
+ * @param windowSize - The size of each STFT window in samples
+ * @param overlap - The overlap fraction between consecutive windows (0-1)
+ * @param samplerate - The audio sample rate in Hz
+ * @returns Array of chunks with their time intervals and buffers
+ */
+export function calculateSpectrogramChunks(params: {
+  duration: number;
+  windowSize: number;
+  overlap: number;
+  samplerate: number;
+}): Chunk[] {
+  const chunkPixels = SPECTROGRAM_CANVAS_DIMENSIONS.height * SPECTROGRAM_CANVAS_DIMENSIONS.height;
+  return calculateChunksFromPixels({ ...params, chunkPixels });
 }
 
 /**
@@ -118,12 +131,7 @@ export function getVisibleChunks(
  * @param samplerate - The audio sample rate in Hz
  * @returns Array of chunks with their time intervals and buffers
  */
-export function calculateWaveformChunks({
-  duration,
-  windowSize,
-  overlap,
-  samplerate
-}: {
+export function calculateWaveformChunks(params: {
   duration: number;
   windowSize: number;
   overlap: number;
@@ -132,43 +140,8 @@ export function calculateWaveformChunks({
   // For waveforms, target ~2/3 canvas width chunks
   // Balance between progressive loading and minimizing HTTP request overhead
   const targetTimePixels = (SPECTROGRAM_CANVAS_DIMENSIONS.width * 2) / 3;
-  
-  // Height of spectrogram = number of frequency bins (used for pixel calculation)
-  const freqBins = windowSize / 2;
   const chunkPixels = targetTimePixels * SPECTROGRAM_CANVAS_DIMENSIONS.height;
-  
-  // Calculate how many time bins we need to achieve target pixel count
-  const timeBins = chunkPixels / freqBins;
-  
-  // Duration of each hop between STFT windows
-  const hopSize = (1 - overlap) * (windowSize / samplerate);
-  
-  // Duration covered by one chunk
-  const chunkDuration = timeBins * hopSize;
-  
-  // Buffer duration to add on each side
-  const bufferDuration = (SPECTROGRAM_CHUNK_BUFFER - 1) * hopSize + (windowSize / samplerate);
-  
-  // Calculate number of chunks needed
-  const numChunks = Math.ceil(duration / chunkDuration);
-  
-  // Generate chunks
-  return Array.from({ length: numChunks }, (_, i) => {
-    const startTime = i * chunkDuration;
-    const endTime = Math.min((i + 1) * chunkDuration, duration);
-    
-    return {
-      interval: {
-        min: startTime,
-        max: endTime,
-      },
-      buffer: {
-        min: Math.max(0, startTime - bufferDuration),
-        max: Math.min(duration, endTime + bufferDuration),
-      },
-      index: i,
-    };
-  });
+  return calculateChunksFromPixels({ ...params, chunkPixels });
 }
 
 /**
@@ -183,13 +156,15 @@ export function getChunksToLoad(
   // Add all visible chunk indices
   visibleChunks.forEach(chunk => indices.add(chunk.index));
   
-  // Add neighbors for preloading
+  // Add neighbors for preloading (±2 chunks)
   visibleChunks.forEach(chunk => {
-    if (chunk.index > 0) {
-      indices.add(chunk.index - 1);
-    }
-    if (chunk.index < chunks.length - 1) {
-      indices.add(chunk.index + 1);
+    for (let offset = 1; offset <= 2; offset++) {
+      if (chunk.index - offset >= 0) {
+        indices.add(chunk.index - offset);
+      }
+      if (chunk.index + offset < chunks.length) {
+        indices.add(chunk.index + offset);
+      }
     }
   });
   
