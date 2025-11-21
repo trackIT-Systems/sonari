@@ -460,9 +460,19 @@ export default function useSpectrogram({
       
       // Draw spectrogram chunks
       if (withSpectrogram) {
+        // Convert viewport from absolute to relative coordinates
+        // Chunks use relative coordinates (0 to task duration), so viewport must match
+        const relativeViewport: SpectrogramWindow = {
+          time: {
+            min: window.time.min - task.start_time,
+            max: window.time.max - task.start_time,
+          },
+          freq: window.freq,
+        };
+        
         drawStitchedImage({
           ctx,
-          viewport: window,
+          viewport: relativeViewport,
           chunks,
           samplerate,
         });
@@ -490,7 +500,7 @@ export default function useSpectrogram({
       }
 
     },
-    [chunks, drawMotions, window, canDrag, canZoom, withSpectrogram, parameters.freqLines, samplerate],
+    [chunks, drawMotions, window, canDrag, canZoom, withSpectrogram, parameters.freqLines, samplerate, task.start_time],
   );
 
   const handleMoveLeft = useCallback(() => {
