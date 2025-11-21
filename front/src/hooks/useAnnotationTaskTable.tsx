@@ -90,15 +90,15 @@ export default function useAnnotationTaskTable({
         cell: ({ row }) => {
           const currentTask = row.original;
           if (!currentTask) return <TableCell>-</TableCell>;
-          
+
           const currentRecordingId = currentTask.recording_id;
           const tasksFromSameRecording = data
             .filter(task => task.recording_id === currentRecordingId)
             .sort((a, b) => a.start_time - b.start_time);
-          
-          const taskIndex = tasksFromSameRecording.findIndex(c => c.recording_id === currentRecordingId);
+
+          const taskIndex = tasksFromSameRecording.findIndex(c => c.id === currentTask.id);
           const totalTasks = tasksFromSameRecording.length;
-          
+
           return (
             <TableCell>
               <span className="text-stone-500 text-sm">
