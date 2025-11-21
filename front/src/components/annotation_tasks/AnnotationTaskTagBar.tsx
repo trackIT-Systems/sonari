@@ -1,34 +1,21 @@
-import { useMemo } from "react";
-
 import { TagsIcon } from "@/components/icons";
 import AddTagButton from "@/components/tags/AddTagButton";
 import TagComponent, { getTagKey } from "@/components/tags/Tag";
-import useRecording from "@/hooks/api/useRecording";
 import { H4 } from "../Headings";
 
-import type { Recording, Tag } from "@/types";
+import type { AnnotationTask, Tag } from "@/types";
 import Card from "../Card";
 
-export default function RecordingTagBar({
-  recording: data,
+export default function AnnotationTaskTagBar({
+  annotationTask,
+  onAddTag,
+  onRemoveTag,
 }: {
-  recording: Recording;
+  annotationTask: AnnotationTask;
+  onAddTag?: (tag: Tag) => void;
+  onRemoveTag?: (tag: Tag) => void;
 }) {
-  const {
-    data: { tags } = {},
-    addTag: { mutate: addTag },
-    removeTag: { mutate: removeTag },
-  } = useRecording({
-    id: data.id,
-    recording: data,
-  });
-
-  const { handleAddTag, handleRemoveTag } = useMemo(() => {
-    return {
-      handleAddTag: addTag,
-      handleRemoveTag: removeTag,
-    };
-  }, [addTag, removeTag]);
+  const tags = annotationTask.tags || [];
 
   return (
     <Card>
@@ -40,15 +27,15 @@ export default function RecordingTagBar({
       </div>
 
       <div className="flex flex-row items-center flex-wrap gap-1">
-        {tags?.map((tag: Tag) => (
+        {tags.map((tag: Tag) => (
           <TagComponent
             key={getTagKey(tag)}
             tag={tag}
-            onClose={() => handleRemoveTag?.(tag)}
+            onClose={() => onRemoveTag?.(tag)}
             count={null}
           />
         ))}
-        {tags?.length === 0 && (
+        {tags.length === 0 && (
           <span className="text-stone-400 dark:text-stone-600 text-sm">
             No tags
           </span>
@@ -56,9 +43,10 @@ export default function RecordingTagBar({
 
         <AddTagButton
           variant="primary"
-          onAdd={handleAddTag}
+          onAdd={onAddTag}
         />
       </div>
     </Card>
   );
 }
+

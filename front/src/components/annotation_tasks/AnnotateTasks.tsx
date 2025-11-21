@@ -9,7 +9,7 @@ import AnnotationTaskSpectrogram from "@/components/annotation_tasks/AnnotationT
 import Empty from "@/components/Empty";
 import Loading from "@/components/Loading";
 import useAnnotateTasks from "@/hooks/annotation/useAnnotateTasks";
-import RecordingTagBar from "../recordings/RecordingTagBar";
+import AnnotationTaskTagBar from "@/components/annotation_tasks/AnnotationTaskTagBar";
 import useAnnotateTasksKeyShortcuts from "@/hooks/annotation/useTaskStatusKeyShortcuts";
 
 import { Popover, PopoverButton, PopoverPanel } from "@headlessui/react";
@@ -50,6 +50,8 @@ export default function AnnotateTasks({
   onRemoveBadge,
   onAddNote,
   onRemoveNote,
+  onAddTag,
+  onRemoveTag,
   onAddTagToSoundEventAnnotation,
   onRemoveTagFromSoundEventAnnotation,
   onAddSoundEventAnnotation,
@@ -78,6 +80,8 @@ export default function AnnotateTasks({
   onRemoveBadge?: (task: AnnotationTask, state: AnnotationStatus, userId?: string) => Promise<AnnotationTask>;
   onAddNote?: (note: NoteCreate) => void;
   onRemoveNote?: (note: Note) => void;
+  onAddTag?: (tag: Tag) => void;
+  onRemoveTag?: (tag: Tag) => void;
   onAddTagToSoundEventAnnotation?: (params: { soundEventAnnotation: SoundEventAnnotation; tag: Tag }) => Promise<SoundEventAnnotation>;
   onRemoveTagFromSoundEventAnnotation?: (params: { soundEventAnnotation: SoundEventAnnotation; tag: Tag }) => Promise<SoundEventAnnotation>;
   onAddSoundEventAnnotation?: (params: { geometry: Geometry; tags: Tag[] }) => Promise<SoundEventAnnotation>;
@@ -508,8 +512,10 @@ export default function AnnotateTasks({
         {annotationTask && (
           <div className="flex flex-row gap-4 w-full">
             <div className="min-w-[64.7rem] flex flex-col gap-4">
-              <RecordingTagBar
-                recording={annotationTask.recording!}
+              <AnnotationTaskTagBar
+                annotationTask={annotationTask}
+                onAddTag={onAddTag}
+                onRemoveTag={onRemoveTag}
               />
               <AnnotationTaskNotes
                 onCreateNote={onAddNote}

@@ -102,10 +102,18 @@ export default function useAnnotationTask({
 
   const addTag = useMutation({
     mutationFn: api.annotationTasks.addTag,
+    onSuccess: () => {
+      // Invalidate task list queries to refresh tags in the table
+      client.invalidateQueries({ queryKey: ["annotation_tasks"] });
+    },
   });
 
   const removeTag = useMutation({
     mutationFn: api.annotationTasks.removeTag,
+    onSuccess: () => {
+      // Invalidate task list queries to refresh tags in the table
+      client.invalidateQueries({ queryKey: ["annotation_tasks"] });
+    },
   });
 
   const {

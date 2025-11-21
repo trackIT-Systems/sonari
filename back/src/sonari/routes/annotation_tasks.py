@@ -308,7 +308,7 @@ def get_annotation_tasks_router(settings: SonariSettings) -> APIRouter:
             include_features=True,
             include_note_users=True,
         )
-        tag_obj = await api.tags.from_name(session, key=tag.key, value=tag.value)
+        tag_obj = await api.tags.get(session, (tag.key, tag.value))
         updated = await api.annotation_tasks.add_tag(
             session,
             annotation_task,
@@ -339,7 +339,7 @@ def get_annotation_tasks_router(settings: SonariSettings) -> APIRouter:
             include_features=True,
             include_note_users=True,
         )
-        tag = await api.tags.from_name(session, key=key, value=value)
+        tag = await api.tags.get(session, (key, value))
         updated = await api.annotation_tasks.remove_tag(
             session,
             annotation_task,

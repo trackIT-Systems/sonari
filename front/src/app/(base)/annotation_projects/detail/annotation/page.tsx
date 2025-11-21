@@ -15,7 +15,7 @@ import { changeURLParam } from "@/utils/url";
 
 import AnnotationProjectContext from "../context";
 
-import type { AnnotationTask, AnnotationStatus, SpectrogramParameters } from "@/types";
+import type { AnnotationTask, AnnotationStatus, SpectrogramParameters, Tag } from "@/types";
 import type { NoteCreate } from "@/api/notes";
 
 export default function Page() {
@@ -58,6 +58,8 @@ export default function Page() {
     removeNote,
     addBadge,
     removeBadge,
+    addTag,
+    removeTag,
     addTagToSoundEventAnnotation,
     removeTagFromSoundEventAnnotation,
     addSoundEventAnnotation,
@@ -84,6 +86,16 @@ export default function Page() {
   const handleRemoveNote = useCallback(
     (note: any) => removeNote.mutate(note),
     [removeNote]
+  );
+
+  const handleAddTag = useCallback(
+    (tag: Tag) => addTag.mutate(tag),
+    [addTag]
+  );
+
+  const handleRemoveTag = useCallback(
+    (tag: Tag) => removeTag.mutate(tag),
+    [removeTag]
   );
 
   const handleAddTagToSoundEventAnnotation = useCallback(
@@ -215,6 +227,8 @@ export default function Page() {
         onRemoveBadge={handleRemoveBadge}
         onAddNote={handleAddNote}
         onRemoveNote={handleRemoveNote}
+        onAddTag={handleAddTag}
+        onRemoveTag={handleRemoveTag}
         onAddTagToSoundEventAnnotation={handleAddTagToSoundEventAnnotation}
         onRemoveTagFromSoundEventAnnotation={handleRemoveTagFromSoundEventAnnotation}
         onAddSoundEventAnnotation={handleAddSoundEventAnnotation}

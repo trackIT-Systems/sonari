@@ -482,12 +482,15 @@ export function registerAnnotationTasksAPI(
     annotationTask: AnnotationTask,
     tag: Tag,
   ): Promise<AnnotationTask> {
-    const response = await instance.post(endpoints.addTag, {
-      params: {
-        annotation_task_id: annotationTask.id,
-        tag,
-      },
-    });
+    const response = await instance.post(
+      endpoints.addTag,
+      { key: tag.key, value: tag.value },
+      {
+        params: {
+          annotation_task_id: annotationTask.id,
+        },
+      }
+    );
     return AnnotationTaskSchema.parse(response.data);
   }
 
@@ -498,7 +501,8 @@ export function registerAnnotationTasksAPI(
     const response = await instance.delete(endpoints.removeTag, {
       params: {
         annotation_task_id: annotationTask.id,
-        tag,
+        key: tag.key,
+        value: tag.value,
       },
     });
     return AnnotationTaskSchema.parse(response.data);
