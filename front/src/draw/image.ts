@@ -33,6 +33,7 @@ function intersectWindows(
 
 /**
  * Get pixel position of a viewport within bounds
+ * Supports both 2D (spectrogram with time+freq) and 1D (waveform with time only)
  */
 function getViewportPosition({
   width,
@@ -42,8 +43,8 @@ function getViewportPosition({
 }: {
   width: number;
   height: number;
-  viewport: SpectrogramWindow;
-  bounds: SpectrogramWindow;
+  viewport: SpectrogramWindow | { time: { min: number; max: number } };
+  bounds: SpectrogramWindow | { time: { min: number; max: number } };
 }): {
   left: number;
   width: number;
@@ -53,14 +54,21 @@ function getViewportPosition({
   const clamp = (value: number, min: number, max: number) =>
     Math.min(Math.max(value, min), max);
 
-  const bottom =
-    (bounds.freq.max - viewport.freq.min) / (bounds.freq.max - bounds.freq.min);
-  const top =
-    (bounds.freq.max - viewport.freq.max) / (bounds.freq.max - bounds.freq.min);
+  // Calculate time/horizontal position (always present)
   const left =
     (viewport.time.min - bounds.time.min) / (bounds.time.max - bounds.time.min);
   const right =
     (viewport.time.max - bounds.time.min) / (bounds.time.max - bounds.time.min);
+
+  // Calculate frequency/vertical position (only for 2D spectrograms)
+  let top = 0;
+  let bottom = 1;
+  if ('freq' in viewport && 'freq' in bounds) {
+    bottom =
+      (bounds.freq.max - viewport.freq.min) / (bounds.freq.max - bounds.freq.min);
+    top =
+      (bounds.freq.max - viewport.freq.max) / (bounds.freq.max - bounds.freq.min);
+  }
 
   return {
     top: clamp(top * height, 0, height),
@@ -204,35 +212,6 @@ export function drawStitchedImage({
   });
 }
 
-/**
- * Get pixel position in 1D (time only) for waveform
- */
-function getWaveformPosition({
-  width,
-  interval,
-  bounds,
-}: {
-  width: number;
-  interval: { min: number; max: number };
-  bounds: { min: number; max: number };
-}): {
-  left: number;
-  width: number;
-} {
-  const clamp = (value: number, min: number, max: number) =>
-    Math.min(Math.max(value, min), max);
-
-  const left =
-    (interval.min - bounds.min) / (bounds.max - bounds.min);
-  const right =
-    (interval.max - bounds.min) / (bounds.max - bounds.min);
-
-  // Round to integer pixels to avoid sub-pixel rendering artifacts
-  return {
-    left: Math.round(clamp(left * width, 0, width)),
-    width: Math.round(clamp((right - left) * width, 0, width)),
-  };
-}
 
 /**
  * Compute the intersection of two time intervals
@@ -277,10 +256,11 @@ function drawWaveformChunk({
 
   // Show loading state for this chunk region
   if (isLoading || !image) {
-    const position = getWaveformPosition({
+    const position = getViewportPosition({
       width: WAVEFORM_CANVAS_DIMENSIONS.width,
-      interval: intersection,
-      bounds: viewport,
+      height: WAVEFORM_CANVAS_DIMENSIONS.height,
+      viewport: { time: intersection },
+      bounds: { time: viewport },
     });
     ctx.fillStyle = COLORS.LOADING;
     ctx.fillRect(position.left, 0, position.width, WAVEFORM_CANVAS_DIMENSIONS.height);
@@ -289,10 +269,11 @@ function drawWaveformChunk({
 
   // Show error state for this chunk region
   if (isError) {
-    const position = getWaveformPosition({
+    const position = getViewportPosition({
       width: WAVEFORM_CANVAS_DIMENSIONS.width,
-      interval: intersection,
-      bounds: viewport,
+      height: WAVEFORM_CANVAS_DIMENSIONS.height,
+      viewport: { time: intersection },
+      bounds: { time: viewport },
     });
     ctx.fillStyle = COLORS.ERROR;
     ctx.fillRect(position.left, 0, position.width, WAVEFORM_CANVAS_DIMENSIONS.height);
@@ -300,30 +281,33 @@ function drawWaveformChunk({
   }
 
   // Calculate source rectangle (portion of chunk image to use)
-  const source = getWaveformPosition({
+  const source = getViewportPosition({
     width: image.width,
-    interval: intersection,
-    bounds: buffer,
+    height: image.height,
+    viewport: { time: intersection },
+    bounds: { time: buffer },
   });
 
   // Calculate destination rectangle (where to draw on canvas)
-  const destination = getWaveformPosition({
+  const destination = getViewportPosition({
     width: WAVEFORM_CANVAS_DIMENSIONS.width,
-    interval: intersection,
-    bounds: viewport,
+    height: WAVEFORM_CANVAS_DIMENSIONS.height,
+    viewport: { time: intersection },
+    bounds: { time: viewport },
   });
 
   // Draw this portion of the chunk
+  // Add +1 to width to prevent gaps between stitched chunks (matches spectrogram behavior)
   ctx.globalAlpha = 1;
   ctx.drawImage(
     image,
     source.left,
     0,
-    source.width,
+    source.width + 1,
     image.height,
     destination.left,
     0,
-    destination.width,
+    destination.width + 1,
     WAVEFORM_CANVAS_DIMENSIONS.height,
   );
 }
