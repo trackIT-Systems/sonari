@@ -12,7 +12,6 @@ import { CompleteIcon, NeedsReviewIcon, HelpIcon, VerifiedIcon } from "@/compone
 import useAnnotationTask from "@/hooks/api/useAnnotationTask";
 import useStore from "@/store";
 import { changeURLParam } from "@/utils/url";
-import api from "@/app/api";
 
 import AnnotationProjectContext from "../context";
 
@@ -23,7 +22,7 @@ export default function Page() {
   const search = useSearchParams();
   // This is a bug in nextjs. usePathname() should already return the correct
   // path, but it does not. So we use this workaround...
-  const pathname = usePathname();
+  const pathname = HOST + usePathname();
   const router = useRouter();
 
   const project = useContext(AnnotationProjectContext);
