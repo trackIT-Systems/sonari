@@ -4,6 +4,7 @@ import { type Style } from "@/draw/styles";
 import useEditGeometry from "@/hooks/edit/useEditGeometry";
 import {
   scaleGeometryToWindow,
+  scaleGeometryFromWindow,
 } from "@/utils/geometry";
 
 import type {
@@ -39,8 +40,10 @@ export default function useEditAnnotationGeometry({
   const handleOnChange = useCallback(
     (geometry?: Geometry) => {
       if (geometry == null) return;
-      const rescaled = scaleGeometryToWindow(geometry, window);
-      onChange?.(rescaled);
+      // geometry is in pixel coordinates from useEditGeometry
+      // Convert it BACK to time/freq coordinates before sending to API
+      const timeFreqGeometry = scaleGeometryFromWindow(geometry, window);
+      onChange?.(timeFreqGeometry);
     },
     [onChange, window],
   );
@@ -48,8 +51,10 @@ export default function useEditAnnotationGeometry({
   const handleOnCopy = useCallback(
     (geometry?: Geometry) => {
       if (geometry == null) return;
-      const rescaled = scaleGeometryToWindow(geometry, window);
-      onCopy?.(rescaled);
+      // geometry is in pixel coordinates from useEditGeometry
+      // Convert it BACK to time/freq coordinates before sending to API
+      const timeFreqGeometry = scaleGeometryFromWindow(geometry, window);
+      onCopy?.(timeFreqGeometry);
     },
     [onCopy, window],
   );
@@ -65,7 +70,8 @@ export default function useEditAnnotationGeometry({
 
   const reconstructed = useMemo(() => {
     if (ret.object === null) return null;
-    return scaleGeometryToWindow(ret.object, window);
+    // ret.object is in pixel coordinates, convert back to time/freq
+    return scaleGeometryFromWindow(ret.object, window);
   }, [window, ret.object]);
 
   return {

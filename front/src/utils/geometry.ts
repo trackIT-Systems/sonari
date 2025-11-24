@@ -212,8 +212,109 @@ export function scaleGeometryToWindow<T extends Geometry>(
       };
 
     default:
-      // eslint-disable-next-line no-console
+      // eslint-disable-line no-console
       console.error(`Unknown geometry type ${type} at scaling`);
+      return geometry;
+  }
+}
+
+/** 
+ * Inverse of scaleGeometryToWindow: converts pixel coordinates back to time/frequency coordinates
+ * This is needed when editing annotations - we work in pixel space but need to save time/freq to API
+ */
+export function scaleGeometryFromWindow<T extends Geometry>(
+  geometry: T,
+  window: SpectrogramWindow,
+): T {
+  const { type } = geometry;
+
+  switch (type) {
+    case "TimeStamp":
+      return {
+        ...geometry,
+        coordinates: scaleXToWindow(geometry.coordinates, window, false),
+      };
+    case "TimeInterval":
+      const [start, end] = geometry.coordinates as [number, number];
+      return {
+        ...geometry,
+        coordinates: [
+          scaleXToWindow(start, window, false),
+          scaleXToWindow(end, window, false),
+        ],
+      };
+    case "Point":
+      const [x, y] = geometry.coordinates as [number, number];
+      return {
+        ...geometry,
+        coordinates: [
+          scaleXToWindow(x, window, false),
+          scaleYToWindow(y, window, false),
+        ],
+      };
+    case "BoundingBox":
+      const [x1, y1, x2, y2] = geometry.coordinates as [number, number, number, number];
+      return {
+        ...geometry,
+        coordinates: [
+          scaleXToWindow(x1, window, false),
+          scaleYToWindow(y1, window, false),
+          scaleXToWindow(x2, window, false),
+          scaleYToWindow(y2, window, false),
+        ],
+      };
+    case "MultiPoint":
+      return {
+        ...geometry,
+        coordinates: (geometry.coordinates as [number, number][]).map(([x, y]) => [
+          scaleXToWindow(x, window, false),
+          scaleYToWindow(y, window, false),
+        ]),
+      };
+    case "LineString":
+      return {
+        ...geometry,
+        coordinates: (geometry.coordinates as [number, number][]).map(([x, y]) => [
+          scaleXToWindow(x, window, false),
+          scaleYToWindow(y, window, false),
+        ]),
+      };
+    case "MultiLineString":
+      return {
+        ...geometry,
+        coordinates: (geometry.coordinates as [number, number][][]).map((line) =>
+          line.map(([x, y]) => [
+            scaleXToWindow(x, window, false),
+            scaleYToWindow(y, window, false),
+          ])
+        ),
+      };
+    case "Polygon":
+      return {
+        ...geometry,
+        coordinates: (geometry.coordinates as [number, number][][]).map((ring) =>
+          ring.map(([x, y]) => [
+            scaleXToWindow(x, window, false),
+            scaleYToWindow(y, window, false),
+          ])
+        ),
+      };
+    case "MultiPolygon":
+      return {
+        ...geometry,
+        coordinates: (geometry.coordinates as [number, number][][][]).map((polygon) =>
+          polygon.map((ring) =>
+            ring.map(([x, y]) => [
+              scaleXToWindow(x, window, false),
+              scaleYToWindow(y, window, false),
+            ])
+          )
+        ),
+      };
+
+    default:
+      // eslint-disable-line no-console
+      console.error(`Unknown geometry type ${type} at scaling from window`);
       return geometry;
   }
 }

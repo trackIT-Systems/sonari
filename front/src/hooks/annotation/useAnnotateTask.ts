@@ -52,6 +52,14 @@ const getEndCoordinate = (geometry: Geometry) => {
   }
 }
 
+const areGeometriesEqual = (a: Geometry, b: Geometry) => {
+  if (a.type !== b.type) {
+    return false;
+  }
+
+  return JSON.stringify(a.coordinates) === JSON.stringify(b.coordinates);
+};
+
 const sortSoundEvents = (soundEvents: SoundEventAnnotation[]) => {
   return [...soundEvents].sort((a, b) => {
     const startA = getStartCoordinate(a.geometry);
@@ -143,6 +151,32 @@ export default function useAnnotateTask(props: {
     },
     [annotationTask, withSoundEvent],
   );
+
+  useEffect(() => {
+    if (
+      !selectedSoundEventAnnotation ||
+      !soundEvents.length
+    ) {
+      return;
+    }
+
+    const latest = soundEvents.find(
+      (event) => event.id === selectedSoundEventAnnotation.id,
+    );
+
+    if (!latest) {
+      return;
+    }
+
+    const geometryChanged = !areGeometriesEqual(
+      latest.geometry,
+      selectedSoundEventAnnotation.geometry,
+    );
+
+    if (geometryChanged || latest !== selectedSoundEventAnnotation) {
+      setSelectedSoundEventAnnotation(latest);
+    }
+  }, [soundEvents, selectedSoundEventAnnotation, setSelectedSoundEventAnnotation]);
 
   const handleCreate = useCallback(
     async (geometry: Geometry) => {

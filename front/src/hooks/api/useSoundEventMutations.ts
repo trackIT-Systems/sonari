@@ -89,17 +89,26 @@ export default function useSoundEventMutations({
         };
       });
       
-      // Update the parent's list
+      // Update the parent's list with merged annotation data so consumers don't see stale geometry
       setData((prev) => {
         if (prev == null) {
           throw new Error("No annotation task to update the sound event annotation in.");
         }
         return {
           ...prev,
-          sound_event_annotations: (prev.sound_event_annotations || []).map(
-            (soundEventAnnotation) =>
-              soundEventAnnotation.id === data.id ? data : soundEventAnnotation
-          ),
+          sound_event_annotations: (prev.sound_event_annotations || []).map((soundEventAnnotation) => {
+            if (soundEventAnnotation.id !== data.id) {
+              return soundEventAnnotation;
+            }
+            return {
+              ...soundEventAnnotation,
+              ...data,
+              // Preserve relationships the backend might omit
+              tags: data.tags ?? soundEventAnnotation.tags,
+              features: data.features ?? soundEventAnnotation.features,
+              created_by: data.created_by ?? soundEventAnnotation.created_by,
+            };
+          }),
         };
       });
     },
