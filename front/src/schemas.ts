@@ -4,7 +4,6 @@ import {
   DEFAULT_CMAP,
   DEFAULT_FILTER_ORDER,
   DEFAULT_OVERLAP_PERCENT,
-  DEFAULT_CONF_PRESET,
   DEFAULT_SCALE,
   DEFAULT_WINDOW,
   DEFAULT_WINDOW_SIZE_SAMPLES,
@@ -309,7 +308,6 @@ export const SpectrogramWindowSchema = z.object({
 
 export const SpectrogramParametersSchema = z
   .object({
-    conf_preset: z.string().default(DEFAULT_CONF_PRESET),
     resample: z.boolean().default(false),
     samplerate: z.coerce
       .number()

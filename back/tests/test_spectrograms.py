@@ -13,7 +13,6 @@ async def test_get_spectrogram_not_found(auth_client: AsyncClient):
             "recording_id": 999999,
             "start_time": 0.0,
             "end_time": 1.0,
-            "conf_preset": "hsr",
             # Audio parameters (defaults)
             "resample": False,
             "samplerate": 44100,

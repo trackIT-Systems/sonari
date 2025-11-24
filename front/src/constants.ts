@@ -13,7 +13,6 @@ export const DEFAULT_WINDOW = "blackmanharris";
 export const DEFAULT_SCALE = "dB";
 export const DEFAULT_FILTER_ORDER = 5;
 export const DEFAULT_CMAP = "plasma";
-export const DEFAULT_CONF_PRESET = "hsr";
 
 /* Available options for STFT computation
  */

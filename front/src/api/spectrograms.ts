@@ -2,7 +2,6 @@ import {
   DEFAULT_CMAP,
   DEFAULT_FILTER_ORDER,
   DEFAULT_OVERLAP_PERCENT,
-  DEFAULT_CONF_PRESET,
   DEFAULT_SCALE,
   DEFAULT_WINDOW,
   DEFAULT_WINDOW_SIZE_SAMPLES,
@@ -10,7 +9,7 @@ import {
 } from "@/constants";
 import { IntervalSchema, SpectrogramParametersSchema } from "@/schemas";
 
-import type { Interval, Recording, SpectrogramParameters } from "@/types";
+import type { Interval, SpectrogramParameters } from "@/types";
 import { AxiosInstance } from "axios";
 
 const DEFAULT_ENDPOINTS = {
@@ -18,7 +17,6 @@ const DEFAULT_ENDPOINTS = {
 };
 
 export const DEFAULT_SPECTROGRAM_PARAMETERS: SpectrogramParameters = {
-  conf_preset: DEFAULT_CONF_PRESET,
   resample: false,
   scale: DEFAULT_SCALE,
   pcen: false,
