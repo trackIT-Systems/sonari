@@ -2,7 +2,6 @@ import {
   useQueryClient,
 } from "@tanstack/react-query";
 import { useCallback, useEffect, useMemo, useState, useRef } from "react";
-import useStore from "@/store";
 
 import {
   AnnotationTaskFilter,
