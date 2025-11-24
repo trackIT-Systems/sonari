@@ -596,6 +596,31 @@ def upgrade() -> None:
     # This requires different approaches for SQLite vs PostgreSQL
     # Note: FK and index to clip_annotation were already dropped in Phase 4
 
+    # First, clean up any orphaned annotation_task_tag entries
+    # (tags that reference clip_annotations with no corresponding annotation_task)
+    print("  - Cleaning up orphaned annotation_task_tag entries...")
+    bind = op.get_bind()
+    result = bind.execute(
+        sa.text("""
+        SELECT COUNT(*) 
+        FROM annotation_task_tag
+        WHERE NOT EXISTS (
+            SELECT 1 FROM annotation_task 
+            WHERE annotation_task.clip_annotation_id = annotation_task_tag.clip_annotation_id
+        )
+    """)
+    )
+    orphaned_tags = result.scalar()
+    if orphaned_tags > 0:
+        print(f"    Found {orphaned_tags} orphaned annotation_task_tag entries (will be deleted)")
+        op.execute("""
+            DELETE FROM annotation_task_tag
+            WHERE NOT EXISTS (
+                SELECT 1 FROM annotation_task 
+                WHERE annotation_task.clip_annotation_id = annotation_task_tag.clip_annotation_id
+            )
+        """)
+
     if dialect == "sqlite":
         # SQLite: Recreate table with correct column names
         # Drop old unique constraint (FK and index already dropped in Phase 4)
@@ -618,11 +643,19 @@ def upgrade() -> None:
             )
         """)
 
-        # Copy data with column rename
+        # Copy data with column rename and ID mapping
+        # Map clip_annotation.id -> annotation_task.id using the annotation_task.clip_annotation_id
+        print("  - Updating annotation_task_tag IDs to reference annotation_task instead of clip_annotation...")
         op.execute("""
             INSERT INTO annotation_task_tag_new (id, annotation_task_id, tag_id, created_by_id, created_on)
-            SELECT id, clip_annotation_id, tag_id, created_by_id, created_on
+            SELECT 
+                annotation_task_tag.id, 
+                annotation_task.id,
+                annotation_task_tag.tag_id, 
+                annotation_task_tag.created_by_id, 
+                annotation_task_tag.created_on
             FROM annotation_task_tag
+            JOIN annotation_task ON annotation_task.clip_annotation_id = annotation_task_tag.clip_annotation_id
         """)
 
         # Drop old table and rename new one
@@ -641,6 +674,16 @@ def upgrade() -> None:
         with op.batch_alter_table("annotation_task_tag", schema=None) as batch_op:
             # Drop old unique constraint (FK and index already dropped in Phase 4)
             batch_op.drop_constraint("uq_clip_annotation_tag_clip_annotation_id", type_="unique")
+
+        # CRITICAL: Update clip_annotation_id values to be annotation_task.id values
+        # Before renaming, we need to map clip_annotation.id -> annotation_task.id
+        print("  - Updating annotation_task_tag IDs to reference annotation_task instead of clip_annotation...")
+        op.execute("""
+            UPDATE annotation_task_tag
+            SET clip_annotation_id = annotation_task.id
+            FROM annotation_task
+            WHERE annotation_task_tag.clip_annotation_id = annotation_task.clip_annotation_id
+        """)
 
         # Rename column
         op.execute("ALTER TABLE annotation_task_tag RENAME COLUMN clip_annotation_id TO annotation_task_id")
