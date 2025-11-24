@@ -177,6 +177,7 @@ export default function SoundEventAnnotationSpectrogramView({
     const containerRef = useRef<HTMLDivElement>(null);
     const canvasRef = useRef<HTMLCanvasElement>(null);
 
+
     const window = useMemo(
         () => getWindowFromGeometry(soundEventAnnotation, task.end_time - task.start_time, samplerate),
         [soundEventAnnotation, samplerate, task.start_time, task.end_time]
@@ -197,7 +198,7 @@ export default function SoundEventAnnotationSpectrogramView({
         samplerate,
         bounds: window,
         initial: window,
-        parameters,
+        parameters: parameters,
         enabled: true,
         withSpectrogram,
         withShortcuts: false,

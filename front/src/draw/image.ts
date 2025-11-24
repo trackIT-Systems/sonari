@@ -1,4 +1,3 @@
-import { SPECTROGRAM_CANVAS_DIMENSIONS, WAVEFORM_CANVAS_DIMENSIONS } from "@/constants";
 import type { SpectrogramWindow, WaveformWindow } from "@/types";
 import type { Chunk } from "@/utils/chunks";
 
@@ -108,8 +107,8 @@ function drawChunk({
   // Show loading state for this chunk region
   if (isLoading || !image) {
     const position = getViewportPosition({
-      width: SPECTROGRAM_CANVAS_DIMENSIONS.width,
-      height: SPECTROGRAM_CANVAS_DIMENSIONS.height,
+      width: ctx.canvas.width,
+      height: ctx.canvas.height,
       viewport: intersection,
       bounds: viewport,
     });
@@ -121,8 +120,8 @@ function drawChunk({
   // Show error state for this chunk region
   if (isError) {
     const position = getViewportPosition({
-      width: SPECTROGRAM_CANVAS_DIMENSIONS.width,
-      height: SPECTROGRAM_CANVAS_DIMENSIONS.height,
+      width: ctx.canvas.width,
+      height: ctx.canvas.height,
       viewport: intersection,
       bounds: viewport,
     });
@@ -141,8 +140,8 @@ function drawChunk({
 
   // Calculate destination rectangle (where to draw on canvas)
   const destination = getViewportPosition({
-    width: SPECTROGRAM_CANVAS_DIMENSIONS.width,
-    height: SPECTROGRAM_CANVAS_DIMENSIONS.height,
+    width: ctx.canvas.width,
+    height: ctx.canvas.height,
     viewport: intersection,
     bounds: viewport,
   });
@@ -184,9 +183,9 @@ export function drawStitchedImage({
   samplerate,
 }: DrawStitchedImageProps) {
   // Clear the canvas
-  ctx.clearRect(0, 0, SPECTROGRAM_CANVAS_DIMENSIONS.width, SPECTROGRAM_CANVAS_DIMENSIONS.height);
+  ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
   ctx.fillStyle = COLORS.BACKGROUND;
-  ctx.fillRect(0, 0, SPECTROGRAM_CANVAS_DIMENSIONS.width, SPECTROGRAM_CANVAS_DIMENSIONS.height);
+  ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
 
   // Draw each chunk
   chunks.forEach(({ chunk, image, isLoading, isError }) => {
@@ -257,26 +256,26 @@ function drawWaveformChunk({
   // Show loading state for this chunk region
   if (isLoading || !image) {
     const position = getViewportPosition({
-      width: WAVEFORM_CANVAS_DIMENSIONS.width,
-      height: WAVEFORM_CANVAS_DIMENSIONS.height,
+      width: ctx.canvas.width,
+      height: ctx.canvas.height,
       viewport: { time: intersection },
       bounds: { time: viewport },
     });
     ctx.fillStyle = COLORS.LOADING;
-    ctx.fillRect(position.left, 0, position.width, WAVEFORM_CANVAS_DIMENSIONS.height);
+    ctx.fillRect(position.left, 0, position.width, ctx.canvas.height);
     return;
   }
 
   // Show error state for this chunk region
   if (isError) {
     const position = getViewportPosition({
-      width: WAVEFORM_CANVAS_DIMENSIONS.width,
-      height: WAVEFORM_CANVAS_DIMENSIONS.height,
+      width: ctx.canvas.width,
+      height: ctx.canvas.height,
       viewport: { time: intersection },
       bounds: { time: viewport },
     });
     ctx.fillStyle = COLORS.ERROR;
-    ctx.fillRect(position.left, 0, position.width, WAVEFORM_CANVAS_DIMENSIONS.height);
+    ctx.fillRect(position.left, 0, position.width, ctx.canvas.height);
     return;
   }
 
@@ -290,8 +289,8 @@ function drawWaveformChunk({
 
   // Calculate destination rectangle (where to draw on canvas)
   const destination = getViewportPosition({
-    width: WAVEFORM_CANVAS_DIMENSIONS.width,
-    height: WAVEFORM_CANVAS_DIMENSIONS.height,
+    width: ctx.canvas.width,
+    height: ctx.canvas.height,
     viewport: { time: intersection },
     bounds: { time: viewport },
   });
@@ -308,7 +307,7 @@ function drawWaveformChunk({
     destination.left,
     0,
     destination.width + 1,
-    WAVEFORM_CANVAS_DIMENSIONS.height,
+    ctx.canvas.height,
   );
 }
 
@@ -332,9 +331,9 @@ export function drawStitchedWaveform({
   chunks,
 }: DrawStitchedWaveformProps) {
   // Clear the canvas
-  ctx.clearRect(0, 0, WAVEFORM_CANVAS_DIMENSIONS.width, WAVEFORM_CANVAS_DIMENSIONS.height);
+  ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
   ctx.fillStyle = COLORS.BACKGROUND;
-  ctx.fillRect(0, 0, WAVEFORM_CANVAS_DIMENSIONS.width, WAVEFORM_CANVAS_DIMENSIONS.height);
+  ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
 
   // Draw each chunk
   chunks.forEach(({ chunk, image, isLoading, isError }) => {
