@@ -177,6 +177,13 @@ export default function SoundEventAnnotationSpectrogramView({
     const containerRef = useRef<HTMLDivElement>(null);
     const canvasRef = useRef<HTMLCanvasElement>(null);
 
+    const selectedParameters = useMemo(() => {
+        return {
+            ...parameters,
+            overlap_percent: 98,
+        };
+    }, [parameters]);
+
 
     const window = useMemo(
         () => getWindowFromGeometry(soundEventAnnotation, task.end_time - task.start_time, samplerate),
@@ -189,8 +196,8 @@ export default function SoundEventAnnotationSpectrogramView({
     );
 
     const dimensions = useMemo(
-        () => calculateSpectrogramDimensions(window, parameters, samplerate),
-        [window, parameters, samplerate]
+        () => calculateSpectrogramDimensions(window, selectedParameters, samplerate),
+        [window, selectedParameters, samplerate]
     );
 
     const spectrogram = useSpectrogram({
@@ -198,7 +205,7 @@ export default function SoundEventAnnotationSpectrogramView({
         samplerate,
         bounds: window,
         initial: window,
-        parameters: parameters,
+        parameters: selectedParameters,
         enabled: true,
         withSpectrogram,
         withShortcuts: false,
