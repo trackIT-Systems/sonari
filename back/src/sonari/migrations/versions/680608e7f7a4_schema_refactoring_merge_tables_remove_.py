@@ -475,126 +475,15 @@ def upgrade() -> None:
     op.rename_table("clip_annotation_tag", "annotation_task_tag")
 
     # ==========================================================================
-    # PHASE 7: UPDATE ANNOTATION_TASK TABLE STRUCTURE
+    # PHASE 6.5: UPDATE ANNOTATION_TASK_TAG TABLE (BEFORE dropping clip_annotation_id)
     # ==========================================================================
 
-    print("Phase 7: Finalizing annotation_task structure...")
+    print("Phase 6.5: Updating annotation_task_tag structure...",flush=True)
 
-    # Now that data is migrated and FKs dropped, finalize the table structure
-    with op.batch_alter_table("annotation_task", schema=None) as batch_op:
-        # Make new columns NOT NULL
-        batch_op.alter_column("recording_id", nullable=False)
-        batch_op.alter_column("start_time", nullable=False)
-        batch_op.alter_column("end_time", nullable=False)
-
-        # Update unique constraint (must happen before dropping columns it references)
-        batch_op.drop_constraint("uq_annotation_task_annotation_project_id", type_="unique")
-        batch_op.create_unique_constraint(
-            batch_op.f("uq_annotation_task_annotation_project_id"),
-            ["annotation_project_id", "recording_id", "start_time", "end_time"],
-        )
-
-        # Drop old columns (FKs and indexes already dropped in Phase 4)
-        batch_op.drop_column("clip_annotation_id")
-        batch_op.drop_column("clip_id")
-        batch_op.drop_column("uuid")
-
-        # Add new foreign key to recording
-        batch_op.create_foreign_key(
-            batch_op.f("fk_annotation_task_recording_id_recording"),
-            "recording",
-            ["recording_id"],
-            ["id"],
-            ondelete="CASCADE",
-        )
-        batch_op.create_index(batch_op.f("ix_annotation_task_recording_id"), ["recording_id"], unique=False)
-
-    # ==========================================================================
-    # PHASE 8: UPDATE SOUND_EVENT_ANNOTATION TABLE STRUCTURE
-    # ==========================================================================
-
-    print("Phase 8: Finalizing sound_event_annotation structure...",flush=True)
-
-    with op.batch_alter_table("sound_event_annotation", schema=None) as batch_op:
-        # Make new columns NOT NULL
-        batch_op.alter_column("annotation_task_id", nullable=False)
-        batch_op.alter_column("recording_id", nullable=False)
-        batch_op.alter_column("geometry_type", nullable=False)
-        batch_op.alter_column("geometry", nullable=False)
-
-        # Drop old columns (FKs and indexes already dropped in Phase 4)
-        batch_op.drop_column("clip_annotation_id")
-        batch_op.drop_column("sound_event_id")
-        batch_op.drop_column("uuid")
-
-        # Add new foreign keys
-        batch_op.create_foreign_key(
-            batch_op.f("fk_sound_event_annotation_annotation_task_id_annotation_task"),
-            "annotation_task",
-            ["annotation_task_id"],
-            ["id"],
-            ondelete="CASCADE",
-        )
-        batch_op.create_foreign_key(
-            batch_op.f("fk_sound_event_annotation_recording_id_recording"),
-            "recording",
-            ["recording_id"],
-            ["id"],
-            ondelete="CASCADE",
-        )
-        batch_op.create_index(
-            batch_op.f("ix_sound_event_annotation_annotation_task_id"),
-            ["annotation_task_id"],
-            unique=False,
-        )
-        batch_op.create_index(
-            batch_op.f("ix_sound_event_annotation_recording_id"),
-            ["recording_id"],
-            unique=False,
-        )
-
-    # ==========================================================================
-    # PHASE 9: UPDATE NOTE TABLE STRUCTURE
-    # ==========================================================================
-
-    print("Phase 9: Finalizing note structure...",flush=True)
-
-    # Delete notes that couldn't be migrated (from recording_note and sound_event_annotation_note)
-    print("  - Cleaning up notes that couldn't be migrated...",flush=True)
-    bind = op.get_bind()
-    result = bind.execute(sa.text("SELECT COUNT(*) FROM note WHERE annotation_task_id IS NULL"))
-    orphaned_notes = result.scalar()
-    print(f"    Found {orphaned_notes} notes without annotation_task (will be deleted)",flush=True)
-
-    op.execute("DELETE FROM note WHERE annotation_task_id IS NULL")
-
-    with op.batch_alter_table("note", schema=None) as batch_op:
-        # Make annotation_task_id NOT NULL
-        batch_op.alter_column("annotation_task_id", nullable=False)
-
-        # Drop uuid column
-        batch_op.drop_column("uuid")
-
-        # Add foreign key constraint
-        batch_op.create_foreign_key(
-            batch_op.f("fk_note_annotation_task_id_annotation_task"),
-            "annotation_task",
-            ["annotation_task_id"],
-            ["id"],
-            ondelete="CASCADE",
-        )
-        batch_op.create_index(batch_op.f("ix_note_annotation_task_id"), ["annotation_task_id"], unique=False)
-
-    # ==========================================================================
-    # PHASE 10: UPDATE ANNOTATION_TASK_TAG TABLE (renamed from clip_annotation_tag)
-    # ==========================================================================
-
-    print("Phase 10: Updating annotation_task_tag structure...",flush=True)
-
+    # CRITICAL: This must happen BEFORE Phase 7 drops annotation_task.clip_annotation_id
     # After renaming clip_annotation_tag to annotation_task_tag,
-    # we need to rename the clip_annotation_id column to annotation_task_id
-    # This requires different approaches for SQLite vs PostgreSQL
-    # Note: FK and index to clip_annotation were already dropped in Phase 4
+    # we need to update the clip_annotation_id values to reference annotation_task.id
+    # and then rename the column to annotation_task_id
 
     # First, clean up any orphaned annotation_task_tag entries
     # (tags that reference clip_annotations with no corresponding annotation_task)
@@ -710,10 +599,121 @@ def upgrade() -> None:
             )
 
     # ==========================================================================
-    # PHASE 11: REMOVE UUID COLUMNS FROM OTHER TABLES
+    # PHASE 7: UPDATE ANNOTATION_TASK TABLE STRUCTURE
     # ==========================================================================
 
-    print("Phase 11: Removing UUID columns...",flush=True)
+    print("Phase 7: Finalizing annotation_task structure...",flush=True)
+
+    # Now that data is migrated and FKs dropped, finalize the table structure
+    with op.batch_alter_table("annotation_task", schema=None) as batch_op:
+        # Make new columns NOT NULL
+        batch_op.alter_column("recording_id", nullable=False)
+        batch_op.alter_column("start_time", nullable=False)
+        batch_op.alter_column("end_time", nullable=False)
+
+        # Update unique constraint (must happen before dropping columns it references)
+        batch_op.drop_constraint("uq_annotation_task_annotation_project_id", type_="unique")
+        batch_op.create_unique_constraint(
+            batch_op.f("uq_annotation_task_annotation_project_id"),
+            ["annotation_project_id", "recording_id", "start_time", "end_time"],
+        )
+
+        # Drop old columns (FKs and indexes already dropped in Phase 4)
+        batch_op.drop_column("clip_annotation_id")
+        batch_op.drop_column("clip_id")
+        batch_op.drop_column("uuid")
+
+        # Add new foreign key to recording
+        batch_op.create_foreign_key(
+            batch_op.f("fk_annotation_task_recording_id_recording"),
+            "recording",
+            ["recording_id"],
+            ["id"],
+            ondelete="CASCADE",
+        )
+        batch_op.create_index(batch_op.f("ix_annotation_task_recording_id"), ["recording_id"], unique=False)
+
+    # ==========================================================================
+    # PHASE 8: UPDATE SOUND_EVENT_ANNOTATION TABLE STRUCTURE
+    # ==========================================================================
+
+    print("Phase 8: Finalizing sound_event_annotation structure...",flush=True)
+
+    with op.batch_alter_table("sound_event_annotation", schema=None) as batch_op:
+        # Make new columns NOT NULL
+        batch_op.alter_column("annotation_task_id", nullable=False)
+        batch_op.alter_column("recording_id", nullable=False)
+        batch_op.alter_column("geometry_type", nullable=False)
+        batch_op.alter_column("geometry", nullable=False)
+
+        # Drop old columns (FKs and indexes already dropped in Phase 4)
+        batch_op.drop_column("clip_annotation_id")
+        batch_op.drop_column("sound_event_id")
+        batch_op.drop_column("uuid")
+
+        # Add new foreign keys
+        batch_op.create_foreign_key(
+            batch_op.f("fk_sound_event_annotation_annotation_task_id_annotation_task"),
+            "annotation_task",
+            ["annotation_task_id"],
+            ["id"],
+            ondelete="CASCADE",
+        )
+        batch_op.create_foreign_key(
+            batch_op.f("fk_sound_event_annotation_recording_id_recording"),
+            "recording",
+            ["recording_id"],
+            ["id"],
+            ondelete="CASCADE",
+        )
+        batch_op.create_index(
+            batch_op.f("ix_sound_event_annotation_annotation_task_id"),
+            ["annotation_task_id"],
+            unique=False,
+        )
+        batch_op.create_index(
+            batch_op.f("ix_sound_event_annotation_recording_id"),
+            ["recording_id"],
+            unique=False,
+        )
+
+    # ==========================================================================
+    # PHASE 9: UPDATE NOTE TABLE STRUCTURE
+    # ==========================================================================
+
+    print("Phase 9: Finalizing note structure...",flush=True)
+
+    # Delete notes that couldn't be migrated (from recording_note and sound_event_annotation_note)
+    print("  - Cleaning up notes that couldn't be migrated...",flush=True)
+    bind = op.get_bind()
+    result = bind.execute(sa.text("SELECT COUNT(*) FROM note WHERE annotation_task_id IS NULL"))
+    orphaned_notes = result.scalar()
+    print(f"    Found {orphaned_notes} notes without annotation_task (will be deleted)",flush=True)
+
+    op.execute("DELETE FROM note WHERE annotation_task_id IS NULL")
+
+    with op.batch_alter_table("note", schema=None) as batch_op:
+        # Make annotation_task_id NOT NULL
+        batch_op.alter_column("annotation_task_id", nullable=False)
+
+        # Drop uuid column
+        batch_op.drop_column("uuid")
+
+        # Add foreign key constraint
+        batch_op.create_foreign_key(
+            batch_op.f("fk_note_annotation_task_id_annotation_task"),
+            "annotation_task",
+            ["annotation_task_id"],
+            ["id"],
+            ondelete="CASCADE",
+        )
+        batch_op.create_index(batch_op.f("ix_note_annotation_task_id"), ["annotation_task_id"], unique=False)
+
+    # ==========================================================================
+    # PHASE 10: REMOVE UUID COLUMNS FROM OTHER TABLES
+    # ==========================================================================
+
+    print("Phase 10: Removing UUID columns...",flush=True)
 
     # Remove uuid from recording
     with op.batch_alter_table("recording", schema=None) as batch_op:
