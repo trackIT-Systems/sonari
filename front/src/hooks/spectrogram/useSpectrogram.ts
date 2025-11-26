@@ -104,9 +104,33 @@ function hoverCallback(event: MouseEvent, canvas: HTMLCanvasElement, window: Spe
   var popover = document.getElementById("popover-id");
   if (popover != null) {
     popover.innerText = `${time}ms, ${freq} kHz`;
-    popover.style.left = `${event.pageX + 5}px`;
-    popover.style.top = `${event.pageY + 2}px`;
+    popover.style.padding = '4px 8px';
     popover.style.display = 'block';
+    
+    // Position popover in a corner away from the mouse to avoid hiding critical information
+    // Divide canvas into quadrants and place popover in opposite corner
+    const isLeftHalf = mouseX < canvas.width / 2;
+    const isTopHalf = mouseY < canvas.height / 2;
+    
+    const padding = 8;
+    
+    if (isLeftHalf && isTopHalf) {
+      // Mouse in top-left, place popover in bottom-right of canvas
+      popover.style.left = `${rect.right - popover.offsetWidth - padding}px`;
+      popover.style.top = `${rect.bottom - popover.offsetHeight - padding}px`;
+    } else if (!isLeftHalf && isTopHalf) {
+      // Mouse in top-right, place popover in bottom-left of canvas
+      popover.style.left = `${rect.left + padding}px`;
+      popover.style.top = `${rect.bottom - popover.offsetHeight - padding}px`;
+    } else if (isLeftHalf && !isTopHalf) {
+      // Mouse in bottom-left, place popover in top-right of canvas
+      popover.style.left = `${rect.right - popover.offsetWidth - padding}px`;
+      popover.style.top = `${rect.top + padding}px`;
+    } else {
+      // Mouse in bottom-right, place popover in top-left of canvas
+      popover.style.left = `${rect.left + padding}px`;
+      popover.style.top = `${rect.top + padding}px`;
+    }
   }
 }
 
