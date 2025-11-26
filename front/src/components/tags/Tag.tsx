@@ -3,10 +3,8 @@
  */
 import classnames from "classnames";
 import { type HTMLProps } from "react";
-
-import { ALL_COLORS } from "@/components/colors";
 import { CloseIcon } from "@/components/icons";
-
+import { ALL_COLORS, ALL_COLORS_DARK } from "@/components/colors";
 import type { Tag } from "@/types";
 
 const COLOR_NAMES = [
@@ -62,7 +60,7 @@ function getTagClassNames(color: string, level: number) {
   const border = `border-${color}-${level + 2}00 dark:border-${color}-${10 - level - 2
     }00`;
   // Use much darker text for better contrast - always use 800+ for light mode, 100 for dark mode
-  const text = `text-${color}-800 dark:text-${color}-100`;
+  const text = `text-${color}-900 dark:text-${color}-100`;
   return  {
     background,
     border,
@@ -132,3 +130,4 @@ export default function Tag({
     </div>
   );
 }
+export { ALL_COLORS,ALL_COLORS_DARK, COLOR_NAMES, LEVELS, getTagClassNames as getClassNames };
