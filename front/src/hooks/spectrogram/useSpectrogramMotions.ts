@@ -107,22 +107,49 @@ export default function useSpectrogramMotions({
     enabled: enabled && motionMode === "zoom",
   });
 
-  const handleTimeScroll = useCallback(
-    ({ time }: { time?: number }) => {
-      if (time == null) return;
-      onScrollMoveTime?.({ time });
+  // Default scroll (no modifiers): deltaY → time, deltaX → freq (trackpad 2D navigation)
+  const handleDefaultScroll = useCallback(
+    ({ time, freq }: { time?: number; freq?: number }) => {
+      if (time != null) {
+        onScrollMoveTime?.({ time });
+      }
+      if (freq != null) {
+        onScrollMoveFreq?.({ freq });
+      }
     },
-    [onScrollMoveTime],
+    [onScrollMoveTime, onScrollMoveFreq],
   );
 
-  const { scrollProps: scrollMoveTimeProps } = useWindowScroll({
+  const { scrollProps: scrollDefaultProps } = useWindowScroll({
     window,
-    onScroll: handleTimeScroll,
-    shift: true,
+    onScroll: handleDefaultScroll,
+    shift: false,
+    ctrl: false,
+    alt: false,
     enabled,
     relative: false,
   });
 
+  // Alt + scroll: Move in frequency axis
+  const handleFreqScroll = useCallback(
+    ({ freq }: { freq?: number }) => {
+      if (freq == null) return;
+      onScrollMoveFreq?.({ freq });
+    },
+    [onScrollMoveFreq],
+  );
+
+  const { scrollProps: scrollMoveFreqProps } = useWindowScroll({
+    window,
+    onScroll: handleFreqScroll,
+    shift: false,
+    ctrl: false,
+    alt: true,
+    enabled,
+    relative: false,
+  });
+
+  // Shift + scroll: Zoom on time axis
   const handleTimeZoom = useCallback(
     ({ timeRatio }: { timeRatio?: number }) => {
       if (timeRatio == null) return;
@@ -135,27 +162,13 @@ export default function useSpectrogramMotions({
     window,
     onScroll: handleTimeZoom,
     shift: true,
-    alt: true,
+    ctrl: false,
+    alt: false,
     enabled,
     relative: true,
   });
 
-  const handleFreqScroll = useCallback(
-    ({ freq }: { freq?: number }) => {
-      if (freq == null) return;
-      onScrollMoveFreq?.({ freq });
-    },
-    [onScrollMoveFreq],
-  );
-
-  const { scrollProps: scrollMoveFreqProps } = useWindowScroll({
-    window,
-    onScroll: handleFreqScroll,
-    ctrl: true,
-    enabled,
-    relative: false,
-  });
-
+  // Ctrl + scroll: Zoom on frequency axis
   const handleFreqZoom = useCallback(
     ({ freqRatio }: { freqRatio?: number }) => {
       if (freqRatio == null) return;
@@ -167,8 +180,9 @@ export default function useSpectrogramMotions({
   const { scrollProps: scrollZoomFreqProps } = useWindowScroll({
     window,
     onScroll: handleFreqZoom,
+    shift: false,
     ctrl: true,
-    alt: true,
+    alt: false,
     enabled,
     relative: true,
   });
@@ -176,10 +190,10 @@ export default function useSpectrogramMotions({
   const props = mergeProps(
     dragProps,
     zoomProps,
-    scrollMoveTimeProps,
+    scrollDefaultProps,
+    scrollMoveFreqProps,
     scrollZoomTimeProps,
     scrollZoomFreqProps,
-    scrollMoveFreqProps,
   );
 
   const handleEnableDrag = useCallback(() => {

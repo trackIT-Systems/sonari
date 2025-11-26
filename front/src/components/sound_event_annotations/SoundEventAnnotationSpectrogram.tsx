@@ -180,7 +180,8 @@ export default function SoundEventAnnotationSpectrogramView({
     const selectedParameters = useMemo(() => {
         return {
             ...parameters,
-            overlap_percent: 98,
+            //overlap_percent: 98,
+            //dynamically find the best overlap percentage for the window here
         };
     }, [parameters]);
 
