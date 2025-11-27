@@ -1,7 +1,5 @@
 """Tests for recording endpoints."""
 
-import logging
-
 import pytest
 from httpx import AsyncClient
 
@@ -51,36 +49,6 @@ async def test_update_recording_not_found(auth_client: AsyncClient):
         "/api/v1/recordings/detail/",
         params={"recording_id": 125},
         json={},
-    )
-    # Should return 404 for non-existent recording
-    assert response.status_code in [404, 500]
-
-
-@pytest.mark.asyncio
-async def test_add_recording_tag_not_found(auth_client: AsyncClient):
-    """Test adding tag to non-existent recording."""
-    response = await auth_client.post(
-        "/api/v1/recordings/detail/tags/",
-        params={
-            "recording_id": 125,
-            "key": "test_key",
-            "value": "test_value",
-        },
-    )
-    # Should return 404 for non-existent recording
-    assert response.status_code in [404, 500]
-
-
-@pytest.mark.asyncio
-async def test_remove_recording_tag_not_found(auth_client: AsyncClient):
-    """Test removing tag from non-existent recording."""
-    response = await auth_client.delete(
-        "/api/v1/recordings/detail/tags/",
-        params={
-            "recording_id": 125,
-            "key": "test_key",
-            "value": "test_value",
-        },
     )
     # Should return 404 for non-existent recording
     assert response.status_code in [404, 500]
@@ -175,54 +143,6 @@ async def test_update_recording(auth_client: AsyncClient, test_recording: schema
     assert data["id"] == test_recording.id
     assert data["latitude"] == update_data["latitude"]
     assert data["longitude"] == update_data["longitude"]
-
-
-@pytest.mark.asyncio
-async def test_add_recording_tag(auth_client: AsyncClient, test_recording: schemas.Recording, test_tag: schemas.Tag):
-    """Test adding a tag to a recording (MODIFY operation - uses temporary recording)."""
-    response = await auth_client.post(
-        "/api/v1/recordings/detail/tags/",
-        params={
-            "recording_id": test_recording.id,
-            "key": test_tag.key,
-            "value": test_tag.value,
-        },
-    )
-    assert response.status_code == 200
-    data = response.json()
-    logging.info(data)
-    assert data["id"] == test_recording.id
-    assert "tags" in data
-    # Check if the tag was added
-    tag_added = any(tag["key"] == test_tag.key and tag["value"] == test_tag.value for tag in data["tags"])
-    assert tag_added
-
-
-@pytest.mark.asyncio
-async def test_remove_recording_tag(auth_client: AsyncClient, test_recording: schemas.Recording, test_tag: schemas.Tag):
-    """Test removing a tag from a recording (MODIFY operation - uses temporary recording)."""
-    # First add a tag
-    await auth_client.post(
-        "/api/v1/recordings/detail/tags/",
-        params={
-            "recording_id": test_recording.id,
-            "key": test_tag.key,
-            "value": test_tag.value,
-        },
-    )
-
-    # Then remove it
-    response = await auth_client.delete(
-        "/api/v1/recordings/detail/tags/",
-        params={
-            "recording_id": test_recording.id,
-            "key": test_tag.key,
-            "value": test_tag.value,
-        },
-    )
-    assert response.status_code == 200
-    data = response.json()
-    assert data["id"] == test_recording.id
 
 
 @pytest.mark.asyncio

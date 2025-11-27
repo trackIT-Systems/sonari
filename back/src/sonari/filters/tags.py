@@ -23,29 +23,6 @@ SearchFilter = base.search_filter([models.Tag.key, models.Tag.value])
 """Search tags by key or value."""
 
 
-class RecordingFilter(base.Filter):
-    """Get tags for a recording."""
-
-    eq: int | None = None
-
-    def filter(self, query: Select) -> Select:
-        """Filter tags by recording."""
-        if self.eq is None:
-            return query
-
-        return (
-            query.join(
-                models.RecordingTag,
-                models.RecordingTag.tag_id == models.Tag.id,
-            )
-            .join(
-                models.Recording,
-                models.Recording.id == models.RecordingTag.recording_id,
-            )
-            .where(models.Recording.id == self.eq)
-        )
-
-
 class SoundEventAnnotationFilter(base.Filter):
     """Get tags for a sound event annotation."""
 
@@ -96,7 +73,6 @@ TagFilter = base.combine(
     SearchFilter,
     key=KeyFilter,
     value=ValueFilter,
-    recording=RecordingFilter,
     sound_event_annotation=SoundEventAnnotationFilter,
     annotation_task=AnnotationTaskFilter,
 )

@@ -65,28 +65,3 @@ async def test_create_duplicate_tag(auth_client: AsyncClient):
     )
     # Should return conflict
     assert response.status_code in [409]
-
-
-@pytest.mark.asyncio
-async def test_get_recording_tags(auth_client: AsyncClient):
-    """Test getting recording tags."""
-    response = await auth_client.get("/api/v1/tags/recording_tags/")
-    assert response.status_code == 200
-    data = response.json()
-    assert "items" in data
-    assert "total" in data
-    assert "limit" in data
-    assert "offset" in data
-
-
-@pytest.mark.asyncio
-async def test_get_recording_tags_with_pagination(auth_client: AsyncClient):
-    """Test getting recording tags with pagination."""
-    response = await auth_client.get(
-        "/api/v1/tags/recording_tags/",
-        params={"limit": 1, "offset": 1},
-    )
-    assert response.status_code == 200
-    data = response.json()
-    assert data["limit"] == 1
-    assert data["offset"] == 1

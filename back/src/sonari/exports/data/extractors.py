@@ -108,12 +108,6 @@ async def extract_annotation_data(annotation: models.SoundEventAnnotation) -> Di
     # Extract user who created the sound event
     created_by_user = annotation.created_by.username if annotation.created_by else None
 
-    # Extract recording tags
-    recording_tags = []
-    for tag in recording.tags:
-        recording_tags.append(tag.value)
-    recording_tags_str = ", ".join(recording_tags)
-
     # Extract task status badges per user
     status_badges = {}
     if annotation.annotation_task:
@@ -145,7 +139,6 @@ async def extract_annotation_data(annotation: models.SoundEventAnnotation) -> Di
         "end_time": bbox_coords["end_time"],
         "higher_frequency": bbox_coords["higher_frequency"],
         "user": created_by_user,
-        "recording_tags": recording_tags_str,
         "task_status_badges": status_badges_str,
         "geometry_type": annotation.geometry_type,
     }

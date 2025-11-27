@@ -102,27 +102,12 @@ class Tag(Base):
             AnnotationProject,
         )
         from sonari.models.annotation_task import AnnotationTask
-        from sonari.models.recording import Recording, RecordingTag
+        from sonari.models.recording import Recording
         from sonari.models.sound_event_annotation import (
             SoundEventAnnotation,
             SoundEventAnnotationTag,
         )
 
-    recordings: orm.Mapped[list["Recording"]] = orm.relationship(
-        secondary="recording_tag",
-        init=False,
-        repr=False,
-        viewonly=True,
-        default_factory=list,
-    )
-    recording_tags: orm.Mapped[list["RecordingTag"]] = orm.relationship(
-        back_populates="tag",
-        init=False,
-        repr=False,
-        default_factory=list,
-        passive_deletes=True,
-        cascade="all, delete-orphan",
-    )
     sound_event_annotations: orm.Mapped[list["SoundEventAnnotation"]] = orm.relationship(
         secondary="sound_event_annotation_tag",
         init=False,

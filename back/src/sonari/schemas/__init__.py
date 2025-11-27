@@ -23,8 +23,6 @@ from sonari.schemas.annotation_tasks import (
     AnnotationStatusBadgeUpdate,
     AnnotationTask,
     AnnotationTaskCreate,
-    AnnotationTaskIndex,
-    AnnotationTaskStats,
     AnnotationTaskTag,
     AnnotationTaskUpdate,
 )
@@ -45,7 +43,6 @@ from sonari.schemas.plugin import PluginInfo
 from sonari.schemas.recordings import (
     Recording,
     RecordingCreate,
-    RecordingTag,
     RecordingUpdate,
 )
 from sonari.schemas.sound_event_annotations import (
@@ -92,7 +89,6 @@ __all__ = [
     "PluginInfo",
     "Recording",
     "RecordingCreate",
-    "RecordingTag",
     "RecordingUpdate",
     "STFTParameters",
     "Scale",

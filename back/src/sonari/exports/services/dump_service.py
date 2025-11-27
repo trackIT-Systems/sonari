@@ -74,7 +74,6 @@ class DumpService(BaseExportService):
                                 data["end_time"],
                                 data["higher_frequency"],
                                 data["user"],
-                                data["recording_tags"],
                                 data["task_status_badges"],
                                 data["geometry_type"],
                             ])

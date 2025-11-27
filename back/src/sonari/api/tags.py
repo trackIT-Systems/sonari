@@ -2,12 +2,11 @@
 
 from typing import Any, Sequence
 
-from sqlalchemy import and_, select, tuple_
+from sqlalchemy import and_, tuple_
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from sonari import exceptions, models, schemas
-from sonari.api.common import BaseAPI, get_objects_from_query
-from sonari.filters.base import Filter
+from sonari.api.common import BaseAPI
 from sonari.schemas.users import SimpleUser
 
 __all__ = [
@@ -102,49 +101,6 @@ class TagAPI(
             self._model.key,
             self._model.value,
         )
-
-    async def get_recording_tags(
-        self,
-        session: AsyncSession,
-        *,
-        limit: int | None = 1000,
-        offset: int | None = 0,
-        filters: Sequence[Filter] | None = None,
-        sort_by: str | None = "-created_on",
-    ) -> tuple[list[schemas.RecordingTag], int]:
-        query = (
-            select(
-                models.RecordingTag.recording_id,
-                models.RecordingTag.created_on,
-                models.Tag,
-            )
-            .join(
-                models.Tag,
-                models.RecordingTag.tag_id == models.Tag.id,
-            )
-            .join(
-                models.Recording,
-                models.RecordingTag.recording_id == models.Recording.id,
-            )
-        )
-
-        tags, count = await get_objects_from_query(
-            session,
-            models.RecordingTag,
-            query,
-            limit=limit,
-            offset=offset,
-            filters=filters,
-            sort_by=sort_by,
-        )
-        return [
-            schemas.RecordingTag(
-                created_on=obj.created_on,
-                tag=schemas.Tag.model_validate(obj.Tag),
-                recording_id=obj.recording_id,
-            )
-            for obj in tags.unique().all()
-        ], count
 
 
 def find_tag(

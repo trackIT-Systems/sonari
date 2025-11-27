@@ -21,7 +21,6 @@ from sonari.models.recording import (
     Recording,
     RecordingFeature,
     RecordingOwner,
-    RecordingTag,
 )
 from sonari.models.sound_event_annotation import (
     SoundEventAnnotation,
@@ -46,7 +45,6 @@ __all__ = [
     "Recording",
     "RecordingFeature",
     "RecordingOwner",
-    "RecordingTag",
     "SoundEventAnnotation",
     "SoundEventAnnotationFeature",
     "SoundEventAnnotationTag",

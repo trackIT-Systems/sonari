@@ -16,7 +16,6 @@ __all__ = [
     "RecordingFilter",
     "SamplerateFilter",
     "SearchFilter",
-    "TagFilter",
     "TimeExpansionFilter",
     "TimeFilter",
 ]
@@ -71,38 +70,8 @@ class DatasetFilter(base.Filter):
         ).where(models.DatasetRecording.dataset_id == self.eq)
 
 
-class TagFilter(base.Filter):
-    """Filter recordings by tags.
-
-    This filter can be used to filter recordings that have a certain
-    tag.
-    """
-
-    key: str | None = None
-    value: str | None = None
-
-    def filter(self, query: Select) -> Select:
-        """Filter the query."""
-        if self.key is None and self.value is None:
-            return query
-
-        query = query.join(
-            models.RecordingTag,
-            models.Recording.id == models.RecordingTag.recording_id,
-        ).join(models.Tag, models.RecordingTag.tag_id == models.Tag.id)
-
-        conditions = []
-        if self.key is not None:
-            conditions.append(models.Tag.key == self.key)
-        if self.value is not None:
-            conditions.append(models.Tag.value == self.value)
-
-        return query.where(*conditions)
-
-
 RecordingFilter = base.combine(
     SearchFilter,
-    tag=TagFilter,
     dataset=DatasetFilter,
     duration=DurationFilter,
     samplerate=SamplerateFilter,

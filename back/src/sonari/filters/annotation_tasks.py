@@ -241,7 +241,7 @@ class SearchRecordingsFilter(base.Filter):
 
 
 class SoundEventAnnotationTagFilter(base.Filter):
-    """Filter for tasks by sound event annotation tag or recording tag."""
+    """Filter for tasks by sound event annotation tag or annotation task tag."""
 
     keys: str | None = None
     values: str | None = None
@@ -256,11 +256,11 @@ class SoundEventAnnotationTagFilter(base.Filter):
         values = self.values.split(",")
 
         # Create alias for Recording table
-        Recording = models.Recording.__table__.alias("sound_event_tag_recording")
+        Task = models.Recording.__table__.alias("task_tag_task")
 
         # Create subqueries for each key-value pair for sound event annotations
         sound_event_subqueries = []
-        recording_subqueries = []
+        task_subqueries = []
 
         for k, v in zip(keys, values, strict=True):
             # Sound event annotation subquery
@@ -275,20 +275,20 @@ class SoundEventAnnotationTagFilter(base.Filter):
             sound_event_subqueries.append(sound_event_subquery)
 
             # Recording tag subquery
-            recording_subquery = (
+            task_subquery = (
                 select(1)
-                .select_from(models.RecordingTag)
+                .select_from(models.AnnotationTaskTag)
                 .join(
                     models.Tag,
-                    models.Tag.id == models.RecordingTag.tag_id,
+                    models.Tag.id == models.AnnotationTaskTag.tag_id,
                 )
                 .where(
                     models.Tag.key == k,
                     models.Tag.value == v,
-                    models.RecordingTag.recording_id == Recording.c.id,
+                    models.AnnotationTaskTag.id == Task.c.id,
                 )
             )
-            recording_subqueries.append(recording_subquery)
+            task_subqueries.append(task_subquery)
 
         # Combine sound event conditions with OR
         sound_event_condition = or_(
@@ -305,12 +305,12 @@ class SoundEventAnnotationTagFilter(base.Filter):
 
         # Join the query with Recording table
         query = query.join(
-            Recording,
-            Recording.c.id == models.AnnotationTask.recording_id,
+            Task,
+            Task.c.id == models.AnnotationTask.recording_id,
         )
 
         # Combine recording conditions with OR
-        recording_condition = or_(*(exists(subquery) for subquery in recording_subqueries))
+        recording_condition = or_(*(exists(subquery) for subquery in task_subqueries))
 
         # Return query with combined conditions using OR
         return query.where(or_(sound_event_condition, recording_condition))

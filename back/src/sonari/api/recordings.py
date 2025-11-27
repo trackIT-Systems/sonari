@@ -44,67 +44,12 @@ class RecordingAPI(
         super().__init__()
         self._media_info_cache = cachetools.LRUCache(maxsize=1000)
 
-    async def get_with_tags(
-        self,
-        session: AsyncSession,
-        pk: int,
-    ) -> schemas.Recording:
-        """Get a single recording with tags eagerly loaded.
-
-        This method is useful when you know you'll need to access the tags
-        relationship to avoid lazy loading issues.
-
-        Parameters
-        ----------
-        session
-            The database session to use.
-        pk
-            The primary key (ID) of the recording.
-
-        Returns
-        -------
-        recording : schemas.Recording
-            The recording with tags loaded.
-
-        Raises
-        ------
-        NotFoundError
-            If the recording could not be found.
-        """
-        from sqlalchemy import select
-        from sqlalchemy.orm import noload, selectinload
-
-        query = (
-            select(self._model)
-            .where(self._model.id == pk)
-            .options(
-                selectinload(models.Recording.tags),
-                noload(models.Recording.features),
-                noload(models.Recording.owners),
-                noload(models.Recording.annotation_tasks),
-                noload(models.Recording.recording_datasets),
-            )
-        )
-
-        result = await session.execute(query)
-        obj = result.unique().scalar_one_or_none()
-
-        if obj is None:
-            raise exceptions.NotFoundError(f"Recording with id {pk} not found")
-
-        data = self._schema.model_validate(obj)
-        self._update_cache(data)
-        return data
-
     async def get_with_features(
         self,
         session: AsyncSession,
         pk: int,
     ) -> schemas.Recording:
-        """Get a single recording with tags eagerly loaded.
-
-        This method is useful when you know you'll need to access the tags
-        relationship to avoid lazy loading issues.
+        """Get a single recording with features eagerly loaded.
 
         Parameters
         ----------
@@ -131,7 +76,6 @@ class RecordingAPI(
             .where(self._model.id == pk)
             .options(
                 selectinload(models.Recording.features),
-                noload(models.Recording.tags),
                 noload(models.Recording.owners),
                 noload(models.Recording.annotation_tasks),
                 noload(models.Recording.recording_datasets),
@@ -455,46 +399,6 @@ class RecordingAPI(
             samplerate=samplerate,
         )
 
-    async def add_tag(
-        self,
-        session: AsyncSession,
-        obj: schemas.Recording,
-        tag: schemas.Tag,
-        created_by: schemas.SimpleUser,
-    ) -> schemas.Recording:
-        """Add a tag to a recording.
-
-        Parameters
-        ----------
-        session
-            The database session to use.
-        obj
-            The recording to add the tag to.
-        tag
-            The tag to add.
-        created_by
-            The user who is adding the tag.
-
-        Returns
-        -------
-        recording : schemas.recordings.Recording
-            The updated recording.
-        """
-        if tag in obj.tags:
-            raise exceptions.DuplicateObjectError(f"Recording already has the tag {tag}")
-
-        await common.create_object(
-            session,
-            models.RecordingTag,
-            recording_id=obj.id,
-            tag_id=tag.id,
-            created_by_id=created_by.id,
-        )
-
-        obj = obj.model_copy(update=dict(tags=[*obj.tags, tag]))
-        self._update_cache(obj)
-        return obj
-
     async def add_feature(
         self,
         session: AsyncSession,
@@ -609,48 +513,6 @@ class RecordingAPI(
         )
 
         obj = obj.model_copy(update=dict(features=[feature if feature.name == f.name else f for f in obj.features]))
-        self._update_cache(obj)
-        return obj
-
-    async def remove_tag(
-        self,
-        session: AsyncSession,
-        obj: schemas.Recording,
-        tag: schemas.Tag,
-        created_by: schemas.SimpleUser,
-    ) -> schemas.Recording:
-        """Remove a tag from a recording.
-
-        Parameters
-        ----------
-        session
-            The database session to use.
-        obj
-            The recording to remove the tag from.
-        tag
-            The tag to remove.
-        created_by
-            The user who added the tag (to identify which tag association to remove).
-
-        Returns
-        -------
-        recording : schemas.recordings.Recording
-            The updated recording.
-        """
-        if tag not in obj.tags:
-            raise exceptions.NotFoundError(f"Recording does not have the tag {tag}")
-
-        await common.delete_object(
-            session,
-            models.RecordingTag,
-            and_(
-                models.RecordingTag.recording_id == obj.id,
-                models.RecordingTag.tag_id == tag.id,
-                models.RecordingTag.created_by_id == created_by.id,
-            ),
-        )
-
-        obj = obj.model_copy(update=dict(tags=[t for t in obj.tags if t != tag]))
         self._update_cache(obj)
         return obj
 

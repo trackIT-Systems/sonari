@@ -42,7 +42,6 @@ class ExportConstants:
         "end_time",
         "higher_frequency",
         "user",
-        "recording_tags",
         "task_status_badges",
         "geometry_type",
     ]

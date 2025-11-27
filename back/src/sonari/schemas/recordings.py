@@ -19,7 +19,6 @@ if TYPE_CHECKING:
 __all__ = [
     "Recording",
     "RecordingCreate",
-    "RecordingTag",
     "RecordingUpdate",
 ]
 
@@ -146,13 +145,3 @@ class RecordingUpdate(BaseModel):
 
     rights: str | None = None
     """A text describing the usage rights of the recording."""
-
-
-class RecordingTag(BaseSchema):
-    """Schema for RecordingTag objects."""
-
-    recording_id: int
-    """The ID of the recording."""
-
-    tag: Tag
-    """The tag associated with the recording."""

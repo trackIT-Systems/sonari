@@ -24,7 +24,6 @@ import sqlalchemy.orm as orm
 from sqlalchemy import ForeignKey, UniqueConstraint
 
 from sonari.models.base import Base
-from sonari.models.tag import Tag
 from sonari.models.user import User
 
 if TYPE_CHECKING:
@@ -33,7 +32,6 @@ if TYPE_CHECKING:
 
 __all__ = [
     "Recording",
-    "RecordingTag",
     "RecordingFeature",
     "RecordingOwner",
 ]
@@ -120,12 +118,6 @@ class Recording(Base):
     time_expansion: orm.Mapped[float] = orm.mapped_column(default=1.0)
     rights: orm.Mapped[str | None] = orm.mapped_column(default=None)
 
-    # Relationships
-    tags: orm.Mapped[list[Tag]] = orm.relationship(
-        viewonly=True,
-        secondary="recording_tag",
-        default_factory=list,
-    )
     features: orm.Mapped[list["RecordingFeature"]] = orm.relationship(
         back_populates="recording",
         default_factory=list,
@@ -154,63 +146,6 @@ class Recording(Base):
         passive_deletes=True,
         back_populates="recording",
         default_factory=list,
-    )
-
-
-class RecordingTag(Base):
-    """Recording Tag Model.
-
-    Tracks which user attached which tag to a recording.
-
-    Attributes
-    ----------
-    tag
-        The tag associated with the recording.
-    created_by
-        The user who attached the tag.
-    created_on
-        The date and time at which the tag was attached.
-
-    Parameters
-    ----------
-    recording_id : int
-        The database id of the recording to which the tag belongs.
-    tag_id : int
-        The database id of the tag.
-    created_by_id : UUID, optional
-        The database id of the user who attached the tag.
-    """
-
-    __tablename__ = "recording_tag"
-    __table_args__ = (UniqueConstraint("recording_id", "tag_id", "created_by_id"),)
-
-    id: orm.Mapped[int] = orm.mapped_column(primary_key=True, init=False)
-    recording_id: orm.Mapped[int] = orm.mapped_column(
-        ForeignKey("recording.id", ondelete="CASCADE"),
-        nullable=False,
-        index=True,
-    )
-    tag_id: orm.Mapped[int] = orm.mapped_column(
-        ForeignKey("tag.id", ondelete="CASCADE"),
-        nullable=False,
-        index=True,
-    )
-    created_by_id: orm.Mapped[UUID | None] = orm.mapped_column(
-        ForeignKey("user.id"),
-        index=True,
-    )
-    recording: orm.Mapped[Recording] = orm.relationship(
-        init=False,
-        repr=False,
-    )
-    tag: orm.Mapped[Tag] = orm.relationship(
-        back_populates="recording_tags",
-        init=False,
-        repr=False,
-    )
-    created_by: orm.Mapped[User | None] = orm.relationship(
-        init=False,
-        repr=False,
     )
 
 
