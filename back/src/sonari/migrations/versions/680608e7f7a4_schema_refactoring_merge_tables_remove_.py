@@ -20,6 +20,50 @@ branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
 
+def get_or_create_admin_user(bind):
+    """Get or create an admin user for data migration purposes.
+    
+    Returns the UUID of the admin user.
+    """
+    from uuid import uuid4
+    from passlib.context import CryptContext
+    
+    # Check if admin user exists
+    result = bind.execute(
+        sa.text("SELECT id FROM user WHERE username = 'admin'")
+    )
+    admin_user = result.fetchone()
+    
+    if admin_user:
+        print(f"  Using existing admin user (id: {admin_user[0]})", flush=True)
+        return admin_user[0]
+    
+    # Create admin user if it doesn't exist
+    admin_id = str(uuid4())
+    pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+    hashed_password = pwd_context.hash("admin")  # Default password
+    
+    print(f"  Creating admin user (id: {admin_id})", flush=True)
+    bind.execute(
+        sa.text("""
+            INSERT INTO user (id, email, username, hashed_password, is_active, is_superuser, is_verified)
+            VALUES (:id, :email, :username, :hashed_password, :is_active, :is_superuser, :is_verified)
+        """),
+        {
+            "id": admin_id,
+            "email": "admin@sonari.local",
+            "username": "admin",
+            "hashed_password": hashed_password,
+            "is_active": True,
+            "is_superuser": True,
+            "is_verified": True,
+        }
+    )
+    
+    print("  ⚠️  WARNING: Created admin user with default password. Change it after migration!", flush=True)
+    return admin_id
+
+
 def upgrade() -> None:
     """Major schema refactoring migration.
 
@@ -110,6 +154,37 @@ def upgrade() -> None:
     # Add annotation_task_id to note table
     with op.batch_alter_table("note", schema=None) as batch_op:
         batch_op.add_column(sa.Column("annotation_task_id", sa.Integer(), nullable=True))
+
+    # ==========================================================================
+    # PHASE 1.1: GET OR CREATE ADMIN USER FOR NULL created_by_id VALUES
+    # ==========================================================================
+
+    print("Phase 1.1: Setting up admin user for migration...", flush=True)
+    admin_user_id = get_or_create_admin_user(bind)
+
+    # Populate created_by_id in tag table for existing tags
+    print("  - Populating tag.created_by_id...", flush=True)
+    result = bind.execute(sa.text("SELECT COUNT(*) FROM tag WHERE created_by_id IS NULL"))
+    null_tags = result.scalar()
+    if null_tags > 0:
+        print(f"    Found {null_tags} tags without created_by_id", flush=True)
+        bind.execute(
+            sa.text("UPDATE tag SET created_by_id = :admin_id WHERE created_by_id IS NULL"),
+            {"admin_id": admin_user_id}
+        )
+        print(f"    Updated {null_tags} tags to use admin user", flush=True)
+
+    # Populate created_by_id in recording_tag for existing entries
+    print("  - Populating recording_tag.created_by_id...", flush=True)
+    result = bind.execute(sa.text("SELECT COUNT(*) FROM recording_tag WHERE created_by_id IS NULL"))
+    null_recording_tags = result.scalar()
+    if null_recording_tags > 0:
+        print(f"    Found {null_recording_tags} recording_tags without created_by_id", flush=True)
+        bind.execute(
+            sa.text("UPDATE recording_tag SET created_by_id = :admin_id WHERE created_by_id IS NULL"),
+            {"admin_id": admin_user_id}
+        )
+        print(f"    Updated {null_recording_tags} recording_tags to use admin user", flush=True)
 
     # ==========================================================================
     # PHASE 1.5: CLEAN UP ORPHANED DATA
@@ -547,6 +622,18 @@ def upgrade() -> None:
             JOIN annotation_task ON annotation_task.clip_annotation_id = annotation_task_tag.clip_annotation_id
         """)
 
+        # Populate NULL created_by_id values in the new table
+        print("  - Populating NULL created_by_id in annotation_task_tag...", flush=True)
+        result = bind.execute(sa.text("SELECT COUNT(*) FROM annotation_task_tag_new WHERE created_by_id IS NULL"))
+        null_count = result.scalar()
+        if null_count > 0:
+            print(f"    Found {null_count} annotation_task_tags without created_by_id", flush=True)
+            bind.execute(
+                sa.text("UPDATE annotation_task_tag_new SET created_by_id = :admin_id WHERE created_by_id IS NULL"),
+                {"admin_id": admin_user_id}
+            )
+            print(f"    Updated {null_count} annotation_task_tags to use admin user", flush=True)
+
         # Drop old table and rename new one
         op.drop_table("annotation_task_tag")
         op.rename_table("annotation_task_tag_new", "annotation_task_tag")
@@ -573,6 +660,18 @@ def upgrade() -> None:
             FROM annotation_task
             WHERE annotation_task_tag.clip_annotation_id = annotation_task.clip_annotation_id
         """)
+
+        # Populate NULL created_by_id values
+        print("  - Populating NULL created_by_id in annotation_task_tag...", flush=True)
+        result = bind.execute(sa.text("SELECT COUNT(*) FROM annotation_task_tag WHERE created_by_id IS NULL"))
+        null_count = result.scalar()
+        if null_count > 0:
+            print(f"    Found {null_count} annotation_task_tags without created_by_id", flush=True)
+            bind.execute(
+                sa.text("UPDATE annotation_task_tag SET created_by_id = :admin_id WHERE created_by_id IS NULL"),
+                {"admin_id": admin_user_id}
+            )
+            print(f"    Updated {null_count} annotation_task_tags to use admin user", flush=True)
 
         # Rename column
         op.execute("ALTER TABLE annotation_task_tag RENAME COLUMN clip_annotation_id TO annotation_task_id")
@@ -734,7 +833,13 @@ def upgrade() -> None:
     print("⚠️  WARNING: The following data has been lost:")
     print("   - Notes attached to recordings and sound_event_annotations")
     print("   - Orphaned clip_annotations (and their sound_event_annotations) that had no annotation_task")
+    print("")
+    print("⚠️  IMPORTANT: If an admin user was created during migration:")
+    print("   - Default credentials: username='admin', password='admin'")
+    print("   - PLEASE CHANGE THE PASSWORD IMMEDIATELY after migration")
+    print("")
     print("✓  All other data has been migrated successfully.")
+    print("✓  All created_by_id fields populated (using admin user where needed)")
 
 
 def downgrade() -> None:

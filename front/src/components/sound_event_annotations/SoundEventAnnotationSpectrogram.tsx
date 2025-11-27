@@ -180,7 +180,8 @@ export default function SoundEventAnnotationSpectrogramView({
     const selectedParameters = useMemo(() => {
         return {
             ...parameters,
-            overlap_percent: 98,
+            //overlap_percent: 98,
+            //dynamically find the best overlap percentage for the window here
         };
     }, [parameters]);
 
@@ -194,6 +195,8 @@ export default function SoundEventAnnotationSpectrogramView({
         () => getSoundEventCoordinates(soundEventAnnotation),
         [soundEventAnnotation]
     );
+
+    const displayCoords = useMemo(() => window, [window]);
 
     const dimensions = useMemo(
         () => calculateSpectrogramDimensions(window, selectedParameters, samplerate),
@@ -233,14 +236,14 @@ export default function SoundEventAnnotationSpectrogramView({
             <div className="flex">
                 <div className="flex flex-col justify-between pr-2 text-right w-16">
                     <span className="text-xs text-stone-600">
-                        {soundEventCoords.freq.max > 0 ? (soundEventCoords.freq.max / 1000).toFixed(2) + " kHz" : ""}
+                        {displayCoords.freq.max > 0 ? (displayCoords.freq.max / 1000).toFixed(2) + " kHz" : ""}
                     </span>
                     <span className="text-xs text-stone-600 text-center">
-                        {soundEventCoords.freq.max > soundEventCoords.freq.min ? 
-                            ((soundEventCoords.freq.max - soundEventCoords.freq.min) / 1000).toFixed(2) + " kHz" : ""}
+                        {displayCoords.freq.max > displayCoords.freq.min ? 
+                            ((displayCoords.freq.max - displayCoords.freq.min) / 1000).toFixed(2) + " kHz" : ""}
                     </span>
                     <span className="text-xs text-stone-600">
-                        {soundEventCoords.freq.min > 0 ? (soundEventCoords.freq.min / 1000).toFixed(2) + " kHz" : ""}
+                        {displayCoords.freq.min > 0 ? (displayCoords.freq.min / 1000).toFixed(2) + " kHz" : ""}
                     </span>
                 </div>
 
