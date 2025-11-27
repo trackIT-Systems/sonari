@@ -30,7 +30,7 @@ def get_or_create_admin_user(bind):
     
     # Check if admin user exists
     result = bind.execute(
-        sa.text("SELECT id FROM user WHERE username = 'admin'")
+        sa.text("SELECT id FROM \"user\" WHERE username = 'admin'")
     )
     admin_user = result.fetchone()
     
@@ -46,7 +46,7 @@ def get_or_create_admin_user(bind):
     print(f"  Creating admin user (id: {admin_id})", flush=True)
     bind.execute(
         sa.text("""
-            INSERT INTO user (id, email, username, hashed_password, is_active, is_superuser, is_verified)
+            INSERT INTO \"user\" (id, email, username, hashed_password, is_active, is_superuser, is_verified)
             VALUES (:id, :email, :username, :hashed_password, :is_active, :is_superuser, :is_verified)
         """),
         {
