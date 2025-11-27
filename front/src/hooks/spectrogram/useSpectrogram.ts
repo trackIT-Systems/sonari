@@ -93,13 +93,14 @@ function hoverCallback(event: MouseEvent, canvas: HTMLCanvasElement, window: Spe
   const mouseX = event.clientX - rect.left;
   const mouseY = event.clientY - rect.top;
 
-  // Calculate the scaling factors
-  const scaleX = (window.time.max - window.time.min) / canvas.width;
-  const scaleY = (window.freq.max - window.freq.min) / canvas.height;
+  // Calculate the scaling factors using the rendered dimensions (rect), not buffer dimensions (canvas)
+  // This accounts for CSS scaling applied to the canvas
+  const scaleX = (window.time.max - window.time.min) / rect.width;
+  const scaleY = (window.freq.max - window.freq.min) / rect.height;
 
   // Translate canvas coordinates to custom bounding box coordinates
   const time = Math.round((mouseX * scaleX + window.time.min) * 1000);
-  const freq = Math.round(((canvas.height - mouseY) * scaleY + window.freq.min) / 1000); // The y-axis needs to be inverted...
+  const freq = Math.round(((rect.height - mouseY) * scaleY + window.freq.min) / 1000); // The y-axis needs to be inverted...
 
   var popover = document.getElementById("popover-id");
   if (popover != null) {
