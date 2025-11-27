@@ -89,16 +89,7 @@ export default function Page() {
     }
   }, []);
 
-  const parameters = useStore((state) => {
-    try {
-      const settings = state.spectrogramSettings;
-      // Validate on access
-      SpectrogramParametersSchema.parse(settings);
-      return settings;
-    } catch (error) {
-      return DEFAULT_SPECTROGRAM_PARAMETERS;
-    }
-  });
+  const parameters = useStore((state) => state.spectrogramSettings);
 
   const setParameters = useStore((state) => state.setSpectrogramSettings);
 

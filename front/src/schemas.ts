@@ -309,6 +309,7 @@ export const SpectrogramWindowSchema = z.object({
 export const SpectrogramParametersSchema = z
   .object({
     resample: z.boolean().default(false),
+    auto_stft: z.boolean().default(true),
     samplerate: z.coerce
       .number()
       .positive()

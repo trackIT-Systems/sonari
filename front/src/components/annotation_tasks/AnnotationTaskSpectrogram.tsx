@@ -1,6 +1,6 @@
 import { useCallback, useMemo, useRef, useState, useEffect } from "react";
 
-import { DEFAULT_SPECTROGRAM_PARAMETERS } from "@/api/spectrograms";
+import { DEFAULT_SPECTROGRAM_PARAMETERS, applyAutoSTFT } from "@/api/spectrograms";
 import AnnotationControls from "@/components/annotation_tasks/AnnotationControls";
 import MeasurementControls from "./MeasurementControls";
 import Player from "@/components/audio/Player";
@@ -102,6 +102,12 @@ export default function AnnotationTaskSpectrogram({
   
   // Extract recording with null safety
   const { recording, start_time: taskStartTime, end_time: taskEndTime } = annotationTask!;
+
+  // Apply auto STFT calculation to parameters if enabled
+  const effectiveParameters = useMemo(() => {
+    if (!recording) return parameters;
+    return applyAutoSTFT(parameters, recording.samplerate);
+  }, [parameters, recording]);
   
   const taskSoundEventAnnotations = useMemo(
     () => annotationTask?.sound_event_annotations ?? [],
@@ -115,13 +121,13 @@ export default function AnnotationTaskSpectrogram({
    */
   const taskBounds = useMemo<SpectrogramWindow>(() => {
     const baseSamplerate = recording!.samplerate;
-    const effectiveSamplerate = clampSamplerate(parameters, baseSamplerate)
+    const samplerate = clampSamplerate(effectiveParameters, baseSamplerate)
     
     return {
       time: { min: taskStartTime, max: taskEndTime },
-      freq: { min: 0, max: effectiveSamplerate / 2 },
+      freq: { min: 0, max: samplerate / 2 },
     };
-  }, [taskStartTime, taskEndTime, parameters, recording]);
+  }, [taskStartTime, taskEndTime, effectiveParameters, recording]);
 
   /**
    * Initial window - Determines the starting view when component mounts.
@@ -131,24 +137,24 @@ export default function AnnotationTaskSpectrogram({
   const initial = useMemo(
     () => {
       const baseSamplerate = recording!.samplerate;
-      const effectiveSamplerate = clampSamplerate(parameters, baseSamplerate)
+      const samplerate = clampSamplerate(effectiveParameters, baseSamplerate)
       if (withSpectrogram) {
         
         const _initial = getInitialViewingWindow({
           startTime: taskStartTime,
           endTime: taskEndTime,
-          samplerate: effectiveSamplerate,
-          parameters,
+          samplerate: samplerate,
+          parameters: effectiveParameters,
         })
         return _initial
       } else {
         return {
           time: { min: taskStartTime, max: taskEndTime },
-          freq: { min: 0, max: effectiveSamplerate / 2 },
+          freq: { min: 0, max: samplerate / 2 },
         }
       }
     },
-    [recording, taskStartTime, taskEndTime, withSpectrogram, parameters],
+    [recording, taskStartTime, taskEndTime, withSpectrogram, effectiveParameters],
   );
 
   const getPlaybackBounds = useCallback(() => {
@@ -227,7 +233,7 @@ export default function AnnotationTaskSpectrogram({
     samplerate: recording!.samplerate,
     bounds: taskBounds,
     initial,
-    parameters: parameters,
+    parameters: effectiveParameters,
     onDoubleClick: handleDoubleClick,
     onModeChange: handleSpectrogramModeChange,
     enabled: !isAnnotating && !audio.isPlaying,

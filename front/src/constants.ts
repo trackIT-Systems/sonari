@@ -17,7 +17,17 @@ export const DEFAULT_CMAP = "plasma";
 /* Available options for STFT computation
  */
 export const WINDOW_SIZE_OPTIONS = [256, 512, 1024, 2048, 4096];
-export const OVERLAP_OPTIONS = [50, 75, 87.5, 90, 92.5, 95, 96, 97, 98];
+export const OVERLAP_OPTIONS = [75, 96, 98];
+
+/* Auto STFT calculation constants
+ * Base case: 500 kHz sample rate → 1024 samples window, 96% overlap
+ * This corresponds to ~0.002048 seconds audio duration per window
+ */
+export const AUTO_STFT_BASE_SAMPLERATE = 500_000;
+export const AUTO_STFT_BASE_WINDOW_SIZE = 1024;
+export const AUTO_STFT_BASE_OVERLAP = 96;
+export const AUTO_STFT_TARGET_DURATION = AUTO_STFT_BASE_WINDOW_SIZE / AUTO_STFT_BASE_SAMPLERATE; // 0.002048 seconds
+export const AUTO_STFT_MIN_WINDOW_SIZE = 256;
 
 /** Absolute maximum frequency that can be handled by the app */
 export const MAX_FREQ = 500_000;

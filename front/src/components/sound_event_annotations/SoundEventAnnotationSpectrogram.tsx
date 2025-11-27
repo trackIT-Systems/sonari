@@ -1,6 +1,7 @@
 import { useRef, useMemo } from "react";
 import useCanvas from "@/hooks/draw/useCanvas";
 import useSpectrogram from "@/hooks/spectrogram/useSpectrogram";
+import { applyAutoSTFT } from "@/api/spectrograms";
 import type { AnnotationTask, SoundEventAnnotation, SpectrogramParameters } from "@/types";
 import { H4 } from "../Headings";
 import { ExplorationIcon } from "../icons";
@@ -178,12 +179,9 @@ export default function SoundEventAnnotationSpectrogramView({
     const canvasRef = useRef<HTMLCanvasElement>(null);
 
     const selectedParameters = useMemo(() => {
-        return {
-            ...parameters,
-            //overlap_percent: 98,
-            //dynamically find the best overlap percentage for the window here
-        };
-    }, [parameters]);
+        // Apply auto STFT calculation if enabled
+        return applyAutoSTFT(parameters, samplerate);
+    }, [parameters, samplerate]);
 
 
     const window = useMemo(
