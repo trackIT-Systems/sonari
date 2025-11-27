@@ -24,6 +24,8 @@ from sonari.schemas.annotation_tasks import (
     AnnotationTask,
     AnnotationTaskCreate,
     AnnotationTaskTag,
+    AnnotationTaskIndex,
+    AnnotationTaskStats,
     AnnotationTaskUpdate,
 )
 from sonari.schemas.audio import AudioParameters
@@ -73,6 +75,8 @@ __all__ = [
     "AnnotationTaskCreate",
     "AnnotationTaskTag",
     "AnnotationTaskUpdate",
+    "AnnotationTaskIndex",
+    "AnnotationTaskStats",
     "AudioParameters",
     "Dataset",
     "DatasetCreate",
