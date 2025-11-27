@@ -82,7 +82,7 @@ async def stream_recording_audio(
 
     if is_chrome_based:
         # Chrome/Chromium: 206 for partial chunks, 200 for the last chunk
-        status_code = 206 if is_last_chunk else 206
+        status_code = 200 if is_last_chunk else 206
     else:
         # Firefox/Safari: Always use 200 for better compatibility
         status_code = 206
