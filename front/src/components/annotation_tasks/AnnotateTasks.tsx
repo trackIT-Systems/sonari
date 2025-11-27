@@ -497,6 +497,7 @@ export default function AnnotateTasks({
           ) : (
             <div className="w-[35rem] flex-none mt-5">
               <SelectedSoundEventAnnotation
+                key={selectedSoundEventAnnotation.id}
                 annotationTask={annotationTask}
                 samplerate={annotationTask.recording!.samplerate}
                 soundEventAnnotation={selectedSoundEventAnnotation}
