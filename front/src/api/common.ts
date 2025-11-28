@@ -2,7 +2,7 @@
 import axios from "axios";
 import { z } from "zod";
 
-const HOST = "http://localhost:5000"; //process.env.NEXT_PUBLIC_SONARI_FOLDER ?? "";
+const HOST = process.env.NEXT_PUBLIC_SONARI_FOLDER ?? "";
 
 const GetManySchema = z.object({
   limit: z.number().int().gte(-1).optional(),

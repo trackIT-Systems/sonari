@@ -7,6 +7,9 @@ WORKDIR /front/
 COPY front/ /front/
 
 ARG SONARI_FOLDER
+ARG NEXT_PUBLIC_APP_VERSION
+# Set as ENV so it's available when next.config.js runs
+ENV NEXT_PUBLIC_APP_VERSION=$NEXT_PUBLIC_APP_VERSION
 RUN echo NEXT_PUBLIC_SONARI_FOLDER=$SONARI_FOLDER > /front/.env.local
 RUN echo NEXT_TELEMETRY_DISABLED=1 >> /front/.env.local
 
