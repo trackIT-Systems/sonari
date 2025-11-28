@@ -1,5 +1,6 @@
 # == Build Front End
 FROM node:current-alpine AS web_builder
+RUN apk add --no-cache git
 RUN mkdir /statics
 
 WORKDIR /front/
