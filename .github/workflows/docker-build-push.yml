@@ -57,6 +57,7 @@ jobs:
         build-args: |
           BUILDKIT_INLINE_CACHE=1
           SONARI_FOLDER=${{ vars.SONARI_FOLDER || '/sonari' }}
+          NEXT_PUBLIC_APP_VERSION=${{ steps.tag.outputs.tag }}
         provenance: false
         sbom: false
 
