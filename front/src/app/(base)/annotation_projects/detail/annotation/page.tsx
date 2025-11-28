@@ -1,6 +1,6 @@
 "use client";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { useCallback, useContext, useMemo, useEffect } from "react";
+import { useCallback, useContext, useMemo } from "react";
 import toast from "react-hot-toast";
 import { HOST } from "@/api/common";
 import { AxiosError } from "axios";
@@ -12,7 +12,6 @@ import { CompleteIcon, NeedsReviewIcon, HelpIcon, VerifiedIcon } from "@/compone
 import useAnnotationTask from "@/hooks/api/useAnnotationTask";
 import useStore from "@/store";
 import { changeURLParam } from "@/utils/url";
-import { DEFAULT_SPECTROGRAM_PARAMETERS } from "@/api/spectrograms";
 import { SpectrogramParametersSchema } from "@/schemas";
 
 import AnnotationProjectContext from "../context";
@@ -69,34 +68,9 @@ export default function Page() {
     updateSoundEventAnnotation,
   } = annotationTaskQuery;
 
-  // Safe access to store with error handling
-  const getSafeSpectrogramSettings = useCallback(() => {
-    try {
-      const settings = useStore.getState().spectrogramSettings;
-      // Validate the settings using the schema
-      SpectrogramParametersSchema.parse(settings);
-      return settings;
-    } catch (error) {
-      // Reset to default parameters
-      try {
-        useStore.getState().setSpectrogramSettings(DEFAULT_SPECTROGRAM_PARAMETERS);
-        // Clear the corrupted data from localStorage
-        localStorage.removeItem("sonari-storage");
-        toast.error("Invalid spectrogram settings detected. Reset to defaults.");
-      } catch (resetError) {
-      }
-      return DEFAULT_SPECTROGRAM_PARAMETERS;
-    }
-  }, []);
-
   const parameters = useStore((state) => state.spectrogramSettings);
 
   const setParameters = useStore((state) => state.setSpectrogramSettings);
-
-  // Validate and fix store on mount
-  useEffect(() => {
-    getSafeSpectrogramSettings();
-  }, [getSafeSpectrogramSettings]);
 
   const onParameterSave = useCallback(
     (parameters: SpectrogramParameters) => {

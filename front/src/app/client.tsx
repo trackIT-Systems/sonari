@@ -1,6 +1,8 @@
 "use client";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import type { ReactNode } from "react";
+import { useEffect, type ReactNode } from "react";
+
+import { checkVersionAndClearCaches } from "@/utils/version";
 
 // Configure QueryClient with sensible defaults to prevent unnecessary re-renders
 const queryClient = new QueryClient({
@@ -23,6 +25,15 @@ const queryClient = new QueryClient({
 });
 
 export function ClientProvider({ children }: { children: ReactNode }) {
+  useEffect(() => {
+    // Check if app version changed and clear caches if needed
+    const shouldReload = checkVersionAndClearCaches();
+    if (shouldReload) {
+      // Force reload to get fresh assets after cache clear
+      window.location.reload();
+    }
+  }, []);
+
   return (
     <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
   );
