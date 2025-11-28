@@ -13,7 +13,8 @@ function getAppVersion() {
   }
   // 2. Git describe (for local dev - shows tag + commits since)
   try {
-    return execSync("git describe --tags --always").toString().trim();
+    // stdio: "pipe" suppresses error output when git fails (e.g., no .git directory in Docker)
+    return execSync("git describe --tags --always", { stdio: "pipe" }).toString().trim();
   } catch {
     // 3. Fallback to package.json version
     return pkgVersion;
