@@ -14,17 +14,20 @@ from sqlalchemy.engine import URL, make_url
 from sqlalchemy.ext.asyncio import (
     AsyncEngine,
     AsyncSession,
-    async_sessionmaker,  # type: ignore
+    async_sessionmaker,
     create_async_engine,
 )
+from sqlalchemy.pool import NullPool
 
 from sonari import models
 from sonari.system.settings import Settings
 
 logger = logging.getLogger("sonari.database")
 
-# Global engine instance (singleton pattern)
+# Global engine and sessionmaker instances (singleton pattern)
 _async_engine: AsyncEngine | None = None
+_async_sessionmaker: async_sessionmaker[AsyncSession] | None = None
+_engine_url: str | None = None  # Track URL to detect mismatches
 
 __all__ = [
     "create_async_db_engine",
@@ -151,17 +154,13 @@ def create_async_db_engine(database_url: str | URL) -> AsyncEngine:
     if backend == "sqlite":
         return create_async_engine(
             database_url,
-            pool_size=5,
-            max_overflow=10,
-            pool_timeout=30,
-            pool_recycle=3600,
-            pool_pre_ping=True,
+            poolclass=NullPool,  # aiosqlite doesn't support connection pooling
             connect_args={
                 "check_same_thread": False,
                 "timeout": 30,
             },
         )
-    
+
     if backend == "postgresql":
         return create_async_engine(
             database_url,
@@ -171,6 +170,8 @@ def create_async_db_engine(database_url: str | URL) -> AsyncEngine:
             pool_recycle=1800,
             pool_pre_ping=True,
         )
+
+    raise ValueError(f"Unsupported database backend: {backend}. Supported backends are: sqlite, postgresql")
 
 
 def create_sync_db_engine(database_url: str | URL) -> Engine:
@@ -196,26 +197,37 @@ def create_sync_db_engine(database_url: str | URL) -> Engine:
 
 def get_or_create_async_engine(database_url: str | URL) -> AsyncEngine:
     """Get or create a singleton async database engine.
-    
+
     This function ensures only one engine instance exists per database URL,
     preventing connection leaks and file descriptor exhaustion.
     """
-    global _async_engine
-    
-    if _async_engine is None:
-        _async_engine = create_async_db_engine(database_url)
-    
+    global _async_engine, _async_sessionmaker, _engine_url
+
+    if not isinstance(database_url, URL):
+        database_url = make_url(database_url)
+    url_str = database_url.render_as_string(hide_password=True)
+
+    if _async_engine is not None:
+        if _engine_url != url_str:
+            logger.warning(f"Engine already exists for {_engine_url}, ignoring request for {url_str}")
+        return _async_engine
+
+    _async_engine = create_async_db_engine(database_url)
+    _async_sessionmaker = async_sessionmaker(_async_engine, expire_on_commit=False)
+    _engine_url = url_str
     return _async_engine
 
 
 async def dispose_async_engine() -> None:
     """Dispose of the global async engine and reset it."""
-    global _async_engine
-    
+    global _async_engine, _async_sessionmaker, _engine_url
+
     if _async_engine is not None:
         logger.info("Disposing async database engine")
         await _async_engine.dispose()
         _async_engine = None
+        _async_sessionmaker = None
+        _engine_url = None
 
 
 def create_alembic_config(db_url: str | URL, is_async: bool = True) -> Config:
@@ -298,12 +310,20 @@ def create_or_update_db(conn: Connection, cfg: Config) -> None:
 
 @asynccontextmanager
 async def get_async_session(
-    engine: AsyncEngine,
+    engine: AsyncEngine | None = None,
 ) -> AsyncGenerator[AsyncSession, None]:
     """Get a session to the database asynchronously."""
-    async_session_maker = async_sessionmaker(engine, expire_on_commit=False)
-    async with async_session_maker() as session:
-        yield session
+    global _async_sessionmaker
+
+    if engine is None and _async_sessionmaker is not None:
+        # Use the singleton sessionmaker
+        async with _async_sessionmaker() as session:
+            yield session
+    else:
+        # Fallback for explicit engine (e.g., init_database)
+        session_maker = async_sessionmaker(engine, expire_on_commit=False)
+        async with session_maker() as session:
+            yield session
 
 
 async def init_database(settings: Settings) -> None:
@@ -311,6 +331,9 @@ async def init_database(settings: Settings) -> None:
     db_url = get_database_url(settings)
     engine = create_async_db_engine(db_url)
 
-    async with engine.begin() as conn:
-        cfg = create_alembic_config(db_url, is_async=False)
-        await conn.run_sync(create_or_update_db, cfg)
+    try:
+        async with engine.begin() as conn:
+            cfg = create_alembic_config(db_url, is_async=False)
+            await conn.run_sync(create_or_update_db, cfg)
+    finally:
+        await engine.dispose()

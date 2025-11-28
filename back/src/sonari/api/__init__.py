@@ -17,7 +17,7 @@ __all__ = [
     "annotation_projects",
     "annotation_tasks",
     "compute_spectrogram",
-    "compute_waveforms",
+    "compute_waveform",
     "create_session",
     "datasets",
     "find_feature",
