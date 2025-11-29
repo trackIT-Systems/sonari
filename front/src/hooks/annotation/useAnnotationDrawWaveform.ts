@@ -1,9 +1,10 @@
 import { useCallback } from "react";
 
-import { BLUE, ORANGE, GREEN, RED } from "@/draw/styles";
-import { scaleTimeToViewport } from "@/utils/geometry";
+import { BLUE, GREEN } from "@/draw/styles";
+import { scaleTimeToWindow } from "@/utils/geometry";
 
 import type { SoundEventAnnotation, SpectrogramWindow } from "@/types";
+import { SPECTROGRAM_CANVAS_DIMENSIONS } from "@/constants";
 
 // Same styles as spectrogram but adapted for waveform
 const IDLE_STYLE = {
@@ -23,7 +24,7 @@ const EDIT_STYLE = {
 
 // Extract time bounds from annotation geometry
 function getAnnotationTimeBounds(annotation: SoundEventAnnotation): [number, number] {
-  const { geometry, geometry_type } = annotation.sound_event;
+  const { geometry, geometry_type } = annotation;
   
   switch (geometry_type) {
     case "TimeInterval":
@@ -73,31 +74,27 @@ function applyStyle(ctx: CanvasRenderingContext2D, style: any) {
 }
 
 export default function useAnnotationDrawWaveform({
-  viewport,
-  annotations,
-  mode = "idle",
-  selectedAnnotation,
+  window,
+  soundEventAnnotations,
+  selectedSoundEventAnnotation,
 }: {
-  viewport: SpectrogramWindow;
-  annotations: SoundEventAnnotation[];
-  mode?: string;
-  selectedAnnotation?: SoundEventAnnotation | null;
+  window: SpectrogramWindow;
+  soundEventAnnotations: SoundEventAnnotation[];
+  selectedSoundEventAnnotation?: SoundEventAnnotation | null;
 }) {
   const draw = useCallback(
     (ctx: CanvasRenderingContext2D) => {
-      const { width, height } = ctx.canvas;
-      
-      for (const annotation of annotations) {
-        const [startTime, endTime] = getAnnotationTimeBounds(annotation);
+      for (const soundEventAnnotation of soundEventAnnotations) {
+        const [startTime, endTime] = getAnnotationTimeBounds(soundEventAnnotation);
         
         // Convert time bounds to x coordinates
-        const startX = scaleTimeToViewport(startTime, viewport, width);
-        const endX = scaleTimeToViewport(endTime, viewport, width);
+        const startX = scaleTimeToWindow(startTime, window);
+        const endX = scaleTimeToWindow(endTime, window);
         
         // Determine style based on annotation state and mode
         let style = IDLE_STYLE;
         
-        if (selectedAnnotation && selectedAnnotation.uuid === annotation.uuid) {
+        if (selectedSoundEventAnnotation && selectedSoundEventAnnotation.id === soundEventAnnotation.id) {
           style = EDIT_STYLE;
         }
         
@@ -109,18 +106,18 @@ export default function useAnnotationDrawWaveform({
           // Point in time - draw a vertical line
           ctx.beginPath();
           ctx.moveTo(startX, 0);
-          ctx.lineTo(startX, height);
+          ctx.lineTo(startX, SPECTROGRAM_CANVAS_DIMENSIONS.height);
           ctx.stroke();
         } else {
           // Time interval - draw a rectangle spanning the full height
           const rectWidth = Math.max(endX - startX, 1); // Minimum 1px width
           
           // Fill the rectangle
-          ctx.fillRect(startX, 0, rectWidth, height);
+          ctx.fillRect(startX, 0, rectWidth, SPECTROGRAM_CANVAS_DIMENSIONS.height);
           
           // Draw border
           ctx.globalAlpha = 1; // Full opacity for border
-          ctx.strokeRect(startX, 0, rectWidth, height);
+          ctx.strokeRect(startX, 0, rectWidth, SPECTROGRAM_CANVAS_DIMENSIONS.height);
         }
       }
       
@@ -128,7 +125,7 @@ export default function useAnnotationDrawWaveform({
       ctx.setLineDash([]);
       ctx.globalAlpha = 1;
     },
-    [viewport, annotations, selectedAnnotation],
+    [window, soundEventAnnotations, selectedSoundEventAnnotation],
   );
 
   return draw;

@@ -32,22 +32,14 @@ Window = Literal[
 class STFTParameters(BaseModel):
     """Parameters for STFT computation."""
 
-    window_size: float = 0.025
-    """Size of FFT window in seconds."""
+    window_size_samples: int = 1024
+    """Size of FFT window in samples."""
 
-    hop_size: float = Field(default=0.5, gt=0.0, le=1.0)
-    """Hop size as a fraction of window size."""
+    overlap_percent: float = Field(default=75.0, ge=1.0, le=99.0)
+    """Overlap percentage between consecutive windows."""
 
     window: Window = "hann"
     """Window function."""
-
-    @field_validator("window_size", "hop_size")
-    @classmethod
-    def check_positive(cls, value):
-        """Check that window size and hop size are positive."""
-        if value <= 0:
-            raise ValueError("Window size and hop size must be positive.")
-        return value
 
 
 Scale = Literal["amplitude", "power", "dB"]
@@ -80,11 +72,11 @@ class AmplitudeParameters(BaseModel):
     actually is, since the maximum amplitude value in the spectrogram may be
     much lower than the maximum possible amplitude value of the recorder.
 
-    Also, when visualizing spectrograms in clips, the amplitude scale will be
-    relative to the maximum amplitude value in the clip, and not the maximum
+    Also, when visualizing spectrograms in annotation tasks, the amplitude scale will be
+    relative to the maximum amplitude value in the annotation task, and not the maximum
     of the recording as a whole. This can make it difficult to compare
-    amplitude levels across clips, and will create artificial seams between
-    clips when visualizing spectrograms in recordings.
+    amplitude levels across annotation tasks, and will create artificial seams between
+    annotation tasks when visualizing spectrograms in recordings.
     """
 
     @field_validator("min_dB", "max_dB")

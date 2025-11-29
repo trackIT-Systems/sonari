@@ -1,20 +1,18 @@
 """Database query construction utilities for exports."""
 
-from uuid import UUID
-
 from sqlalchemy import and_, or_, select
-from sqlalchemy.orm import joinedload
+from sqlalchemy.orm import joinedload, selectinload
 
 from sonari import api, models
 from sonari.routes.dependencies import Session
 
 
 async def resolve_project_ids(
-    session: Session, annotation_project_uuids: list[UUID]
+    session: Session, annotation_project_ids: list[int]
 ) -> tuple[list[int], dict[int, models.AnnotationProject]]:
-    """Resolve annotation project UUIDs to IDs and return both lists and mapping."""
+    """Resolve annotation project IDs to project objects and return both lists and mapping."""
     projects = await api.annotation_projects.get_many(
-        session, limit=-1, filters=[models.AnnotationProject.uuid.in_(annotation_project_uuids)]
+        session, limit=-1, filters=[models.AnnotationProject.id.in_(annotation_project_ids)]
     )
     project_list = projects[0]
     if not project_list:
@@ -70,11 +68,12 @@ async def get_filtered_annotation_tasks(
         select(models.AnnotationTask)
         .where(and_(*filters))
         .options(
-            joinedload(models.AnnotationTask.clip_annotation)
-            .joinedload(models.ClipAnnotation.clip)
-            .joinedload(models.Clip.recording)
+            joinedload(models.AnnotationTask.recording)
             .selectinload(models.Recording.recording_datasets)
-            .joinedload(models.DatasetRecording.dataset)
+            .joinedload(models.DatasetRecording.dataset),
+            selectinload(models.AnnotationTask.status_badges).joinedload(models.AnnotationStatusBadge.user),
+            selectinload(models.AnnotationTask.sound_event_annotations).selectinload(models.SoundEventAnnotation.tags),
+            selectinload(models.AnnotationTask.notes),
         )
     )
 

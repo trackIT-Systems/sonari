@@ -170,6 +170,7 @@ class IntegerFilter(Filter):
     ge: int | None = None
     lt: int | None = None
     gt: int | None = None
+    isin: list[int] | None = None
 
 
 def integer_filter(

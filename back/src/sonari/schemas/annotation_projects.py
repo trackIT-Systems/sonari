@@ -1,16 +1,20 @@
 """Schemas for Annotation Projects."""
 
-from uuid import UUID
+from typing import TYPE_CHECKING, Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 
 from sonari.schemas.base import BaseSchema
 from sonari.schemas.tags import Tag
 
+if TYPE_CHECKING:
+    from sonari.schemas.annotation_tasks import AnnotationTask
+
 __all__ = [
-    "AnnotationProjectCreate",
     "AnnotationProject",
+    "AnnotationProjectCreate",
     "AnnotationProjectUpdate",
+    "AnnotationProjectProgress",
 ]
 
 
@@ -30,10 +34,7 @@ class AnnotationProjectCreate(BaseModel):
 class AnnotationProject(BaseSchema):
     """Schema for an annotation project."""
 
-    uuid: UUID
-    """UUID of the annotation project."""
-
-    id: int = Field(..., exclude=True)
+    id: int
     """Database ID of the annotation project."""
 
     name: str
@@ -45,8 +46,11 @@ class AnnotationProject(BaseSchema):
     annotation_instructions: str | None = None
     """Project instructions for annotating."""
 
-    tags: list[Tag] = Field(default_factory=list)
+    tags: Optional[list[Tag]] = None
     """Tags to be used throughout the annotation project."""
+
+    annotation_tasks: Optional[list["AnnotationTask"]] = None
+    """Annotation tasks related to this project the annotation project."""
 
 
 class AnnotationProjectUpdate(BaseModel):
@@ -60,3 +64,25 @@ class AnnotationProjectUpdate(BaseModel):
 
     annotation_instructions: str | None = None
     """Project instructions for annotating."""
+
+
+class AnnotationProjectProgress(BaseModel):
+    """Schema for annotation project progress statistics."""
+
+    total: int
+    """Total number of tasks in the project."""
+
+    verified: int
+    """Number of tasks with verified status."""
+
+    rejected: int
+    """Number of tasks with rejected status."""
+
+    completed: int
+    """Number of tasks with completed status."""
+
+    assigned: int
+    """Number of tasks with assigned status."""
+
+    pending: int
+    """Number of tasks with no done status (pending or only assigned)."""

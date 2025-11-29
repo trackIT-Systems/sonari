@@ -12,16 +12,6 @@ import sonari.exceptions as exceptions
 import sonari.models as models
 import sonari.schemas as schemas
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import URL 
-
-SONARI_PSQL_URL: URL = URL.create(
-    "postgresql+asyncpg",
-    host=os.getenv("SONARI_DB_HOST", "localhost"),
-    #port=int(os.getenv("SONARI_DB_PORT", 5432)),
-    username=os.getenv("SONARI_DB_USERNAME", "ts_sonari"),
-    password=os.getenv("SONARI_DB_PASSWORD", "ts_sonari"),
-    database=os.getenv("SONARI_DB_NAME", "sonari"),
-)
 
 ANNOTATION_PROJECT_NAME_TEMPLATE = "{labeler}{project_name}{detector}{dataset_name}"
 
@@ -169,7 +159,7 @@ async def insert(
         print(recording_path)
         print(dataset_name)
 
-        async with api.create_session("sqlite://:@/sonari.db") as session:
+        async with api.create_session("sqlite://:@//Users/artur/Documents/Arbeit/sonari/back/sonari.db") as session:
             dataset: schemas.Dataset = await _create_dataset(session, dataset_name, audio_base_path)
 
             recording: schemas.Recording = await _add_file_to_dataset(
@@ -217,6 +207,7 @@ if __name__ == "__main__":
         exit(2)
 
     wav_files: list[str] = glob.glob(f"{base_path}/**/*.wav", recursive=True)
+    flac_files: list[str] = glob.glob(f"{base_path}/**/*.flac", recursive=True)
 
-    for wav_file in wav_files:
-        asyncio.run(insert(wav_file))
+    for audio_file in wav_files + flac_files:
+        asyncio.run(insert(audio_file))

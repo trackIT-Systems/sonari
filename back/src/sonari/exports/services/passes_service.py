@@ -5,7 +5,6 @@ import logging
 from collections import defaultdict
 from io import StringIO
 from typing import Any, Dict, List, Tuple
-from uuid import UUID
 
 from ..charts import generate_time_buckets, generate_time_series_chart
 from ..charts.chart_utils import convert_time_period_to_seconds
@@ -20,7 +19,7 @@ class PassesService(BaseExportService):
 
     async def export_passes(
         self,
-        annotation_project_uuids: List[UUID],
+        annotation_project_ids: List[int],
         tags: List[str],
         statuses: List[str] | None = None,
         event_count: int = ExportConstants.DEFAULT_EVENT_COUNT,
@@ -36,7 +35,7 @@ class PassesService(BaseExportService):
         logger = logging.getLogger(__name__)
 
         # Get the projects and their IDs
-        project_ids, projects_by_id = await self.resolve_projects(annotation_project_uuids)
+        project_ids, projects_by_id = await self.resolve_projects(annotation_project_ids)
 
         # Convert time period to seconds
         period_seconds = convert_time_period_to_seconds(
@@ -169,7 +168,7 @@ class PassesService(BaseExportService):
                 # Find events in this time bucket
                 bucket_events = [event for event in species_events if bucket_start <= event["datetime"] < bucket_end]
 
-                # Group events by recording/clip filename and status
+                # Group events by recording filename and status
                 events_by_recording_status = defaultdict(lambda: defaultdict(list))
                 for event in bucket_events:
                     recording_filename = event["recording_filename"]
@@ -226,7 +225,7 @@ class PassesService(BaseExportService):
         passes_data = []
 
         for species_tag, species_events in events_by_species.items():
-            # Group events by recording/clip filename and status
+            # Group events by recording filename and status
             events_by_recording_status = defaultdict(lambda: defaultdict(list))
             for event in species_events:
                 recording_filename = event["recording_filename"]

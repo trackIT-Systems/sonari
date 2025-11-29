@@ -1,150 +1,350 @@
-import type { SpectrogramWindow } from "@/types";
+import type { SpectrogramWindow, WaveformWindow } from "@/types";
+import type { Chunk } from "@/utils/chunks";
 
 const FONT_SIZE = 30;
 const FONT_FAMILY = "system-ui";
 const COLORS = {
   ERROR: "#dc3545",
+  LOADING: "#d6d3d1",
   BACKGROUND: "#f8f9fa",
   FOREGROUND: "#212529",
 };
 
-/* Break a text into multiple lines of a given maximum width
+/**
+ * Compute the intersection of two time-frequency windows
  */
-export function getLines(
-  ctx: CanvasRenderingContext2D,
-  text: string,
-  maxWidth: number,
-): string[] {
-  const words = text.split(" ");
-  const lines = [];
-  let currentLine = words[0];
+function intersectWindows(
+  window1: SpectrogramWindow,
+  window2: SpectrogramWindow,
+): SpectrogramWindow | null {
+  const timeMin = Math.max(window1.time.min, window2.time.min);
+  const timeMax = Math.min(window1.time.max, window2.time.max);
+  const freqMin = Math.max(window1.freq.min, window2.freq.min);
+  const freqMax = Math.min(window1.freq.max, window2.freq.max);
 
-  for (let i = 1; i < words.length; i += 1) {
-    const word = words[i];
-    const { width } = ctx.measureText(`${currentLine} ${word}`);
-    if (width < maxWidth) {
-      currentLine += ` ${word}`;
-    } else {
-      lines.push(currentLine);
-      currentLine = word;
-    }
+  if (timeMin >= timeMax || freqMin >= freqMax) return null;
+
+  return {
+    time: { min: timeMin, max: timeMax },
+    freq: { min: freqMin, max: freqMax },
+  };
+}
+
+/**
+ * Get pixel position of a viewport within bounds
+ * Supports both 2D (spectrogram with time+freq) and 1D (waveform with time only)
+ */
+function getViewportPosition({
+  width,
+  height,
+  viewport,
+  bounds,
+}: {
+  width: number;
+  height: number;
+  viewport: SpectrogramWindow | { time: { min: number; max: number } };
+  bounds: SpectrogramWindow | { time: { min: number; max: number } };
+}): {
+  left: number;
+  width: number;
+  top: number;
+  height: number;
+} {
+  const clamp = (value: number, min: number, max: number) =>
+    Math.min(Math.max(value, min), max);
+
+  // Calculate time/horizontal position (always present)
+  const left =
+    (viewport.time.min - bounds.time.min) / (bounds.time.max - bounds.time.min);
+  const right =
+    (viewport.time.max - bounds.time.min) / (bounds.time.max - bounds.time.min);
+
+  // Calculate frequency/vertical position (only for 2D spectrograms)
+  let top = 0;
+  let bottom = 1;
+  if ('freq' in viewport && 'freq' in bounds) {
+    bottom =
+      (bounds.freq.max - viewport.freq.min) / (bounds.freq.max - bounds.freq.min);
+    top =
+      (bounds.freq.max - viewport.freq.max) / (bounds.freq.max - bounds.freq.min);
   }
-  lines.push(currentLine);
-  return lines;
+
+  return {
+    top: clamp(top * height, 0, height),
+    left: clamp(left * width, 0, width),
+    height: clamp((bottom - top) * height, 0, height),
+    width: clamp((right - left) * width, 0, width),
+  };
 }
 
-interface DrawTextConfig {
-  maxWidth?: number;
-  fontSize?: number;
-  color?: string;
-  fontAlpha?: number;
-  fontFamily?: string;
-  textAlign?: CanvasTextAlign;
-  textBaseline?: CanvasTextBaseline;
-}
 
-interface CanvasPosition {
-  x: number;
-  y: number;
-}
+/**
+ * Draw a single chunk with proper stitching
+ */
+function drawChunk({
+  ctx,
+  image,
+  viewport,
+  chunkBounds,
+  buffer,
+  isLoading,
+  isError,
+}: {
+  ctx: CanvasRenderingContext2D;
+  image: HTMLImageElement | null;
+  viewport: SpectrogramWindow;
+  chunkBounds: SpectrogramWindow;
+  buffer: SpectrogramWindow;
+  isLoading: boolean;
+  isError: boolean;
+}) {
+  const intersection = intersectWindows(viewport, chunkBounds);
 
-export function drawText(
-  ctx: CanvasRenderingContext2D,
-  text: string,
-  position: CanvasPosition,
-  {
-    maxWidth,
-    color = COLORS.FOREGROUND,
-    fontSize = FONT_SIZE,
-    fontFamily = FONT_FAMILY,
-    textAlign = "center",
-    textBaseline = "middle",
-    fontAlpha = 1,
-  }: DrawTextConfig = {},
-) {
-  ctx.globalAlpha = fontAlpha;
-  ctx.fillStyle = color;
-  ctx.font = `${fontSize}px ${fontFamily}`;
-  ctx.textAlign = textAlign;
-  ctx.textBaseline = textBaseline;
+  if (!intersection) {
+    return;
+  }
 
-  const lines = getLines(ctx, text, maxWidth ?? ctx.canvas.width);
-  const verticalOffset = (FONT_SIZE * (lines.length - 1)) / 2;
+  // Show loading state for this chunk region
+  if (isLoading || !image) {
+    const position = getViewportPosition({
+      width: ctx.canvas.width,
+      height: ctx.canvas.height,
+      viewport: intersection,
+      bounds: viewport,
+    });
+    ctx.fillStyle = COLORS.LOADING;
+    ctx.fillRect(position.left, position.top, position.width, position.height);
+    return;
+  }
 
-  lines.forEach((line, index) => {
-    ctx.fillText(
-      line,
-      position.x,
-      position.y + index * FONT_SIZE - verticalOffset,
-      maxWidth,
-    );
+  // Show error state for this chunk region
+  if (isError) {
+    const position = getViewportPosition({
+      width: ctx.canvas.width,
+      height: ctx.canvas.height,
+      viewport: intersection,
+      bounds: viewport,
+    });
+    ctx.fillStyle = COLORS.ERROR;
+    ctx.fillRect(position.left, position.top, position.width, position.height);
+    return;
+  }
+
+  // Calculate source rectangle (portion of chunk image to use)
+  const source = getViewportPosition({
+    width: image.width,
+    height: image.height,
+    viewport: intersection,
+    bounds: buffer,
   });
-}
 
-export function drawLoadingState(ctx: CanvasRenderingContext2D) {
-  const { canvas } = ctx;
-  ctx.fillStyle = COLORS.BACKGROUND;
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
-  drawText(ctx, "Loading...", { x: canvas.width / 2, y: canvas.height / 2 });
-  ctx.canvas.setAttribute("class", "blink");
-}
+  // Calculate destination rectangle (where to draw on canvas)
+  const destination = getViewportPosition({
+    width: ctx.canvas.width,
+    height: ctx.canvas.height,
+    viewport: intersection,
+    bounds: viewport,
+  });
 
-export function drawErrorState(ctx: CanvasRenderingContext2D, error: string) {
-  const { canvas } = ctx;
-  ctx.fillStyle = COLORS.BACKGROUND;
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
-  drawText(
-    ctx,
-    `Error: ${error}`,
-    { x: canvas.width / 2, y: canvas.height / 2 },
-    { color: COLORS.ERROR, maxWidth: canvas.width * 0.8 },
+  // Draw this portion of the chunk
+  ctx.globalAlpha = 1;
+  ctx.drawImage(
+    image,
+    source.left,
+    source.top,
+    source.width + 1,
+    source.height,
+    destination.left,
+    destination.top,
+    destination.width + 1,
+    destination.height,
   );
 }
 
-export function drawImageOnCanvas(
-  ctx: CanvasRenderingContext2D,
-  image: HTMLImageElement,
-  window: SpectrogramWindow,
-  bounds: SpectrogramWindow,
-) {
-  ctx.fillStyle = COLORS.BACKGROUND;
-  ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
-
-  const interval = bounds.time;
-  const maxFreq = bounds.freq.max;
-
-  const totalDuration = interval.max - interval.min;
-  const startTimeRel = (window.time.min - interval.min) / totalDuration;
-  const highFreqRel = window.freq.max / maxFreq;
-
-  const sx = startTimeRel * image.width;
-  const sy = (1 - highFreqRel) * image.height;
-  const sWidth =
-    ((window.time.max - window.time.min) * image.width) / totalDuration;
-  const sHeight =
-    ((window.freq.max - window.freq.min) * image.height) / maxFreq;
-  const dx = 0;
-  const dy = 0;
-  const dWidth = ctx.canvas.width;
-  const dHeight = ctx.canvas.height;
-
-  ctx.globalAlpha = 1;
-  ctx.drawImage(image, sx, sy, sWidth, sHeight, dx, dy, dWidth, dHeight);
-}
-
-export interface DrawImageProps {
+interface DrawStitchedImageProps {
   ctx: CanvasRenderingContext2D;
-  image: HTMLImageElement;
-  window: SpectrogramWindow;
-  bounds: SpectrogramWindow;
+  viewport: SpectrogramWindow;
+  chunks: Array<{
+    chunk: Chunk;
+    image: HTMLImageElement | null;
+    isLoading: boolean;
+    isError: boolean;
+  }>;
+  samplerate: number;
 }
 
-export default function drawImage({
+/**
+ * Draw multiple spectrogram chunks stitched together
+ */
+export function drawStitchedImage({
+  ctx,
+  viewport,
+  chunks,
+  samplerate,
+}: DrawStitchedImageProps) {
+  // Clear the canvas
+  ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+  ctx.fillStyle = COLORS.BACKGROUND;
+  ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+
+  // Draw each chunk
+  chunks.forEach(({ chunk, image, isLoading, isError }) => {
+    const chunkBounds: SpectrogramWindow = {
+      time: chunk.interval,
+      freq: { min: 0, max: samplerate / 2 },
+    };
+
+    const buffer: SpectrogramWindow = {
+      time: chunk.buffer,
+      freq: { min: 0, max: samplerate / 2 },
+    };
+
+    drawChunk({
+      ctx,
+      image,
+      viewport,
+      chunkBounds,
+      buffer,
+      isLoading,
+      isError,
+    });
+  });
+}
+
+
+/**
+ * Compute the intersection of two time intervals
+ */
+function intersectIntervals(
+  interval1: { min: number; max: number },
+  interval2: { min: number; max: number },
+): { min: number; max: number } | null {
+  const min = Math.max(interval1.min, interval2.min);
+  const max = Math.min(interval1.max, interval2.max);
+
+  if (min >= max) return null;
+
+  return { min, max };
+}
+
+/**
+ * Draw a single waveform chunk
+ */
+function drawWaveformChunk({
   ctx,
   image,
-  window,
-  bounds,
-}: DrawImageProps) {
-  ctx.canvas.setAttribute("class", "");
-  drawImageOnCanvas(ctx, image, window, bounds);
+  viewport,
+  chunkBounds,
+  buffer,
+  isLoading,
+  isError,
+}: {
+  ctx: CanvasRenderingContext2D;
+  image: HTMLImageElement | null;
+  viewport: { min: number; max: number };
+  chunkBounds: { min: number; max: number };
+  buffer: { min: number; max: number };
+  isLoading: boolean;
+  isError: boolean;
+}) {
+  const intersection = intersectIntervals(viewport, chunkBounds);
+
+  if (!intersection) {
+    return;
+  }
+
+  // Show loading state for this chunk region
+  if (isLoading || !image) {
+    const position = getViewportPosition({
+      width: ctx.canvas.width,
+      height: ctx.canvas.height,
+      viewport: { time: intersection },
+      bounds: { time: viewport },
+    });
+    ctx.fillStyle = COLORS.LOADING;
+    ctx.fillRect(position.left, 0, position.width, ctx.canvas.height);
+    return;
+  }
+
+  // Show error state for this chunk region
+  if (isError) {
+    const position = getViewportPosition({
+      width: ctx.canvas.width,
+      height: ctx.canvas.height,
+      viewport: { time: intersection },
+      bounds: { time: viewport },
+    });
+    ctx.fillStyle = COLORS.ERROR;
+    ctx.fillRect(position.left, 0, position.width, ctx.canvas.height);
+    return;
+  }
+
+  // Calculate source rectangle (portion of chunk image to use)
+  const source = getViewportPosition({
+    width: image.width,
+    height: image.height,
+    viewport: { time: intersection },
+    bounds: { time: buffer },
+  });
+
+  // Calculate destination rectangle (where to draw on canvas)
+  const destination = getViewportPosition({
+    width: ctx.canvas.width,
+    height: ctx.canvas.height,
+    viewport: { time: intersection },
+    bounds: { time: viewport },
+  });
+
+  // Draw this portion of the chunk
+  // Add +1 to width to prevent gaps between stitched chunks (matches spectrogram behavior)
+  ctx.globalAlpha = 1;
+  ctx.drawImage(
+    image,
+    source.left,
+    0,
+    source.width + 1,
+    image.height,
+    destination.left,
+    0,
+    destination.width + 1,
+    ctx.canvas.height,
+  );
+}
+
+interface DrawStitchedWaveformProps {
+  ctx: CanvasRenderingContext2D;
+  viewport: WaveformWindow;
+  chunks: Array<{
+    chunk: Chunk;
+    image: HTMLImageElement | null;
+    isLoading: boolean;
+    isError: boolean;
+  }>;
+}
+
+/**
+ * Draw multiple waveform chunks stitched together
+ */
+export function drawStitchedWaveform({
+  ctx,
+  viewport,
+  chunks,
+}: DrawStitchedWaveformProps) {
+  // Clear the canvas
+  ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+  ctx.fillStyle = COLORS.BACKGROUND;
+  ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+
+  // Draw each chunk
+  chunks.forEach(({ chunk, image, isLoading, isError }) => {
+    drawWaveformChunk({
+      ctx,
+      image,
+      viewport: viewport.time,
+      chunkBounds: chunk.interval,
+      buffer: chunk.buffer,
+      isLoading,
+      isError,
+    });
+  });
 }

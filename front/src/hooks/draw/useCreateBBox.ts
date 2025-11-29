@@ -3,7 +3,7 @@ import { useCallback, useEffect, useState } from "react";
 import { BBoxStyle, DEFAULT_BBOX_STYLE } from "@/draw/bbox";
 import drawGeometry from "@/draw/geometry";
 import useWindowMotions from "@/hooks/window/useWindowMotions";
-import { scaleGeometryToViewport } from "@/utils/geometry";
+import { scaleGeometryToWindow } from "@/utils/geometry";
 
 import type {
   BoundingBox,
@@ -13,14 +13,12 @@ import type {
 } from "@/types";
 
 export default function useCreateBBox({
-  viewport,
-  dimensions,
+  window,
   enabled,
   style = DEFAULT_BBOX_STYLE,
   onCreate,
 }: {
-  viewport: SpectrogramWindow;
-  dimensions: Dimensions;
+  window: SpectrogramWindow;
   enabled: boolean;
   style?: BBoxStyle;
   onCreate?: (bbox: BoundingBox) => void;
@@ -55,8 +53,7 @@ export default function useCreateBBox({
 
   const { props, isDragging } = useWindowMotions({
     enabled,
-    viewport,
-    dimensions,
+    window,
     onMoveStart: handleMoveStart,
     onMove: handleMove,
     onMoveEnd: handleMoveEnd,
@@ -70,10 +67,10 @@ export default function useCreateBBox({
   const draw = useCallback(
     (ctx: CanvasRenderingContext2D) => {
       if (!enabled || bbox == null) return;
-      const scaled = scaleGeometryToViewport(dimensions, bbox, viewport);
+      const scaled = scaleGeometryToWindow(bbox, window);
       drawGeometry(ctx, scaled, style);
     },
-    [enabled, bbox, style, viewport, dimensions],
+    [enabled, bbox, style, window],
   );
 
   return {

@@ -1,223 +1,311 @@
-import { useRef, useMemo, useCallback } from "react";
-import { DEFAULT_SPECTROGRAM_PARAMETERS } from "@/api/spectrograms";
-import Player from "@/components/audio/Player";
-import SpectrogramBar from "@/components/spectrograms/SpectrogramBar";
-import SpectrogramControls from "@/components/spectrograms/SpectrogramControls";
-import SpectrogramSettings from "@/components/spectrograms/SpectrogramSettings";
-import SpectrogramTags from "@/components/spectrograms/SpectrogramTags";
-import type {
-  SoundEventAnnotation,
-  SpectrogramParameters,
-  Position,
-  Recording,
-} from "@/types";
-import useSpectrogram from "@/hooks/spectrogram/useSpectrogram";
-import useAudio from "@/hooks/audio/useAudio";
+import { useRef, useMemo } from "react";
+import { useKeyPressEvent } from "react-use";
 import useCanvas from "@/hooks/draw/useCanvas";
-import useSpectrogramTrackAudio from "@/hooks/spectrogram/useSpectrogramTrackAudio";
-import { computeGeometryBBox } from "@/utils/geometry";
-import { getCenteredViewingWindow } from "@/utils/windows";
-import useAnnotationDraw from "@/hooks/annotation/useAnnotationDraw";
-import useSpectrogramTags from "@/hooks/spectrogram/useSpectrogramTags";
+import useSpectrogram from "@/hooks/spectrogram/useSpectrogram";
+import useKeyFilter from "@/hooks/utils/useKeyFilter";
+import { applyAutoSTFT } from "@/api/spectrograms";
+import type { AnnotationTask, SoundEventAnnotation, SpectrogramParameters } from "@/types";
+import { H4 } from "../Headings";
+import { ExplorationIcon } from "../icons";
+import {
+  calculateTimeFrames,
+  frequencyRangeToBinRange,
+} from "@/utils/spectrogram_calculations";
+import { PSD_TOGGLE_SHORTCUT } from "@/utils/keyboard";
+import SoundEventAnnotationPSD from "./SoundEventAnnotationPSD";
+import useStore from "@/store";
+import Button from "../Button";
 
-const MIN_DURATION = 0.2;
-const MAX_DURATION = 5;
+function getWindowFromGeometry(annotation: SoundEventAnnotation, duration: number, samplerate: number) {
+    const { geometry, geometry_type } = annotation;
+    switch (geometry_type) {
+        case "TimeInterval":
+            const ti_coordinates = geometry.coordinates as [number, number];
+            var duration_margin = (ti_coordinates[1] - ti_coordinates[0]) * 0.1
+            return {
+                time: {
+                    min: Math.max(0, ti_coordinates[0] - duration_margin),
+                    max: Math.min(ti_coordinates[1] + duration_margin, duration),
+                },
+                freq: {
+                    min: 0,
+                    max: samplerate / 2,
+                },
+            };
 
-export default function SoundEventAnnotationSpectrogram(props: {
-  recording: Recording;
-  soundEventAnnotation: SoundEventAnnotation;
-  parameters?: SpectrogramParameters;
-  height?: number;
-  withBar?: boolean;
-  withPlayer?: boolean;
-  withControls?: boolean;
-  withSettings?: boolean;
-  onParametersSave?: (parameters: SpectrogramParameters) => void;
-}) {
-  const {
-    recording,
-    soundEventAnnotation,
-    parameters = DEFAULT_SPECTROGRAM_PARAMETERS,
-    height = 384, // Equivalent to h-96 in Tailwind CSS
-    withBar = true,
-    withPlayer = true,
-    withControls = true,
-    withSettings = true,
-    onParametersSave,
-  } = props;
+        case "BoundingBox":
+            const bb_coordinates = geometry.coordinates as [number, number, number, number];
+            var bandwidth_margin = (bb_coordinates[3] - bb_coordinates[1]) * 0.1;
+            var duration_margin = (bb_coordinates[2] - bb_coordinates[0]) * 0.1
+            return {
+                time: {
+                    min: Math.max(0, bb_coordinates[0] - duration_margin),
+                    max: Math.min(bb_coordinates[2] + duration_margin, duration),
+                },
+                freq: {
+                    min: Math.max(0, bb_coordinates[1] - bandwidth_margin),
+                    max: Math.min(bb_coordinates[3] + bandwidth_margin, samplerate / 2),
+                },
+            };
+        default:
+            return {
+                time: {
+                    min: 0,
+                    max: duration,
+                },
+                freq: {
+                    min: 0,
+                    max: samplerate / 2,
+                },
+            }
+    }
+}
 
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const dimensions = canvasRef.current?.getBoundingClientRect() ?? {
-    width: 0,
-    height: 0,
-  };
+function getSoundEventCoordinates(annotation: SoundEventAnnotation) {
+    const { geometry, geometry_type } = annotation;
+    switch (geometry_type) {
+        case "TimeInterval":
+            const ti_coordinates = geometry.coordinates as [number, number];
+            return {
+                time: {
+                    min: ti_coordinates[0],
+                    max: ti_coordinates[1],
+                },
+                freq: {
+                    min: 0,
+                    max: 0, // TimeInterval doesn't have frequency bounds
+                },
+            };
 
-  const [startTime, endTime] = useMemo(() => {
-    const [startTime, _, endTime] = computeGeometryBBox(
-      soundEventAnnotation.sound_event.geometry,
+        case "BoundingBox":
+            const bb_coordinates = geometry.coordinates as [number, number, number, number];
+            return {
+                time: {
+                    min: bb_coordinates[0],
+                    max: bb_coordinates[2],
+                },
+                freq: {
+                    min: bb_coordinates[1],
+                    max: bb_coordinates[3],
+                },
+            };
+
+        case "TimeStamp":
+            const time = geometry.coordinates as number;
+            return {
+                time: {
+                    min: time,
+                    max: time,
+                },
+                freq: {
+                    min: 0,
+                    max: 0,
+                },
+            };
+
+        case "Point":
+            const point_coordinates = geometry.coordinates as [number, number];
+            return {
+                time: {
+                    min: point_coordinates[0],
+                    max: point_coordinates[0],
+                },
+                freq: {
+                    min: point_coordinates[1],
+                    max: point_coordinates[1],
+                },
+            };
+
+        default:
+            return {
+                time: {
+                    min: 0,
+                    max: 0,
+                },
+                freq: {
+                    min: 0,
+                    max: 0,
+                },
+            };
+    }
+}
+
+function calculateSpectrogramDimensions(
+    window: { time: { min: number; max: number }, freq: { min: number; max: number } },
+    parameters: SpectrogramParameters,
+    samplerate: number,
+    maxWidth = 455,
+    maxHeight = 225
+) {
+    const duration = window.time.max - window.time.min;
+
+    // Calculate time axis pixels using utility function
+    const timePixels = calculateTimeFrames(
+        duration,
+        samplerate,
+        parameters.window_size_samples,
+        parameters.overlap_percent
     );
-    return [startTime, endTime];
-  }, [soundEventAnnotation.sound_event]);
 
-  const bounds = useMemo(() => {
-    const duration = Math.max((endTime - startTime) * 9, MIN_DURATION);
-    const center = (startTime + endTime) / 2;
+    // Calculate frequency axis pixels using utility function
+    const { minBin, maxBin } = frequencyRangeToBinRange(
+        window.freq.min,
+        window.freq.max,
+        parameters.window_size_samples,
+        samplerate
+    );
+    const freqPixels = maxBin - minBin;
+
+    // Calculate scaling to fit within max dimensions while maintaining aspect ratio
+    const scaleWidth = maxWidth / timePixels;
+    const scaleHeight = maxHeight / freqPixels;
+    const scale = Math.min(scaleWidth, scaleHeight);
 
     return {
-      time: { min: center - duration / 2, max: center + duration / 2 },
-      freq: { min: 0, max: recording.samplerate / 2 },
+        width: Math.round(timePixels * scale),
+        height: Math.round(freqPixels * scale)
     };
-  }, [recording.samplerate, startTime, endTime]);
+}
 
-  const initial = useMemo(() => {
-    const duration = Math.min((endTime - startTime) * 5, MAX_DURATION);
-    const center = (startTime + endTime) / 2;
-
-    return getCenteredViewingWindow({
-      startTime: center - duration / 2,
-      endTime: center + duration / 2,
-      samplerate: recording.samplerate,
-      parameters,
-    });
-  }, [recording.samplerate, parameters, startTime, endTime]);
-
-  const audio = useAudio({
-    recording,
-    endTime: bounds.time.max,
-    startTime: bounds.time.min,
-    withAutoplay: false,
-    onWithAutoplayChange: () => {},
-  });
-
-  const { seek } = audio;
-  const handleDoubleClick = useCallback(
-    ({ position }: { position: Position }) => {
-      seek(position.time);
-    },
-    [seek],
-  );
-
-  const spectrogram = useSpectrogram({
-    dimensions,
-    recording,
-    bounds,
-    initial,
+export default function SoundEventAnnotationSpectrogramView({
+    soundEventAnnotation,
+    task,
+    samplerate,
     parameters,
-    onDoubleClick: handleDoubleClick,
-    enabled: !audio.isPlaying,
-    withSpectrogram: true,
-    fixedAspectRatio: false,
-    toggleFixedAspectRatio: () => null,
-    onSegmentsLoaded: () => null,
-  });
+    withSpectrogram,
+}: {
+    soundEventAnnotation: SoundEventAnnotation;
+    task: AnnotationTask,
+    samplerate: number,
+    parameters: SpectrogramParameters;
+    withSpectrogram: boolean;
+}) {
+    const containerRef = useRef<HTMLDivElement>(null);
+    const canvasRef = useRef<HTMLCanvasElement>(null);
+    const showPSD = useStore((s) => s.showPSD);
+    const setShowPSD = useStore((s) => s.setShowPSD);
 
-  const handleParameterSave = useCallback(() => {
-    onParametersSave?.(spectrogram.parameters);
-  }, [onParametersSave, spectrogram.parameters]);
+    // Keyboard shortcut to toggle PSD view
+    useKeyPressEvent(useKeyFilter({ key: PSD_TOGGLE_SHORTCUT }), () => setShowPSD(!showPSD));
 
-  const { centerOn } = spectrogram;
+    const selectedParameters = useMemo(() => {
+        // Apply auto STFT calculation if enabled
+        return applyAutoSTFT(parameters, samplerate);
+    }, [parameters, samplerate]);
 
-  const handleTimeChange = useCallback(
-    (time: number) => centerOn({ time }),
-    [centerOn],
-  );
 
-  const { draw: drawTrackAudio, enabled: trackingAudio } =
-    useSpectrogramTrackAudio({
-      viewport: spectrogram.viewport,
-      currentTime: audio.currentTime,
-      isPlaying: audio.isPlaying,
-      onTimeChange: handleTimeChange,
+    const window = useMemo(
+        () => getWindowFromGeometry(soundEventAnnotation, task.end_time - task.start_time, samplerate),
+        [soundEventAnnotation, samplerate, task.start_time, task.end_time]
+    );
+
+    const soundEventCoords = useMemo(
+        () => getSoundEventCoordinates(soundEventAnnotation),
+        [soundEventAnnotation]
+    );
+
+    const displayCoords = useMemo(() => window, [window]);
+
+    const dimensions = useMemo(
+        () => calculateSpectrogramDimensions(window, selectedParameters, samplerate),
+        [window, selectedParameters, samplerate]
+    );
+
+    const spectrogram = useSpectrogram({
+        task,
+        samplerate,
+        bounds: window,
+        initial: window,
+        parameters: selectedParameters,
+        canvasRef,
+        enabled: true,
+        withSpectrogram,
+        withShortcuts: false,
+        fixedAspectRatio: false,
+        preload: false,
+        toggleFixedAspectRatio: () => { },
+        onSegmentsLoaded: () => null,
     });
 
-  const {
-    props: spectrogramProps,
-    draw: drawSpectrogram,
-    isLoading: spectrogramIsLoading,
-  } = spectrogram;
+    const { draw } = spectrogram;
 
-  const drawAnnotation = useAnnotationDraw({
-    viewport: spectrogram.viewport,
-    annotations: [soundEventAnnotation],
-  });
+    useCanvas({
+        ref: canvasRef as React.RefObject<HTMLCanvasElement>,
+        draw: (ctx) => draw(ctx, { withAxes: false })
+    });
 
-  const tags = useSpectrogramTags({
-    annotations: [soundEventAnnotation],
-    viewport: spectrogram.viewport,
-    dimensions,
-    disabled: true,
-  });
+    return (
+        <div className="flex flex-col gap-2">
+            <div className="flex justify-between items-center gap-2 mb-2">
+                <H4 className="text-center whitespace-nowrap">
+                    <ExplorationIcon className="inline-block mr-1 w-5 h-5" />
+                    {showPSD ? "Power Spectral Density" : "Sound Event Spectrogram"}
+                </H4>
+                <Button
+                    variant={showPSD ? "primary" : "secondary"}
+                    padding="px-2 py-1"
+                    onClick={() => setShowPSD(!showPSD)}
+                    className="min-w-[8rem] text-xs justify-center items-center leading-tight"
+                >
+                    {showPSD ? "PSD" : "Spectrogram"}
+                </Button>
+            </div>
+            {/* PSD view - hidden when showing spectrogram */}
+            <div style={{ display: showPSD ? "block" : "none" }}>
+                <SoundEventAnnotationPSD
+                    soundEventAnnotation={soundEventAnnotation}
+                    task={task}
+                    samplerate={samplerate}
+                    parameters={selectedParameters}
+                    width={448}
+                    height={224}
+                />
+            </div>
 
-  const draw = useMemo(() => {
-    if (spectrogramIsLoading) {
-      return (ctx: CanvasRenderingContext2D) => {
-        ctx.canvas.style.cursor = "wait";
-      };
-    }
-    if (trackingAudio) {
-      return (ctx: CanvasRenderingContext2D) => {
-        drawSpectrogram(ctx);
-        drawTrackAudio(ctx);
-        drawAnnotation(ctx);
-      };
-    }
-    return (ctx: CanvasRenderingContext2D) => {
-      drawSpectrogram(ctx);
-      drawAnnotation(ctx);
-    };
-  }, [
-    drawSpectrogram,
-    drawTrackAudio,
-    spectrogramIsLoading,
-    trackingAudio,
-    drawAnnotation,
-  ]);
+            {/* Spectrogram view - hidden when showing PSD */}
+            <div style={{ display: showPSD ? "none" : "block" }}>
+                <div className="flex">
+                    <div className="flex flex-col justify-between pr-2 text-right w-16">
+                        <span className="text-xs text-stone-600">
+                            {displayCoords.freq.max > 0 ? (displayCoords.freq.max / 1000).toFixed(2) + " kHz" : ""}
+                        </span>
+                        <span className="text-xs text-stone-600 text-center">
+                            {displayCoords.freq.max > displayCoords.freq.min ? 
+                                "∆: " + ((displayCoords.freq.max - displayCoords.freq.min) / 1000).toFixed(2) + " kHz" : ""}
+                        </span>
+                        <span className="text-xs text-stone-600">
+                            {displayCoords.freq.min > 0 ? (displayCoords.freq.min / 1000).toFixed(2) + " kHz" : ""}
+                        </span>
+                    </div>
 
-  useCanvas({ ref: canvasRef as React.RefObject<HTMLCanvasElement>, draw });
+                    <div
+                        ref={containerRef}
+                        className="relative flex items-center justify-center overflow-clip rounded-md border border-stone-200 dark:border-stone-600"
+                        style={{ width: "28rem", height: "14rem" }}
+                    >
+                        <canvas
+                            ref={canvasRef}
+                            style={dimensions}
+                            className="rounded-md"
+                            {...spectrogram.props}
+                        />
+                        {spectrogram.isLoading && (
+                            <div className="absolute inset-0 flex items-center justify-center bg-stone-100 dark:bg-stone-800 bg-opacity-50">
+                                <span className="text-sm text-stone-500">Loading...</span>
+                            </div>
+                        )}
+                    </div>
+                </div>
 
-  return (
-    <div className="flex flex-col gap-2">
-      <div className="flex flex-row gap-4">
-        {withControls && (
-          <SpectrogramControls
-            canZoom={spectrogram.canZoom}
-            fixedAspectRatio={false}
-            onReset={spectrogram.reset}
-            onZoom={spectrogram.enableZoom}
-            onToggleAspectRatio={() => null}
-          />
-        )}
-        {withSettings && (
-          <SpectrogramSettings
-            samplerate={recording.samplerate}
-            maxChannels={recording.channels}
-            settings={spectrogram.parameters}
-            onChange={spectrogram.setParameters}
-            onReset={spectrogram.resetParameters}
-            onSave={handleParameterSave}
-          />
-        )}
-        {withPlayer && <Player {...audio} />}
-      </div>
-      <div className="relative rounded-md" style={{ height: height }}>
-        <SpectrogramTags tags={tags} disabled>
-          <canvas
-            ref={canvasRef}
-            {...spectrogramProps}
-            className="absolute w-full h-full"
-          />
-        </SpectrogramTags>
-      </div>
-      {withBar && (
-        <SpectrogramBar
-          bounds={spectrogram.bounds}
-          viewport={spectrogram.viewport}
-          onMove={spectrogram.zoom}
-          recording={recording}
-          parameters={spectrogram.parameters}
-          withSpectrogram={true}
-        />
-      )}
-    </div>
-  );
+                <div className="flex justify-between pl-16 pr-2 pt-2">
+                    <span className="text-xs text-stone-600">{(soundEventCoords.time.min * 1000).toFixed(0)}ms</span>
+                    <span className="text-xs text-stone-600 text-center">
+                        {soundEventCoords.time.max > soundEventCoords.time.min ? 
+                            "∆: " + ((soundEventCoords.time.max - soundEventCoords.time.min) * 1000).toFixed(0) + "ms" : ""}
+                    </span>
+                    <span className="text-xs text-stone-600">{(soundEventCoords.time.max * 1000).toFixed(0)}ms</span>
+                </div>
+            </div>
+        </div>
+    );
 }

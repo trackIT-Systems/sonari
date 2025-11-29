@@ -1,9 +1,8 @@
 """REST API routes for spectrograms."""
 
 from typing import Annotated
-from uuid import UUID
 
-from fastapi import APIRouter, Depends, Request, Response
+from fastapi import APIRouter, Depends, Response
 
 from sonari import api, schemas
 from sonari.core import images
@@ -20,16 +19,14 @@ spectrograms_router = APIRouter()
 async def get_spectrogram(
     session: Session,
     settings: SonariSettings,
-    recording_uuid: UUID,
+    recording_id: int,
     start_time: float,
     end_time: float,
-    low_res: bool,
     audio_parameters: Annotated[schemas.AudioParameters, Depends(schemas.AudioParameters)],
     spectrogram_parameters: Annotated[
         schemas.SpectrogramParameters,
         Depends(schemas.SpectrogramParameters),
     ],
-    request: Request,
 ) -> Response:
     """Get a spectrogram for a recording.
 
@@ -52,8 +49,7 @@ async def get_spectrogram(
         Spectrogram image.
 
     """
-    recording = await api.recordings.get(session, recording_uuid)
-
+    recording = await api.recordings.get(session, recording_id)
     # Close session BEFORE expensive computation
     await session.close()
 
@@ -64,12 +60,7 @@ async def get_spectrogram(
         audio_parameters,
         spectrogram_parameters,
         audio_dir=settings.audio_dir,
-        low_res=low_res,
     )
-
-    # Normalize.
-    if spectrogram_parameters.normalize:
-        data = data / data.max() if data.max() > 0 else data
 
     image = images.array_to_image(
         data,
@@ -77,8 +68,8 @@ async def get_spectrogram(
         gamma=spectrogram_parameters.gamma,
     )
 
-    if low_res:
-        image.thumbnail((10000, 50))
+    if spectrogram_parameters.overlap_percent == 1:
+        image = image.resize((1000, image.height))
 
     buffer, buffer_size, fmt = images.image_to_buffer(image)
 

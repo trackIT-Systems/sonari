@@ -1,45 +1,40 @@
-import { useCallback, useMemo } from "react";
-import useWaveformImage from "@/hooks/spectrogram/useWaveformImage";
-import type { Recording, SpectrogramParameters, SpectrogramWindow, WaveformWindow } from "@/types";
-
-// Convert a 2D SpectrogramWindow to 1D WaveformWindow
-export function toWaveformWindow(window: SpectrogramWindow): WaveformWindow {
-  return {
-    time: { ...window.time }, // New object to trigger updates
-  };
-}
+import { useCallback } from "react";
+import useWaveformImages from "@/hooks/spectrogram/useWaveformImages";
+import { drawStitchedWaveform } from "@/draw/image";
+import type { Recording, SpectrogramParameters, SpectrogramWindow } from "@/types";
 
 export default function useWaveform({
   recording,
   parameters,
-  viewport,
+  window,
+  onSegmentsLoaded,
 }: {
   recording: Recording;
   parameters: SpectrogramParameters;
-  viewport: SpectrogramWindow;
+  window: SpectrogramWindow;
+  onSegmentsLoaded?: () => void;
 }) {
-  const waveformWindow = useMemo(
-    () => toWaveformWindow(viewport),
-    [viewport]
-  );
-
-  const { draw: drawImage, isLoading, isError } = useWaveformImage({
+  const { chunks, isLoading, isError } = useWaveformImages({
     recording,
+    window: { time: window.time },
     parameters,
-    window: waveformWindow,
+    onAllSegmentsLoaded: onSegmentsLoaded,
   });
 
   const draw = useCallback(
     (ctx: CanvasRenderingContext2D) => {
-      drawImage(ctx);
+      drawStitchedWaveform({
+        ctx,
+        viewport: { time: window.time },
+        chunks,
+      });
     },
-    [drawImage]
+    [chunks, window.time]
   );
 
   return {
     draw,
     isLoading,
     isError,
-    viewport: waveformWindow,
   };
 }

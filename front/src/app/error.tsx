@@ -32,6 +32,9 @@ export default function Error({
           </p>
           <span className="max-w-prose whitespace-pre-wrap text-red-500 p-4">
             {error.message}
+            {error.cause ? error.cause.toString() : ""}
+            {error.digest ? error.digest.toString() : ""}
+            {error.stack ? error.stack.toString() : ""}
           </span>
         </div>
       </div>

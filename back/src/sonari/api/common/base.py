@@ -328,7 +328,9 @@ class BaseAPI(
         if cache is None:
             return False
 
-        return pk in cache
+        # Namespace cache key by model name to prevent collisions
+        cache_key = (self._model.__name__, pk)
+        return cache_key in cache
 
     def _get_from_cache(self, pk: PrimaryKey) -> SonariSchema:
         """Get an object from the cache.
@@ -343,7 +345,9 @@ class BaseAPI(
         SonariSchema
             The object.
         """
-        return self._cache[pk]
+        # Namespace cache key by model name to prevent collisions
+        cache_key = (self._model.__name__, pk)
+        return self._cache[cache_key]
 
     def _update_cache(self, obj: SonariSchema) -> None:
         """Update the cache.
@@ -358,7 +362,9 @@ class BaseAPI(
             return
 
         pk = self._get_pk_from_obj(obj)
-        cache[pk] = obj
+        # Namespace cache key by model name to prevent collisions
+        cache_key = (self._model.__name__, pk)
+        cache[cache_key] = obj
 
     def _clear_from_cache(self, obj: SonariSchema) -> None:
         """Clear an object from the cache.
@@ -373,16 +379,18 @@ class BaseAPI(
             return
 
         pk = self._get_pk_from_obj(obj)
-        cache.pop(pk, None)
+        # Namespace cache key by model name to prevent collisions
+        cache_key = (self._model.__name__, pk)
+        cache.pop(cache_key, None)
 
     def _get_pk_condition(self, pk: PrimaryKey) -> _ColumnExpressionArgument:
-        column = getattr(self._model, "uuid", None)
+        column = getattr(self._model, "id", None)
         if not column:
-            raise NotImplementedError(f"The model {self._model.__name__} does not have a column named uuid")
+            raise NotImplementedError(f"The model {self._model.__name__} does not have a column named id")
         return column == pk
 
     def _get_pk_from_obj(self, obj: SonariSchema) -> PrimaryKey:
-        pk = getattr(obj, "uuid", None)
+        pk = getattr(obj, "id", None)
         if not pk:
             raise NotImplementedError(
                 "The primary key could not be retrieved from the object. "

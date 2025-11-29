@@ -6,7 +6,7 @@ import useListWithSearch from "@/hooks/lists/useListWithSearch";
 import type { Tag } from "@/types";
 
 export default function TagList({
-  tags,
+  tags = [],
   onClick,
   onRemove,
   showMax = 10,
@@ -19,7 +19,7 @@ export default function TagList({
   autoFocus?: boolean;
 }) {
   const { items, setSearch, setLimit, hasMore } = useListWithSearch({
-    options: tags,
+    options: tags || [],
     fields: ["key", "value"],
     limit: showMax,
   });

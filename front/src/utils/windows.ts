@@ -1,60 +1,89 @@
-import { DEFAULT_SPECTROGRAM_PARAMETERS } from "@/api/spectrograms";
-import { DEFAULT_HOP_SIZE, DEFAULT_WINDOW_SIZE } from "@/constants";
-
 import type {
   Interval,
   SpectrogramParameters,
   SpectrogramWindow,
 } from "@/types";
+import { calculateHopDuration, calculateTimeFrames } from "./spectrogram_calculations";
+import { SPECTROGRAM_CANVAS_DIMENSIONS } from "@/constants";
 
-const SPECTROGRAM_STRETCH_FACTOR = 6;
+const STRETCH_FACTOR = 3
 
+/**
+ * Spectrogram Window System Documentation
+ * ========================================
+ * 
+ * This file contains utilities for managing spectrogram windows. Understanding the
+ * three key concepts is essential:
+ * 
+ * 1. **bounds**: The maximum navigable area
+ *    - Defines the outer limits of where the window can be positioned
+ *    - Typically set by annotation task boundaries and current spectrogram parameters
+ *    - Example: A task might limit bounds to time range [10s, 20s] and freq range [0Hz, 48kHz]
+ *    - The window is always constrained to stay within these bounds
+ * 
+ * 2. **window**: The currently visible window
+ *    - What the user actually sees on screen at any given moment
+ *    - User can zoom/pan this, but it will always be constrained to stay within bounds
+ *    - Changes dynamically as user navigates the spectrogram
+ *    - Example: User might be viewing time [12s, 14s] and freq [5kHz, 15kHz] within the bounds
+ * 
+ * 3. **initial**: The starting window position
+ *    - Determines what portion of the bounds the user sees when component first renders
+ *    - Calculated once at component mount based on parameters and context
+ *    - Should provide a good initial view (not too zoomed in or out)
+ *    - Example: For a 10s task, might show first 2s at full frequency range
+ * 
+ * Window vs. Bounds:
+ * - Bounds are the "playing field" (what's allowed)
+ * - Window is the "camera view" (what you see)
+ * - The window moves and zooms within the bounds
+ * 
+ * When window resets:
+ * - Parameter changes (resampling): Frequency range resets to show full spectrum
+ * - Initial changes: Full window reset to new initial
+ * - User reset action: Returns to initial window
+ * 
+ * When window is preserved:
+ * - Normal zoom/pan operations
+ * - Minor parameter tweaks (window size, hop size, etc.)
+ * - Toggling visual settings
+ */
+
+/**
+ * Calculate the initial window for a spectrogram.
+ * 
+ * This determines what the user sees when the spectrogram first loads using a
+ * straightforward pixel-based approach:
+ * 
+ * 
+ * The initial window is constrained by:
+ * - Available task duration (won't exceed endTime - startTime)
+ * - Available frequency range (won't exceed Nyquist frequency)
+ * 
+ * @param startTime - Start time of the available audio (usually task start)
+ * @param endTime - End time of the available audio (usually task end)
+ * @param samplerate - Sample rate of the audio in Hz
+ * @returns The initial window showing a pixel-perfect view
+ */
 export function getInitialViewingWindow({
   startTime,
   endTime,
   samplerate,
-  parameters = DEFAULT_SPECTROGRAM_PARAMETERS,
+  parameters,
 }: {
   startTime: number;
   endTime: number;
   samplerate: number;
-  parameters?: SpectrogramParameters;
+  parameters: SpectrogramParameters;
 }): SpectrogramWindow {
   const duration = getInitialDuration({
     interval: { min: startTime, max: endTime },
     samplerate,
-    window_size: parameters.window_size,
-    hop_size: parameters.hop_size,
+    window_size_samples: parameters.window_size_samples,
+    overlap_percent: parameters.overlap_percent,
   });
   return {
     time: { min: startTime, max: startTime + duration },
-    freq: { min: 0, max: samplerate / 2 },
-  };
-}
-
-export function getCenteredViewingWindow({
-  startTime,
-  endTime,
-  samplerate,
-  parameters = DEFAULT_SPECTROGRAM_PARAMETERS,
-}: {
-  startTime: number;
-  endTime: number;
-  samplerate: number;
-  parameters?: SpectrogramParameters;
-}): SpectrogramWindow {
-  const center = (startTime + endTime) / 2;
-  const duration = getInitialDuration({
-    interval: {
-      min: startTime,
-      max: endTime,
-    },
-    samplerate,
-    window_size: parameters.window_size,
-    hop_size: parameters.hop_size,
-  });
-  return {
-    time: { min: center - duration / 2, max: center + duration / 2 },
     freq: { min: 0, max: samplerate / 2 },
   };
 }
@@ -68,30 +97,27 @@ export function getCenteredViewingWindow({
  * Since the spectrogram computation is O(n^2) in the window size, we want to
  * avoid huge windows.
  */
-export function getInitialDuration({
+function getInitialDuration({
   interval,
   samplerate,
-  window_size = DEFAULT_WINDOW_SIZE,
-  hop_size = DEFAULT_HOP_SIZE,
+  window_size_samples,
+  overlap_percent,
 }: {
   interval: Interval;
   samplerate: number;
-  window_size?: number;
-  hop_size?: number;
+  window_size_samples: number;
+  overlap_percent: number;
 }) {
   const duration = interval.max - interval.min;
-  const window_samples = Math.floor(window_size * samplerate) + 1;
-  const specHeight = Math.floor(window_samples / 2) + 1;
-  const specWidth = specHeight * SPECTROGRAM_STRETCH_FACTOR;
-  const hopDuration = window_size * hop_size;
-  const windowWidth = specWidth * hopDuration;
-  return Math.min(duration, windowWidth);
+  const hopDuration = calculateHopDuration(window_size_samples, overlap_percent, samplerate);
+  const idealDuration = SPECTROGRAM_CANVAS_DIMENSIONS.width * hopDuration;
+  return Math.min(duration, idealDuration);
 }
 
 /**
  * Compute the intersection of two intervals
  */
-export function intersectIntervals(
+function intersectIntervals(
   interval1: Interval,
   interval2: Interval,
 ): Interval | null {
@@ -108,7 +134,7 @@ export function intersectIntervals(
 /**
  * Compute the intersection of two spectrogram windows
  */
-export function intersectWindows(
+function intersectWindows(
   window1: SpectrogramWindow,
   window2: SpectrogramWindow,
 ): SpectrogramWindow | null {
@@ -122,25 +148,7 @@ export function intersectWindows(
   };
 }
 
-/**
- * Extend a spectrogram window in the time an frequency axis.
- * @param {SpectrogramWindow} window: Spectrogram window to extend.
- * @param {{time: number, freq: number}} expandBy: The amount of extension in
- * each axis. The extension can be negative and thus contract the original
- * window.
- */
-export function extendWindow(
-  window: SpectrogramWindow,
-  expandBy: { time: number; freq: number },
-): SpectrogramWindow {
-  const { time, freq } = expandBy;
-  return {
-    time: { min: window.time.min - time, max: window.time.max + time },
-    freq: { min: window.freq.min - freq, max: window.freq.max + freq },
-  };
-}
-
-export function getWindowDimensions(window: SpectrogramWindow): {
+function getWindowDimensions(window: SpectrogramWindow): {
   time: number;
   freq: number;
 } {
@@ -151,10 +159,32 @@ export function getWindowDimensions(window: SpectrogramWindow): {
 }
 
 /**
- * Adjust spectrogram window to given bounds
- * @param {SpectrogramWindow} window: Spectrogram window to adjust.
- * @param {SpectrogramWindow} bounds: Spectrogram window to use as bounds for
- * the given window.
+ * Constrain a window window to stay within bounds.
+ * 
+ * This is the core constraint function that ensures the window never goes outside
+ * the allowed bounds. It handles several cases:
+ * 
+ * 1. If window is too large for bounds: Centers it and clips to fit
+ * 2. If window extends past bounds: Shifts it back inside
+ * 3. If window is already within bounds: Returns it unchanged
+ * 
+ * The function preserves the window's duration and bandwidth (size) as much as
+ * possible, only clipping when absolutely necessary.
+ * 
+ * This should be called every time the window changes to maintain the invariant
+ * that window ⊆ bounds at all times.
+ * 
+ * @param window - The window window to constrain (what user wants to see)
+ * @param bounds - The maximum allowed area (task boundaries + parameter constraints)
+ * @returns A new window window that fits within the bounds
+ * 
+ * @example
+ * // Window trying to go past bounds
+ * const window = { time: {min: 15, max: 25}, freq: {min: 0, max: 10000} };
+ * const bounds = { time: {min: 0, max: 20}, freq: {min: 0, max: 48000} };
+ * const constrained = adjustWindowToBounds(window, bounds);
+ * // Result: { time: {min: 10, max: 20}, freq: {min: 0, max: 10000} }
+ * // (shifted left to stay within time bounds, freq unchanged as it fits)
  */
 export function adjustWindowToBounds(
   window: SpectrogramWindow,
@@ -255,15 +285,15 @@ function clamp(value: number, min: number, max: number): number {
   return Math.min(Math.max(Math.round(value), min), max);
 }
 
-export function getViewportPosition({
+export function getWindowPosition({
   width,
   height,
-  viewport,
+  window,
   bounds,
 }: {
   width?: number;
   height?: number;
-  viewport: SpectrogramWindow;
+  window: SpectrogramWindow;
   bounds: SpectrogramWindow;
 }): {
   left: number;
@@ -276,13 +306,13 @@ export function getViewportPosition({
   }
 
   const bottom =
-    (bounds.freq.max - viewport.freq.min) / (bounds.freq.max - bounds.freq.min);
+    (bounds.freq.max - window.freq.min) / (bounds.freq.max - bounds.freq.min);
   const top =
-    (bounds.freq.max - viewport.freq.max) / (bounds.freq.max - bounds.freq.min);
+    (bounds.freq.max - window.freq.max) / (bounds.freq.max - bounds.freq.min);
   const left =
-    (viewport.time.min - bounds.time.min) / (bounds.time.max - bounds.time.min);
+    (window.time.min - bounds.time.min) / (bounds.time.max - bounds.time.min);
   const right =
-    (viewport.time.max - bounds.time.min) / (bounds.time.max - bounds.time.min);
+    (window.time.max - bounds.time.min) / (bounds.time.max - bounds.time.min);
   return {
     top: clamp(top * height, 0, height),
     left: clamp(left * width, 0, width),

@@ -21,7 +21,7 @@ export default function Note({
   onDelete?: (note: Note) => void;
 }) {
   const note = useNote({
-    uuid: data.uuid,
+    id: data.id,
     note: data,
     onUpdate,
   });

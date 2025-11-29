@@ -26,12 +26,14 @@ function TagBarPopover({
   onAdd?: (tag: TagType) => void;
   onCreate?: (tag: TagType) => void;
   filter?: TagFilter;
-} & Omit<HTMLProps<HTMLInputElement>, "value" | "onChange" | "onBlur">) {
+} & Omit<HTMLProps<HTMLInputElement>, "value" | "onChange" | "onBlur" | "onSelect">) {
   return (
     <TagSearchBar
-      // @ts-ignore
       onSelect={(tag) => {
-        onAdd?.(tag);
+        if (tag != null) {
+          onAdd?.(tag);
+          onClose?.();
+        }
       }}
       onCreate={onCreate}
       autoFocus={true}
@@ -48,7 +50,7 @@ function TagBarPopover({
   );
 }
 
-export function SpectrogramTag({
+function SpectrogramTag({
   tag,
   onClick,
   disabled = false,
@@ -80,7 +82,7 @@ export function SpectrogramTag({
   );
 }
 
-export function AddTagButton({
+function AddTagButton({
   filter,
   onCreate,
   onAdd,
@@ -124,12 +126,10 @@ export function AddTagButton({
 export function TagGroup({
   group,
   filter,
-  onCreate,
   disabled = false,
 }: {
   group: TagGroup;
   filter?: TagFilter;
-  onCreate?: (tag: TagType) => void;
   disabled?: boolean;
 }) {
   const { x, y } = group.position;
@@ -139,14 +139,14 @@ export function TagGroup({
         {
           "pointer-events-none": !group.active,
         },
-        "h-5 flex flex-col absolute px-2 text-stone-300 hover:z-50 z-40",
+        "h-5 flex flex-col absolute text-stone-300 hover:z-50 z-40",
       )}
       style={{
         left: x,
         top: y,
       }}
     >
-      <div className="-ms-2 relative flex flex-col right-0 hover:gap-2">
+      <div className="relative flex flex-col hover:gap-2">
         {group.tags.map((tagElement) => (
           <SpectrogramTag
             key={`${tagElement.tag.key}:${tagElement.tag.value}`}
@@ -159,7 +159,6 @@ export function TagGroup({
         <AddTagButton
           filter={filter}
           onCreate={(tag) => {
-            onCreate?.(tag);
             group.onAdd?.(tag);
           }}
           onAdd={(tag) => {
@@ -174,16 +173,12 @@ export function TagGroup({
 export default function SpectrogramTags({
   tags,
   children,
-  filter,
-  onCreate,
   disabled = false,
   withSoundEvent = true,
   onWithSoundEventChange,
 }: {
   tags: TagGroup[];
   children: ReactNode;
-  filter?: TagFilter;
-  onCreate?: (tag: TagType) => void;
   disabled?: boolean;
   withSoundEvent?: boolean;
   onWithSoundEventChange?: () => void;
@@ -206,10 +201,8 @@ export default function SpectrogramTags({
       {children}
       {tags.map((group) => (
         <TagGroup
-          key={group.annotation.uuid}
+          key={group.annotation.id}
           group={group}
-          filter={filter}
-          onCreate={onCreate}
           disabled={disabled}
         />
       ))}

@@ -50,8 +50,8 @@ function formatFilterSummary<T extends Object>(filters: T): string {
         const hasDateContent = Object.values(value).some(v => v != null && v !== '');
         if (!hasDateContent) continue;
         displayValue = 'Date range';
-      } else if ('uuid' in value && value.uuid) {
-        // For objects with UUID but no name, show a generic label
+      } else if ('id' in value && value.id) {
+        // For objects with ID but no name, show a generic label
         displayValue = 'Selected';
       } else {
         // For other objects, check if they have meaningful content

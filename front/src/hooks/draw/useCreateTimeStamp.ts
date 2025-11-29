@@ -4,7 +4,7 @@ import drawGeometry from "@/draw/geometry";
 import { DEFAULT_ONSET_STYLE } from "@/draw/onset";
 import { type Style } from "@/draw/styles";
 import useWindowMotions from "@/hooks/window/useWindowMotions";
-import { scaleGeometryToViewport } from "@/utils/geometry";
+import { scaleGeometryToWindow } from "@/utils/geometry";
 
 import type {
   Dimensions,
@@ -14,14 +14,12 @@ import type {
 } from "@/types";
 
 export default function useCreateTimeStamp({
-  viewport,
-  dimensions,
+  window,
   enabled = true,
   style = DEFAULT_ONSET_STYLE,
   onCreate,
 }: {
-  viewport: SpectrogramWindow;
-  dimensions: Dimensions;
+  window: SpectrogramWindow;
   enabled?: boolean;
   style?: Style;
   onCreate?: (timeStamp: TimeStamp) => void;
@@ -50,8 +48,7 @@ export default function useCreateTimeStamp({
 
   const { props, isDragging } = useWindowMotions({
     enabled,
-    viewport,
-    dimensions,
+    window,
     onMoveStart: handleMoveStart,
     onMove: handleMove,
     onMoveEnd: handleMoveEnd,
@@ -64,10 +61,10 @@ export default function useCreateTimeStamp({
   const draw = useCallback(
     (ctx: CanvasRenderingContext2D) => {
       if (!enabled || timeStamp == null) return;
-      const scaled = scaleGeometryToViewport(dimensions, timeStamp, viewport);
+      const scaled = scaleGeometryToWindow(timeStamp, window);
       drawGeometry(ctx, scaled, style);
     },
-    [enabled, timeStamp, style, dimensions, viewport],
+    [enabled, timeStamp, style, window],
   );
 
   return {

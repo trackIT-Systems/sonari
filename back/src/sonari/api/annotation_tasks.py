@@ -1,8 +1,6 @@
-"""Python API for interacting with Tasks."""
+"""Python API for interacting with Annotation Tasks."""
 
-from pathlib import Path
-from typing import Any, Sequence
-from uuid import UUID
+from typing import Sequence
 
 from soundevent import data
 from sqlalchemy import and_, select, tuple_
@@ -11,41 +9,190 @@ from sqlalchemy.sql._typing import _ColumnExpressionArgument
 
 from sonari import exceptions, models, schemas
 from sonari.api import common
-from sonari.api.clip_annotations import clip_annotations
-from sonari.api.clips import clips
 from sonari.api.common import BaseAPI
-from sonari.api.users import users
 from sonari.filters.base import Filter
 
 __all__ = [
     "AnnotationTaskAPI",
     "annotation_tasks",
+    "compute_duration",
 ]
-
-
-class AnnotationTaskFilter(Filter):
-    eq: int
-
-    def filter(self, query):
-        return query.join(
-            models.AnnotationTask,
-            models.Clip.id == models.AnnotationTask.clip_id,
-        ).filter(models.AnnotationTask.annotation_project_id == self.eq)
 
 
 class AnnotationTaskAPI(
     BaseAPI[
-        UUID,
+        int,
         models.AnnotationTask,
         schemas.AnnotationTask,
         schemas.AnnotationTaskCreate,
         schemas.AnnotationTaskUpdate,
     ]
 ):
-    """API for tasks."""
+    """API for annotation tasks."""
 
     _model = models.AnnotationTask
     _schema = schemas.AnnotationTask
+
+    # Map relationship names to model attributes
+    relationships = {
+        "recording": models.AnnotationTask.recording,
+        "annotation_project": models.AnnotationTask.annotation_project,
+        "sound_event_annotations": models.AnnotationTask.sound_event_annotations,
+        "tags": models.AnnotationTask.tags,
+        "notes": models.AnnotationTask.notes,
+        "features": models.AnnotationTask.features,
+        "status_badges": models.AnnotationTask.status_badges,
+    }
+
+    async def get_index(
+        self,
+        session: AsyncSession,
+        *,
+        limit: int | None = None,
+        offset: int | None = 0,
+        filters: Sequence[Filter | _ColumnExpressionArgument] | None = None,
+        sort_by: _ColumnExpressionArgument | str | None = "-created_on",
+    ) -> tuple[Sequence[schemas.AnnotationTaskIndex], int]:
+        """Get minimal task index for navigation.
+
+        Parameters
+        ----------
+        session
+            The database session to use.
+        limit
+            Maximum number of objects to return. None means no limit.
+        offset
+            Offset for pagination.
+        filters
+            List of filters to apply.
+        sort_by
+            Column to sort by.
+
+        Returns
+        -------
+        tasks : Sequence[schemas.AnnotationTaskIndex]
+            The minimal annotation task indices.
+        count : int
+            Total number of tasks matching filters.
+        """
+        from sonari.api.common.utils import get_objects_from_query
+
+        # Query only the minimal fields needed for navigation
+        query = select(
+            models.AnnotationTask.id,
+            models.AnnotationTask.recording_id,
+            models.AnnotationTask.start_time,
+        )
+
+        result, count = await get_objects_from_query(
+            session,
+            models.AnnotationTask,
+            query,
+            limit=limit,
+            offset=offset,
+            filters=filters,
+            sort_by=sort_by,
+        )
+
+        # Extract rows and convert to schema objects
+        rows = result.all()
+        indices = [
+            schemas.AnnotationTaskIndex(
+                id=row[0],
+                recording_id=row[1],
+                start_time=row[2],
+            )
+            for row in rows
+        ]
+
+        return indices, count
+
+    async def get_stats(
+        self,
+        session: AsyncSession,
+        *,
+        filters: Sequence[Filter | _ColumnExpressionArgument] | None = None,
+    ) -> schemas.AnnotationTaskStats:
+        """Get aggregate statistics for annotation tasks.
+
+        Matches the logic from frontend's computeAnnotationTasksProgress function.
+
+        Parameters
+        ----------
+        session
+            The database session to use.
+        filters
+            List of filters to apply.
+
+        Returns
+        -------
+        schemas.AnnotationTaskStats
+            Aggregate statistics for tasks.
+        """
+        from sqlalchemy.orm import selectinload
+
+        # Get all tasks with their status badges
+        query = select(models.AnnotationTask).options(
+            selectinload(models.AnnotationTask.status_badges)
+        )
+
+        # Apply filters (same pattern as get_objects_from_query)
+        for filter_ in filters or []:
+            if isinstance(filter_, Filter):
+                query = filter_.filter(query)
+            else:
+                query = query.where(filter_)
+
+        result = await session.execute(query)
+        tasks = result.scalars().all()
+
+        # Initialize counters
+        total = len(tasks)
+        pending_count = 0
+        done_count = 0
+        verified_count = 0
+        rejected_count = 0
+        completed_count = 0
+        assigned_count = 0
+
+        # Count tasks by status (matching frontend logic)
+        for task in tasks:
+            if not task.status_badges or len(task.status_badges) == 0:
+                pending_count += 1
+                continue
+
+            # Check for each state
+            is_verified = any(b.state == "verified" for b in task.status_badges)
+            is_rejected = any(b.state == "rejected" for b in task.status_badges)
+            is_completed = any(b.state == "completed" for b in task.status_badges)
+            is_assigned = any(b.state == "assigned" for b in task.status_badges)
+
+            # Count specific states
+            if is_verified:
+                verified_count += 1
+            if is_rejected:
+                rejected_count += 1
+            if is_completed:
+                completed_count += 1
+            if is_assigned:
+                assigned_count += 1
+
+            # Determine if task is done or pending
+            is_done = is_verified or is_rejected or is_completed
+            if is_done:
+                done_count += 1
+            else:
+                pending_count += 1
+
+        return schemas.AnnotationTaskStats(
+            total=total,
+            done_count=done_count,
+            verified_count=verified_count,
+            rejected_count=rejected_count,
+            completed_count=completed_count,
+            pending_count=pending_count,
+            assigned_count=assigned_count,
+        )
 
     async def get_many(
         self,
@@ -55,12 +202,98 @@ class AnnotationTaskAPI(
         offset: int | None = 0,
         filters: Sequence[Filter | _ColumnExpressionArgument] | None = None,
         sort_by: _ColumnExpressionArgument | str | None = "-created_on",
-        noloads: list[Any] | None = None,
+        include_recording: bool = False,
+        include_annotation_project: bool = False,
+        include_sound_event_annotations: bool = False,
+        include_sound_event_tags: bool = False,
+        include_tags: bool = False,
+        include_notes: bool = False,
+        include_features: bool = False,
+        include_status_badges: bool = False,
+        include_status_badge_users: bool = False,
+        include_sound_event_annotation_features: bool = False,
+        include_sound_event_annotation_users: bool = False,
+        include_note_users: bool = False,
     ) -> tuple[Sequence[schemas.AnnotationTask], int]:
-        """Get many annotation tasks without unique() to avoid duplicate removal after pagination."""
+        """Get many annotation tasks without unique() to avoid duplicate removal after pagination.
+
+        Parameters
+        ----------
+        session
+            The database session to use.
+        limit
+            Maximum number of objects to return.
+        offset
+            Offset for pagination.
+        filters
+            List of filters to apply.
+        sort_by
+            Column to sort by.
+        include_recording
+            If True, eagerly load the recording relationship.
+        include_annotation_project
+            If True, eagerly load the annotation_project relationship.
+        include_sound_event_annotations
+            If True, eagerly load the sound_event_annotations relationship.
+        include_tags
+            If True, eagerly load the tags relationship.
+        include_notes
+            If True, eagerly load the notes relationship.
+        include_features
+            If True, eagerly load the features relationship.
+
+        Returns
+        -------
+        tasks : Sequence[schemas.AnnotationTask]
+            The annotation tasks.
+        count : int
+            Total number of tasks matching filters.
+        """
+        from sqlalchemy.orm import noload, selectinload
+
         from sonari.api.common.utils import get_objects_from_query
 
         query = select(models.AnnotationTask)
+
+        # Map include parameters
+        include_map = {
+            "recording": include_recording,
+            "annotation_project": include_annotation_project,
+            "sound_event_annotations": include_sound_event_annotations,
+            "tags": include_tags,
+            "notes": include_notes,
+            "features": include_features,
+            "status_badges": include_status_badges or include_status_badge_users,
+        }
+
+        # Build loading options dynamically
+        options = []
+        for name, rel in self.relationships.items():
+            if include_map.get(name, False):
+                if name == "status_badges" and include_status_badge_users:
+                    # Chain load users when requested
+                    options.append(selectinload(rel).selectinload(models.AnnotationStatusBadge.user))
+                elif name == "sound_event_annotations":
+                    # Handle nested relationships for sound events
+                    # Add base loader for sound_event_annotations
+                    options.append(selectinload(rel))
+                    # Add independent loaders for each nested relationship
+                    if include_sound_event_annotation_features:
+                        options.append(selectinload(rel).selectinload(models.SoundEventAnnotation.features))
+                    if include_sound_event_annotation_users:
+                        options.append(selectinload(rel).selectinload(models.SoundEventAnnotation.created_by))
+                    # Always load tags for sound events when loading the sound events
+                    options.append(selectinload(rel).selectinload(models.SoundEventAnnotation.tags))
+                elif name == "notes" and include_note_users:
+                    # Chain load users for notes when requested
+                    options.append(selectinload(rel).selectinload(models.Note.created_by))
+                else:
+                    options.append(selectinload(rel))
+            else:
+                options.append(noload(rel))
+
+        query = query.options(*options)
+
         result, count = await get_objects_from_query(
             session,
             models.AnnotationTask,
@@ -69,54 +302,153 @@ class AnnotationTaskAPI(
             offset=offset,
             filters=filters,
             sort_by=sort_by,
-            noloads=noloads,
         )
         # Don't use unique() - just return the scalars directly
         objs = result.scalars().all()
+
+        # Load sound event tags separately if requested
+        if include_sound_event_tags:
+            task_ids = [obj.id for obj in objs]
+            sound_event_tags_map = await self._load_sound_event_tags(session, task_ids)
+            tasks_with_tags = []
+            for obj in objs:
+                task = self._schema.model_validate(obj)
+                tags_for_task = sound_event_tags_map.get(obj.id, [])
+                # Use model_copy with update to add sound_event_tags
+                task_with_tags = task.model_copy(update={"sound_event_tags": tags_for_task})
+                tasks_with_tags.append(task_with_tags)
+            return tasks_with_tags, count
+
         return [self._schema.model_validate(obj) for obj in objs], count
 
-    async def get_clip_annotation(
+    async def get(
         self,
         session: AsyncSession,
-        obj: schemas.AnnotationTask,
-    ) -> schemas.ClipAnnotation:
-        """Get clip annotations for a task.
+        pk: int,
+        *,
+        include_recording: bool = False,
+        include_annotation_project: bool = False,
+        include_sound_event_annotations: bool = False,
+        include_sound_event_tags: bool = False,
+        include_tags: bool = False,
+        include_notes: bool = False,
+        include_features: bool = False,
+        include_status_badges: bool = False,
+        include_status_badge_users: bool = False,
+        include_sound_event_annotation_features: bool = False,
+        include_sound_event_annotation_users: bool = False,
+        include_note_users: bool = False,
+    ) -> schemas.AnnotationTask:
+        """Get an annotation task by primary key.
 
         Parameters
         ----------
         session
-            SQLAlchemy AsyncSession.
-        obj
-            Task for which to get the annotations.
+            The database session to use.
+        pk
+            The primary key (ID) of the annotation task.
+        include_recording
+            If True, eagerly load the recording relationship.
+        include_annotation_project
+            If True, eagerly load the annotation_project relationship.
+        include_sound_event_annotations
+            If True, eagerly load the sound_event_annotations relationship.
+        include_tags
+            If True, eagerly load the tags relationship.
+        include_notes
+            If True, eagerly load the notes relationship.
+        include_features
+            If True, eagerly load the features relationship.
+        include_status_badges
+            If True, eagerly load the status_badges relationship.
+        include_status_badge_users
+            If True, eagerly load user information for status badges (implies include_status_badges).
 
         Returns
         -------
-        list[schemas.Annotation]
-            Annotations for the task.
+        task : schemas.AnnotationTask
+            The annotation task.
+
+        Raises
+        ------
+        NotFoundError
+            If the annotation task could not be found.
         """
-        stmt = (
-            select(models.ClipAnnotation.uuid)
-            .select_from(models.ClipAnnotation)
-            .join(
-                models.AnnotationTask,
-                models.ClipAnnotation.id == models.AnnotationTask.clip_annotation_id,
-            )
-            .filter(models.AnnotationTask.id == obj.id)
-        )
-        results = await session.execute(stmt)
-        uuid = results.scalars().first()
-        if not uuid:
-            raise exceptions.NotFoundError("No clip annotation found for task {obj}")
-        return await clip_annotations.get(session, uuid)
+        from sqlalchemy.orm import noload, selectinload
+
+        # Map include parameters
+        include_map = {
+            "recording": include_recording,
+            "annotation_project": include_annotation_project,
+            "sound_event_annotations": include_sound_event_annotations,
+            "tags": include_tags,
+            "notes": include_notes,
+            "features": include_features,
+            "status_badges": include_status_badges or include_status_badge_users,
+        }
+
+        # Check cache first if no relationships are requested
+        if not any(include_map.values()):
+            if self._is_in_cache(pk):
+                return self._get_from_cache(pk)
+
+        query = select(self._model).where(self._model.id == pk)
+
+        # Build loading options dynamically
+        options = []
+        for name, rel in self.relationships.items():
+            if include_map.get(name, False):
+                if name == "status_badges" and include_status_badge_users:
+                    # Chain load users when requested
+                    options.append(selectinload(rel).selectinload(models.AnnotationStatusBadge.user))
+                elif name == "sound_event_annotations":
+                    # Handle nested relationships for sound events
+                    # Add base loader for sound_event_annotations
+                    options.append(selectinload(rel))
+                    # Add independent loaders for each nested relationship
+                    if include_sound_event_annotation_features:
+                        options.append(selectinload(rel).selectinload(models.SoundEventAnnotation.features))
+                    if include_sound_event_annotation_users:
+                        options.append(selectinload(rel).selectinload(models.SoundEventAnnotation.created_by))
+                    # Always load tags for sound events when loading the sound events
+                    options.append(selectinload(rel).selectinload(models.SoundEventAnnotation.tags))
+                elif name == "notes" and include_note_users:
+                    # Chain load users for notes when requested
+                    options.append(selectinload(rel).selectinload(models.Note.created_by))
+                else:
+                    options.append(selectinload(rel))
+            else:
+                options.append(noload(rel))
+
+        query = query.options(*options)
+
+        result = await session.execute(query)
+        obj = result.unique().scalar_one_or_none()
+
+        if obj is None:
+            raise exceptions.NotFoundError(f"AnnotationTask with id {pk} not found")
+
+        data = self._schema.model_validate(obj)
+
+        # Load sound event tags separately if requested
+        if include_sound_event_tags:
+            sound_event_tags_map = await self._load_sound_event_tags(session, [obj.id])
+            # Use model_copy with update to add sound_event_tags
+            data = data.model_copy(update={"sound_event_tags": sound_event_tags_map.get(obj.id, [])})
+
+        self._update_cache(data)
+        return data
 
     async def create(
         self,
         session: AsyncSession,
         annotation_project: schemas.AnnotationProject,
-        clip: schemas.Clip,
+        recording: schemas.Recording,
+        start_time: float,
+        end_time: float,
         **kwargs,
     ) -> schemas.AnnotationTask:
-        """Create a task.
+        """Create an annotation task.
 
         Parameters
         ----------
@@ -124,23 +456,193 @@ class AnnotationTaskAPI(
             SQLAlchemy AsyncSession.
         annotation_project
             Annotation project to which the task belongs.
-        clip
-            Clip to annotate.
+        recording
+            Recording from which to extract the audio segment.
+        start_time
+            Start time of the audio segment in seconds.
+        end_time
+            End time of the audio segment in seconds.
         **kwargs
-            Additional keyword arguments to pass to the creation
-            (e.g. `uuid`).
+            Additional keyword arguments.
 
         Returns
         -------
         schemas.AnnotationTask
             Created task.
         """
-        return await self.create_from_data(
+        task = await self.create_from_data(
             session,
             annotation_project_id=annotation_project.id,
-            clip_id=clip.id,
+            recording_id=recording.id,
+            start_time=start_time,
+            end_time=end_time,
             **kwargs,
         )
+
+        # Compute and add default features
+        features = await self._create_task_features(session, [task])
+        task = task.model_copy(update=dict(features=features[0]))
+        self._update_cache(task)
+        return task
+
+    async def create_many_without_duplicates(
+        self,
+        session: AsyncSession,
+        data: Sequence[dict],
+        return_all: bool = False,
+    ) -> Sequence[schemas.AnnotationTask]:
+        """Create annotation tasks without duplicates.
+
+        Parameters
+        ----------
+        session
+            Database session.
+        data
+            List of tasks to create.
+        return_all
+            Whether to return all tasks or only the created ones.
+
+        Returns
+        -------
+        list[schemas.AnnotationTask]
+            Created tasks.
+        """
+        tasks = await super().create_many_without_duplicates(
+            session,
+            data,
+            return_all=return_all,
+        )
+
+        if not tasks:
+            return tasks
+
+        # Compute features for all tasks
+        task_features = await self._create_task_features(session, tasks)
+        return [
+            task.model_copy(update=dict(features=features))
+            for task, features in zip(tasks, task_features, strict=False)
+        ]
+
+    async def add_feature(
+        self,
+        session: AsyncSession,
+        obj: schemas.AnnotationTask,
+        feature: schemas.Feature,
+    ) -> schemas.AnnotationTask:
+        """Add feature to annotation task.
+
+        Parameters
+        ----------
+        session
+            Database session.
+        obj
+            Task to add feature to.
+        feature
+            Feature to add.
+
+        Returns
+        -------
+        schemas.AnnotationTask
+            Updated task.
+        """
+        for f in obj.features:
+            if f.name == feature.name:
+                raise exceptions.DuplicateObjectError(f"Task {obj.id} already has a feature with name {feature.name}.")
+
+        await common.create_object(
+            session,
+            models.AnnotationTaskFeature,
+            annotation_task_id=obj.id,
+            name=feature.name,
+            value=feature.value,
+        )
+
+        obj = obj.model_copy(update=dict(features=[*obj.features, feature]))
+        self._update_cache(obj)
+        return obj
+
+    async def update_feature(
+        self,
+        session: AsyncSession,
+        obj: schemas.AnnotationTask,
+        feature: schemas.Feature,
+    ) -> schemas.AnnotationTask:
+        """Update a feature value for a task.
+
+        Parameters
+        ----------
+        session
+            Database session.
+        obj
+            Task to update feature for.
+        feature
+            Feature to update.
+
+        Returns
+        -------
+        schemas.AnnotationTask
+            The updated task.
+        """
+        for f in obj.features:
+            if f.name == feature.name:
+                break
+        else:
+            raise ValueError(f"Task {obj} does not have a feature with name {feature.name}.")
+
+        await common.update_object(
+            session,
+            models.AnnotationTaskFeature,
+            and_(
+                models.AnnotationTaskFeature.annotation_task_id == obj.id,
+                models.AnnotationTaskFeature.name == feature.name,
+            ),
+            value=feature.value,
+        )
+
+        obj = obj.model_copy(update=dict(features=[f if f.name != feature.name else feature for f in obj.features]))
+        self._update_cache(obj)
+        return obj
+
+    async def remove_feature(
+        self,
+        session: AsyncSession,
+        obj: schemas.AnnotationTask,
+        feature: schemas.Feature,
+    ) -> schemas.AnnotationTask:
+        """Remove feature from task.
+
+        Parameters
+        ----------
+        session
+            Database session.
+        obj
+            Task to remove feature from.
+        feature
+            Feature to remove.
+
+        Returns
+        -------
+        schemas.AnnotationTask
+            The updated task.
+        """
+        for f in obj.features:
+            if f.name == feature.name:
+                break
+        else:
+            raise ValueError(f"Task {obj} does not have a feature with name {feature.name}.")
+
+        await common.delete_object(
+            session,
+            models.AnnotationTaskFeature,
+            and_(
+                models.AnnotationTaskFeature.annotation_task_id == obj.id,
+                models.AnnotationTaskFeature.name == feature.name,
+            ),
+        )
+
+        obj = obj.model_copy(update=dict(features=[f for f in obj.features if f.name != feature.name]))
+        self._update_cache(obj)
+        return obj
 
     async def add_status_badge(
         self,
@@ -179,6 +681,8 @@ class AnnotationTaskAPI(
             user_id=user.id if user else None,
         )
 
+        await session.refresh(badge, attribute_names=["user"])
+
         obj = obj.model_copy(
             update=dict(
                 status_badges=[
@@ -205,8 +709,10 @@ class AnnotationTaskAPI(
             SQLAlchemy AsyncSession.
         obj
             Task to remove the status badge from.
-        badge
-            Status badge to remove.
+        state
+            State of the status badge to remove.
+        user_id
+            Optional user ID to filter by.
 
         Returns
         -------
@@ -240,180 +746,355 @@ class AnnotationTaskAPI(
         self._update_cache(obj)
         return obj
 
-    async def from_soundevent(
+    async def add_tag(
         self,
         session: AsyncSession,
-        data: data.AnnotationTask,
-        annotation_project: schemas.AnnotationProject,
+        obj: schemas.AnnotationTask,
+        tag: schemas.Tag,
+        user: schemas.SimpleUser | None = None,
     ) -> schemas.AnnotationTask:
-        """Get or create a task from a `soundevent` task.
+        """Add a tag to an annotation task.
 
         Parameters
         ----------
         session
-            An async database session.
-        data
-            The `soundevent` task.
-        annotation_project
-            The annotation project to which the task belongs.
+            SQLAlchemy AsyncSession.
+        obj
+            Task to add the tag to.
+        tag
+            Tag to add.
+        user
+            User who is adding the tag.
 
         Returns
         -------
         schemas.AnnotationTask
-            The created task.
+            Task with the new tag.
         """
-        try:
-            obj = await self.get(session, data.uuid)
-        except exceptions.NotFoundError:
-            obj = await self._create_from_soundevent(
-                session,
-                data,
-                annotation_project,
-            )
+        user_id = user.id if user else None
+        for t in obj.tags:
+            if t.key == tag.key and t.value == tag.value:
+                raise exceptions.DuplicateObjectError(f"Tag {tag} already exists in task {obj.id}.")
 
-        return await self._update_from_soundevent(session, obj, data)
-
-    async def get_clip(
-        self,
-        session: AsyncSession,
-        obj: schemas.AnnotationTask,
-    ) -> schemas.Clip:
-        """Get the clip of a task.
-
-        Parameters
-        ----------
-        obj
-            The task.
-
-        Returns
-        -------
-        schemas.Clip
-            The clip of the task.
-        """
-        return await clips.find(
+        await common.create_object(
             session,
-            filters=[AnnotationTaskFilter(eq=obj.id)],
+            models.AnnotationTaskTag,
+            annotation_task_id=obj.id,
+            tag_id=tag.id,
+            created_by_id=user_id,
         )
 
-    async def to_soundevent(
-        self,
-        session: AsyncSession,
-        task: schemas.AnnotationTask,
-        clip: schemas.Clip | None = None,
-        audio_dir: Path | None = None,
-    ) -> data.AnnotationTask:
-        """Convert a task to a `soundevent` task.
-
-        Parameters
-        ----------
-        task
-            The task to convert.
-
-        Returns
-        -------
-        data.AnnotationTask
-            The converted task.
-        """
-        if clip is None:
-            clip = await self.get_clip(session, task)
-        return data.AnnotationTask(
-            uuid=task.uuid,
-            clip=clips.to_soundevent(clip, audio_dir=audio_dir),
-            status_badges=[
-                data.StatusBadge(
-                    owner=users.to_soundevent(sb.user) if sb.user else None,
-                    state=sb.state,
-                    created_on=sb.created_on,
-                )
-                for sb in task.status_badges
-            ],
-            created_on=task.created_on,
-        )
-
-    async def _update_from_soundevent(
-        self,
-        session: AsyncSession,
-        obj: schemas.AnnotationTask,
-        data: data.AnnotationTask,
-    ) -> schemas.AnnotationTask:
-        """Update a task from a `soundevent` task.
-
-        Parameters
-        ----------
-        session
-            An async database session.
-        obj
-            The task to update.
-        data
-            The `soundevent` task.
-
-        Returns
-        -------
-        schemas.AnnotationTask
-            The updated task.
-        """
-        current_status_badges = {(b.user.id if b.user else None, b.state) for b in obj.status_badges}
-        for status_badge in data.status_badges:
-            if (
-                status_badge.owner.uuid if status_badge.owner else None,
-                status_badge.state,
-            ) in current_status_badges:
-                continue
-
-            user = None
-            if status_badge.owner:
-                user = await users.from_soundevent(session, status_badge.owner)
-
-            obj = await self.add_status_badge(
-                session,
-                obj,
-                state=status_badge.state,
-                user=user,
+        obj = obj.model_copy(
+            update=dict(
+                tags=[
+                    tag,
+                    *obj.tags,
+                ],
             )
-
+        )
+        self._update_cache(obj)
         return obj
 
-    async def _create_from_soundevent(
+    async def remove_tag(
         self,
         session: AsyncSession,
-        data: data.AnnotationTask,
-        annotation_project: schemas.AnnotationProject,
-        clip: schemas.Clip | None = None,
+        obj: schemas.AnnotationTask,
+        tag: schemas.Tag,
     ) -> schemas.AnnotationTask:
-        """Create a task from a `soundevent` task.
+        """Remove a tag from an annotation task.
 
         Parameters
         ----------
         session
-            An async database session.
-        data
-            The `soundevent` task.
-        annotation_project_id
-            The ID of the annotation project to which the task belongs.
+            SQLAlchemy AsyncSession.
+        obj
+            Task to remove the tag from.
+        tag
+            Tag to remove.
 
         Returns
         -------
         schemas.AnnotationTask
-            The created task.
+            Task with the tag removed.
         """
-        if clip is None:
-            clip = await clips.from_soundevent(session, data.clip)
-        return await self.create(
+        for t in obj.tags:
+            if t.key == tag.key and t.value == tag.value:
+                break
+        else:
+            raise exceptions.NotFoundError(f"Tag {tag} does not exist in task {obj.id}.")
+
+        await common.delete_object(
             session,
-            clip=clip,
-            annotation_project=annotation_project,
-            uuid=data.uuid,
-            created_on=data.created_on,
+            models.AnnotationTaskTag,
+            and_(
+                models.AnnotationTaskTag.annotation_task_id == obj.id,
+                models.AnnotationTaskTag.tag_id == tag.id,
+            ),
         )
 
+        obj = obj.model_copy(
+            update=dict(
+                tags=[t for t in obj.tags if not (t.key == tag.key and t.value == tag.value)],
+            )
+        )
+        self._update_cache(obj)
+        return obj
+
+    async def add_note(
+        self,
+        session: AsyncSession,
+        obj: schemas.AnnotationTask,
+        note: schemas.Note,
+    ) -> schemas.AnnotationTask:
+        """Add a note to an annotation task.
+
+        Parameters
+        ----------
+        session
+            SQLAlchemy AsyncSession.
+        obj
+            Task to add the note to.
+        note
+            Note to add.
+
+        Returns
+        -------
+        schemas.AnnotationTask
+            Task with the new note.
+        """
+        for n in obj.notes:
+            if n.id == note.id:
+                raise exceptions.DuplicateObjectError(f"Note {note.id} already exists in task {obj.id}.")
+
+        # Update the note to associate it with this task
+        await common.update_object(
+            session,
+            models.Note,
+            models.Note.id == note.id,
+            annotation_task_id=obj.id,
+        )
+
+        obj = obj.model_copy(
+            update=dict(
+                notes=[
+                    note,
+                    *obj.notes,
+                ],
+            )
+        )
+        self._update_cache(obj)
+        return obj
+
+    async def remove_note(
+        self,
+        session: AsyncSession,
+        obj: schemas.AnnotationTask,
+        note: schemas.Note,
+    ) -> schemas.AnnotationTask:
+        """Remove a note from an annotation task.
+
+        Parameters
+        ----------
+        session
+            SQLAlchemy AsyncSession.
+        obj
+            Task to remove the note from.
+        note
+            Note to remove.
+
+        Returns
+        -------
+        schemas.AnnotationTask
+            Task with the note removed.
+        """
+        for n in obj.notes:
+            if n.id == note.id:
+                break
+        else:
+            raise exceptions.NotFoundError(f"Note {note.id} does not exist in task {obj.id}.")
+
+        # Delete the note from the database
+        await common.delete_object(
+            session,
+            models.Note,
+            models.Note.id == note.id,
+        )
+
+        obj = obj.model_copy(
+            update=dict(
+                notes=[n for n in obj.notes if n.id != note.id],
+            )
+        )
+        self._update_cache(obj)
+        return obj
+
+    async def _create_task_features(
+        self,
+        session: AsyncSession,
+        tasks: Sequence[schemas.AnnotationTask],
+    ) -> Sequence[list[schemas.Feature]]:
+        """Create features for tasks.
+
+        Parameters
+        ----------
+        session
+            Database session.
+        tasks
+            List of tasks to create features for.
+
+        Returns
+        -------
+        list[list[schemas.Feature]]
+            List of features created for each task.
+        """
+        task_features = [
+            [schemas.Feature(name=name, value=value) for name, value in compute_task_features(task).items()]
+            for task in tasks
+        ]
+
+        create_values = [
+            (task.id, feature.name, feature.value)
+            for task, features in zip(tasks, task_features, strict=False)
+            for feature in features
+        ]
+
+        data = [
+            dict(
+                annotation_task_id=task_id,
+                name=name,
+                value=value,
+            )
+            for task_id, name, value in create_values
+        ]
+
+        await common.create_objects_without_duplicates(
+            session,
+            models.AnnotationTaskFeature,
+            data,
+            key=lambda obj: (obj["annotation_task_id"], obj["name"]),
+            key_column=tuple_(
+                models.AnnotationTaskFeature.annotation_task_id,
+                models.AnnotationTaskFeature.name,
+            ),
+            return_all=True,
+        )
+        return task_features
+
+    async def _load_sound_event_tags(
+        self,
+        session: AsyncSession,
+        task_ids: list[int],
+    ) -> dict[int, list[schemas.Tag]]:
+        """Load aggregated tags from sound event annotations for tasks.
+
+        Parameters
+        ----------
+        session
+            Database session.
+        task_ids
+            List of task IDs to load tags for.
+
+        Returns
+        -------
+        dict[int, list[schemas.Tag]]
+            Mapping from task ID to list of unique tags from its sound events.
+        """
+        # Handle empty task_ids
+        if not task_ids:
+            return {}
+
+        # Query to get sound event annotation tags for the given tasks
+        # Use distinct on both task_id and tag_id to get unique combinations
+        query = (
+            select(
+                models.SoundEventAnnotation.annotation_task_id,
+                models.Tag.id,
+                models.Tag.key,
+                models.Tag.value,
+            )
+            .select_from(models.SoundEventAnnotation)
+            .join(
+                models.SoundEventAnnotationTag,
+                models.SoundEventAnnotation.id == models.SoundEventAnnotationTag.sound_event_annotation_id,
+            )
+            .join(models.Tag, models.SoundEventAnnotationTag.tag_id == models.Tag.id)
+            .where(models.SoundEventAnnotation.annotation_task_id.in_(task_ids))
+            .distinct()
+        )
+
+        result = await session.execute(query)
+        rows = result.all()
+
+        # Group tags by task ID
+        tags_by_task: dict[int, list[schemas.Tag]] = {}
+        for task_id, tag_id, tag_key, tag_value in rows:
+            if task_id not in tags_by_task:
+                tags_by_task[task_id] = []
+            # Check if tag already added (for uniqueness by id)
+            if not any(t.id == tag_id for t in tags_by_task[task_id]):
+                tags_by_task[task_id].append(schemas.Tag(id=tag_id, key=tag_key, value=tag_value))
+
+        return tags_by_task
+
     def _key_fn(self, obj: dict):
-        return (obj.get("annotation_project_id"), obj.get("clip_id"))
+        return (
+            obj.get("annotation_project_id"),
+            obj.get("recording_id"),
+            obj.get("start_time"),
+            obj.get("end_time"),
+        )
 
     def _get_key_column(self):
         return tuple_(
             models.AnnotationTask.annotation_project_id,
-            models.AnnotationTask.clip_id,
+            models.AnnotationTask.recording_id,
+            models.AnnotationTask.start_time,
+            models.AnnotationTask.end_time,
         )
+
+
+# Feature computation functions
+DURATION = "duration"
+"""Name of duration feature."""
+
+
+def compute_duration(task: schemas.AnnotationTask | models.AnnotationTask) -> float:
+    """Compute duration of task's audio segment.
+
+    Parameters
+    ----------
+    task
+        Task to compute duration for.
+
+    Returns
+    -------
+    float
+        Duration in seconds.
+    """
+    return task.end_time - task.start_time
+
+
+TASK_FEATURES = {
+    DURATION: compute_duration,
+}
+
+
+def compute_task_features(
+    task: schemas.AnnotationTask | models.AnnotationTask,
+) -> dict[str, float]:
+    """Compute features for task.
+
+    Parameters
+    ----------
+    task
+        Task to compute features for.
+
+    Returns
+    -------
+    dict[str, float]
+        Dictionary of feature names and values.
+    """
+    return {name: func(task) for name, func in TASK_FEATURES.items()}
 
 
 annotation_tasks = AnnotationTaskAPI()

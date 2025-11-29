@@ -1,22 +1,23 @@
 "use client";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useContext, useMemo } from "react";
-import { useMutation } from "@tanstack/react-query";
 import toast from "react-hot-toast";
 import { HOST } from "@/api/common";
+import { AxiosError } from "axios";
 
 import UserContext from "@/app/(base)/context";
-import AnnotateTasks from "@/components/annotation/AnnotateTasks";
+import AnnotateTasks from "@/components/annotation_tasks/AnnotateTasks";
 import Loading from "@/components/Loading";
 import { CompleteIcon, NeedsReviewIcon, HelpIcon, VerifiedIcon } from "@/components/icons";
 import useAnnotationTask from "@/hooks/api/useAnnotationTask";
 import useStore from "@/store";
 import { changeURLParam } from "@/utils/url";
+import { SpectrogramParametersSchema } from "@/schemas";
 
 import AnnotationProjectContext from "../context";
 
-import api from "@/app/api";
-import type { AnnotationTask, SpectrogramParameters, Tag, SoundEventAnnotation } from "@/types";
+import type { AnnotationTask, AnnotationStatus, SpectrogramParameters, Tag } from "@/types";
+import type { NoteCreate } from "@/api/notes";
 
 export default function Page() {
   const search = useSearchParams();
@@ -28,52 +29,134 @@ export default function Page() {
   const project = useContext(AnnotationProjectContext);
   const user = useContext(UserContext);
 
-  const annotationTaskUUID = search.get("annotation_task_uuid");
+  const annotationTaskID = search.get("annotation_task_id");
 
-  const annotationTask = useAnnotationTask({
-    uuid: annotationTaskUUID || "",
-    enabled: !!annotationTaskUUID,
+
+  // All hooks must be called before any conditional returns
+  const handleError = useCallback((error: AxiosError) => {
+    toast.error(error.message)
+  }, []);
+
+  const annotationTaskQuery = useAnnotationTask({
+    id: annotationTaskID ? parseInt(annotationTaskID) : 0,
+    enabled: !!annotationTaskID,
+    onError: handleError,
+    include_recording: true,
+    include_notes: true,
+    include_sound_event_annotations: true,  // Full sound events needed here
+    include_tags: true,
+    include_features: true,
+    include_status_badges: true,
+    include_status_badge_users: true,
+    include_note_users: true,  // For note author display
   });
 
+  // Extract data and mutation functions
+  const {
+    data: annotationTask,
+    isLoading: isLoadingTask,
+    addNote,
+    removeNote,
+    addBadge,
+    removeBadge,
+    addTag,
+    removeTag,
+    addTagToSoundEventAnnotation,
+    removeTagFromSoundEventAnnotation,
+    addSoundEventAnnotation,
+    removeSoundEventAnnotation,
+    updateSoundEventAnnotation,
+  } = annotationTaskQuery;
+
   const parameters = useStore((state) => state.spectrogramSettings);
+
   const setParameters = useStore((state) => state.setSpectrogramSettings);
 
   const onParameterSave = useCallback(
     (parameters: SpectrogramParameters) => {
-      setParameters(parameters);
+      try {
+        // Validate before saving
+        SpectrogramParametersSchema.parse(parameters);
+        setParameters(parameters);
+      } catch (error) {
+        toast.error("Invalid spectrogram parameters. Please check your settings.");
+      }
     },
     [setParameters],
   );
 
-  // Tags are now automatically added to all projects in the backend
-  // No need to explicitly add them here anymore
-  const { mutate: handleTagCreate } = useMutation({
-    mutationFn: async (tag: Tag) => {
-      // Tag creation already adds to all projects in the backend
-      // This is just a no-op placeholder to satisfy the prop type
-      return tag;
-    },
-  });
+  // Wrap mutation functions in useCallback for reference stability
+  const handleAddNote = useCallback(
+    (note: NoteCreate) => addNote.mutate(note),
+    [addNote]
+  );
 
-  const { mutateAsync: handleAddSoundEventTag } = useMutation({
-    mutationFn: async ({ annotation, tag }: { annotation: SoundEventAnnotation, tag: Tag }) => {
-      return await api.soundEventAnnotations.addTag(annotation, tag);
-    },
-  });
+  const handleRemoveNote = useCallback(
+    (note: any) => removeNote.mutate(note),
+    [removeNote]
+  );
 
-  const { mutateAsync: handleRemoveSoundEventTag } = useMutation({
-    mutationFn: async ({ annotation, tag }: { annotation: SoundEventAnnotation, tag: Tag }) => {
-      return await api.soundEventAnnotations.removeTag(annotation, tag);
+  const handleAddTag = useCallback(
+    (tag: Tag) => addTag.mutate(tag),
+    [addTag]
+  );
+
+  const handleRemoveTag = useCallback(
+    (tag: Tag) => removeTag.mutate(tag),
+    [removeTag]
+  );
+
+  const handleAddTagToSoundEventAnnotation = useCallback(
+    (params: any) => addTagToSoundEventAnnotation.mutateAsync(params),
+    [addTagToSoundEventAnnotation]
+  );
+
+  const handleRemoveTagFromSoundEventAnnotation = useCallback(
+    (params: any) => removeTagFromSoundEventAnnotation.mutateAsync(params),
+    [removeTagFromSoundEventAnnotation]
+  );
+
+  const handleAddSoundEventAnnotation = useCallback(
+    async (params: any) => {
+      const result = await addSoundEventAnnotation.mutateAsync(params);
+      return result;
     },
-  });
+    [addSoundEventAnnotation]
+  );
+
+  const handleRemoveSoundEventAnnotation = useCallback(
+    (annotation: any) => removeSoundEventAnnotation.mutate(annotation),
+    [removeSoundEventAnnotation]
+  );
+
+  const handleUpdateSoundEventAnnotation = useCallback(
+    (params: any) => updateSoundEventAnnotation.mutate(params),
+    [updateSoundEventAnnotation]
+  );
+
+  const handleAddBadge = useCallback(
+    async (task: AnnotationTask, state: AnnotationStatus) => {
+      const result = await addBadge.mutateAsync(state);
+      return result;
+    },
+    [addBadge]
+  );
+  
+  const handleRemoveBadge = useCallback(
+    async (task: AnnotationTask, state: AnnotationStatus, userId?: string) => {
+      const result = await removeBadge.mutateAsync(state);
+      return result;
+    },
+    [removeBadge]
+  );
 
   const onChangeTask = useCallback(
     (task: AnnotationTask) => {
       const url = changeURLParam({
         pathname,
         search,
-        param: "annotation_task_uuid",
-        value: task.uuid,
+        param: "annotation_task_id",
+        value: task.id.toString(),
       });
       router.push(url);
     },
@@ -82,37 +165,37 @@ export default function Page() {
 
   const handleCompleteTask = useCallback(() => {
     toast(
-      <div className="flex items-center gap-2">
+      <span className="flex items-center gap-2">
         <CompleteIcon className="w-5 h-5 text-emerald-500" />
         <span>Accepted</span>
-      </div>
+      </span>
     );
   }, []);
 
   const handleUnsureTask = useCallback(() => {
     toast(
-      <div className="flex items-center gap-2">
+      <span className="flex items-center gap-2">
         <HelpIcon className="w-5 h-5 text-amber-500" />
         <span>Unsure</span>
-      </div>
+      </span>
     );
   }, []);
 
   const handleRejectTask = useCallback(() => {
     toast(
-      <div className="flex items-center gap-2">
+      <span className="flex items-center gap-2">
         <NeedsReviewIcon className="w-5 h-5 text-red-500" />
         <span>Rejected</span>
-      </div>
+      </span>
     );
   }, []);
 
   const handleVerifyTask = useCallback(() => {
     toast(
-      <div className="flex items-center gap-2">
+      <span className="flex items-center gap-2">
         <VerifiedIcon className="w-5 h-5 text-blue-500" />
         <span>Verified</span>
-      </div>
+      </span>
     );
   }, []);
 
@@ -123,18 +206,23 @@ export default function Page() {
     [project],
   );
 
-  if (annotationTask.isLoading && !annotationTask.data) {
+  // Now handle conditional cases after all hooks have been called
+  if (annotationTaskID == null) {
+    toast.error("Annotation task not found.");
+    router.back()
+    return null;
+  }
+
+  if (isLoadingTask && !annotationTask) {
     return <Loading />;
   }
 
   return (
     <div className="w-full">
       <AnnotateTasks
-        instructions={project.annotation_instructions || ""}
         taskFilter={filter}
-        tagFilter={filter}
-        projectTags={project.tags == null ? [] : project.tags}
-        annotationTask={annotationTask.data}
+        annotationTask={annotationTask}
+        isLoadingTask={isLoadingTask}
         parameters={parameters}
         onChangeTask={onChangeTask}
         currentUser={user}
@@ -143,7 +231,17 @@ export default function Page() {
         onUnsureTask={handleUnsureTask}
         onRejectTask={handleRejectTask}
         onVerifyTask={handleVerifyTask}
-        onCreateTag={handleTagCreate}
+        onAddBadge={handleAddBadge}
+        onRemoveBadge={handleRemoveBadge}
+        onAddNote={handleAddNote}
+        onRemoveNote={handleRemoveNote}
+        onAddTag={handleAddTag}
+        onRemoveTag={handleRemoveTag}
+        onAddTagToSoundEventAnnotation={handleAddTagToSoundEventAnnotation}
+        onRemoveTagFromSoundEventAnnotation={handleRemoveTagFromSoundEventAnnotation}
+        onAddSoundEventAnnotation={handleAddSoundEventAnnotation}
+        onRemoveSoundEventAnnotation={handleRemoveSoundEventAnnotation}
+        onUpdateSoundEventAnnotation={handleUpdateSoundEventAnnotation}
       />
     </div>
   );

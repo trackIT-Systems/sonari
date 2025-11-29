@@ -15,7 +15,6 @@ associated recordings from the app.
 """
 
 from pathlib import Path
-from uuid import UUID, uuid4
 
 import sqlalchemy.orm as orm
 from sqlalchemy import ForeignKey, UniqueConstraint, func, inspect, select
@@ -38,8 +37,6 @@ class Dataset(Base):
     ----------
     id
         The database id of the dataset.
-    uuid
-        The UUID of the dataset.
     name
         The name of the dataset.
     description
@@ -59,9 +56,6 @@ class Dataset(Base):
         A textual description of the dataset.
     audio_dir : Path
         The path to the audio directory of the dataset.
-    uuid : UUID, optional
-        The UUID of the dataset. If not provided, a new UUID will be
-        generated.
 
     Notes
     -----
@@ -74,11 +68,6 @@ class Dataset(Base):
     __tablename__ = "dataset"
 
     id: orm.Mapped[int] = orm.mapped_column(primary_key=True, init=False)
-    uuid: orm.Mapped[UUID] = orm.mapped_column(
-        default_factory=uuid4,
-        unique=True,
-        kw_only=True,
-    )
     name: orm.Mapped[str] = orm.mapped_column(unique=True)
     description: orm.Mapped[str] = orm.mapped_column(nullable=True)
     audio_dir: orm.Mapped[Path] = orm.mapped_column(unique=True)
@@ -92,8 +81,6 @@ class Dataset(Base):
         repr=False,
         init=False,
     )
-
-    # Secondary relations
     dataset_recordings: orm.Mapped[list["DatasetRecording"]] = orm.relationship(
         "DatasetRecording",
         init=False,
@@ -166,9 +153,6 @@ class DatasetRecording(Base):
         init=False,
         repr=False,
         back_populates="recording_datasets",
-        cascade="all",
-        passive_deletes=True,
-        lazy="joined",
     )
 
 

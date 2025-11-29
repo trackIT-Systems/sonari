@@ -87,8 +87,11 @@ class Settings(BaseSettings):
     port: int = 5000
     """Port on which the backend is running."""
 
-    domain: str = "localhost"
-    """Domain on which the backend is running."""
+    domain: str | None = "localhost"
+    """Domain on which the backend is running.
+    
+    Set to None for testing to ensure cookies work properly with httpx AsyncClient.
+    """
 
     log_config: Path = Path("logging.conf")
     """Path to the logging configuration file relative to the project root."""
@@ -159,7 +162,7 @@ def load_settings_from_file() -> Settings:
         # has changed. In both cases, we want to store the default settings
         # to the file.
         warnings.warn(
-            f"Settings file {settings_file} is invalid. " "Storing default settings to file.",
+            f"Settings file {settings_file} is invalid. Storing default settings to file.",
             stacklevel=2,
         )
         store_default_settings()

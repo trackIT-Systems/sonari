@@ -7,34 +7,32 @@ import useObject from "@/hooks/utils/useObject";
 import type { Recording } from "@/types";
 
 export default function useRecording({
-  uuid,
+  id,
   recording,
   enabled = true,
   onUpdate,
   onDelete,
   onAddTag,
-  onAddNote,
   onRemoveTag,
   onAddFeature,
   onRemoveFeature,
   onUpdateFeature,
   onError,
 }: {
-  uuid: string;
+  id: number;
   recording?: Recording;
   enabled?: boolean;
   onUpdate?: (recording: Recording) => void;
   onDelete?: (recording: Recording) => void;
   onAddTag?: (recording: Recording) => void;
-  onAddNote?: (recording: Recording) => void;
   onRemoveTag?: (recording: Recording) => void;
   onAddFeature?: (recording: Recording) => void;
   onRemoveFeature?: (recording: Recording) => void;
   onUpdateFeature?: (recording: Recording) => void;
   onError?: (error: AxiosError) => void;
 }) {
-  if (recording !== undefined && recording.uuid !== uuid) {
-    throw new Error("Recording uuid does not match");
+  if (recording !== undefined && recording.id !== id) {
+    throw new Error("Recording id does not match");
   }
 
   const {
@@ -42,7 +40,7 @@ export default function useRecording({
     useMutation,
     setData: set,
   } = useObject<Recording>({
-    uuid,
+    id,
     initial: recording,
     name: "dataset",
     enabled,
@@ -63,11 +61,6 @@ export default function useRecording({
   const removeTag = useMutation({
     mutationFn: api.recordings.removeTag,
     onSuccess: onRemoveTag,
-  });
-
-  const addNote = useMutation({
-    mutationFn: api.recordings.addNote,
-    onSuccess: onAddNote,
   });
 
   const addFeature = useMutation({
@@ -100,7 +93,6 @@ export default function useRecording({
     update,
     addTag,
     removeTag,
-    addNote,
     addFeature,
     removeFeature,
     updateFeature,

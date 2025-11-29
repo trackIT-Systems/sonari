@@ -4,7 +4,6 @@ import { shiftGeometry, shiftPolygon } from "@/utils/geometry";
 import type { EditableElement } from "@/draw/edit";
 import type {
   BoundingBox,
-  Dimensions,
   Geometry,
   LineString,
   MultiLineString,
@@ -16,10 +15,10 @@ import type {
   TimeInterval,
   TimeStamp,
 } from "@/types";
+import { SPECTROGRAM_CANVAS_DIMENSIONS } from "@/constants";
 
-export function getTimeStampEditableElements(
+function getTimeStampEditableElements(
   geometry: TimeStamp,
-  { height }: { height: number },
 ): EditableElement<TimeStamp>[] {
   const onset = geometry.coordinates;
   return [
@@ -28,7 +27,7 @@ export function getTimeStampEditableElements(
       type: "Edge",
       coords: [
         [onset, 0],
-        [onset, height],
+        [onset, SPECTROGRAM_CANVAS_DIMENSIONS.height],
       ],
       drag: (current: TimeStamp, start: Pixel, end: Pixel) => {
         const dx = end.x - start.x;
@@ -41,13 +40,8 @@ export function getTimeStampEditableElements(
   ];
 }
 
-export function getTimeIntervalEditableElements(
+function getTimeIntervalEditableElements(
   geom: TimeInterval,
-  {
-    height,
-  }: {
-    height: number;
-  },
 ): EditableElement<TimeInterval>[] {
   const [left, right] = geom.coordinates;
   return [
@@ -56,7 +50,7 @@ export function getTimeIntervalEditableElements(
       type: "Edge",
       coords: [
         [left, 0],
-        [left, height],
+        [left, SPECTROGRAM_CANVAS_DIMENSIONS.height],
       ],
       drag: (current: TimeInterval, start: Pixel, end: Pixel) => {
         const dx = end.x - start.x;
@@ -72,7 +66,7 @@ export function getTimeIntervalEditableElements(
       type: "Edge",
       coords: [
         [right, 0],
-        [right, height],
+        [right, SPECTROGRAM_CANVAS_DIMENSIONS.height],
       ],
       drag: (current: TimeInterval, start: Pixel, end: Pixel) => {
         const dx = end.x - start.x;
@@ -88,10 +82,10 @@ export function getTimeIntervalEditableElements(
       type: "Area",
       coords: [
         [
-          [left, height],
+          [left, SPECTROGRAM_CANVAS_DIMENSIONS.height],
           [left, 0],
           [right, 0],
-          [right, height],
+          [right, SPECTROGRAM_CANVAS_DIMENSIONS.height],
         ],
       ],
       drag: (current: TimeInterval, start: Pixel, end: Pixel) => {
@@ -106,7 +100,7 @@ export function getTimeIntervalEditableElements(
   ];
 }
 
-export function getBBoxEditableElements(
+function getBBoxEditableElements(
   geometry: BoundingBox,
 ): EditableElement<BoundingBox>[] {
   const [left, top, right, bottom] = geometry.coordinates;
@@ -255,7 +249,7 @@ export function getBBoxEditableElements(
   ];
 }
 
-export function getPointEditableElements(
+function getPointEditableElements(
   geom: Point,
 ): EditableElement<Point>[] {
   return [
@@ -276,7 +270,7 @@ export function getPointEditableElements(
   ];
 }
 
-export function getMultiPointEditableElements(
+function getMultiPointEditableElements(
   geom: MultiPoint,
 ): EditableElement<MultiPoint>[] {
   return geom.coordinates.map((p, index) => {
@@ -299,7 +293,7 @@ export function getMultiPointEditableElements(
   });
 }
 
-export function getLineStringEditableElements(
+function getLineStringEditableElements(
   linestring: LineString,
   close = false,
 ): EditableElement<LineString>[] {
@@ -386,7 +380,7 @@ function _adaptEditableElemToMultiLineString(
   };
 }
 
-export function getMultiLineStringEditableElements(
+function getMultiLineStringEditableElements(
   geom: MultiLineString,
   closed = false,
 ): EditableElement<MultiLineString>[] {
@@ -427,7 +421,7 @@ function _adaptMultiLineStringEditableElemToPolygon(
   };
 }
 
-export function getPolygonEditableElements(
+function getPolygonEditableElements(
   geom: Polygon,
 ): EditableElement<Polygon>[] {
   const elems = getMultiLineStringEditableElements(
@@ -478,7 +472,7 @@ function _adaptPolygonEditableElemToMultiPolygon(
   };
 }
 
-export function getMultiPolygonEditableElements(
+function getMultiPolygonEditableElements(
   geom: MultiPolygon,
 ): EditableElement<MultiPolygon>[] {
   const elems: EditableElement<MultiPolygon>[] = [];
@@ -493,22 +487,19 @@ export function getMultiPolygonEditableElements(
   return elems;
 }
 
-export function getGeometryEditableElements(
+function getGeometryEditableElements(
   geom: Geometry,
-  dimensions: Dimensions,
 ): EditableElement<Geometry>[] {
   const { type } = geom;
   switch (type) {
     case "TimeStamp":
       return getTimeStampEditableElements(
         geom,
-        dimensions,
       ) as EditableElement<Geometry>[];
 
     case "TimeInterval":
       return getTimeIntervalEditableElements(
         geom,
-        dimensions,
       ) as EditableElement<Geometry>[];
 
     case "BoundingBox":

@@ -792,7 +792,6 @@ const ALL_COLORS = [
   "outline-rose-800",
   "outline-rose-900",
 ];
-
 const ALL_COLORS_DARK = [
   "dark:bg-slate-100",
   "dark:bg-slate-200",

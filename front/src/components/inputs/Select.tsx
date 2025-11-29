@@ -25,6 +25,7 @@ export default function Select<T>({
   options,
   placement = "top-end",
   buttonRef,
+  disabled = false,
 }: {
   label?: string;
   selected: Option<T>;
@@ -37,6 +38,7 @@ export default function Select<T>({
   | "bottom-start"
   | "bottom";
   buttonRef?: RefObject<HTMLButtonElement>;
+  disabled?: boolean;
 }) {
   // Generate positioning classes based on placement
   const getPositionClasses = (placement: string) => {
@@ -57,8 +59,8 @@ export default function Select<T>({
   };
 
   return (
-    <Listbox value={selected.value} onChange={onChange}>
-      <div className="relative">
+    <Listbox value={selected.value} onChange={onChange} disabled={disabled}>
+      <div className={`relative ${disabled ? "opacity-50 cursor-not-allowed" : ""}`}>
         <div className="inline-flex gap-2 w-full">
           {label ? (
             <div className="my-auto inline-block">
@@ -69,7 +71,7 @@ export default function Select<T>({
           ) : null}
           <ListboxButton
             ref={buttonRef}
-            className={`${COMMON_STYLE} ${BORDER_STYLE} ${BACKGROUND_STYLE} ${TEXT_STYLE} ${FOCUS_STYLE} ${DISABLED_STYLE} w-full border pl-3 pr-10 text-left  relative cursor-default`}
+            className={`${COMMON_STYLE} ${BORDER_STYLE} ${BACKGROUND_STYLE} ${TEXT_STYLE} ${FOCUS_STYLE} ${DISABLED_STYLE} w-full border pl-3 pr-10 text-left relative ${disabled ? "cursor-not-allowed" : "cursor-default"}`}
           >
             <span className="block truncate">{selected.label}</span>
             <span className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-2">

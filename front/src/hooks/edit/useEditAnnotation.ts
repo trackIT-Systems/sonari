@@ -3,20 +3,18 @@ import { useCallback, useMemo } from "react";
 import { type Style } from "@/draw/styles";
 import useEditGeometry from "@/hooks/edit/useEditGeometry";
 import {
-  scaleGeometryToViewport,
   scaleGeometryToWindow,
+  scaleGeometryFromWindow,
 } from "@/utils/geometry";
 
 import type {
-  Dimensions,
   Geometry,
   SoundEventAnnotation,
   SpectrogramWindow,
 } from "@/types";
 
 export default function useEditAnnotationGeometry({
-  viewport,
-  dimensions,
+  window,
   soundEventAnnotation,
   enabled = true,
   onChange,
@@ -24,8 +22,7 @@ export default function useEditAnnotationGeometry({
   onDeselect,
   style,
 }: {
-  viewport: SpectrogramWindow;
-  dimensions: Dimensions;
+  window: SpectrogramWindow;
   soundEventAnnotation: SoundEventAnnotation | null;
   enabled?: boolean;
   onChange?: (geometry: Geometry) => void;
@@ -33,33 +30,36 @@ export default function useEditAnnotationGeometry({
   onDeselect?: () => void;
   style?: Style;
 }) {
-  const { geometry } = soundEventAnnotation?.sound_event ?? {};
+  const { geometry } = soundEventAnnotation ?? {};
 
   const scaledGeometry = useMemo(() => {
     if (geometry == null) return null;
-    return scaleGeometryToViewport(dimensions, geometry, viewport);
-  }, [geometry, viewport, dimensions]);
+    return scaleGeometryToWindow(geometry, window);
+  }, [geometry, window]);
 
   const handleOnChange = useCallback(
     (geometry?: Geometry) => {
       if (geometry == null) return;
-      const rescaled = scaleGeometryToWindow(dimensions, geometry, viewport);
-      onChange?.(rescaled);
+      // geometry is in pixel coordinates from useEditGeometry
+      // Convert it BACK to time/freq coordinates before sending to API
+      const timeFreqGeometry = scaleGeometryFromWindow(geometry, window);
+      onChange?.(timeFreqGeometry);
     },
-    [onChange, viewport, dimensions],
+    [onChange, window],
   );
 
   const handleOnCopy = useCallback(
     (geometry?: Geometry) => {
       if (geometry == null) return;
-      const rescaled = scaleGeometryToWindow(dimensions, geometry, viewport);
-      onCopy?.(rescaled);
+      // geometry is in pixel coordinates from useEditGeometry
+      // Convert it BACK to time/freq coordinates before sending to API
+      const timeFreqGeometry = scaleGeometryFromWindow(geometry, window);
+      onCopy?.(timeFreqGeometry);
     },
-    [onCopy, viewport, dimensions],
+    [onCopy, window],
   );
 
   const ret = useEditGeometry({
-    dimensions,
     object: scaledGeometry,
     enabled: enabled,
     style: style,
@@ -70,8 +70,9 @@ export default function useEditAnnotationGeometry({
 
   const reconstructed = useMemo(() => {
     if (ret.object === null) return null;
-    return scaleGeometryToWindow(dimensions, ret.object, viewport);
-  }, [dimensions, viewport, ret.object]);
+    // ret.object is in pixel coordinates, convert back to time/freq
+    return scaleGeometryFromWindow(ret.object, window);
+  }, [window, ret.object]);
 
   return {
     ...ret,

@@ -1,6 +1,6 @@
 "use client";
 import { useRouter, useSearchParams } from "next/navigation";
-import { type ReactNode } from "react";
+import { type ReactNode, useEffect } from "react";
 import { toast } from "react-hot-toast";
 
 import Loading from "@/app/loading";
@@ -13,26 +13,40 @@ export default function Layout({ children }: { children: ReactNode }) {
   const params = useSearchParams();
   const router = useRouter();
 
-  const uuid = params.get("annotation_project_uuid");
+  const id = params.get("annotation_project_id");
 
-  if (uuid == null) {
-    toast.error("Annotation project uuid not specified.");
-    router.push("/annotation_projects/");
-  }
-
-  // Fetch the annotation project.
+  // All hooks must be called before any conditional returns
   const project = useAnnotationProject({
-    uuid: uuid as string,
+    id: id ? parseInt(id) : 0,
+    enabled: id != null,
   });
+
+  // Handle side effects (toast and navigation) in useEffect
+  useEffect(() => {
+    if (id == null) {
+      toast.error("Annotation project not specified.");
+      router.push("/annotation_projects/");
+    }
+  }, [id, router]);
+
+  useEffect(() => {
+    if (!project.isLoading && (project.isError || project.data == null)) {
+      toast.error(`Annotation project not found. ${project.isError}`);
+      router.push("/annotation_projects/");
+    }
+  }, [project.isLoading, project.isError, project.data, router]);
+
+  // Handle conditional cases after all hooks have been called
+  if (id == null) {
+    return null;
+  }
 
   if (project.isLoading) {
     return <Loading />;
   }
 
   if (project.isError || project.data == null) {
-    toast.error("Annotation project not found.");
-    router.push("/annotation_projects/");
-    return;
+    return null;
   }
 
   return (

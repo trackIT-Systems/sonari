@@ -22,14 +22,6 @@ export function InputHelp({ message }: { message: string }) {
   return <p className="mt-2 text-xs italic text-stone-500">{message}</p>;
 }
 
-export function InputInfo({ message }: { message: string }) {
-  return <p className="mt-2 text-xs italic text-blue-500">{message}</p>;
-}
-
-export function InputSuccess({ message }: { message: string }) {
-  return <p className="mt-2 text-xs italic text-emerald-500">{message}</p>;
-}
-
 function InputGroupShell({ children }: { children: React.ReactNode }) {
   return <div className="mb-3">{children}</div>;
 }

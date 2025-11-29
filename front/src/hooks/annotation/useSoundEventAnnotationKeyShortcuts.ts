@@ -1,0 +1,52 @@
+import { useKeyPressEvent } from "react-use";
+
+import useKeyFilter from "@/hooks/utils/useKeyFilter";
+
+import {
+  CREATE_SOUND_EVENT_ANNOTATION_SHORTCUT,
+  DELETE_SOUND_EVENT_ANNOTATION_SHORTCUT,
+  PREVIOUS_SOUND_EVENT_ANNOTATION_SHORTCUT,
+  NEXT_SOUND_EVENT_ANNOTATION_SHORTCUT,
+  SELECT_SOUND_EVENT_ANNOTATION_SHORTCUT,
+  MEASURE_SHORTCUT,
+} from "@/utils/keyboard";
+
+export default function useSoundEventAnnotationKeyShortcuts(props: {
+  onGoMeasure: () => void;
+  onGoCreate: () => void;
+  onGoSelect: () => void;
+  onGoDelete: () => void;
+  onGoNext: () => void;
+  onGoPrev: () => void;
+  enabled?: boolean;
+  selectedSoundEventAnnotation?: { id: number } | null;
+  onDeleteSelectedSoundEventAnnotation?: () => void;
+}) {
+  const { 
+    onGoMeasure,
+    onGoCreate, 
+    onGoSelect, 
+    onGoDelete, 
+    onGoNext, 
+    onGoPrev, 
+    enabled = true,
+    selectedSoundEventAnnotation,
+    onDeleteSelectedSoundEventAnnotation,
+  } = props;
+
+  // Handler for delete key that checks if there's a selected annotation
+  const handleDelete = () => {
+    if (selectedSoundEventAnnotation && onDeleteSelectedSoundEventAnnotation) {
+      onDeleteSelectedSoundEventAnnotation();
+    } else {
+      onGoDelete();
+    }
+  };
+
+  useKeyPressEvent(useKeyFilter({ enabled, key: MEASURE_SHORTCUT }), onGoMeasure);
+  useKeyPressEvent(useKeyFilter({ enabled, key: CREATE_SOUND_EVENT_ANNOTATION_SHORTCUT }), onGoCreate);
+  useKeyPressEvent(useKeyFilter({ enabled, key: SELECT_SOUND_EVENT_ANNOTATION_SHORTCUT }), onGoSelect);
+  useKeyPressEvent(useKeyFilter({ enabled, key: DELETE_SOUND_EVENT_ANNOTATION_SHORTCUT }), handleDelete);
+  useKeyPressEvent(useKeyFilter({ enabled, key: NEXT_SOUND_EVENT_ANNOTATION_SHORTCUT }), onGoNext);
+  useKeyPressEvent(useKeyFilter({ enabled, key: PREVIOUS_SOUND_EVENT_ANNOTATION_SHORTCUT }), onGoPrev);
+}

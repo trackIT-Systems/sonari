@@ -5,26 +5,16 @@ import { UserSchema } from "@/schemas";
 
 import type { User } from "@/types";
 
-export const LoginSchema = z.object({
+const LoginSchema = z.object({
   username: z.string(),
   password: z.string(),
 });
 
-export type Login = z.input<typeof LoginSchema>;
-
-export const UserCreateSchema = z.object({
-  email: z.string().email(),
-  username: z.string(),
-  password: z.string(),
-  name: z.string(),
-});
-
-export type UserCreate = z.input<typeof UserCreateSchema>;
+type Login = z.input<typeof LoginSchema>;
 
 const DEFAULT_ENDPOINTS = {
   login: "/api/v1/auth/login",
   logout: "/api/v1/auth/logout",
-  register: "/api/v1/auth/register",
 };
 
 export function registerAuthAPI(
@@ -43,11 +33,5 @@ export function registerAuthAPI(
     return await instance.post(endpoints.logout);
   }
 
-  async function register(data: UserCreate): Promise<User> {
-    let body = UserCreateSchema.parse(data);
-    let response = await instance.post<User>(endpoints.register, body);
-    return UserSchema.parse(response.data);
-  }
-
-  return { login, logout, register } as const;
+  return { login, logout } as const;
 }

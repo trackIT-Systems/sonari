@@ -23,7 +23,7 @@ export default function Feed({
     >
       {notes.map((note) => (
         <NoteComponent
-          key={note.uuid}
+          key={note.id}
           note={note}
           currentUser={currentUser}
           onUpdate={onUpdate}

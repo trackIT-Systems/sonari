@@ -9,6 +9,7 @@ import useAnnotationTaskTable from "@/hooks/useAnnotationTaskTable";
 import Loading from "@/app/loading";
 import Search from "@/components/inputs/Search";
 import FilterPopover from "@/components/filters/FilterMenu";
+import FilterPresets from "@/components/filters/FilterPresets";
 import tasksFilterDefs from "../filters/tasks";
 import FilterBar from "@/components/filters/FilterBar";
 import Table from "@/components/tables/Table";
@@ -20,12 +21,10 @@ import { FilterIcon } from "../icons";
 export default function AnnotationTaskTable({
   filter,
   fixed,
-  getAnnotationTaskLink,
   pathFormatter,
 }: {
   filter: AnnotationTaskFilter;
   fixed?: (keyof AnnotationTaskFilter)[];
-  getAnnotationTaskLink?: (annotationTask: AnnotationTask) => string;
   pathFormatter?: (path: string) => string;
 }) {
   const annotationTasks = useAnnotationTasks({ filter, fixed });
@@ -33,6 +32,11 @@ export default function AnnotationTaskTable({
   const [focusedElement, setFocusedElement] = useState<'search' | 'filter' | number>(-1);
   const router = useRouter();
   const popoverButtonRef = useRef<HTMLButtonElement>(null);
+
+  const getAnnotationTaskLink = useCallback((annotationProjectId: number, annotationTaskId: number): string => {
+    const url = `detail/annotation/?annotation_task_id=${annotationTaskId}`;
+    return `${url}&annotation_project_id=${annotationProjectId}`;
+  }, []);
 
   const table = useAnnotationTaskTable({
     data: annotationTasks.items,
@@ -69,19 +73,20 @@ export default function AnnotationTaskTable({
   }, [setFocusedElement, searchInputRef]);
 
   const handleSelect = useCallback((task: AnnotationTask) => {
-    const link = getAnnotationTaskLink?.(task);
+    const link = getAnnotationTaskLink(task.annotation_project_id, task.id);
     if (link) {
       router.push(`/annotation_projects/${link}`);
     }
   }, [router, getAnnotationTaskLink]);
 
   const btn = <Button
-    padding="0"
-    className="border-none"
+    mode="outline"
+    variant="secondary"
+    padding="px-3 py-2"
     autoFocus={false}
     ref={popoverButtonRef}
   >
-    <FilterIcon className="h-4 w-4 stroke-2" />
+    <FilterIcon className="h-5 w-5 stroke-2" />
   </Button>
 
   useKeyPressEvent(FILTER_POPOVER_SHORTCUT, (event: KeyboardEvent) => {
@@ -118,8 +123,10 @@ export default function AnnotationTaskTable({
             filter={annotationTasks.filter}
             filterDef={tasksFilterDefs}
             button={btn}
-            
-
+          />
+          <FilterPresets
+            storageKey="presets:annotation_tasks"
+            filter={annotationTasks.filter}
           />
         </div>
       </div>

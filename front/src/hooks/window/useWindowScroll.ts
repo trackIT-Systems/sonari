@@ -3,6 +3,7 @@ import { type WheelEvent, useMemo } from "react";
 import { scaleXToWindow, scaleYToWindow } from "@/utils/geometry";
 
 import type { SpectrogramWindow } from "@/types";
+import { SPECTROGRAM_CANVAS_DIMENSIONS } from "@/constants";
 
 /**
  * The `useWindowScroll` hook provides functionality to handle window scrolling
@@ -10,8 +11,7 @@ import type { SpectrogramWindow } from "@/types";
  * adjustments to the spectrogram window based on user input.
  */
 export default function useWindowScroll({
-  viewport,
-  dimensions,
+  window,
   onScroll,
   shift = false,
   ctrl = false,
@@ -20,9 +20,7 @@ export default function useWindowScroll({
   relative = false,
 }: {
   /** The current spectrogram window being displayed in the canvas. */
-  viewport: SpectrogramWindow;
-  /** The dimensions of the spectrogram canvas. */
-  dimensions: { width: number; height: number };
+  window: SpectrogramWindow;
   /** The callback function to handle scroll events. */
   onScroll?: ({
     time,
@@ -51,61 +49,57 @@ export default function useWindowScroll({
       onWheel: (event: WheelEvent) => {
         const { deltaX, deltaY, shiftKey, ctrlKey, altKey, metaKey } = event;
 
-        // Handle trackpad-based scrolling
-        if (!relative && !shiftKey && !ctrlKey && !altKey && !metaKey) {
-          const deltaTime = scaleXToWindow(
-            deltaX,
-            viewport,
-            dimensions.width,
-            true,
-          );
-          const deltaFreq = scaleYToWindow(
-            deltaY,
-            viewport,
-            dimensions.height,
-            true,
-          );
-          return onScroll?.({ time: deltaTime, freq: -deltaFreq });
-        }
-
-        const specialKey = metaKey || altKey;
+        // Check modifier keys match configuration
+        // Note: metaKey (Cmd on Mac) is ignored - we only care about alt, shift, ctrl
         if (
           !enabled ||
           ctrlKey != ctrl ||
           shiftKey != shift ||
-          specialKey != alt
+          altKey != alt ||
+          metaKey  // Ignore events with Meta key pressed
         )
           return;
 
-        // Handle vertical scroll (existing behavior)
-        switch (true) {
-          case shiftKey && relative:
-            return onScroll?.({ timeRatio: deltaY / dimensions.width });
+        // Prevent default browser behavior (e.g., horizontal scroll on shift+wheel)
+        event.preventDefault();
 
-          case !shiftKey && relative:
-            return onScroll?.({ freqRatio: deltaY / dimensions.height });
+        // Determine scroll behavior based on configuration:
+        // - shift config = time axis (zoom)
+        // - ctrl config = freq axis (zoom)
+        // - alt config = freq axis (pan)
+        // - no modifiers = both axes (trackpad: deltaX→time, deltaY→freq)
+        const isDefaultScroll = !shift && !ctrl && !alt;
+        const isTimeZoom = shift;
+        const isFreqZoom = ctrl;
+        const isFreqPan = alt;
 
-          case shiftKey && !relative:
-            const deltaTime = scaleXToWindow(
-              deltaY,
-              viewport,
-              dimensions.width,
-              true,
-            );
-            return onScroll?.({ time: deltaTime });
+        // When shift is pressed, browsers swap deltaY to deltaX for horizontal scrolling
+        const delta = shiftKey ? (deltaX || deltaY) : deltaY;
 
-          case !shiftKey && !relative:
-            const deltaFreq = scaleYToWindow(
-              deltaY,
-              viewport,
-              dimensions.height,
-              true,
-            );
+        // Handle scroll
+        if (relative) {
+          // Zooming (relative scaling)
+          if (isTimeZoom) {
+            return onScroll?.({ timeRatio: delta / SPECTROGRAM_CANVAS_DIMENSIONS.width });
+          } else if (isFreqZoom) {
+            return onScroll?.({ freqRatio: delta / SPECTROGRAM_CANVAS_DIMENSIONS.height });
+          }
+        } else {
+          // Panning (absolute movement)
+          if (isDefaultScroll) {
+            // Default scroll: deltaX (horizontal) → time, deltaY (vertical) → freq
+            const deltaTime = scaleXToWindow(deltaX, window, true);
+            const deltaFreq = scaleYToWindow(deltaY, window, true);
+            return onScroll?.({ time: deltaTime, freq: -deltaFreq });
+          } else if (isFreqPan) {
+            // Alt + scroll: move in frequency
+            const deltaFreq = scaleYToWindow(deltaY, window, true);
             return onScroll?.({ freq: -deltaFreq });
+          }
         }
       },
     };
-  }, [enabled, onScroll, dimensions, ctrl, shift, alt, relative, viewport]);
+  }, [enabled, onScroll, ctrl, shift, alt, relative, window]);
 
   return {
     scrollProps,

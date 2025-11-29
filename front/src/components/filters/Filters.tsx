@@ -22,6 +22,9 @@ function FloatField({
   onChangeValue,
   onSubmit,
   showDecimals = false,
+  min,
+  max,
+  step,
 }: {
   name: string;
   value: number;
@@ -30,7 +33,12 @@ function FloatField({
   operation: "gt" | "lt";
   onChangeOperation: (operation: "gt" | "lt") => void;
   showDecimals?: boolean;
+  min?: number;
+  max?: number;
+  step?: number;
 }) {
+  const [inputValue, setInputValue] = useState("");
+  
   return (
     <div>
       <label
@@ -57,17 +65,41 @@ function FloatField({
         </div>
         <input
           type="number"
-          step={showDecimals ? "0.1" : undefined}
+          step={step}
+          min={min}
+          max={max}
           id={name}
           name={name}
+          placeholder={step !== undefined && step < 0.1 ? "0.00" : (showDecimals ? "0.0" : "0")}
           className="block py-1 pr-14 pl-14 w-full rounded-md border-0 ring-1 ring-inset outline-none sm:text-sm sm:leading-6 focus:ring-2 focus:ring-inset focus:ring-emerald-600 bg-stone-50 text-stone-900 ring-stone-300 placeholder:text-stone-400 dark:bg-stone-900 dark:text-stone-300 dark:ring-stone-800"
-          value={showDecimals ? value.toFixed(1) : value}
+          value={inputValue}
           onKeyDown={(e) => {
             if (e.key === ACCEPT_SHORTCUT) {
               onSubmit();
             }
           }}
-          onChange={(e) => onChangeValue(parseFloat(e.target.value))}
+          onChange={(e) => {
+            const rawValue = e.target.value;
+            
+            let newValue = parseFloat(rawValue);
+            if (isNaN(newValue)) {
+              newValue = 0;
+            }
+            // Clamp value between min and max if they're defined
+            let wasClamped = false;
+            if (min !== undefined && newValue < min) {
+              newValue = min;
+              wasClamped = true;
+            }
+            if (max !== undefined && newValue > max) {
+              newValue = max;
+              wasClamped = true;
+            }
+            
+            // Update input to show clamped value or raw input
+            setInputValue(wasClamped ? String(newValue) : rawValue);
+            onChangeValue(newValue);
+          }}
         />
         <button
           onClick={onSubmit}
@@ -179,10 +211,16 @@ export function FloatFilter({
   name = "field",
   onChange,
   showDecimals = false,
+  min,
+  max,
+  step,
 }: {
   name?: string;
   onChange: (filter: NumberFilter) => void;
   showDecimals?: boolean;
+  min?: number;
+  max?: number;
+  step?: number;
 }) {
   const [value, setValue] = useState(0.0);
   const [operation, setOperation] = useState<"gt" | "lt">("gt");
@@ -203,6 +241,9 @@ export function FloatFilter({
         onChangeOperation={setOperation}
         onSubmit={handleSubmit}
         showDecimals={showDecimals}
+        min={min}
+        max={max}
+        step={step}
       />
     </div>
   );
@@ -229,47 +270,6 @@ export function FloatEqFilterFn({
         name={name}
         value={value}
         onChangeValue={setValue}
-        onSubmit={handleSubmit}
-      />
-    </div>
-  );
-}
-
-export function NullableFloatFilter({
-  name,
-  onChange,
-  showDecimals = false,
-}: {
-  name: string;
-  onChange: (filter: NumberFilter) => void;
-  showDecimals?: boolean;
-}) {
-  const [value, setValue] = useState(0);
-  const [operation, setOperation] = useState<"gt" | "lt">("gt");
-  const [isNull, setIsNull] = useState<boolean | null>(null);
-
-  const handleSubmit = useCallback(() => {
-    onChange({
-      is_null: isNull || undefined,
-      [operation]: value,
-    });
-  }, [onChange, isNull, operation, value]);
-
-  return (
-    <div className="flex relative flex-col gap-4 w-full">
-      <FloatField
-        name={name}
-        value={value}
-        onChangeValue={setValue}
-        operation={operation}
-        onChangeOperation={setOperation}
-        onSubmit={handleSubmit}
-        showDecimals={showDecimals}
-      />
-      <IsNullField
-        name="is_null"
-        value={isNull}
-        onChange={setIsNull}
         onSubmit={handleSubmit}
       />
     </div>

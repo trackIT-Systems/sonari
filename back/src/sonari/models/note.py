@@ -1,32 +1,25 @@
 """Note model.
 
-Notes are user messages that can be attached to recordings, clips, or
-sound events. They serve as a way to provide additional textual context
-or discuss specific aspects of the annotation with other users. Notes
-can be added to any item within the annotation project, including
-completed tasks or individual sound events.
+Notes are user messages that can be attached to annotation tasks. They
+serve as a way to provide additional textual context or discuss specific
+aspects of the annotation with other users.
 
 Users can mark notes as an issue to flag incomplete or incorrect
 annotations or to indicate that a specific item needs attention from
-other users. When a note is marked as an issue, it becomes more visible
-to other annotators and can be easily accessed through the project
-interface.
-
-Notes can be particularly useful for providing context or explanations
-about specific annotations, or for discussing alternative
-interpretations of the same sound event. Additionally, they can be used
-to provide feedback to other users or to ask for clarification about
-specific annotations.
+other users.
 """
 
-from typing import TYPE_CHECKING, Optional
-from uuid import UUID, uuid4
+from typing import TYPE_CHECKING
+from uuid import UUID
 
 import sqlalchemy.orm as orm
 from sqlalchemy import ForeignKey
 
 from sonari.models.base import Base
 from sonari.models.user import User
+
+if TYPE_CHECKING:
+    from sonari.models.annotation_task import AnnotationTask
 
 __all__ = [
     "Note",
@@ -40,14 +33,14 @@ class Note(Base):
     ----------
     id
         The database id of the note.
-    uuid
-        The UUID of the note.
     message
         Textual message of the note.
     is_issue
         Whether the note is an issue.
     created_by
         The user who created the note.
+    annotation_task
+        The annotation task to which this note belongs.
     created_on
         The date and time when the note was created.
 
@@ -55,18 +48,23 @@ class Note(Base):
     ----------
     message : str
         Textual message of the note.
+    annotation_task_id : int
+        The database id of the annotation task.
     is_issue : bool, optional
         Whether the note is an issue. Defaults to False.
-    created_by_id : int, optional
+    created_by_id : UUID, optional
         The database id of the user who created the note.
-    uuid : UUID, optional
-        The UUID of the note.
     """
 
     __tablename__ = "note"
 
     id: orm.Mapped[int] = orm.mapped_column(primary_key=True, init=False)
     message: orm.Mapped[str] = orm.mapped_column(nullable=False)
+    annotation_task_id: orm.Mapped[int] = orm.mapped_column(
+        ForeignKey("annotation_task.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
     created_by_id: orm.Mapped[UUID] = orm.mapped_column(
         ForeignKey("user.id"),
         nullable=True,
@@ -76,85 +74,14 @@ class Note(Base):
         nullable=False,
         default=False,
     )
-    uuid: orm.Mapped[UUID] = orm.mapped_column(
-        default_factory=uuid4,
-        kw_only=True,
-        unique=True,
-    )
+
+    # Relationships
     created_by: orm.Mapped[User] = orm.relationship(
         User,
         back_populates="notes",
         init=False,
-        lazy="joined",
     )
-
-    # ========================================================================
-    # Relationships (backrefs)
-
-    if TYPE_CHECKING:
-        from sonari.models.clip_annotation import (
-            ClipAnnotation,
-            ClipAnnotationNote,
-        )
-        from sonari.models.recording import Recording, RecordingNote
-        from sonari.models.sound_event_annotation import (
-            SoundEventAnnotation,
-            SoundEventAnnotationNote,
-        )
-
-    recording: orm.Mapped[Optional["Recording"]] = orm.relationship(
-        "Recording",
-        secondary="recording_note",
+    annotation_task: orm.Mapped["AnnotationTask"] = orm.relationship(
         init=False,
         repr=False,
-        viewonly=True,
-        back_populates="notes",
-    )
-
-    recording_note: orm.Mapped[Optional["RecordingNote"]] = orm.relationship(
-        "RecordingNote",
-        init=False,
-        repr=False,
-        back_populates="note",
-        single_parent=True,
-        cascade="all, delete-orphan",
-        passive_deletes=True,
-    )
-
-    sound_event_annotation: orm.Mapped[Optional["SoundEventAnnotation"]] = orm.relationship(
-        "SoundEventAnnotation",
-        secondary="sound_event_annotation_note",
-        init=False,
-        repr=False,
-        viewonly=True,
-        back_populates="notes",
-    )
-
-    sound_event_annotation_note: orm.Mapped[Optional["SoundEventAnnotationNote"]] = orm.relationship(
-        "SoundEventAnnotationNote",
-        init=False,
-        repr=False,
-        back_populates="note",
-        single_parent=True,
-        cascade="all, delete-orphan",
-        passive_deletes=True,
-    )
-
-    clip_annotation: orm.Mapped[Optional["ClipAnnotation"]] = orm.relationship(
-        "ClipAnnotation",
-        secondary="clip_annotation_note",
-        init=False,
-        repr=False,
-        viewonly=True,
-        back_populates="notes",
-    )
-
-    clip_annotation_note: orm.Mapped[Optional["ClipAnnotationNote"]] = orm.relationship(
-        "ClipAnnotationNote",
-        init=False,
-        repr=False,
-        back_populates="note",
-        single_parent=True,
-        cascade="all, delete-orphan",
-        passive_deletes=True,
     )

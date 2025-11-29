@@ -12,11 +12,11 @@ import {
   LOGOUT_SHORTCUT,
   getSpecialKeyLabel
 } from "@/utils/keyboard";
+import { getAppVersion } from "@/utils/version";
 
 import KeyboardKey from "../KeyboardKey";
 import {
   AnnotationProjectIcon,
-  DatasetsIcon,
   LogOutIcon,
   UserIcon,
   SonariIcon,
@@ -227,18 +227,32 @@ export function SideMenu({
       className="sticky left-0 top-0 z-40 flex h-screen w-16 flex-shrink-0 flex-col shadow-md"
       aria-label="Sidebar"
     >
-      <div className="flex flex-grow flex-col justify-between overflow-y-auto overflow-x-hidden bg-stone-50 dark:bg-stone-800">
+      <div className="flex flex-grow flex-col justify-between overflow-hidden bg-stone-50 dark:bg-stone-800">
         <div className="flex flex-col items-center">
           <Link href="/" className="px-2 py-4" mode="text">
             <SonariIcon width={46} height={46} />
           </Link>
           <MainNavigation pathname={pathname} />
         </div>
-        <SecondaryNavigation
-          pathname={pathname}
-          user={user}
-          onLogout={onLogout}
-        />
+        <div className="flex flex-col items-center pb-3">
+          <SecondaryNavigation
+            pathname={pathname}
+            user={user}
+            onLogout={onLogout}
+          />
+          <Tooltip
+            portal={true}
+            tooltip={
+              <p className="whitespace-nowrap text-stone-700 dark:text-stone-300">
+                Version: {getAppVersion()}
+              </p>
+            }
+          >
+            <span className="text-[10px] text-stone-400 dark:text-stone-500 cursor-default">
+              {getAppVersion().slice(-7)}
+            </span>
+          </Tooltip>
+        </div>
       </div>
     </aside>
   );

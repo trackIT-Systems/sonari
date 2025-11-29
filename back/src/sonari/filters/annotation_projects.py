@@ -1,5 +1,3 @@
-"""Filters for Datasets."""
-
 from sonari import models
 from sonari.filters import base
 

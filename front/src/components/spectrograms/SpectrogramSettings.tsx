@@ -28,7 +28,7 @@ import useKeyFilter from "@/hooks/utils/useKeyFilter";
 import { useKeyPressEvent } from "react-use";
 import  FreqLineSettings  from "./settings/FreqLineSettings";
 
-export const SpectrogramSettingForm = memo(function SpectrogramSettingForm({
+const SpectrogramSettingForm = memo(function SpectrogramSettingForm({
   settings,
   samplerate: recordingSamplerate,
   maxChannels = 1,
@@ -69,10 +69,13 @@ export const SpectrogramSettingForm = memo(function SpectrogramSettingForm({
     values: initialSettings,
   });
 
-  const samplerate = watch("samplerate") as number;
+  const resample = watch("resample") as boolean;
+  const formSamplerate = watch("samplerate") as number;
+  // Use form samplerate if resampling, otherwise use recording samplerate
+  const effectiveSamplerate = resample ? (formSamplerate || recordingSamplerate) : recordingSamplerate;
   const constraints = useMemo(
-    () => computeConstraints(samplerate, maxChannels),
-    [samplerate, maxChannels],
+    () => computeConstraints(effectiveSamplerate, maxChannels),
+    [effectiveSamplerate, maxChannels],
   );
 
   // When the form is submitted, we debounce the callback to avoid

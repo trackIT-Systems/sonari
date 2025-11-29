@@ -1,39 +1,29 @@
 import {
-  type UseMutationResult,
-  type UseQueryResult,
-  useMutation,
-  useQuery,
   useQueryClient,
 } from "@tanstack/react-query";
-import { type AxiosError } from "axios";
 import { useCallback, useEffect, useMemo, useState, useRef } from "react";
-import useStore from "@/store";
 
 import {
   AnnotationTaskFilter,
   type AnnotationTaskPage,
 } from "@/api/annotation_tasks";
-import api from "@/app/api";
-import useAnnotateTasksKeyShortcuts from "@/hooks/annotation/useAnnotateTasksKeyShortcuts";
-import useAnnotationTasks from "@/hooks/api/useAnnotationTasks";
+import useAnnotationTaskIndex from "@/hooks/api/useAnnotationTaskIndex";
+import useAnnotationTaskStats from "@/hooks/api/useAnnotationTaskStats";
 import { type Filter } from "@/hooks/utils/useFilter";
 
-import type { AnnotationStatus, Recording, AnnotationTask, ClipAnnotation } from "@/types";
-import { spectrogramCache } from "@/utils/spectrogram_cache";
-import { getInitialViewingWindow } from "@/utils/windows";
-import { getCoveringSegmentDuration, getSegments, OVERLAP } from "../spectrogram/useRecordingSegments";
+import type { AnnotationTask, AnnotationTaskIndex, AnnotationTaskStats } from "@/types";
 
 type AnnotationState = {
   /** Currently selected annotation task index */
   current: number | null;
   /** Currently selected annotation task */
   task: AnnotationTask | null;
-  /** Clip annotations for the current task */
-  annotations: UseQueryResult<ClipAnnotation, AxiosError>;
   /** Filter used to select which annotation tasks to show */
   filter: AnnotationTaskFilter;
-  /** List of annotation tasks matching the filter */
-  tasks: AnnotationTask[];
+  /** List of annotation task indices (minimal data for navigation) */
+  tasks: AnnotationTaskIndex[];
+  /** Aggregate statistics for annotation tasks */
+  stats?: AnnotationTaskStats;
   /** Whether the annotation tasks are currently being fetched */
   isLoading: boolean;
   /** Whether there was an error fetching the annotation tasks */
@@ -60,16 +50,6 @@ type AnnotationControls = {
   ) => void;
   /** Select a random annotation task */
   getFirstTask: () => void;
-  /** Mark the current task as completed */
-  markCompleted: UseMutationResult<AnnotationTask, AxiosError, void>;
-  /** Mark the current task as unsure */
-  markUnsure: UseMutationResult<AnnotationTask, AxiosError, void>;
-  /** Mark the current task as rejected */
-  markRejected: UseMutationResult<AnnotationTask, AxiosError, void>;
-  /** Mark the current task as verified */
-  markVerified: UseMutationResult<AnnotationTask, AxiosError, void>;
-  /** Remove a badge from the current task */
-  removeBadge: UseMutationResult<AnnotationTask, AxiosError, { state: AnnotationStatus, userId?: string }>;
 };
 
 const empty = {};
@@ -78,11 +58,7 @@ export default function useAnnotateTasks({
   filter: initialFilter = empty,
   annotationTask: initialTask,
   onChangeTask,
-  onCompleteTask,
-  onUnsureTask,
-  onRejectTask,
-  onVerifyTask,
-  onDeselectAnnotation,
+  onDeselectSoundEventAnnotation,
 }: {
   /** Initial filter to select which annotation tasks to show */
   filter?: AnnotationTaskFilter;
@@ -99,108 +75,51 @@ export default function useAnnotateTasks({
   /** Callback when the current task is marked as verified */
   onVerifyTask?: (task: AnnotationTask) => void;
   /** Set current annotation to null */
-  onDeselectAnnotation: () => void;
+  onDeselectSoundEventAnnotation: () => void;
 }): AnnotationState & AnnotationControls {
   const [currentTask, setCurrentTask] = useState<AnnotationTask | null>(
     initialTask ?? null,
   );
   const client = useQueryClient();
 
+  // Fetch minimal task index for navigation
   const {
-    items: initialItems,
+    items: indexItems,
     filter,
-    isLoading,
-    isError,
-    queryKey,
-  } = useAnnotationTasks({
+    isLoading: isLoadingIndex,
+    isError: isErrorIndex,
+    queryKey: indexQueryKey,
+  } = useAnnotationTaskIndex({
     pageSize: -1,
     filter: initialFilter,
     fixed: Object.keys(initialFilter) as (keyof AnnotationTaskFilter)[],
   });
 
-  const items = useMemo(() => {
-    return initialItems;
-  }, [initialItems]);
+  // Fetch aggregate statistics using the current filter state
+  const {
+    stats,
+    isLoading: isLoadingStats,
+    isError: isErrorStats,
+  } = useAnnotationTaskStats({
+    filter: filter.filter,
+  });
+
+  const isLoading = isLoadingIndex || isLoadingStats;
+  const isError = isErrorIndex || isErrorStats;
+  const items = indexItems;
 
   const index = useMemo(() => {
     if (currentTask === null) return -1;
-    return items.findIndex((item) => item.uuid === currentTask.uuid);
+    return items.findIndex((item) => item.id === currentTask.id);
   }, [currentTask, items]);
-
-
-  const parameters = useStore((state) => state.spectrogramSettings);
-
-  const preloadSpectrogramSegments = useCallback(async (recording: Recording) => {
-    if (!recording) return;
-
-    // Calculate initial window to get segment size
-    const initial = getInitialViewingWindow({
-      startTime: 0,
-      endTime: recording.duration,
-      samplerate: recording.samplerate,
-      parameters,
-    });
-
-    // Calculate bounds
-    const bounds = {
-      time: { min: 0, max: recording.duration },
-      freq: { min: 0, max: recording.samplerate / 2 },
-    };
-
-    // Get segment duration
-    const duration = getCoveringSegmentDuration(initial, false);
-
-    // Get all segments
-    const segments = getSegments(bounds, duration, OVERLAP);
-
-    // Load all segments
-    segments.forEach(async segment => {
-      // Skip if already cached
-      if (spectrogramCache.get(recording.uuid, segment, parameters, false)) {
-        return;
-      }
-
-      const url = api.spectrograms.getUrl({
-        recording,
-        segment: { min: segment.time.min, max: segment.time.max },
-        parameters
-      });
-
-      try {
-        const response = await fetch(url);
-        const size = parseInt(response.headers.get('content-length') || '0', 10);
-        const blob = await response.blob();
-        const objectUrl = URL.createObjectURL(blob);
-
-        const img = new Image();
-        img.onload = async () => {
-          try {
-            await img.decode();
-            await spectrogramCache.set(recording.uuid, segment, parameters, false, img, size);
-          } finally {
-            URL.revokeObjectURL(objectUrl);
-          }
-        };
-
-        img.onerror = () => {
-          URL.revokeObjectURL(objectUrl);
-        };
-
-        img.src = objectUrl;
-      } catch (error) {
-        console.error('Failed to preload segment:', error);
-      }
-    });
-  }, [parameters]);
 
   const goToTask = useCallback(
     (task: AnnotationTask) => {
-      client.setQueryData(["annotation_task", task.uuid], task);
       setCurrentTask(task);
       onChangeTask?.(task);
-      onDeselectAnnotation();
+      onDeselectSoundEventAnnotation();
     },
-    [onChangeTask, client, onDeselectAnnotation],
+    [onChangeTask, onDeselectSoundEventAnnotation],
   );
 
   const hasNextTask = useMemo(() => {
@@ -212,11 +131,11 @@ export default function useAnnotateTasks({
 
   const nextTask = useCallback(() => {
     if (!hasNextTask) return;
-    if (index === -1) {
-      goToTask(items[0]);
-    } else {
-      goToTask(items[index + 1]);
-    }
+    const nextIndex = index === -1 ? 0 : index + 1;
+    const nextTaskIndex = items[nextIndex];
+    // Cast minimal index to AnnotationTask for navigation
+    // Only id is actually used by onChangeTask
+    goToTask(nextTaskIndex as unknown as AnnotationTask);
   }, [index, items, hasNextTask, goToTask]);
 
   const hasPrevTask = useMemo(() => {
@@ -228,32 +147,24 @@ export default function useAnnotateTasks({
 
   const prevTask = useCallback(() => {
     if (!hasPrevTask) return;
-    if (index === -1) {
-      goToTask(items[0]);
-    } else {
-      goToTask(items[index - 1]);
-    }
+    const prevIndex = index === -1 ? 0 : index - 1;
+    const prevTaskIndex = items[prevIndex];
+    // Cast minimal index to AnnotationTask for navigation
+    // Only id is actually used by onChangeTask
+    goToTask(prevTaskIndex as unknown as AnnotationTask);
   }, [index, items, hasPrevTask, goToTask]);
 
-  const loadedTasksRef = useRef<Set<string>>(new Set());
+  const loadedTasksRef = useRef<Set<number>>(new Set());
+  //const handleCurrentSegmentsLoaded = useCallback(() => {}, []);
   const handleCurrentSegmentsLoaded = useCallback(async () => {
     if (!items || index === -1 || index >= items.length - 1) return;
     if (!hasNextTask) return;
 
     const nextTask = items[index + 1];
-    if (loadedTasksRef.current.has(nextTask.uuid)) return;
-    loadedTasksRef.current.add(nextTask.uuid);
+    if (loadedTasksRef.current.has(nextTask.id)) return;
+    loadedTasksRef.current.add(nextTask.id);
 
-    try {
-      const completeData = await api.annotationTasks.get(nextTask.uuid);
-      if (!completeData.clip?.recording) return;
-  
-      await preloadSpectrogramSegments(completeData.clip.recording);
-    } catch (error) {
-      console.error('Failed to preload next task:', error);
-    }
-
-  }, [items, index, preloadSpectrogramSegments, hasNextTask]);
+  }, [items, index, hasNextTask]);
 
   const { set: setFilterKeyValue } = filter;
   const setFilter = useCallback(
@@ -266,156 +177,28 @@ export default function useAnnotateTasks({
     [setFilterKeyValue],
   );
 
-  const queryFn = useCallback(async () => {
-    if (currentTask == null) {
-      throw new Error("No selected task");
-    }
-    return api.annotationTasks.getAnnotations(currentTask);
-  }, [currentTask]);
-
-  const annotations = useQuery<ClipAnnotation, AxiosError>({
-    queryKey: ["annotation_task", currentTask?.uuid, "annotations"],
-    queryFn,
-    enabled: currentTask != null,
-    refetchOnWindowFocus: false,
-    staleTime: Infinity,
-    gcTime: 60 * 60 * 1000, // when the gcTime expires, react will re-fetch the data. This might lead to the problem that set filters in annotation task are lost. Therefore, we set a hopefully large enough time.
-  });
-
-  const updateTaskData = useCallback(
-    (task: AnnotationTask) => {
-      client.setQueryData(["annotation_task", task.uuid], task);
-      client.setQueryData(queryKey, (old: AnnotationTaskPage) => {
-        if (old == null) return old;
-        return {
-          ...old,
-          items: old.items.map((item) => {
-            if (item.uuid === task.uuid) {
-              return task;
-            }
-            return item;
-          }),
-        };
-      });
-      setCurrentTask(task);
-    },
-    [client, queryKey],
-  );
-
-  const markCompletedFn = useCallback(async () => {
-    if (currentTask == null) {
-      throw new Error("No selected task");
-    }
-    return api.annotationTasks.addBadge(currentTask, "completed");
-  }, [currentTask]);
-
-  const markCompleted = useMutation<AnnotationTask, AxiosError>({
-    mutationFn: markCompletedFn,
-    onSuccess: (task) => {
-      let updatedTask = task;
-      onCompleteTask?.(updatedTask);
-      updateTaskData(updatedTask);
-      nextTask();
-    },
-  });
-
-  const markUnsureFn = useCallback(async () => {
-    if (currentTask == null) {
-      throw new Error("No selected task");
-    }
-    return api.annotationTasks.addBadge(currentTask, "assigned");
-  }, [currentTask]);
-
-  const markUnsure = useMutation<AnnotationTask, AxiosError>({
-    mutationFn: markUnsureFn,
-    onSuccess: (task) => {
-      let updatedTask = task;
-      onUnsureTask?.(updatedTask);
-      updateTaskData(updatedTask);
-      nextTask();
-    },
-  });
-
-  const markRejectedFn = useCallback(async () => {
-    if (currentTask == null) {
-      throw new Error("No selected task");
-    }
-    return api.annotationTasks.addBadge(currentTask, "rejected");
-  }, [currentTask]);
-
-  const markRejected = useMutation<AnnotationTask, AxiosError>({
-    mutationFn: markRejectedFn,
-    onSuccess: (task) => {
-      let updatedTask = task;
-      onRejectTask?.(updatedTask);
-      updateTaskData(updatedTask);
-      nextTask();
-    },
-  });
-
-  const markVerifiedFn = useCallback(async () => {
-    if (currentTask == null) {
-      throw new Error("No selected task");
-    }
-    return api.annotationTasks.addBadge(currentTask, "verified");
-  }, [currentTask]);
-
-  const markVerified = useMutation<AnnotationTask, AxiosError>({
-    mutationFn: markVerifiedFn,
-    onSuccess: (task) => {
-      let updatedTask = task;
-      onVerifyTask?.(updatedTask);
-      updateTaskData(updatedTask);
-      nextTask();
-    },
-  });
-
-  const removeBadgeFn = useCallback(
-    async (status: AnnotationStatus, userId?: string) => {
-      if (currentTask == null) {
-        throw new Error("No selected task");
-      }
-      return api.annotationTasks.removeBadge(currentTask, status, userId);
-    },
-    [currentTask],
-  );
-
-  const removeBadge = useMutation<AnnotationTask, AxiosError, { state: AnnotationStatus, userId?: string }>(
-    {
-      mutationFn: ({ state, userId }) => removeBadgeFn(state, userId),
-      onSuccess: (task) => {
-        updateTaskData(task);
-      },
-    },
-  );
-
   const getFirstTask = useCallback(() => {
     if (items.length === 0) return;
-    const task = items[0];
+    const taskIndex = items[0];
+    // Cast minimal index to AnnotationTask for navigation
+    const task = taskIndex as unknown as AnnotationTask;
     setCurrentTask(task);
     onChangeTask?.(task);
   }, [items, onChangeTask]);
 
   useEffect(() => {
     if (currentTask == null && items.length > 0) {
-      goToTask(items[0]);
+      // Cast minimal index to AnnotationTask for navigation
+      goToTask(items[0] as unknown as AnnotationTask);
     }
   }, [currentTask, items, goToTask]);
-
-  useAnnotateTasksKeyShortcuts({
-    onGoNext: nextTask,
-    onGoPrevious: prevTask,
-    onMarkCompleted: markCompleted.mutate,
-    onMarkUnsure: markUnsure.mutate,
-    onMarkRejected: markRejected.mutate,
-    onMarkVerified: markVerified.mutate,
-  });
 
   return {
     current: index,
     task: currentTask,
     filter: filter.filter,
     tasks: items,
+    stats: stats,
     isLoading,
     isError,
     goToTask,
@@ -424,12 +207,6 @@ export default function useAnnotateTasks({
     nextTask,
     prevTask,
     setFilter,
-    annotations,
-    markCompleted,
-    markUnsure,
-    markRejected,
-    markVerified,
-    removeBadge,
     getFirstTask,
     handleCurrentSegmentsLoaded,
     _filter: filter,

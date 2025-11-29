@@ -1,15 +1,14 @@
 """REST API routes for annotation projects."""
 
-import json
 from typing import Annotated
-from uuid import UUID
 
-from fastapi import APIRouter, Depends, UploadFile
+from fastapi import APIRouter, Depends
+from soundevent.data import AnnotationState
+from sqlalchemy import func, select
 
-from sonari import api, schemas
-from sonari.api.io import aoef
+from sonari import api, models, schemas
 from sonari.filters.annotation_projects import AnnotationProjectFilter
-from sonari.routes.dependencies import Session, SonariSettings
+from sonari.routes.dependencies import Session
 from sonari.routes.types import Limit, Offset
 
 __all__ = [
@@ -72,10 +71,10 @@ async def create_annotation_project(
 )
 async def get_annotation_project(
     session: Session,
-    annotation_project_uuid: UUID,
+    annotation_project_id: int,
 ):
     """Get an annotation project."""
-    return await api.annotation_projects.get(session, annotation_project_uuid)
+    return await api.annotation_projects.get(session, annotation_project_id)
 
 
 @annotation_projects_router.patch(
@@ -84,13 +83,13 @@ async def get_annotation_project(
 )
 async def update_annotation_project(
     session: Session,
-    annotation_project_uuid: UUID,
+    annotation_project_id: int,
     data: schemas.AnnotationProjectUpdate,
 ):
     """Update an annotation project."""
     annotation_project = await api.annotation_projects.get(
         session,
-        annotation_project_uuid,
+        annotation_project_id,
     )
     annotation_project = await api.annotation_projects.update(
         session,
@@ -107,86 +106,91 @@ async def update_annotation_project(
 )
 async def delete_annotation_project(
     session: Session,
-    annotation_project_uuid: UUID,
+    annotation_project_id: int,
 ):
     """Delete an annotation project."""
     annotation_project = await api.annotation_projects.get(
         session,
-        annotation_project_uuid,
+        annotation_project_id,
     )
     project = await api.annotation_projects.delete(session, annotation_project)
     await session.commit()
     return project
 
 
-@annotation_projects_router.post(
-    "/detail/tags/",
-    response_model=schemas.AnnotationProject,
+@annotation_projects_router.get(
+    "/detail/progress/",
+    response_model=schemas.AnnotationProjectProgress,
 )
-async def add_tag_to_annotation_project(
+async def get_annotation_project_progress(
     session: Session,
-    annotation_project_uuid: UUID,
-    key: str,
-    value: str,
+    annotation_project_id: int,
 ):
-    """Add a tag to an annotation project."""
-    annotation_project = await api.annotation_projects.get(
-        session,
-        annotation_project_uuid,
+    """Get progress statistics for an annotation project.
+    
+    This endpoint efficiently computes task status counts using SQL aggregation,
+    avoiding the need to load all task objects into memory.
+    """
+    # Get total count of tasks for this project
+    total_query = select(func.count(models.AnnotationTask.id)).where(
+        models.AnnotationTask.annotation_project_id == annotation_project_id
     )
-    tag = await api.tags.get(session, (key, value))
-    project = await api.annotation_projects.add_tag(
-        session,
-        annotation_project,
-        tag,
+    total_result = await session.execute(total_query)
+    total = total_result.scalar_one()
+
+    # Count tasks by status badge state
+    # For each task, we count if it has a badge with each state
+    status_query = (
+        select(
+            models.AnnotationStatusBadge.state,
+            func.count(func.distinct(models.AnnotationStatusBadge.annotation_task_id))
+        )
+        .join(
+            models.AnnotationTask,
+            models.AnnotationTask.id == models.AnnotationStatusBadge.annotation_task_id
+        )
+        .where(models.AnnotationTask.annotation_project_id == annotation_project_id)
+        .group_by(models.AnnotationStatusBadge.state)
     )
-    await session.commit()
-    return project
-
-
-@annotation_projects_router.delete(
-    "/detail/tags/",
-    response_model=schemas.AnnotationProject,
-)
-async def remove_tag_from_annotation_project(
-    session: Session,
-    annotation_project_uuid: UUID,
-    key: str,
-    value: str,
-):
-    """Remove a tag from an annotation project."""
-    annotation_project = await api.annotation_projects.get(
-        session,
-        annotation_project_uuid,
+    
+    status_result = await session.execute(status_query)
+    status_counts = dict(status_result.all())
+    
+    # Extract counts for each state
+    verified = status_counts.get(AnnotationState.verified, 0)
+    rejected = status_counts.get(AnnotationState.rejected, 0)
+    completed = status_counts.get(AnnotationState.completed, 0)
+    assigned = status_counts.get(AnnotationState.assigned, 0)
+    
+    # Count tasks that are "done" (verified, rejected, or completed)
+    # A task is done if it has at least one of these badges
+    done_query = (
+        select(func.count(func.distinct(models.AnnotationTask.id)))
+        .select_from(models.AnnotationTask)
+        .join(
+            models.AnnotationStatusBadge,
+            models.AnnotationTask.id == models.AnnotationStatusBadge.annotation_task_id
+        )
+        .where(
+            models.AnnotationTask.annotation_project_id == annotation_project_id,
+            models.AnnotationStatusBadge.state.in_([
+                AnnotationState.verified,
+                AnnotationState.rejected,
+                AnnotationState.completed,
+            ])
+        )
     )
-    tag = await api.tags.get(session, (key, value))
-    project = await api.annotation_projects.remove_tag(
-        session,
-        annotation_project,
-        tag,
+    done_result = await session.execute(done_query)
+    done_count = done_result.scalar_one()
+    
+    # Pending is total minus done
+    pending = total - done_count
+    
+    return schemas.AnnotationProjectProgress(
+        total=total,
+        verified=verified,
+        rejected=rejected,
+        completed=completed,
+        assigned=assigned,
+        pending=pending,
     )
-    await session.commit()
-    return project
-
-
-@annotation_projects_router.post(
-    "/import/",
-    response_model=schemas.AnnotationProject,
-)
-async def import_annotation_project(
-    settings: SonariSettings,
-    session: Session,
-    annotation_project: UploadFile,
-):
-    """Import an annotation project."""
-    obj = json.loads(annotation_project.file.read())
-
-    db_dataset = await aoef.import_annotation_project(
-        session,
-        obj,
-        audio_dir=settings.audio_dir,
-        base_audio_dir=settings.audio_dir,
-    )
-    await session.commit()
-    await session.refresh(db_dataset)
-    return schemas.AnnotationProject.model_validate(db_dataset)

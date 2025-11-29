@@ -16,17 +16,15 @@ function NoTags() {
 export default function SoundEventAnnotationTags({
   soundEventAnnotation,
   tagFilter,
+  onClickTag,
   onAddTag,
   onRemoveTag,
-  onClickTag,
-  onCreateTag,
 }: {
   soundEventAnnotation: SoundEventAnnotation;
   tagFilter?: TagFilter;
-  onAddTag?: (tag: Tag) => void;
   onClickTag?: (tag: Tag) => void;
+  onAddTag?: (tag: Tag) => void;
   onRemoveTag?: (tag: Tag) => void;
-  onCreateTag?: (tag: Tag) => void;
 }) {
   const tags = useMemo(
     () => soundEventAnnotation.tags || [],
@@ -38,7 +36,7 @@ export default function SoundEventAnnotationTags({
       <div className="flex justify-between items-center gap-2 mb-2">
         <H4 className="text-center whitespace-nowrap">
           <TagsIcon className="inline-block mr-1 w-5 h-5" />
-          Sound Event Tags
+          Sound Event Annotation Tags
         </H4>
       </div>
       <div className="flex flex-row items-center flex-wrap gap-1">
@@ -47,7 +45,7 @@ export default function SoundEventAnnotationTags({
             key={getTagKey(tag)}
             tag={tag}
             onClick={() => onClickTag?.(tag)}
-            onClose={() => onRemoveTag?.(tag)}
+            onClose={onRemoveTag ? () => onRemoveTag(tag) : undefined}
             count={null}
           />
         ))}
@@ -56,11 +54,10 @@ export default function SoundEventAnnotationTags({
       <div className="flex flex-row justify-center gap-4 items-center">
         <AddTagButton
           variant="primary"
-          onAdd={onAddTag}
-          onCreate={onCreateTag}
           filter={tagFilter}
           text="Add tags"
           placeholder="Add tags..."
+          onAdd={onAddTag}
         />
       </div>
     </div>

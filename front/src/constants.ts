@@ -1,29 +1,44 @@
 /* Constants used throughout the application */
 
+import { Dimensions } from "./types";
+
 /* Default values for the settings of the STFT computation
  */
 export const MAX_SAMPLERATE = 500_000;
 export const MIN_SAMPLERATE = 4000;
 export const MIN_DB = -140;
-export const DEFAULT_WINDOW_SIZE = 0.00319;
-export const DEFAULT_HOP_SIZE = 0.03125;
+export const DEFAULT_WINDOW_SIZE_SAMPLES = 1024;
+export const DEFAULT_OVERLAP_PERCENT = 75;
 export const DEFAULT_WINDOW = "blackmanharris";
 export const DEFAULT_SCALE = "dB";
 export const DEFAULT_FILTER_ORDER = 5;
 export const DEFAULT_CMAP = "plasma";
-export const DEFAULT_CONF_PRESET = "hsr";
 
-/* Restrictions on the settings for the STFT computation
- * These are to prevent the user from setting parameters that
- * would cause the STFT to fail or be too slow
+/* Available options for STFT computation
  */
-export const MAX_FFT_SIZE = 2 ** 13;
-export const MIN_FFT_SIZE = 2 ** 7;
-export const MAX_HOP_FRACTION = 1; // 100% of window size
-export const MIN_HOP_FRACTION = 0.01; // 1% of window size
+export const WINDOW_SIZE_OPTIONS = [256, 512, 1024, 2048, 4096];
+export const OVERLAP_OPTIONS = [75, 96, 98];
+
+/* Auto STFT calculation constants
+ * Base case: 500 kHz sample rate → 1024 samples window, 96% overlap
+ * This corresponds to ~0.002048 seconds audio duration per window
+ */
+export const AUTO_STFT_BASE_SAMPLERATE = 500_000;
+export const AUTO_STFT_BASE_WINDOW_SIZE = 1024;
+export const AUTO_STFT_BASE_OVERLAP = 96;
+export const AUTO_STFT_TARGET_DURATION = AUTO_STFT_BASE_WINDOW_SIZE / AUTO_STFT_BASE_SAMPLERATE; // 0.002048 seconds
+export const AUTO_STFT_MIN_WINDOW_SIZE = 256;
 
 /** Absolute maximum frequency that can be handled by the app */
 export const MAX_FREQ = 500_000;
 
 /** Factor to zoom in and out of a spectrogram */
 export const ZOOM_FACTOR = 0.2;
+
+export const SPECTROGRAM_CANVAS_DIMENSIONS: Dimensions = {height: 384, width: 1000}
+export const WAVEFORM_CANVAS_DIMENSIONS: Dimensions = {height: SPECTROGRAM_CANVAS_DIMENSIONS.height / 6, width: SPECTROGRAM_CANVAS_DIMENSIONS.width}
+
+/** Card padding is p-4 which equals 16px on each side (32px total horizontal padding) */
+export const CARD_HORIZONTAL_PADDING = 36;
+/** Container width that accounts for Card padding to achieve 1000px content width */
+export const SPECTROGRAM_CONTAINER_WIDTH = SPECTROGRAM_CANVAS_DIMENSIONS.width + CARD_HORIZONTAL_PADDING;

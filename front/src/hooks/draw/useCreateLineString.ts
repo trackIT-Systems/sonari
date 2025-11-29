@@ -3,7 +3,7 @@ import { useCallback, useEffect, useState } from "react";
 import drawGeometry from "@/draw/geometry";
 import { DEFAULT_LINESTRING_STYLE } from "@/draw/linestring";
 import useWindowMotions from "@/hooks/window/useWindowMotions";
-import { scaleGeometryToViewport } from "@/utils/geometry";
+import { scaleGeometryToWindow } from "@/utils/geometry";
 
 import type { BorderStyle } from "@/draw/styles";
 import type {
@@ -15,14 +15,12 @@ import type {
 } from "@/types";
 
 export default function useCreateLineString({
-  viewport,
-  dimensions,
+  window,
   enabled = true,
   style = DEFAULT_LINESTRING_STYLE,
   onCreate,
 }: {
-  viewport: SpectrogramWindow;
-  dimensions: Dimensions;
+  window: SpectrogramWindow;
   enabled?: boolean;
   style?: BorderStyle;
   onCreate?: (lineString: LineString) => void;
@@ -112,8 +110,7 @@ export default function useCreateLineString({
 
   const { props, isDragging } = useWindowMotions({
     enabled,
-    viewport,
-    dimensions,
+    window,
     onClick: handleClick,
     onMoveStart: handleMoveStart,
     onMove: handleMove,
@@ -127,33 +124,63 @@ export default function useCreateLineString({
 
       if (coordinates != null) {
         const geometry: LineString = { type: "LineString", coordinates };
-        const scaled = scaleGeometryToViewport(dimensions, geometry, viewport);
+        const scaled = scaleGeometryToWindow(geometry, window);
         drawGeometry(ctx, scaled, style);
         
-        // Helper function to draw text with outline for better visibility
-        const drawOutlinedText = (text: string, x: number, y: number) => {
+        // Helper function to draw text with semi-transparent background
+        const drawTextWithBackground = (
+          text: string, 
+          x: number, 
+          y: number, 
+          align: CanvasTextAlign = 'center',
+          baseline: CanvasTextBaseline = 'middle'
+        ) => {
           ctx.font = '12px sans-serif';
-          ctx.textAlign = 'left';
-          ctx.textBaseline = 'bottom';
+          ctx.textAlign = align;
+          ctx.textBaseline = baseline;
           
-          // Draw black outline
-          ctx.strokeStyle = 'black';
-          ctx.lineWidth = 3;
-          ctx.strokeText(text, x, y);
+          // Measure text for background
+          const metrics = ctx.measureText(text);
+          const padding = 4;
+          let bgX: number;
           
-          // Draw white text on top
+          if (align === 'center') {
+            bgX = x - metrics.width / 2 - padding;
+          } else if (align === 'right') {
+            bgX = x - metrics.width - padding;
+          } else { // left
+            bgX = x - padding;
+          }
+          
+          let bgY: number;
+          if (baseline === 'middle') {
+            bgY = y - 8; // Approximate text height/2 + padding
+          } else if (baseline === 'bottom') {
+            bgY = y - 16;
+          } else { // top
+            bgY = y;
+          }
+          
+          const bgWidth = metrics.width + padding * 2;
+          const bgHeight = 16;
+          
+          // Draw semi-transparent background
+          ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+          ctx.fillRect(bgX, bgY, bgWidth, bgHeight);
+          
+          // Draw border
+          ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
+          ctx.lineWidth = 1;
+          ctx.strokeRect(bgX, bgY, bgWidth, bgHeight);
+          
+          // Draw text
           ctx.fillStyle = 'white';
           ctx.fillText(text, x, y);
         };
 
-        // Collect all text positions to check for overlaps with simpler positioning
-        const textPositions: { x: number; y: number; text: string; index: number }[] = [];
-        
-        scaled.coordinates.forEach((coord, index) => {
-          const [x, y] = coord;
-          const markerSize = 5; 
-          
-          // Draw crosshair marker
+        // Draw crosshair markers at measurement points
+        scaled.coordinates.forEach(([x, y]) => {
+          const markerSize = 5;
           ctx.strokeStyle = 'white';
           ctx.lineWidth = 2;
           ctx.beginPath();
@@ -162,106 +189,60 @@ export default function useCreateLineString({
           ctx.moveTo(x + markerSize, y - markerSize);
           ctx.lineTo(x - markerSize, y + markerSize);
           ctx.stroke();
-          
-          // Prepare text
-          const originalCoord = coordinates[index];
-          const timeValue = Math.round(originalCoord[0] * 1000);
-          const freqValue = Math.round(originalCoord[1] / 1000);
-          const text = `${timeValue}ms, ${freqValue}kHz`;
-          
-          // Simple positioning: try to place text away from the line
-          let textX = x + 8;
-          let textY = y - 3;
-          
-          // If we have a line, adjust position to avoid overlap
-          if (scaled.coordinates.length > 1) {
-            if (index > 0) {
-              // Check if line goes right or left, up or down
-              const [prevX, prevY] = scaled.coordinates[index - 1];
-              const lineGoesRight = x > prevX;
-              const lineGoesUp = y < prevY;
-              
-              // Position text on the opposite side of where the line comes from
-              if (lineGoesRight && lineGoesUp) {
-                textX = x + 8; textY = y + 8; // Bottom right
-              } else if (lineGoesRight && !lineGoesUp) {
-                textX = x + 8; textY = y - 3; // Top right  
-              } else if (!lineGoesRight && lineGoesUp) {
-                textX = x - 3; textY = y + 8; // Bottom left
-              } else {
-                textX = x - 3; textY = y - 3; // Top left
-              }
-            } else if (index < scaled.coordinates.length - 1) {
-              // For first point, check where next point is
-              const [nextX, nextY] = scaled.coordinates[index + 1];
-              const lineGoesRight = nextX > x;
-              const lineGoesUp = nextY < y;
-              
-              // Position text on opposite side of where line goes
-              if (lineGoesRight && lineGoesUp) {
-                textX = x - 3; textY = y + 8; // Bottom left
-              } else if (lineGoesRight && !lineGoesUp) {
-                textX = x - 3; textY = y - 3; // Top left
-              } else if (!lineGoesRight && lineGoesUp) {
-                textX = x + 8; textY = y + 8; // Bottom right
-              } else {
-                textX = x + 8; textY = y - 3; // Top right
-              }
-            }
-          }
-          
-          textPositions.push({ x: textX, y: textY, text, index });
         });
 
-        // Simple overlap resolution: just move overlapping text vertically
-        for (let i = 0; i < textPositions.length; i++) {
-          for (let j = i + 1; j < textPositions.length; j++) {
-            const pos1 = textPositions[i];
-            const pos2 = textPositions[j];
+        // For two-point measurements, show delta prominently
+        if (scaled.coordinates.length === 2) {
+          const [x1, y1] = scaled.coordinates[0];
+          const [x2, y2] = scaled.coordinates[1];
+          
+          // Calculate deltas
+          const originalCoord1 = coordinates[0];
+          const originalCoord2 = coordinates[1];
+          const deltaTime = Math.round(Math.abs(originalCoord2[0] - originalCoord1[0]) * 1000);
+          const deltaFreq = Math.round(Math.abs((originalCoord2[1] - originalCoord1[1]) / 1000));
+          
+          // Position delta label prominently, offset from the line
+          const midX = (x1 + x2) / 2;
+          const midY = (y1 + y2) / 2;
+          
+          // Offset perpendicular to the line direction
+          const lineAngle = Math.atan2(y2 - y1, x2 - x1);
+          const perpAngle = lineAngle + Math.PI / 2;
+          const offsetDistance = 25; // Offset away from line
+          
+          const labelX = midX + Math.cos(perpAngle) * offsetDistance;
+          const labelY = midY + Math.sin(perpAngle) * offsetDistance;
+          
+          // Draw delta label with background for better visibility
+          const deltaText = `Δt: ${deltaTime}ms, Δf: ${deltaFreq}kHz`;
+          ctx.font = '13px sans-serif';
+          drawTextWithBackground(deltaText, labelX, labelY, 'center', 'middle');
+          
+          // Draw coordinate values at the edges if there's room
+          const edgeDistance = Math.min(x1, ctx.canvas.width - x2, y1, ctx.canvas.height - y2);
+          if (edgeDistance > 60) {
+            const time1 = Math.round(originalCoord1[0] * 1000);
+            const freq1 = Math.round(originalCoord1[1] / 1000);
+            const time2 = Math.round(originalCoord2[0] * 1000);
+            const freq2 = Math.round(originalCoord2[1] / 1000);
             
-            const dx = Math.abs(pos1.x - pos2.x);
-            const dy = Math.abs(pos1.y - pos2.y);
+            // Draw start coordinate
+            const text1 = `${time1}ms, ${freq1}kHz`;
+            ctx.font = '11px sans-serif';
+            drawTextWithBackground(text1, x1 - 60, y1 - 10, 'left', 'bottom');
             
-            if (dx < 120 && dy < 20) {
-              // Move second text down
-              pos2.y += 8;
-            }
+            // Draw end coordinate
+            const text2 = `${time2}ms, ${freq2}kHz`;
+            drawTextWithBackground(text2, x2 + 10, y2 + 15, 'left', 'bottom');
           }
-        }
-
-        // Draw all coordinate texts
-        textPositions.forEach(({ x, y, text }) => {
-          drawOutlinedText(text, x, y);
-        });
-
-        // Draw delta labels between points with simpler positioning
-        if (scaled.coordinates.length > 1) {
-          scaled.coordinates.forEach((coord, index) => {
-            if (index > 0) {
-              const [x, y] = coord;
-              const [prevX, prevY] = scaled.coordinates[index - 1];
-              const originalCoord = coordinates[index];
-              const prevCoord = coordinates[index - 1];
-              
-              const deltaTime = Math.round(Math.abs(originalCoord[0] - prevCoord[0]) * 1000);
-              const deltaFreq = Math.round(Math.abs((originalCoord[1] - prevCoord[1]) / 1000));
-              
-              // Simple midpoint positioning with small offset
-              const midX = (prevX + x) / 2;
-              const midY = (prevY + y) / 2 - 3; // Just offset up a bit
-              
-              const deltaText = `Δt: ${deltaTime}ms, Δf: ${deltaFreq}kHz`;
-              drawOutlinedText(deltaText, midX, midY);
-            }
-          });
         }
       }
 
       if (vertex != null) {
-        const scaledVertex = scaleGeometryToViewport(
-          dimensions,
+        const scaledVertex = scaleGeometryToWindow(
           { type: "Point", coordinates: [vertex.time, vertex.freq] },
-          viewport,
+          window,
         );
         drawGeometry(ctx, scaledVertex, style);
         
@@ -271,17 +252,27 @@ export default function useCreateLineString({
         const freqValue = Math.round(vertex.freq / 1000);
         const text = `${timeValue}ms, ${freqValue}kHz`;
         
-        // Helper function for outlined text (redefined here for vertex)
+        // Draw text with semi-transparent background
         ctx.font = '12px sans-serif';
+        const metrics = ctx.measureText(text);
+        const padding = 4;
+        const bgX = x + 8 - padding;
+        const bgY = y - 3 - 16; // y - 3 is baseline bottom, subtract text height
+        const bgWidth = metrics.width + padding * 2;
+        const bgHeight = 16;
+        
+        // Draw semi-transparent background
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+        ctx.fillRect(bgX, bgY, bgWidth, bgHeight);
+        
+        // Draw border
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(bgX, bgY, bgWidth, bgHeight);
+        
+        // Draw text
         ctx.textAlign = 'left';
         ctx.textBaseline = 'bottom';
-        
-        // Draw black outline
-        ctx.strokeStyle = 'black';
-        ctx.lineWidth = 3;
-        ctx.strokeText(text, x + 8, y - 3);
-        
-        // Draw white text on top
         ctx.fillStyle = 'white';
         ctx.fillText(text, x + 8, y - 3);
       }
@@ -292,11 +283,11 @@ export default function useCreateLineString({
           type: "LineString",
           coordinates: [lastVertex, [vertex.time, vertex.freq]],
         };
-        const scaled = scaleGeometryToViewport(dimensions, geometry, viewport);
+        const scaled = scaleGeometryToWindow(geometry, window);
         drawGeometry(ctx, scaled, style);
       }
     },
-    [enabled, coordinates, style, viewport, dimensions, vertex],
+    [enabled, coordinates, style, window, vertex],
   );
 
   useEffect(() => {

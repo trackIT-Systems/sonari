@@ -13,16 +13,12 @@ import type {
 } from "@/types";
 
 export default function useCreateWaveformMeasurement({
-  viewport,
-  dimensions,
+  window,
   enabled = true,
-  style = DEFAULT_LINESTRING_STYLE,
   onCreate,
 }: {
-  viewport: SpectrogramWindow;
-  dimensions: Dimensions;
+  window: SpectrogramWindow;
   enabled?: boolean;
-  style?: BorderStyle;
   onCreate?: (lineString: LineString) => void;
 }) {
   const [coordinates, setCoordinates] = useState<Coordinates[] | null>(null);
@@ -110,8 +106,7 @@ export default function useCreateWaveformMeasurement({
 
   const { props, isDragging } = useWindowMotions({
     enabled,
-    viewport,
-    dimensions,
+    window,
     onClick: handleClick,
     onMoveStart: handleMoveStart,
     onMove: handleMove,
@@ -131,9 +126,9 @@ export default function useCreateWaveformMeasurement({
         const minTime = Math.min(...timeCoords);
         const maxTime = Math.max(...timeCoords);
         
-        const timeRange = viewport.time.max - viewport.time.min;
-        const minX = ((minTime - viewport.time.min) / timeRange) * width;
-        const maxX = ((maxTime - viewport.time.min) / timeRange) * width;
+        const timeRange = window.time.max - window.time.min;
+        const minX = ((minTime - window.time.min) / timeRange) * width;
+        const maxX = ((maxTime - window.time.min) / timeRange) * width;
 
         // Draw highlighted region
         ctx.fillStyle = "rgba(16, 185, 129, 0.2)"; // Green background
@@ -171,7 +166,7 @@ export default function useCreateWaveformMeasurement({
         // Draw time markers and labels (no frequency)
         coordinates.forEach((coord, index) => {
           const timeCoord = coord[0];
-          const x = ((timeCoord - viewport.time.min) / timeRange) * width;
+          const x = ((timeCoord - window.time.min) / timeRange) * width;
           
           // Draw small vertical marker
           ctx.strokeStyle = 'white';
@@ -204,8 +199,8 @@ export default function useCreateWaveformMeasurement({
 
       // Draw current vertex being dragged
       if (vertex != null) {
-        const timeRange = viewport.time.max - viewport.time.min;
-        const x = ((vertex.time - viewport.time.min) / timeRange) * width;
+        const timeRange = window.time.max - window.time.min;
+        const x = ((vertex.time - window.time.min) / timeRange) * width;
         
         // Draw vertical line
         ctx.strokeStyle = 'rgba(16, 185, 129, 0.8)';
@@ -235,7 +230,7 @@ export default function useCreateWaveformMeasurement({
         ctx.fillText(text, x + 5, 20);
       }
     },
-    [enabled, coordinates, viewport, vertex],
+    [enabled, coordinates, window, vertex],
   );
 
   useEffect(() => {

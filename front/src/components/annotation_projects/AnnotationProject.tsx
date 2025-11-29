@@ -1,11 +1,9 @@
 import Link from "next/link";
-import { type ReactNode, useMemo } from "react";
+import { type ReactNode } from "react";
 
-import useAnnotationTasks from "@/hooks/api/useAnnotationTasks";
+import useAnnotationProjectProgress from "@/hooks/api/useAnnotationProjectProgress";
 
 import ProgressBar from "../ProgressBar";
-
-import { computeAnnotationTasksProgress } from "@/utils/annotation_tasks";
 
 import type { AnnotationProject as AnnotationProjectType } from "@/types";
 
@@ -23,19 +21,26 @@ export default function AnnotationProject({
 }: {
   annotationProject: AnnotationProjectType;
 }) {
-  const filter = useMemo(
-    () => ({ annotation_project: annotationProject }),
-    [annotationProject]
-  );
-
-  const { items: annotationTasks, isLoading } = useAnnotationTasks({
-    filter,
-    pageSize: -1,
+  const { progress: rawProgress, isLoading } = useAnnotationProjectProgress({
+    annotationProjectId: annotationProject.id,
   });
 
-  const progress = useMemo(() => {
-    if (isLoading || annotationTasks == null) {
-      return {
+  // Transform the raw progress data to match the ProgressBar component's expected format
+  const progress = rawProgress
+    ? {
+        total: rawProgress.total,
+        done: {
+          count: rawProgress.total - rawProgress.pending,
+          verified: rawProgress.verified,
+          completed: rawProgress.completed,
+          rejected: rawProgress.rejected,
+        },
+        pending: {
+          count: rawProgress.pending,
+          assigned: rawProgress.assigned,
+        },
+      }
+    : {
         total: 0,
         done: {
           count: 0,
@@ -48,9 +53,6 @@ export default function AnnotationProject({
           assigned: 0,
         },
       };
-    }
-    return computeAnnotationTasksProgress(annotationTasks);
-  }, [annotationTasks, isLoading]);
 
   return (
     <div className="w-full">
@@ -60,7 +62,7 @@ export default function AnnotationProject({
             className="hover:font-bold hover:text-emerald-500"
             href={{
               pathname: "/annotation_projects/detail/",
-              query: { annotation_project_uuid: annotationProject.uuid },
+              query: { annotation_project_id: annotationProject.id },
             }}
           >
             {annotationProject.name}

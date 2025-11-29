@@ -7,19 +7,17 @@ from sonari.routes.annotation_projects import annotation_projects_router
 from sonari.routes.annotation_tasks import get_annotation_tasks_router
 from sonari.routes.audio import audio_router
 from sonari.routes.auth import get_auth_router
-from sonari.routes.clip_annotations import get_clip_annotations_router
-from sonari.routes.clips import clips_router
-from sonari.routes.datasets import dataset_router
+from sonari.routes.datasets import get_dataset_router
 from sonari.routes.features import features_router
 from sonari.routes.notes import notes_router
 from sonari.routes.plugins import plugin_router
+from sonari.routes.psd import psd_router
 from sonari.routes.recordings import get_recording_router
 from sonari.routes.sound_event_annotations import (
     get_sound_event_annotations_router,
 )
-from sonari.routes.sound_events import sound_events_router
 from sonari.routes.spectrograms import spectrograms_router
-from sonari.routes.tags import tags_router
+from sonari.routes.tags import get_tags_router
 from sonari.routes.users import get_users_router
 from sonari.routes.waveforms import waveform_router
 from sonari.system.settings import Settings
@@ -47,6 +45,7 @@ def get_main_router(settings: Settings):
         prefix="/users",
         tags=["Users"],
     )
+    tags_router = get_tags_router(settings)
     main_router.include_router(
         tags_router,
         prefix="/tags",
@@ -64,16 +63,17 @@ def get_main_router(settings: Settings):
     )
 
     # Audio Metadata
+    dataset_router = get_dataset_router(settings)
+    main_router.include_router(
+        dataset_router,
+        prefix="/datasets",
+        tags=["Datasets"],
+    )
     recording_router = get_recording_router(settings)
     main_router.include_router(
         recording_router,
         prefix="/recordings",
         tags=["Recordings"],
-    )
-    main_router.include_router(
-        dataset_router,
-        prefix="/datasets",
-        tags=["Datasets"],
     )
 
     # Audio Content
@@ -92,17 +92,10 @@ def get_main_router(settings: Settings):
         prefix="/waveforms",
         tags=["Waveforms"],
     )
-
-    # Acoustic Objects
     main_router.include_router(
-        sound_events_router,
-        prefix="/sound_events",
-        tags=["Sound Events"],
-    )
-    main_router.include_router(
-        clips_router,
-        prefix="/clips",
-        tags=["Clips"],
+        psd_router,
+        prefix="/psd",
+        tags=["PSD"],
     )
 
     # Annotation
@@ -111,12 +104,6 @@ def get_main_router(settings: Settings):
         sound_event_annotations_router,
         prefix="/sound_event_annotations",
         tags=["Sound Event Annotations"],
-    )
-    clip_annotations_router = get_clip_annotations_router(settings)
-    main_router.include_router(
-        clip_annotations_router,
-        prefix="/clip_annotations",
-        tags=["Clip Annotations"],
     )
     annotation_tasks_router = get_annotation_tasks_router(settings)
     main_router.include_router(

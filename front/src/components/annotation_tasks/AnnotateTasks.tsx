@@ -1,0 +1,653 @@
+import { useCallback, useState, useMemo, useEffect, useRef } from "react";
+
+import { DEFAULT_SPECTROGRAM_PARAMETERS } from "@/api/spectrograms";
+import AnnotationProgress from "@/components/annotation_tasks/AnnotationProgress";
+import RecordingAnnotationContext from "@/components/annotation_tasks/RecordingAnnotationContext";
+import SelectedSoundEventAnnotation from "@/components/annotation_tasks/SelectedSoundEventAnnotation";
+import AnnotationTaskStatus from "@/components/annotation_tasks/AnnotationTaskStatus";
+import AnnotationTaskSpectrogram from "@/components/annotation_tasks/AnnotationTaskSpectrogram";
+import Empty from "@/components/Empty";
+import Loading from "@/components/Loading";
+import useAnnotateTasks from "@/hooks/annotation/useAnnotateTasks";
+import AnnotationTaskTagBar from "@/components/annotation_tasks/AnnotationTaskTagBar";
+import useAnnotateTasksKeyShortcuts from "@/hooks/annotation/useTaskStatusKeyShortcuts";
+
+import { Popover, PopoverButton, PopoverPanel } from "@headlessui/react";
+import SearchMenu from "@/components/search/SearchMenu";
+import TagComponent, { getTagKey } from "@/components/tags/Tag";
+
+import { SOUND_EVENT_CYCLE_FILTER_SHORTCUT, DELETE_TAG_SHORTCUT, ABORT_SHORTCUT } from "@/utils/keyboard";
+
+import type { AnnotationTaskFilter } from "@/api/annotation_tasks";
+import type { NoteCreate } from "@/api/notes";
+import type {
+  AnnotationTask,
+  AnnotationStatus,
+  SoundEventAnnotation,
+  SpectrogramParameters,
+  Tag,
+  User,
+  Note,
+  Geometry,
+} from "@/types";
+import AnnotationTaskNotes from "./AnnotationTaskNotes";
+import AnnotationTaskTags from "@/components/annotation_tasks/AnnotationTaskTags";
+import { SPECTROGRAM_CONTAINER_WIDTH } from "@/constants";
+
+export default function AnnotateTasks({
+  taskFilter,
+  parameters = DEFAULT_SPECTROGRAM_PARAMETERS,
+  annotationTask,
+  isLoadingTask,
+  currentUser,
+  onChangeTask,
+  onParameterSave,
+  onCompleteTask,
+  onUnsureTask,
+  onRejectTask,
+  onVerifyTask,
+  onAddBadge,
+  onRemoveBadge,
+  onAddNote,
+  onRemoveNote,
+  onAddTag,
+  onRemoveTag,
+  onAddTagToSoundEventAnnotation,
+  onRemoveTagFromSoundEventAnnotation,
+  onAddSoundEventAnnotation,
+  onRemoveSoundEventAnnotation,
+  onUpdateSoundEventAnnotation,
+}: {
+  /** Filter to select which tasks are to be annotated */
+  taskFilter?: AnnotationTaskFilter;
+  /** Parameters to use for spectrogram rendering */
+  parameters?: SpectrogramParameters;
+  /** An optional annotation task to use initially */
+  annotationTask?: AnnotationTask;
+  /** Loading state for the annotation task */
+  isLoadingTask?: boolean;
+  /** The user who is annotating */
+  currentUser: User;
+  onChangeTask?: (annotationTask: AnnotationTask) => void;
+  onAddStatusBadge?: (task: AnnotationTask) => void;
+  onRemoveStatusBadge?: (task: AnnotationTask) => void;
+  onParameterSave?: (parameters: SpectrogramParameters) => void;
+  onCompleteTask?: () => void;
+  onUnsureTask?: () => void;
+  onRejectTask?: () => void;
+  onVerifyTask?: () => void;
+  onAddBadge?: (task: AnnotationTask, state: AnnotationStatus) => Promise<AnnotationTask>;
+  onRemoveBadge?: (task: AnnotationTask, state: AnnotationStatus, userId?: string) => Promise<AnnotationTask>;
+  onAddNote?: (note: NoteCreate) => void;
+  onRemoveNote?: (note: Note) => void;
+  onAddTag?: (tag: Tag) => void;
+  onRemoveTag?: (tag: Tag) => void;
+  onAddTagToSoundEventAnnotation?: (params: { soundEventAnnotation: SoundEventAnnotation; tag: Tag }) => Promise<SoundEventAnnotation>;
+  onRemoveTagFromSoundEventAnnotation?: (params: { soundEventAnnotation: SoundEventAnnotation; tag: Tag }) => Promise<SoundEventAnnotation>;
+  onAddSoundEventAnnotation?: (params: { geometry: Geometry; tags: Tag[] }) => Promise<SoundEventAnnotation>;
+  onRemoveSoundEventAnnotation?: (annotation: SoundEventAnnotation) => void;
+  onUpdateSoundEventAnnotation?: (params: { soundEventAnnotation: SoundEventAnnotation; geometry: Geometry }) => void;
+}) {
+  const [tagPalette, setTagPalette] = useState<Tag[]>([]);
+  const [selectedTag, setSelectedTag] = useState<{ tag: Tag; count: number } | null>(null);
+  
+  const [selectedSoundEventAnnotation, setSelectedSoundEventAnnotation] = useState<SoundEventAnnotation | null>(null);
+  const onDeselectSoundEventAnnotation = useCallback(() => {
+    setSelectedSoundEventAnnotation(null);
+  }, []);
+
+  const onUpdateSelectedSoundEventAnnotation = useCallback((annotation: SoundEventAnnotation) => {
+    setSelectedSoundEventAnnotation(annotation);
+  }, []);
+
+  const [withSpectrogram, setWithSpectrogram] = useState(true);
+  const onWithSpectrogramChange = useCallback(
+    () => {
+      setWithSpectrogram(!withSpectrogram);
+    },
+    [withSpectrogram]
+  )
+
+  const [withSoundEvent, setWithSoundEvents] = useState(true);
+  const onWithSoundEventChange = useCallback(
+    () => {
+      setWithSoundEvents(!withSoundEvent)
+    },
+    [withSoundEvent]
+  )
+
+  const [withAutoplay, setWithAutoplay] = useState(false);
+  const onWithAutoplayChange = useCallback(
+    () => {
+      setWithAutoplay(!withAutoplay);
+    },
+    [withAutoplay]
+  )
+
+  const [fixedAspectRatio, setFixedAspectRatio] = useState(false);
+  const toggleFixedAspectRatio = useCallback(() => {
+    setFixedAspectRatio(prev => !prev);
+  }, []);
+
+  const tasks = useAnnotateTasks({
+    filter: taskFilter,
+    annotationTask,
+    onChangeTask,
+    onCompleteTask,
+    onUnsureTask,
+    onRejectTask,
+    onVerifyTask,
+    onDeselectSoundEventAnnotation,
+  });
+
+  // Wrapper functions that combine badge mutations with navigation
+  const handleMarkCompleted = useCallback(async () => {
+    if (!annotationTask || !onAddBadge) return;
+    try {
+      await onAddBadge(annotationTask, "completed");
+      onCompleteTask?.();
+      tasks.nextTask();
+    } catch (error) {
+      console.error("Failed to mark task as completed:", error);
+    }
+  }, [annotationTask, onAddBadge, onCompleteTask, tasks]);
+
+  const handleMarkRejected = useCallback(async () => {
+    if (!annotationTask || !onAddBadge) return;
+    try {
+      await onAddBadge(annotationTask, "rejected");
+      onRejectTask?.();
+      tasks.nextTask();
+    } catch (error) {
+      console.error("Failed to mark task as rejected:", error);
+    }
+  }, [annotationTask, onAddBadge, onRejectTask, tasks]);
+
+  const handleMarkUnsure = useCallback(async () => {
+    if (!annotationTask || !onAddBadge) return;
+    try {
+      await onAddBadge(annotationTask, "assigned");
+      onUnsureTask?.();
+      tasks.nextTask();
+    } catch (error) {
+      console.error("Failed to mark task as unsure:", error);
+    }
+  }, [annotationTask, onAddBadge, onUnsureTask, tasks]);
+
+  const handleMarkVerified = useCallback(async () => {
+    if (!annotationTask || !onAddBadge) return;
+    try {
+      await onAddBadge(annotationTask, "verified");
+      onVerifyTask?.();
+      tasks.nextTask();
+    } catch (error) {
+      console.error("Failed to mark task as verified:", error);
+    }
+  }, [annotationTask, onAddBadge, onVerifyTask, tasks]);
+
+  const handleRemoveBadge = useCallback(async (state: AnnotationStatus, userId?: string) => {
+    if (!annotationTask || !onRemoveBadge) return;
+    try {
+      await onRemoveBadge(annotationTask, state, userId);
+    } catch (error) {
+      console.error("Failed to remove badge:", error);
+    }
+  }, [annotationTask, onRemoveBadge]);
+
+  useAnnotateTasksKeyShortcuts({
+    onGoNext: tasks.nextTask,
+    onGoPrevious: tasks.prevTask,
+    onMarkCompleted: handleMarkCompleted,
+    onMarkUnsure: handleMarkUnsure,
+    onMarkRejected: handleMarkRejected,
+    onMarkVerified: handleMarkVerified,
+  });
+
+  const handleRemoveTagFromSoundEventAnnotations = useCallback(
+    async (tagToRemove: Tag) => {
+      if (!annotationTask?.sound_event_annotations || !onRemoveTagFromSoundEventAnnotation) return;
+      // For each sound event annotation that has this tag
+      const promises = annotationTask.sound_event_annotations
+        .filter(soundEventAnnotation =>
+          soundEventAnnotation.tags?.some(
+            tag => tag.key === tagToRemove.key && tag.value === tagToRemove.value
+          )
+        )
+        .map(soundEventAnnotation => {
+          return onRemoveTagFromSoundEventAnnotation({
+            soundEventAnnotation: soundEventAnnotation,
+            tag: tagToRemove
+          });
+        });
+
+      await Promise.all(promises);
+    },
+    [annotationTask?.sound_event_annotations, onRemoveTagFromSoundEventAnnotation]
+  );
+
+
+  const [isDeletePopoverOpen, setIsDeletePopoverOpen] = useState(false);
+  const [isTagPopoverOpen, setIsTagPopoverOpen] = useState(false);
+
+  useEffect(() => {
+    const handleKeyPress = (event: KeyboardEvent) => {
+      if (event.key === ABORT_SHORTCUT) {
+        setIsDeletePopoverOpen(false);
+        setIsTagPopoverOpen(false);
+        if (document.activeElement instanceof HTMLElement) {
+          document.activeElement.blur();
+        }
+        return;
+      }
+
+      if (
+        event.key === DELETE_TAG_SHORTCUT &&
+        !(event.target instanceof HTMLInputElement) &&
+        !(event.target instanceof HTMLTextAreaElement)
+      ) {
+        event.preventDefault();
+        setIsDeletePopoverOpen(true);
+      }
+
+      if (
+        event.key === SOUND_EVENT_CYCLE_FILTER_SHORTCUT &&
+        !(event.target instanceof HTMLInputElement) &&
+        !(event.target instanceof HTMLTextAreaElement)
+      ) {
+        event.preventDefault();
+        if (selectedTag) {
+          setSelectedTag(null);
+        } else {
+          setIsTagPopoverOpen(true);
+        }
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyPress);
+    return () => document.removeEventListener('keydown', handleKeyPress);
+  }, [setIsTagPopoverOpen, setIsDeletePopoverOpen, selectedTag, setSelectedTag]);
+
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const popoverElement = document.querySelector('[role="dialog"]');
+      if (
+        popoverElement &&
+        !popoverElement.contains(event.target as Node) &&
+        isDeletePopoverOpen
+      ) {
+        setIsDeletePopoverOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [isDeletePopoverOpen]);
+
+  const tagsWithCount = useMemo(() => {
+    if (!annotationTask?.sound_event_annotations) return [];
+
+    const allTags = annotationTask.sound_event_annotations.flatMap(soundEventAnnotation => soundEventAnnotation.tags || []);
+    const tagCounts = new Map<string, { tag: Tag; count: number }>();
+
+    allTags.forEach(tag => {
+      const key = `${tag.key}-${tag.value}`;
+      const existing = tagCounts.get(key);
+      if (existing) {
+        existing.count++;
+      } else {
+        tagCounts.set(key, { tag, count: 1 });
+      }
+    });
+
+    return Array.from(tagCounts.values());
+  }, [annotationTask?.sound_event_annotations]);
+
+  const handleDeleteTagFromAll = useCallback(
+    async (tagWithCount: { tag: Tag; count: number }, shouldDelete: boolean) => {
+      if (shouldDelete && onRemoveTagFromSoundEventAnnotation) {
+        if (selectedSoundEventAnnotation) {
+          // If an annotation is selected, only remove tag from it
+          await onRemoveTagFromSoundEventAnnotation({
+            soundEventAnnotation: selectedSoundEventAnnotation,
+            tag: tagWithCount.tag
+          });
+        } else {
+          // Otherwise, remove from all sound event annotations
+          await handleRemoveTagFromSoundEventAnnotations(tagWithCount.tag);
+        }
+      }
+      setIsDeletePopoverOpen(false);
+    },
+    [handleRemoveTagFromSoundEventAnnotations, onRemoveTagFromSoundEventAnnotation, selectedSoundEventAnnotation]
+  );
+
+  const handleAddTagToPalette = useCallback((tag: Tag) => {
+    setTagPalette((tags) => {
+      if (tags.some((t) => t.key === tag.key && t.value === tag.value)) {
+        return tags;
+      }
+      return [...tags, tag];
+    });
+  }, []);
+
+  const handleReplaceTagInSoundEventAnnotations = useCallback(
+    async (oldTag: Tag | null, newTag: Tag | null, currentAnnotation?: SoundEventAnnotation | null) => {
+      if (!annotationTask?.sound_event_annotations || !onRemoveTagFromSoundEventAnnotation || !onAddTagToSoundEventAnnotation) return;
+
+      let soundEventAnnotationsToUpdate: SoundEventAnnotation[] = [];
+      if (currentAnnotation) {
+        soundEventAnnotationsToUpdate = [currentAnnotation];
+      } else {
+        // If no specific annotation is selected, handle all sound event annotations
+        if (oldTag?.key === "all") {
+          // If "all tags" is selected, get sound event annotations that have any tags
+          soundEventAnnotationsToUpdate = annotationTask.sound_event_annotations.filter(soundEventAnnotation =>
+            soundEventAnnotation.tags && soundEventAnnotation.tags.length > 0
+          );
+        } else if (oldTag) {
+          // If a specific tag is selected, get sound event annotations with that tag
+          soundEventAnnotationsToUpdate = annotationTask.sound_event_annotations.filter(soundEventAnnotation =>
+            soundEventAnnotation.tags?.some(
+              tag => tag.key === oldTag.key && tag.value === oldTag.value
+            )
+          );
+        } else {
+          // Otherwise, update all sound event annotations
+          soundEventAnnotationsToUpdate = annotationTask.sound_event_annotations;
+        }
+      }
+
+      const promises = soundEventAnnotationsToUpdate.map(async soundEventAnnotation => {
+        try {
+          // If replacing all tags, remove all existing tags first
+          if (oldTag?.key === "all" && soundEventAnnotation.tags) {
+            for (const tag of soundEventAnnotation.tags) {
+              await onRemoveTagFromSoundEventAnnotation({
+                soundEventAnnotation: soundEventAnnotation,
+                tag
+              });
+            }
+          } else if (oldTag) {
+            // Remove specific old tag
+            await onRemoveTagFromSoundEventAnnotation({
+              soundEventAnnotation: soundEventAnnotation,
+              tag: oldTag
+            });
+          }
+
+          // Add new tag
+          if (newTag) {
+            await onAddTagToSoundEventAnnotation({
+              soundEventAnnotation: soundEventAnnotation,
+              tag: newTag
+            });
+          }
+        } catch (error) {
+          console.error('Error replacing tag:', error);
+        }
+      });
+
+      await Promise.all(promises);
+    },
+    [annotationTask?.sound_event_annotations, onRemoveTagFromSoundEventAnnotation, onAddTagToSoundEventAnnotation]
+  );
+
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  if (tasks.isLoading) {
+    return <Loading />;
+  }
+
+  if (tasks.isError) {
+    return <div>Error loading annotation tasks</div>;
+  }
+
+  if (tasks.task == null) {
+    return <Empty>No tasks available</Empty>;
+  }
+
+  return (
+    <div className="w-full flex flex-col gap-4">
+      <div className="flex flex-row gap-4">
+        <div style={{ width: `${SPECTROGRAM_CONTAINER_WIDTH}px` }}>
+          <AnnotationProgress
+            current={tasks.current}
+            taskCount={tasks.tasks.length}
+            stats={tasks.stats}
+            filter={tasks._filter}
+            isLoading={tasks.isLoading}
+            onNext={tasks.nextTask}
+            onPrevious={tasks.prevTask}
+          />
+        </div>
+        <div className="w-[35rem] flex-none">
+          {annotationTask != null && (
+            <AnnotationTaskStatus
+              task={annotationTask}
+              onReview={handleMarkRejected}
+              onDone={handleMarkCompleted}
+              onUnsure={handleMarkUnsure}
+              onVerify={handleMarkVerified}
+              onRemoveBadge={handleRemoveBadge}
+            />
+          )}
+        </div>
+      </div>
+      <div className="flex flex-col gap-4">
+        <div className="flex flex-row gap-4">
+          <div style={{ width: `${SPECTROGRAM_CONTAINER_WIDTH}px` }}>
+            {isLoadingTask ? (
+              <Loading />
+            ) : annotationTask == null ? (
+              <NoTaskSelected />
+            ) : (() => {
+              // Calculate annotation task position among annotation tasks from the same recording
+              // Find the index of the current annotation task in the list of recording annotation tasks (sorted by start time)
+              const sortedTasks = [...tasks.tasks.filter(task => task.recording_id === annotationTask.recording_id)].sort((a, b) => a.start_time - b.start_time);
+              const currentTaskIndex = sortedTasks.findIndex(
+                task => task.id === annotationTask.id
+              );
+              return (
+              <div className="flex flex-col gap-2">
+                <RecordingAnnotationContext
+                  recording={annotationTask.recording!}
+                  currentTaskIndex={currentTaskIndex >= 0 ? currentTaskIndex + 1 : undefined}
+                  totalTasks={sortedTasks.length}
+                />
+                <div className="min-w-0 grow-0">
+                  <AnnotationTaskSpectrogram
+                    key={annotationTask.id}
+                    parameters={parameters}
+                    annotationTask={annotationTask}
+                    defaultTags={tagPalette}
+                    selectedTag={selectedTag}
+                    onClearSelectedTag={setSelectedTag}
+                    onParameterSave={onParameterSave}
+                    selectedSoundEventAnnotation={selectedSoundEventAnnotation}
+                    onSelectSoundEventAnnotation={setSelectedSoundEventAnnotation}
+                    withSpectrogram={withSpectrogram}
+                    onWithSpectrogramChange={onWithSpectrogramChange}
+                    withSoundEvent={withSoundEvent}
+                    onWithSoundEventChange={onWithSoundEventChange}
+                    withAutoplay={withAutoplay}
+                    onWithAutoplayChange={onWithAutoplayChange}
+                    fixedAspectRatio={fixedAspectRatio}
+                    toggleFixedAspectRatio={toggleFixedAspectRatio}
+                    onSegmentsLoaded={tasks.handleCurrentSegmentsLoaded}
+                    onAddTagToSoundEventAnnotation={onAddTagToSoundEventAnnotation}
+                    onRemoveTagFromSoundEventAnnotation={onRemoveTagFromSoundEventAnnotation}
+                    onAddSoundEventAnnotation={onAddSoundEventAnnotation}
+                    onRemoveSoundEventAnnotation={onRemoveSoundEventAnnotation}
+                    onUpdateSoundEventAnnotation={onUpdateSoundEventAnnotation}
+                  />
+                </div>
+              </div>
+              );
+            })()}
+          </div>
+
+          {selectedSoundEventAnnotation == null || annotationTask == null ? (
+            <div className="w-[35rem] flex-none mt-9">
+              <Empty
+                padding="p-0">
+                No sound event annotation selected. Select a sound event annotation to view details.
+              </Empty>
+            </div>
+          ) : (
+            <div className="w-[35rem] flex-none mt-5">
+              <SelectedSoundEventAnnotation
+                key={selectedSoundEventAnnotation.id}
+                annotationTask={annotationTask}
+                samplerate={annotationTask.recording!.samplerate}
+                soundEventAnnotation={selectedSoundEventAnnotation}
+                parameters={parameters}
+                withSpectrogram={withSpectrogram}
+                onUpdate={onUpdateSelectedSoundEventAnnotation}
+              />
+            </div>
+          )}
+        </div>
+
+
+        {annotationTask && (
+          <div className="flex flex-row gap-4 w-full">
+            <div className="min-w-[64.7rem] flex flex-col gap-4">
+              <AnnotationTaskTagBar
+                annotationTask={annotationTask}
+                onAddTag={onAddTag}
+                onRemoveTag={onRemoveTag}
+              />
+              <AnnotationTaskNotes
+                onCreateNote={onAddNote}
+                onDeleteNote={onRemoveNote}
+                annotationTask={annotationTask}
+                currentUser={currentUser}
+              />
+            </div>
+            <div style={{ width: `${SPECTROGRAM_CONTAINER_WIDTH}px` }}>
+              <AnnotationTaskTags
+                annotationTask={annotationTask}
+                onReplaceTagInSoundEventAnnotations={handleReplaceTagInSoundEventAnnotations}
+                selectedSoundEventAnnotation={selectedSoundEventAnnotation}
+              />
+            </div>
+          </div>
+        )}
+      </div>
+
+      {isDeletePopoverOpen && (
+        <Popover as="div">
+          {({ open, close }) => {
+
+            const handleOverlayClick = (e: React.MouseEvent) => {
+              // Check if click is inside menu
+              if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+                setIsDeletePopoverOpen(false);
+              }
+            };
+
+            return (
+              <>
+                <PopoverButton as="div" className="hidden" />
+                <PopoverPanel static={true} className="fixed inset-0 z-50">
+                  <div className="fixed inset-0 flex items-center justify-center" onClick={handleOverlayClick}>
+                    <div ref={menuRef} className="relative w-96 divide-y divide-stone-100 rounded-md bg-stone-50 dark:bg-stone-700 border border-stone-200 dark:border-stone-500 shadow-md dark:shadow-stone-800 ring-1 ring-stone-900 ring-opacity-5 focus:outline-none">
+                      <div className="p-4">
+                        <div className="mb-2 text-stone-700 dark:text-stone-300 underline underline-offset-2 decoration-amber-500 decoration-2">
+                          Select a tag to remove from {selectedSoundEventAnnotation ? 'selected sound event annotation' : 'all sound event annotations'}
+                        </div>
+                        <SearchMenu
+                          limit={100}
+                          options={selectedSoundEventAnnotation
+                            ? (selectedSoundEventAnnotation.tags || []).map(tag => ({ tag, count: 1 }))
+                            : tagsWithCount}
+                          fields={["tag.key", "tag.value"]}
+                          renderOption={(tagWithCount) => (
+                            <TagComponent
+                              key={getTagKey(tagWithCount.tag)}
+                              tag={tagWithCount.tag}
+                              onClose={() => { }}
+                              count={tagWithCount.count}
+                            />
+                          )}
+                          getOptionKey={(tagWithCount) => `${tagWithCount.tag.key}-${tagWithCount.tag.value}`}
+                          onSelect={(tagWithCount) => {
+                            if (menuRef.current?.contains(document.activeElement)) {
+                              handleDeleteTagFromAll(tagWithCount, true);
+                            }
+                          }}
+                          empty={<div className="text-stone-500 text-center w-full">No tags found</div>}
+                          autoFocus
+                          static={true}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </PopoverPanel>
+              </>
+            );
+          }}
+        </Popover>
+      )}
+
+      {isTagPopoverOpen && (
+        <Popover as="div">
+          {({ open, close }) => {
+
+            const handleOverlayClick = (e: React.MouseEvent) => {
+              // Check if click is inside menu
+              if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+                setIsTagPopoverOpen(false);
+              }
+            };
+
+            return (
+              <>
+                <PopoverButton as="div" className="hidden" />
+                <PopoverPanel static={true} className="fixed inset-0 z-50">
+                  <div className="fixed inset-0 flex items-center justify-center" onClick={handleOverlayClick}>
+                    <div ref={menuRef} className="relative w-96 divide-y divide-stone-100 rounded-md bg-stone-50 dark:bg-stone-700 border border-stone-200 dark:border-stone-500 shadow-md dark:shadow-stone-800 ring-1 ring-stone-900 ring-opacity-5 focus:outline-none">
+                      <div className="p-4">
+                        <div className="mb-2 text-stone-700 dark:text-stone-300 underline underline-offset-2 decoration-amber-500 decoration-2">
+                          Select a tag to cycle through
+                        </div>
+                        <SearchMenu
+                          limit={100}
+                          options={tagsWithCount}
+                          fields={["tag.key", "tag.value"]}
+                          renderOption={(tagWithCount) => (
+                            <TagComponent
+                              key={getTagKey(tagWithCount.tag)}
+                              tag={tagWithCount.tag}
+                              onClose={() => { }}
+                              count={tagWithCount.count}
+                            />
+                          )}
+                          getOptionKey={(tagWithCount) => `${tagWithCount.tag.key}-${tagWithCount.tag.value}`}
+                          onSelect={(tagWithCount) => {
+                            if (menuRef.current?.contains(document.activeElement)) {
+                              setSelectedTag(tagWithCount)
+                              setIsTagPopoverOpen(false);
+                            }
+                          }}
+                          empty={<div className="text-stone-500 text-center w-full">No tags found</div>}
+                          autoFocus
+                          static={true}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </PopoverPanel>
+              </>
+            );
+          }}
+        </Popover>
+      )}
+    </div>
+  );
+}
+
+function NoTaskSelected() {
+  return <Empty>No task selected</Empty>;
+}

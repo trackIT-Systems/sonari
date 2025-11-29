@@ -1,39 +1,10 @@
 """Schemas for handling Features."""
 
-from pydantic import BaseModel, ConfigDict, Field
-
-from sonari.schemas.base import BaseSchema
+from pydantic import BaseModel, ConfigDict
 
 __all__ = [
     "Feature",
-    "FeatureName",
-    "FeatureNameCreate",
-    "FeatureNameUpdate",
 ]
-
-
-class FeatureNameCreate(BaseModel):
-    """Schema for FeatureName objects created by the user."""
-
-    name: str
-    """The name of the feature."""
-
-
-class FeatureName(BaseSchema):
-    """Schema for FeatureName objects returned to the user."""
-
-    id: int = Field(..., exclude=True)
-    """The database id of the feature name."""
-
-    name: str
-    """The name of the feature."""
-
-
-class FeatureNameUpdate(BaseModel):
-    """Schema for FeatureName objects updated by the user."""
-
-    name: str
-    """The name of the feature."""
 
 
 class Feature(BaseModel):

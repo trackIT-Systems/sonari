@@ -1,20 +1,60 @@
 """Filters for Annotation Tasks."""
 
 from datetime import datetime, time
-from uuid import UUID
 
 from soundevent import data
-from sqlalchemy import Select, and_, exists, func, not_, or_, select
+from sqlalchemy import Float, Select, and_, exists, func, literal, not_, or_, select
+from sqlalchemy.ext.compiler import compiles
+from sqlalchemy.sql.expression import FunctionElement
 
 from sonari import models
 from sonari.filters import base
 
 __all__ = [
     "AnnotationProjectFilter",
-    "DatasetFilter",
+    "StationFilter",
     "AnnotationTaskFilter",
     "SearchRecordingsFilter",
 ]
+
+
+# Extract min_freq from JSON geometry coordinates
+# BoundingBox format: [start_time, min_freq, end_time, max_freq]
+# So coordinates[1] is the minimum frequency
+# Create a custom SQL function that compiles differently for SQLite vs PostgreSQL
+class json_array_element(FunctionElement):
+    """Extract element from JSON array - compiles to dialect-specific SQL."""
+
+    type = Float()
+    name = "json_array_element"
+    inherit_cache = True
+
+
+@compiles(json_array_element, "sqlite")
+def _json_array_element_sqlite(element, compiler, **kw):
+    """Use json_extract with array index for SQLite."""
+    col, idx = list(element.clauses)
+    # Get the literal value of the index
+    idx_value = idx.value if hasattr(idx, "value") else idx
+    return f"CAST(json_extract({compiler.process(col, **kw)}, '$.coordinates[{idx_value}]') AS REAL)"
+
+
+@compiles(json_array_element, "postgresql")
+def _json_array_element_postgresql(element, compiler, **kw):
+    """Use JSON operators for PostgreSQL."""
+    col, idx = list(element.clauses)
+    # Get the literal value of the index
+    idx_value = idx.value if hasattr(idx, "value") else idx
+    return f"CAST(CAST({compiler.process(col, **kw)} AS json)->'coordinates'->{idx_value} AS FLOAT)"
+
+
+@compiles(json_array_element)
+def _json_array_element_default(element, compiler, **kw):
+    """Use SQLite syntax as default."""
+    col, idx = list(element.clauses)
+    # Get the literal value of the index
+    idx_value = idx.value if hasattr(idx, "value") else idx
+    return f"CAST(json_extract({compiler.process(col, **kw)}, '$.coordinates[{idx_value}]') AS REAL)"
 
 
 class PendingFilter(base.Filter):
@@ -118,7 +158,7 @@ class IsAssignedFilter(base.Filter):
 class AssignedToFilter(base.Filter):
     """Filter for tasks by assigned user."""
 
-    eq: UUID | None = None
+    eq: int | None = None
 
     def filter(self, query: Select) -> Select:
         """Filter the query."""
@@ -136,23 +176,20 @@ class AssignedToFilter(base.Filter):
 class AnnotationProjectFilter(base.Filter):
     """Filter for tasks by project."""
 
-    eq: UUID | None = None
+    eq: int | None = None
 
     def filter(self, query: Select) -> Select:
         """Filter the query."""
         if self.eq is None:
             return query
 
-        return query.join(
-            models.AnnotationProject,
-            models.AnnotationProject.id == models.AnnotationTask.annotation_project_id,
-        ).where(
-            models.AnnotationProject.uuid == self.eq,
+        return query.where(
+            models.AnnotationTask.annotation_project_id == self.eq,
         )
 
 
-class DatasetFilter(base.Filter):
-    """Filter for tasks by dataset."""
+class StationFilter(base.Filter):
+    """Filter for tasks by stations, which is the external name for datasets."""
 
     lst: str | None = None
 
@@ -160,19 +197,14 @@ class DatasetFilter(base.Filter):
         if not self.lst:
             return query
 
-        uuids: list[str] = self.lst.split(",")
+        ids: list[str] = self.lst.split(",")
 
         Recording = models.Recording.__table__.alias("dataset_recording")
-        Clip = models.Clip.__table__.alias("dataset_clip")
 
         return (
             query.join(
-                Clip,
-                Clip.c.id == models.AnnotationTask.clip_id,
-            )
-            .join(
                 Recording,
-                Recording.c.id == Clip.c.recording_id,
+                Recording.c.id == models.AnnotationTask.recording_id,
             )
             .join(
                 models.DatasetRecording,
@@ -182,7 +214,7 @@ class DatasetFilter(base.Filter):
                 models.Dataset,
                 models.Dataset.id == models.DatasetRecording.dataset_id,
             )
-            .where(models.Dataset.uuid.in_(uuids))
+            .where(models.Dataset.id.in_(ids))
         )
 
 
@@ -196,24 +228,12 @@ class SearchRecordingsFilter(base.Filter):
         if not self.search_recordings:
             return query
 
-        # Use specific aliases for both Recording and Clip tables
-        ClipAnnotation = models.ClipAnnotation.__table__.alias("search_clip_annotation")
+        # Use specific alias for Recording table
         Recording = models.Recording.__table__.alias("search_recording")
-        Clip = models.Clip.__table__.alias("search_clip")
 
-        query = (
-            query.join(
-                ClipAnnotation,
-                models.AnnotationTask.clip_annotation_id == ClipAnnotation.c.id,
-            )
-            .join(
-                Clip,
-                ClipAnnotation.c.clip_id == Clip.c.id,
-            )
-            .join(
-                Recording,
-                Recording.c.id == Clip.c.recording_id,
-            )
+        query = query.join(
+            Recording,
+            Recording.c.id == models.AnnotationTask.recording_id,
         )
 
         term = f"%{self.search_recordings}%"
@@ -221,7 +241,7 @@ class SearchRecordingsFilter(base.Filter):
 
 
 class SoundEventAnnotationTagFilter(base.Filter):
-    """Filter for tasks by sound event annotation tag or recording tag."""
+    """Filter for tasks by sound event annotation tag or annotation task tag."""
 
     keys: str | None = None
     values: str | None = None
@@ -235,14 +255,12 @@ class SoundEventAnnotationTagFilter(base.Filter):
         keys = self.keys.split(",")
         values = self.values.split(",")
 
-        # Create aliases for needed tables
-        ClipAnnotation = models.ClipAnnotation.__table__.alias("sound_event_tag_clip_annotation")
-        Recording = models.Recording.__table__.alias("sound_event_tag_recording")
-        Clip = models.Clip.__table__.alias("sound_event_tag_clip")
+        # Create alias for Recording table
+        Task = models.Recording.__table__.alias("task_tag_task")
 
         # Create subqueries for each key-value pair for sound event annotations
         sound_event_subqueries = []
-        recording_subqueries = []
+        task_subqueries = []
 
         for k, v in zip(keys, values, strict=True):
             # Sound event annotation subquery
@@ -257,27 +275,27 @@ class SoundEventAnnotationTagFilter(base.Filter):
             sound_event_subqueries.append(sound_event_subquery)
 
             # Recording tag subquery
-            recording_subquery = (
+            task_subquery = (
                 select(1)
-                .select_from(models.RecordingTag)
+                .select_from(models.AnnotationTaskTag)
                 .join(
                     models.Tag,
-                    models.Tag.id == models.RecordingTag.tag_id,
+                    models.Tag.id == models.AnnotationTaskTag.tag_id,
                 )
                 .where(
                     models.Tag.key == k,
                     models.Tag.value == v,
-                    models.RecordingTag.recording_id == Recording.c.id,
+                    models.AnnotationTaskTag.id == Task.c.id,
                 )
             )
-            recording_subqueries.append(recording_subquery)
+            task_subqueries.append(task_subquery)
 
         # Combine sound event conditions with OR
         sound_event_condition = or_(
             *(
                 exists(
                     select(1).where(
-                        models.SoundEventAnnotation.clip_annotation_id == ClipAnnotation.c.id,
+                        models.SoundEventAnnotation.annotation_task_id == models.AnnotationTask.id,
                         models.SoundEventAnnotation.id.in_(subquery),
                     )
                 )
@@ -286,30 +304,20 @@ class SoundEventAnnotationTagFilter(base.Filter):
         )
 
         # Join the query with Recording table
-        query = (
-            query.join(
-                ClipAnnotation,
-                models.AnnotationTask.clip_annotation_id == ClipAnnotation.c.id,
-            )
-            .join(
-                Clip,
-                ClipAnnotation.c.clip_id == Clip.c.id,
-            )
-            .join(
-                Recording,
-                Recording.c.id == Clip.c.recording_id,
-            )
+        query = query.join(
+            Task,
+            Task.c.id == models.AnnotationTask.recording_id,
         )
 
         # Combine recording conditions with OR
-        recording_condition = or_(*(exists(subquery) for subquery in recording_subqueries))
+        recording_condition = or_(*(exists(subquery) for subquery in task_subqueries))
 
         # Return query with combined conditions using OR
         return query.where(or_(sound_event_condition, recording_condition))
 
 
 class EmptyFilter(base.Filter):
-    """Filter for annotation tasks with no sound events."""
+    """Filter for annotation tasks with no sound event annotations."""
 
     eq: bool | None = None
 
@@ -319,17 +327,17 @@ class EmptyFilter(base.Filter):
 
         sound_event_count = (
             select(
-                models.SoundEventAnnotation.clip_annotation_id,
+                models.SoundEventAnnotation.annotation_task_id,
                 func.count(models.SoundEventAnnotation.id).label("count"),
             )
-            .group_by(models.SoundEventAnnotation.clip_annotation_id)
+            .group_by(models.SoundEventAnnotation.annotation_task_id)
             .subquery()
         )
 
         # Join with our query
         query = query.outerjoin(
             sound_event_count,
-            models.AnnotationTask.clip_annotation_id == sound_event_count.c.clip_annotation_id,
+            models.AnnotationTask.id == sound_event_count.c.annotation_task_id,
         )
 
         # Filter based on eq parameter
@@ -362,24 +370,12 @@ class DateRangeFilter(base.Filter):
         if not any([self.start_dates, self.end_dates, self.start_times, self.end_times]):
             return query
 
-        # Should use aliases
-        ClipAnnotation = models.ClipAnnotation.__table__.alias("date_range_clip_annotation")
+        # Use alias for Recording table
         Recording = models.Recording.__table__.alias("date_range_recording")
-        Clip = models.Clip.__table__.alias("date_range_clip")
 
-        query = (
-            query.join(
-                ClipAnnotation,
-                models.AnnotationTask.clip_annotation_id == ClipAnnotation.c.id,
-            )
-            .join(
-                Clip,
-                ClipAnnotation.c.clip_id == Clip.c.id,
-            )
-            .join(
-                Recording,
-                Recording.c.id == Clip.c.recording_id,
-            )
+        query = query.join(
+            Recording,
+            Recording.c.id == models.AnnotationTask.recording_id,
         )
 
         # Split the comma-separated strings into lists
@@ -469,7 +465,7 @@ class SampleFilter(base.Filter):
 class DetectionConfidenceFilter(base.Filter):
     """Filter by detection confidence.
 
-    This filter returns all tasks where all sound events that have the feature
+    This filter returns all tasks where all sound event annotations that have the feature
     "detection_confidence" have values that are greater or lower than the values given.
     """
 
@@ -481,51 +477,34 @@ class DetectionConfidenceFilter(base.Filter):
         if self.gt is None and self.lt is None:
             return query
 
-        # Create aliases for needed tables
-        ClipAnnotation = models.ClipAnnotation.__table__.alias("detection_confidence_clip_annotation")
+        # Create alias for Recording table
         Recording = models.Recording.__table__.alias("detection_confidence_recording")
-        Clip = models.Clip.__table__.alias("detection_confidence_clip")
 
-        # Create subquery to find sound events with detection confidence that match conditions
+        # Create subquery to find sound event annotations with detection confidence that match conditions
         subquery = (
             select(1)
-            .select_from(models.SoundEvent)
+            .select_from(models.SoundEventAnnotation)
             .join(
-                models.SoundEventFeature,
-                models.SoundEvent.id == models.SoundEventFeature.sound_event_id,
-            )
-            .join(
-                models.FeatureName,
-                models.SoundEventFeature.feature_name_id == models.FeatureName.id,
+                models.SoundEventAnnotationFeature,
+                models.SoundEventAnnotation.id == models.SoundEventAnnotationFeature.sound_event_annotation_id,
             )
             .where(
-                models.FeatureName.name == "detection_confidence",
-                models.SoundEvent.recording_id == Recording.c.id,
+                models.SoundEventAnnotationFeature.name == "detection_confidence",
+                models.SoundEventAnnotation.recording_id == Recording.c.id,
             )
         )
 
         # Add confidence value conditions - looking for matches
         if self.gt is not None:
-            subquery = subquery.where(models.SoundEventFeature.value > self.gt)
+            subquery = subquery.where(models.SoundEventAnnotationFeature.value > self.gt)
         if self.lt is not None:
-            subquery = subquery.where(models.SoundEventFeature.value < self.lt)
+            subquery = subquery.where(models.SoundEventAnnotationFeature.value < self.lt)
 
         # Join with main query and use exists to show only tasks with confidence data
-        query = (
-            query.join(
-                ClipAnnotation,
-                models.AnnotationTask.clip_annotation_id == ClipAnnotation.c.id,
-            )
-            .join(
-                Clip,
-                ClipAnnotation.c.clip_id == Clip.c.id,
-            )
-            .join(
-                Recording,
-                Recording.c.id == Clip.c.recording_id,
-            )
-            .where(exists(subquery))
-        )
+        query = query.join(
+            Recording,
+            Recording.c.id == models.AnnotationTask.recording_id,
+        ).where(exists(subquery))
 
         return query
 
@@ -533,7 +512,7 @@ class DetectionConfidenceFilter(base.Filter):
 class SpeciesConfidenceFilter(base.Filter):
     """Filter by species confidence.
 
-    This filter returns all tasks where all sound events that have the feature
+    This filter returns all tasks where all sound event annotations that have the feature
     "species_confidence" have values that are greater or lower than the values given.
     """
 
@@ -545,53 +524,116 @@ class SpeciesConfidenceFilter(base.Filter):
         if self.gt is None and self.lt is None:
             return query
 
-        # Create aliases for needed tables
-        ClipAnnotation = models.ClipAnnotation.__table__.alias("species_confidence_clip_annotation")
+        # Create alias for Recording table
         Recording = models.Recording.__table__.alias("species_confidence_recording")
-        Clip = models.Clip.__table__.alias("species_confidence_clip")
 
-        # Create subquery to find sound events with species confidence that match conditions
+        # Create subquery to find sound event annotations with species confidence that match conditions
         subquery = (
             select(1)
-            .select_from(models.SoundEvent)
+            .select_from(models.SoundEventAnnotation)
             .join(
-                models.SoundEventFeature,
-                models.SoundEvent.id == models.SoundEventFeature.sound_event_id,
-            )
-            .join(
-                models.FeatureName,
-                models.SoundEventFeature.feature_name_id == models.FeatureName.id,
+                models.SoundEventAnnotationFeature,
+                models.SoundEventAnnotation.id == models.SoundEventAnnotationFeature.sound_event_annotation_id,
             )
             .where(
-                models.FeatureName.name == "species_confidence",
-                models.SoundEvent.recording_id == Recording.c.id,
+                models.SoundEventAnnotationFeature.name == "species_confidence",
+                models.SoundEventAnnotation.recording_id == Recording.c.id,
             )
         )
 
         # Add confidence value conditions - looking for matches
         if self.gt is not None:
-            subquery = subquery.where(models.SoundEventFeature.value > self.gt)
+            subquery = subquery.where(models.SoundEventAnnotationFeature.value > self.gt)
         if self.lt is not None:
-            subquery = subquery.where(models.SoundEventFeature.value < self.lt)
+            subquery = subquery.where(models.SoundEventAnnotationFeature.value < self.lt)
 
         # Join with main query and use exists to show only tasks with confidence data
-        query = (
-            query.join(
-                ClipAnnotation,
-                models.AnnotationTask.clip_annotation_id == ClipAnnotation.c.id,
-            )
-            .join(
-                Clip,
-                ClipAnnotation.c.clip_id == Clip.c.id,
-            )
-            .join(
-                Recording,
-                Recording.c.id == Clip.c.recording_id,
-            )
-            .where(exists(subquery))
-        )
+        query = query.join(
+            Recording,
+            Recording.c.id == models.AnnotationTask.recording_id,
+        ).where(exists(subquery))
 
         return query
+
+
+class SoundEventAnnotationMinFreqFilter(base.Filter):
+    """Filter by lower frequency.
+
+    This filter returns all tasks where sound event annotations exist with the minimum frequency
+    greater or lower than the specified values. Uses database-level JSON extraction for filtering.
+
+    Note: This filter works with both SQLite and PostgreSQL by using SQLAlchemy's compilation
+    system to generate dialect-appropriate SQL.
+    """
+
+    gt: float | None = None
+    lt: float | None = None
+
+    def filter(self, query: Select) -> Select:
+        """Filter the query."""
+        if self.gt is None and self.lt is None:
+            return query
+
+        min_freq_expr = json_array_element(models.SoundEventAnnotation.geometry, literal(1))
+
+        # Create subquery to find sound event annotations matching conditions
+        subquery = (
+            select(1)
+            .select_from(models.SoundEventAnnotation)
+            .where(
+                models.SoundEventAnnotation.annotation_task_id == models.AnnotationTask.id,
+                models.SoundEventAnnotation.geometry_type == "BoundingBox",
+            )
+        )
+
+        # Add frequency conditions
+        if self.gt is not None:
+            subquery = subquery.where(min_freq_expr > self.gt)
+        if self.lt is not None:
+            subquery = subquery.where(min_freq_expr < self.lt)
+
+        # Use exists to filter tasks - very efficient
+        return query.where(exists(subquery))
+
+
+class SoundEventAnnotationMaxFreqFilter(base.Filter):
+    """Filter by upper frequency.
+
+    This filter returns all tasks where sound event annotations exist with the maximum frequency
+    greater or lower than the specified values. Uses database-level JSON extraction for filtering.
+
+    Note: This filter works with both SQLite and PostgreSQL by using SQLAlchemy's compilation
+    system to generate dialect-appropriate SQL.
+    """
+
+    gt: float | None = None
+    lt: float | None = None
+
+    def filter(self, query: Select) -> Select:
+        """Filter the query."""
+        if self.gt is None and self.lt is None:
+            return query
+
+        max_freq_expr = json_array_element(models.SoundEventAnnotation.geometry, literal(3))
+
+        # Create subquery to find sound event annotations matching conditions
+        subquery = (
+            select(1)
+            .select_from(models.SoundEventAnnotation)
+            .where(
+                models.SoundEventAnnotation.annotation_task_id == models.AnnotationTask.id,
+                models.SoundEventAnnotation.geometry_type == "BoundingBox",  # Fast filter first
+            )
+        )
+
+        # Add frequency conditions
+        if self.gt is not None:
+            subquery = subquery.where(max_freq_expr > self.gt)
+        if self.lt is not None:
+            subquery = subquery.where(max_freq_expr < self.lt)
+
+        # Use exists to filter tasks - very efficient
+        return query.where(exists(subquery))
 
 
 AnnotationTaskFilter = base.combine(
@@ -604,7 +646,7 @@ AnnotationTaskFilter = base.combine(
     completed=IsCompletedFilter,
     assigned=IsAssignedFilter,
     annotation_project=AnnotationProjectFilter,
-    dataset=DatasetFilter,
+    dataset=StationFilter,
     sound_event_annotation_tag=SoundEventAnnotationTagFilter,
     date=DateRangeFilter,
     night=NightFilter,
@@ -612,4 +654,6 @@ AnnotationTaskFilter = base.combine(
     sample=SampleFilter,
     detection_confidence=DetectionConfidenceFilter,
     species_confidence=SpeciesConfidenceFilter,
+    sound_event_annotation_min_frequency=SoundEventAnnotationMinFreqFilter,
+    sound_event_annotation_max_frequency=SoundEventAnnotationMaxFreqFilter,
 )

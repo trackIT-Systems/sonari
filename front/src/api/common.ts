@@ -2,16 +2,7 @@
 import axios from "axios";
 import { z } from "zod";
 
-const HOST = "";
-const BASE_ROUTE = `/api/v1`;
-
-const instance = axios.create({
-  withCredentials: true,
-  baseURL: HOST,
-  headers: {
-    exposedHeaders: ['content-disposition'],
-  }
-});
+const HOST = process.env.NEXT_PUBLIC_SONARI_FOLDER ?? "";
 
 const GetManySchema = z.object({
   limit: z.number().int().gte(-1).optional(),
@@ -37,9 +28,7 @@ const Page = <T extends z.ZodTypeAny>(schema: T) =>
   });
 
 export {
-  instance,
   HOST,
-  BASE_ROUTE,
   GetManySchema,
   type GetManyQuery,
   Page,

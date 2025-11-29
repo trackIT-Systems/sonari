@@ -51,10 +51,11 @@ async def is_first_run(settings: Settings) -> bool:
     """Check if this is the first time the application is run."""
     db_url = get_database_url(settings)
     engine = create_async_db_engine(db_url)
-    async with get_async_session(engine) as session:
-        is_first_run = await is_first_user(session)
-
-    return is_first_run
+    try:
+        async with get_async_session(engine) as session:
+            return await is_first_user(session)
+    finally:
+        await engine.dispose()
 
 
 def print_dev_message(settings: Settings):

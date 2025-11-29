@@ -1,19 +1,12 @@
 """Python API for sound event annotations."""
 
-from pathlib import Path
-from uuid import UUID
-
-from soundevent import data
-from sqlalchemy import and_
+from soundevent import Geometry
+from sqlalchemy import and_, delete
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from sonari import exceptions, models, schemas
 from sonari.api import common
 from sonari.api.common import BaseAPI
-from sonari.api.notes import notes
-from sonari.api.sound_events import sound_events
-from sonari.api.tags import tags
-from sonari.api.users import users
 
 __all__ = [
     "SoundEventAnnotationAPI",
@@ -23,7 +16,7 @@ __all__ = [
 
 class SoundEventAnnotationAPI(
     BaseAPI[
-        UUID,
+        int,
         models.SoundEventAnnotation,
         schemas.SoundEventAnnotation,
         schemas.SoundEventAnnotationCreate,
@@ -33,11 +26,84 @@ class SoundEventAnnotationAPI(
     _model = models.SoundEventAnnotation
     _schema = schemas.SoundEventAnnotation
 
+    async def get(
+        self,
+        session: AsyncSession,
+        pk: int,
+        *,
+        include_tags: bool = False,
+        include_features: bool = False,
+        include_created_by: bool = False,
+    ) -> schemas.SoundEventAnnotation:
+        """Get a sound event annotation by ID with optional relationship loading.
+
+        Parameters
+        ----------
+        session
+            The database session to use.
+        pk
+            The primary key.
+        include_tags
+            If True, eagerly load the tags relationship.
+        include_features
+            If True, eagerly load the features relationship.
+        include_created_by
+            If True, eagerly load the created_by relationship.
+
+        Returns
+        -------
+        schemas.SoundEventAnnotation
+            The sound event annotation with the given primary key.
+
+        Raises
+        ------
+        NotFoundError
+            If the annotation could not be found.
+        """
+        from sqlalchemy import select
+        from sqlalchemy.orm import noload, selectinload
+
+        # Check cache first if no relationships are requested
+        if not (include_tags or include_features or include_created_by):
+            if self._is_in_cache(pk):
+                return self._get_from_cache(pk)
+
+        query = select(self._model).where(self._model.id == pk)
+
+        # Build loading options dynamically
+        options = []
+        if include_tags:
+            options.append(selectinload(models.SoundEventAnnotation.tags))
+        else:
+            options.append(noload(models.SoundEventAnnotation.tags))
+
+        if include_features:
+            options.append(selectinload(models.SoundEventAnnotation.features))
+        else:
+            options.append(noload(models.SoundEventAnnotation.features))
+
+        if include_created_by:
+            options.append(selectinload(models.SoundEventAnnotation.created_by))
+        else:
+            options.append(noload(models.SoundEventAnnotation.created_by))
+
+        query = query.options(*options)
+
+        result = await session.execute(query)
+        obj = result.unique().scalar_one_or_none()
+
+        if obj is None:
+            raise exceptions.NotFoundError(f"SoundEventAnnotation with id {pk} not found")
+
+        data = self._schema.model_validate(obj)
+        self._update_cache(data)
+        return data
+
     async def create(
         self,
         session: AsyncSession,
-        sound_event: schemas.SoundEvent,
-        clip_annotation: schemas.ClipAnnotation,
+        annotation_task: schemas.AnnotationTask,
+        geometry: Geometry,
         created_by: schemas.SimpleUser | None = None,
         **kwargs,
     ) -> schemas.SoundEventAnnotation:
@@ -47,15 +113,14 @@ class SoundEventAnnotationAPI(
         ----------
         session
             The database session.
-        sound_event
-            The sound event to annotate.
-        clip_annotation
-            The clip annotation to add the annotation to.
+        annotation_task
+            The annotation task to add the annotation to.
+        geometry
+            The geometry of the sound event.
         created_by
             The user that created the annotation. Defaults to None.
         **kwargs
-            Additional keyword arguments to use when creating the annotation,
-            (e.g. `uuid` or `created_on`.)
+            Additional keyword arguments to use when creating the annotation.
 
         Returns
         -------
@@ -64,11 +129,52 @@ class SoundEventAnnotationAPI(
         """
         return await self.create_from_data(
             session,
-            sound_event_id=sound_event.id,
-            clip_annotation_id=clip_annotation.id,
+            annotation_task_id=annotation_task.id,
+            recording_id=annotation_task.recording_id,
+            geometry_type=geometry.type,
+            geometry=geometry,
             created_by_id=created_by.id if created_by else None,
             **kwargs,
         )
+
+    async def update_geometry(
+        self,
+        session: AsyncSession,
+        sound_event_annotation: schemas.SoundEventAnnotation,
+        geometry: Geometry,
+    ) -> schemas.SoundEventAnnotation:
+        """Update the geometry of a sound event annotation.
+
+        Parameters
+        ----------
+        session
+            SQLAlchemy AsyncSession.
+        sound_event_annotation
+            The sound event annotation to update.
+        geometry
+            The new geometry.
+
+        Returns
+        -------
+        schemas.SoundEventAnnotation
+            The updated annotation.
+        """
+        await common.update_object(
+            session,
+            models.SoundEventAnnotation,
+            condition=models.SoundEventAnnotation.id == sound_event_annotation.id,
+            geometry_type=geometry.type,
+            geometry=geometry,
+        )
+
+        obj = sound_event_annotation.model_copy(
+            update=dict(
+                geometry_type=geometry.type,
+                geometry=geometry,
+            )
+        )
+        self._update_cache(obj)
+        return obj
 
     async def mark_as_edited_by_user(
         self,
@@ -96,32 +202,96 @@ class SoundEventAnnotationAPI(
             The updated annotation.
         """
         # Remove detection_confidence feature if it exists
-        detection_confidence_feature = None
-        for feature in sound_event_annotation.sound_event.features:
-            if feature.name == "detection_confidence" or feature.name == "species_confidence":
-                detection_confidence_feature = feature
-                break
+        updated_features = [
+            f for f in sound_event_annotation.features if f.name not in ("detection_confidence", "species_confidence")
+        ]
 
-        if detection_confidence_feature is not None:
-            sound_event_annotation.sound_event = await sound_events.remove_feature(
-                session,
-                sound_event_annotation.sound_event,
-                detection_confidence_feature,
+        # If any features were removed, update the database
+        if len(updated_features) < len(sound_event_annotation.features):
+            # Delete the confidence features from database
+            await session.execute(
+                delete(models.SoundEventAnnotationFeature).where(
+                    and_(
+                        models.SoundEventAnnotationFeature.sound_event_annotation_id == sound_event_annotation.id,
+                        models.SoundEventAnnotationFeature.name.in_(["detection_confidence", "species_confidence"]),
+                    )
+                )
             )
 
-            # Update created_by to current user using direct field update
-        updated_annotation = await common.update_object(
+        # Update created_by to current user
+        await common.update_object(
             session,
             models.SoundEventAnnotation,
             condition=models.SoundEventAnnotation.id == sound_event_annotation.id,
             created_by_id=user.id,
         )
 
-        # Create updated schema object with the new created_by info
-        updated_annotation = sound_event_annotation.model_copy(update=dict(created_by=user))
+        # Create updated schema object with the new created_by info and features
+        updated_annotation = sound_event_annotation.model_copy(update=dict(created_by=user, features=updated_features))
         self._update_cache(updated_annotation)
 
         return updated_annotation
+
+    async def add_feature(
+        self,
+        session: AsyncSession,
+        obj: schemas.SoundEventAnnotation,
+        feature: schemas.Feature,
+    ) -> schemas.SoundEventAnnotation:
+        """Add a feature to a sound event annotation."""
+        # Check if feature already exists
+        for f in obj.features:
+            if f.name == feature.name:
+                raise exceptions.DuplicateObjectError(f"Feature {feature.name} already exists in annotation {obj}.")
+
+        await common.create_object(
+            session,
+            models.SoundEventAnnotationFeature,
+            sound_event_annotation_id=obj.id,
+            name=feature.name,
+            value=feature.value,
+        )
+
+        obj = obj.model_copy(
+            update=dict(
+                features=[
+                    feature,
+                    *obj.features,
+                ],
+            )
+        )
+        self._update_cache(obj)
+        return obj
+
+    async def remove_feature(
+        self,
+        session: AsyncSession,
+        obj: schemas.SoundEventAnnotation,
+        feature: schemas.Feature,
+    ) -> schemas.SoundEventAnnotation:
+        """Remove a feature from a sound event annotation."""
+        for f in obj.features:
+            if f.name == feature.name:
+                break
+        else:
+            raise exceptions.NotFoundError(f"Feature {feature} does not exist in annotation {obj}.")
+
+        await common.delete_object(
+            session,
+            models.SoundEventAnnotationFeature,
+            and_(
+                models.SoundEventAnnotationFeature.sound_event_annotation_id == obj.id,
+                models.SoundEventAnnotationFeature.name == feature.name,
+            ),
+        )
+
+        obj = obj.model_copy(
+            update=dict(
+                features=[f for f in obj.features if f.name != feature.name],
+            )
+        )
+        self._update_cache(obj)
+        return obj
 
     async def add_tag(
         self,
@@ -130,7 +300,7 @@ class SoundEventAnnotationAPI(
         tag: schemas.Tag,
         user: schemas.SimpleUser | None = None,
     ) -> schemas.SoundEventAnnotation:
-        """Add a tag to an annotation project."""
+        """Add a tag to a sound event annotation."""
         user_id = user.id if user else None
         for t in obj.tags:
             if t.key == tag.key and t.value == tag.value:
@@ -155,42 +325,13 @@ class SoundEventAnnotationAPI(
         self._update_cache(obj)
         return obj
 
-    async def add_note(
-        self,
-        session: AsyncSession,
-        obj: schemas.SoundEventAnnotation,
-        note: schemas.Note,
-    ) -> schemas.SoundEventAnnotation:
-        """Add a note to an annotation project."""
-        for n in obj.notes:
-            if n.id == note.id:
-                raise exceptions.DuplicateObjectError(f"Note {note} already exists in annotation {obj}.")
-
-        await common.create_object(
-            session,
-            models.SoundEventAnnotationNote,
-            sound_event_annotation_id=obj.id,
-            note_id=note.id,
-        )
-
-        obj = obj.model_copy(
-            update=dict(
-                notes=[
-                    note,
-                    *obj.notes,
-                ],
-            )
-        )
-        self._update_cache(obj)
-        return obj
-
     async def remove_tag(
         self,
         session: AsyncSession,
         obj: schemas.SoundEventAnnotation,
         tag: schemas.Tag,
     ) -> schemas.SoundEventAnnotation:
-        """Remove a tag from an annotation project."""
+        """Remove a tag from a sound event annotation."""
         for t in obj.tags:
             if t.key == tag.key and t.value == tag.value:
                 break
@@ -213,214 +354,6 @@ class SoundEventAnnotationAPI(
         )
         self._update_cache(obj)
         return obj
-
-    async def remove_note(
-        self,
-        session: AsyncSession,
-        obj: schemas.SoundEventAnnotation,
-        note: schemas.Note,
-    ) -> schemas.SoundEventAnnotation:
-        """Remove a note from an annotation project."""
-        for n in obj.notes:
-            if n.id == note.id:
-                break
-        else:
-            raise exceptions.NotFoundError(f"Note {note} does not exist in annotation {obj}.")
-
-        await common.delete_object(
-            session,
-            models.SoundEventAnnotationNote,
-            and_(
-                models.SoundEventAnnotationNote.sound_event_annotation_id == obj.id,
-                models.SoundEventAnnotationNote.note_id == note.id,
-            ),
-        )
-
-        obj = obj.model_copy(
-            update=dict(
-                notes=[n for n in obj.notes if n.id != note.id],
-            )
-        )
-        self._update_cache(obj)
-        return obj
-
-    async def from_soundevent(
-        self,
-        session: AsyncSession,
-        data: data.SoundEventAnnotation,
-        clip_annotation: schemas.ClipAnnotation,
-    ) -> schemas.SoundEventAnnotation:
-        """Get or create an annotation from a `soundevent` annotation.
-
-        If an annotation with the same UUID already exists, it will be updated
-        with any tags or notes that are in the `soundevent` annotation but not
-        in current state of the annotation.
-
-        Parameters
-        ----------
-        session
-            SQLAlchemy AsyncSession.
-        data
-            The sound event annotation to create the annotation from.
-        clip_annotation
-            The clip annotation to add the annotation to.
-
-        Returns
-        -------
-        schemas.SoundEventAnnotation
-            The created annotation.
-        """
-        try:
-            annotation = await self.get(session, data.uuid)
-            return await self._update_from_soundevent(
-                session,
-                annotation,
-                data,
-            )
-        except exceptions.NotFoundError:
-            pass
-
-        return await self._create_from_soundevent(
-            session,
-            data,
-            clip_annotation,
-        )
-
-    async def to_soundevent(
-        self,
-        session: AsyncSession,
-        annotation: schemas.SoundEventAnnotation,
-        audio_dir: Path | None = None,
-        recording: schemas.Recording | None = None,
-    ) -> data.SoundEventAnnotation:
-        """Convert an annotation to a `soundevent` annotation.
-
-        Parameters
-        ----------
-        annotation : schemas.SoundEventAnnotation
-            The annotation to convert.
-
-        Returns
-        -------
-        data.SoundEventAnnotation
-            The `soundevent` annotation.
-        """
-        return data.SoundEventAnnotation(
-            uuid=annotation.uuid,
-            created_on=annotation.created_on,
-            created_by=(users.to_soundevent(annotation.created_by) if annotation.created_by else None),
-            sound_event=await sound_events.to_soundevent(
-                session,
-                annotation.sound_event,
-                audio_dir=audio_dir,
-                recording=recording,
-            ),
-            tags=[tags.to_soundevent(t) for t in annotation.tags],
-            notes=[notes.to_soundevent(n) for n in annotation.notes],
-        )
-
-    async def _create_from_soundevent(
-        self,
-        session: AsyncSession,
-        data: data.SoundEventAnnotation,
-        clip_annotation: schemas.ClipAnnotation,
-    ) -> schemas.SoundEventAnnotation:
-        """Create an annotation from a sound event annotation.
-
-        Parameters
-        ----------
-        session
-            SQLAlchemy AsyncSession.
-        data
-            The sound event annotation to create the annotation from.
-        clip_annotation
-            The clip annotation to add the annotation to.
-
-        Returns
-        -------
-        schemas.SoundEventAnnotation
-            The created annotation.
-        """
-        user = None
-        if data.created_by is not None:
-            user = await users.from_soundevent(session, data.created_by)
-
-        sound_event = await sound_events.from_soundevent(
-            session,
-            data.sound_event,
-            clip_annotation.clip.recording,
-        )
-
-        return await self.create(
-            session,
-            clip_annotation=clip_annotation,
-            created_by=user,
-            sound_event=sound_event,
-            uuid=data.uuid,
-            created_on=data.created_on,
-        )
-
-    async def _update_from_soundevent(
-        self,
-        session: AsyncSession,
-        sound_event_annotation: schemas.SoundEventAnnotation,
-        data: data.SoundEventAnnotation,
-    ) -> schemas.SoundEventAnnotation:
-        """Update an annotation from a sound event annotation.
-
-        This function will add any tags or notes that are in the sound event
-        annotation but not in the annotation. It will not remove any tags or
-        notes.
-
-        Parameters
-        ----------
-        session
-            SQLAlchemy AsyncSession.
-        sound_event_annotation
-            The annotation to update.
-        data
-            The sound event annotation to update the annotation from.
-
-        Returns
-        -------
-        schemas.SoundEventAnnotation
-            The updated annotation.
-
-        Notes
-        -----
-        Since `soundevent` annotation tags do not store the user that created
-        them, any tag that is added to the annotation will be attributed to the
-        creator of the annotation.
-        """
-        if not sound_event_annotation.uuid == data.uuid:
-            raise ValueError("Annotation UUID does not match SoundEventAnnotation UUID")
-
-        tag_keys = {(t.key, t.value) for t in sound_event_annotation.tags}
-        for se_tag in data.tags:
-            if (se_tag.key, se_tag.value) in tag_keys:
-                continue
-
-            tag = await tags.from_soundevent(session, se_tag)
-            sound_event_annotation = await self.add_tag(
-                session,
-                sound_event_annotation,
-                tag,
-                user=sound_event_annotation.created_by,
-            )
-
-        note_keys = {n.uuid for n in sound_event_annotation.notes}
-        for se_note in data.notes:
-            if se_note.uuid in note_keys:
-                continue
-
-            note = await notes.from_soundevent(session, se_note)
-            sound_event_annotation = await self.add_note(
-                session,
-                sound_event_annotation,
-                note,
-            )
-
-        return sound_event_annotation
 
 
 sound_event_annotations = SoundEventAnnotationAPI()

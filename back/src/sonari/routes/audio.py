@@ -1,7 +1,6 @@
 """REST API routes for audio."""
 
 import os
-from uuid import UUID
 
 from fastapi import APIRouter, Header, Response
 from fastapi.responses import FileResponse
@@ -18,7 +17,7 @@ audio_router = APIRouter()
 async def stream_recording_audio(
     session: Session,
     settings: SonariSettings,
-    recording_uuid: UUID,
+    recording_id: int,
     start_time: float | None = None,
     end_time: float | None = None,
     speed: float = 1,
@@ -33,7 +32,7 @@ async def stream_recording_audio(
         Database session.
     settings
         Sonari settings.
-    recording_uuid
+    recording_id
         The ID of the recording.
     start_time
         The start time of the audio to return, by default None.
@@ -54,7 +53,7 @@ async def stream_recording_audio(
     audio_dir = settings.audio_dir
     recording = await api.recordings.get(
         session,
-        recording_uuid,
+        recording_id,
     )
 
     start, end = range.replace("bytes=", "").split("-")
@@ -83,7 +82,7 @@ async def stream_recording_audio(
 
     if is_chrome_based:
         # Chrome/Chromium: 206 for partial chunks, 200 for the last chunk
-        status_code = 206 if is_last_chunk else 206
+        status_code = 200 if is_last_chunk else 206
     else:
         # Firefox/Safari: Always use 200 for better compatibility
         status_code = 206
@@ -100,7 +99,7 @@ async def stream_recording_audio(
 async def download_recording_audio(
     session: Session,
     settings: SonariSettings,
-    recording_uuid: UUID,
+    recording_id: int,
 ) -> FileResponse:
     """Download the original audio file for a recording.
 
@@ -113,15 +112,15 @@ async def download_recording_audio(
         Database session.
     settings
         Sonari settings.
-    recording_uuid
-        The UUID of the recording.
+    recording_id
+        The ID of the recording.
 
     Returns
     -------
     FileResponse
         The original audio file as a download.
     """
-    recording = await api.recordings.get(session, recording_uuid)
+    recording = await api.recordings.get(session, recording_id)
     file_path = settings.audio_dir / recording.path
     filename = os.path.basename(recording.path)
 

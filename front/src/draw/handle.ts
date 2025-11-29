@@ -8,7 +8,7 @@ type HandleStlye = {
   size?: number;
 } & BorderStyle;
 
-export const DEFAULT_HANDLE_STYLE = {
+const DEFAULT_HANDLE_STYLE = {
   borderColor: BLUE,
   borderWidth: 1,
   size: 7,

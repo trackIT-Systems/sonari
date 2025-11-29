@@ -1,7 +1,6 @@
 """REST API routes for notes."""
 
 from typing import Annotated
-from uuid import UUID
 
 from fastapi import APIRouter, Depends
 
@@ -53,10 +52,10 @@ async def get_notes(
 )
 async def get_note(
     session: Session,
-    note_uuid: UUID,
+    note_id: int,
 ):
     """Update a note."""
-    note = await api.notes.get(session, note_uuid)
+    note = await api.notes.get(session, note_id)
     return note
 
 
@@ -66,11 +65,11 @@ async def get_note(
 )
 async def update_note(
     session: Session,
-    note_uuid: UUID,
+    note_id: int,
     data: schemas.NoteUpdate,
 ):
     """Update a note."""
-    note = await api.notes.get(session, note_uuid)
+    note = await api.notes.get(session, note_id)
     updated = await api.notes.update(
         session,
         note,
@@ -86,10 +85,10 @@ async def update_note(
 )
 async def delete_note(
     session: Session,
-    note_uuid: UUID,
+    note_id: int,
 ):
     """Update a note."""
-    note = await api.notes.get(session, note_uuid)
+    note = await api.notes.get(session, note_id)
     await api.notes.delete(session, note)
     await session.commit()
     return note

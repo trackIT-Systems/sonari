@@ -1,8 +1,8 @@
 import { useCallback, useState } from "react";
 import { mergeProps } from "react-aria";
 
-import useSpectrogramDrag from "@/hooks/spectrogram/useSpectrogramDrag";
 import useSpectrogramZoom from "@/hooks/spectrogram/useSpectrogramZoom";
+import useWindowMotions from "@/hooks/window/useWindowMotions";
 import useWindowScroll from "@/hooks/window/useWindowScroll";
 
 import type { Position, SpectrogramWindow } from "@/types";
@@ -15,30 +15,11 @@ import type { Position, SpectrogramWindow } from "@/types";
 export type MotionMode = "drag" | "zoom" | "idle";
 
 /**
- * The state of the spectrogram motions.
- */
-export type MotionState = {
-  canDrag: boolean;
-  canZoom: boolean;
-  enabled: boolean;
-};
-
-/**
- * The controls for managing spectrogram motions.
- */
-export type MotionControls = {
-  enableDrag: () => void;
-  enableZoom: () => void;
-  disable: () => void;
-};
-
-/**
  * The `useSpectrogramMotions` hook manages different motion modes (drag, zoom)
  * for a spectrogram.
  */
 export default function useSpectrogramMotions({
-  viewport,
-  dimensions,
+  window,
   onDragStart,
   onDragEnd,
   onDrag,
@@ -52,8 +33,7 @@ export default function useSpectrogramMotions({
   fixedAspectRatio,
   enabled = true,
 }: {
-  viewport: SpectrogramWindow;
-  dimensions: { width: number; height: number };
+  window: SpectrogramWindow;
   onDoubleClick?: (dblClickProps: { position: Position }) => void;
   onDragStart?: () => void;
   onDrag?: (window: SpectrogramWindow) => void;
@@ -71,67 +51,86 @@ export default function useSpectrogramMotions({
     enabled ? "drag" : "idle",
   );
 
-  const { dragProps } = useSpectrogramDrag({
-    viewport,
-    dimensions,
-    onDragStart,
-    onDrag,
-    onDragEnd,
+  const [initialWindow, setInitialWindow] = useState(window);
+
+  const handleDragMoveStart = useCallback(() => {
+    if (!enabled || motionMode !== "drag") return;
+    setInitialWindow(window);
+    onDragStart?.();
+  }, [onDragStart, window, enabled, motionMode]);
+
+  const handleDragMove = useCallback(
+    ({ shift }: { shift: Position }) => {
+      if (!enabled || motionMode !== "drag") return;
+      const newWindow = {
+        time: {
+          min: initialWindow.time.min - shift.time,
+          max: initialWindow.time.max - shift.time,
+        },
+        freq: {
+          min: initialWindow.freq.min + shift.freq,
+          max: initialWindow.freq.max + shift.freq,
+        },
+      };
+      onDrag?.(newWindow);
+    },
+    [onDrag, initialWindow, enabled, motionMode],
+  );
+
+  const handleDragMoveEnd = useCallback(() => {
+    if (!enabled || motionMode !== "drag") return;
+    setInitialWindow(window);
+    onDragEnd?.();
+  }, [onDragEnd, window, enabled, motionMode]);
+
+  const { props: dragProps } = useWindowMotions({
+    window,
+    onMoveStart: handleDragMoveStart,
+    onMove: handleDragMove,
+    onMoveEnd: handleDragMoveEnd,
     onDoubleClick,
     enabled: enabled && motionMode === "drag",
   });
 
   const handleOnZoom = useCallback(
-    (next: SpectrogramWindow) => {
-      onZoom?.(next);
+    (nextWindow: SpectrogramWindow) => {
+      onZoom?.(nextWindow);
       setMotionMode("drag");
     },
     [onZoom],
   );
 
   const { zoomProps, draw } = useSpectrogramZoom({
-    viewport,
-    dimensions,
+    window,
     onZoom: handleOnZoom,
     fixedAspectRatio,
     enabled: enabled && motionMode === "zoom",
   });
 
-  const handleTimeScroll = useCallback(
-    ({ time }: { time?: number }) => {
-      if (time == null) return;
-      onScrollMoveTime?.({ time });
+  // Default scroll (no modifiers): deltaY → time, deltaX → freq (trackpad 2D navigation)
+  const handleDefaultScroll = useCallback(
+    ({ time, freq }: { time?: number; freq?: number }) => {
+      if (time != null) {
+        onScrollMoveTime?.({ time });
+      }
+      if (freq != null) {
+        onScrollMoveFreq?.({ freq });
+      }
     },
-    [onScrollMoveTime],
+    [onScrollMoveTime, onScrollMoveFreq],
   );
 
-  const { scrollProps: scrollMoveTimeProps } = useWindowScroll({
-    viewport,
-    dimensions,
-    onScroll: handleTimeScroll,
-    shift: true,
+  const { scrollProps: scrollDefaultProps } = useWindowScroll({
+    window,
+    onScroll: handleDefaultScroll,
+    shift: false,
+    ctrl: false,
+    alt: false,
     enabled,
     relative: false,
   });
 
-  const handleTimeZoom = useCallback(
-    ({ timeRatio }: { timeRatio?: number }) => {
-      if (timeRatio == null) return;
-      onScrollZoomTime?.({ time: 1 + timeRatio });
-    },
-    [onScrollZoomTime],
-  );
-
-  const { scrollProps: scrollZoomTimeProps } = useWindowScroll({
-    viewport,
-    dimensions,
-    onScroll: handleTimeZoom,
-    shift: true,
-    alt: true,
-    enabled,
-    relative: true,
-  });
-
+  // Alt + scroll: Move in frequency axis
   const handleFreqScroll = useCallback(
     ({ freq }: { freq?: number }) => {
       if (freq == null) return;
@@ -141,14 +140,35 @@ export default function useSpectrogramMotions({
   );
 
   const { scrollProps: scrollMoveFreqProps } = useWindowScroll({
-    viewport,
-    dimensions,
+    window,
     onScroll: handleFreqScroll,
-    ctrl: true,
+    shift: false,
+    ctrl: false,
+    alt: true,
     enabled,
     relative: false,
   });
 
+  // Shift + scroll: Zoom on time axis
+  const handleTimeZoom = useCallback(
+    ({ timeRatio }: { timeRatio?: number }) => {
+      if (timeRatio == null) return;
+      onScrollZoomTime?.({ time: 1 + timeRatio });
+    },
+    [onScrollZoomTime],
+  );
+
+  const { scrollProps: scrollZoomTimeProps } = useWindowScroll({
+    window,
+    onScroll: handleTimeZoom,
+    shift: true,
+    ctrl: false,
+    alt: false,
+    enabled,
+    relative: true,
+  });
+
+  // Ctrl + scroll: Zoom on frequency axis
   const handleFreqZoom = useCallback(
     ({ freqRatio }: { freqRatio?: number }) => {
       if (freqRatio == null) return;
@@ -158,11 +178,11 @@ export default function useSpectrogramMotions({
   );
 
   const { scrollProps: scrollZoomFreqProps } = useWindowScroll({
-    viewport,
-    dimensions,
+    window,
     onScroll: handleFreqZoom,
+    shift: false,
     ctrl: true,
-    alt: true,
+    alt: false,
     enabled,
     relative: true,
   });
@@ -170,10 +190,10 @@ export default function useSpectrogramMotions({
   const props = mergeProps(
     dragProps,
     zoomProps,
-    scrollMoveTimeProps,
+    scrollDefaultProps,
+    scrollMoveFreqProps,
     scrollZoomTimeProps,
     scrollZoomFreqProps,
-    scrollMoveFreqProps,
   );
 
   const handleEnableDrag = useCallback(() => {

@@ -4,7 +4,7 @@ import type { Tag, AnnotationStatus, AnnotationProject } from "@/types";
 import api from "@/app/api";
 import type { Option } from "@/components/inputs/Select";
 
-export interface ExportSelectionState {
+interface ExportSelectionState {
   // Project selection
   selectedProjects: AnnotationProject[];
   availableProjects: Option<AnnotationProject>[];
@@ -14,8 +14,6 @@ export interface ExportSelectionState {
   
   // Tag selection (optional)
   selectedTags: Tag[];
-  projectTags: Tag[];
-  availableTags: Tag[];
   
   // Status selection (optional)
   selectedStatuses: (AnnotationStatus | string)[];
@@ -31,7 +29,7 @@ export interface ExportSelectionState {
   totalProjects: number;
 }
 
-export interface ExportSelectionActions {
+interface ExportSelectionActions {
   // Project actions
   handleProjectSelect: (tag: Tag) => void;
   handleProjectDeselect: (tag: Tag) => void;
@@ -52,7 +50,7 @@ export interface ExportSelectionActions {
   setIsExporting: (isExporting: boolean) => void;
 }
 
-export interface UseExportSelectionOptions {
+interface UseExportSelectionOptions {
   includeTags?: boolean;
   includeStatuses?: boolean;
   includeDateRange?: boolean;
@@ -75,8 +73,6 @@ export function useExportSelection(options: UseExportSelectionOptions = {}) {
   
   // Tag selection state
   const [selectedTags, setSelectedTags] = useState<Tag[]>([]);
-  const [projectTags, setProjectTags] = useState<Tag[]>([]);
-  
   // Status selection state
   const [selectedStatuses, setSelectedStatuses] = useState<(AnnotationStatus | string)[]>([]);
   const allStatusOptions = [...Object.values(AnnotationStatusSchema.enum), "no"] as const;
@@ -120,44 +116,30 @@ export function useExportSelection(options: UseExportSelectionOptions = {}) {
   // Convert projects to options when projects change
   useEffect(() => {
     const options = allProjects.map(project => ({
-      id: project.uuid,
+      id: project.id,
       label: project.name,
       value: project,
     }));
     setAvailableProjects(options);
   }, [allProjects]);
 
-  // Update project tags when selected projects change
+  // Reset selections when projects change
   useEffect(() => {
-    if (!includeTags) return;
-    
     if (selectedProjects.length === 0) {
-      setProjectTags([]);
       setSelectedTags([]);
       if (includeStatuses) {
         setSelectedStatuses([]);
       }
       return;
     }
-    
-    const mergedTags = selectedProjects.flatMap(p => p.tags ?? []);
-    const uniqueTagMap = new Map<string, Tag>();
-    for (const tag of mergedTags) {
-      const key = `${tag.key}:${tag.value}`;
-      if (!uniqueTagMap.has(key)) {
-        uniqueTagMap.set(key, tag);
-      }
-    }
-    setProjectTags(Array.from(uniqueTagMap.values()));
-    setSelectedTags([]);
     if (includeStatuses) {
       setSelectedStatuses([]);
     }
-  }, [selectedProjects, includeTags, includeStatuses]);
+  }, [selectedProjects, includeStatuses]);
 
   // Computed values
   const availableProjectOptions = availableProjects.filter(p =>
-    !selectedProjects.some(selected => selected.uuid === p.value.uuid)
+    !selectedProjects.some(selected => selected.id === p.value.id)
   );
 
   const projectTagList: Tag[] = availableProjectOptions.map(p => ({
@@ -170,14 +152,10 @@ export function useExportSelection(options: UseExportSelectionOptions = {}) {
     value: p.name,
   }));
 
-  const availableTags = includeTags ? projectTags.filter(tag =>
-    !selectedTags.some(t => t.key === tag.key && t.value === tag.value)
-  ) : [];
-
   // Action handlers
   const handleProjectSelect = (tag: Tag) => {
     const project = availableProjects.find(p => p.label === tag.value)?.value;
-    if (project && !selectedProjects.some(p => p.uuid === project.uuid)) {
+    if (project && !selectedProjects.some(p => p.id === project.id)) {
       setSelectedProjects(prev => [...prev, project]);
     }
   };
@@ -196,12 +174,33 @@ export function useExportSelection(options: UseExportSelectionOptions = {}) {
     setSelectedTags(prev => prev.filter(t => t.key !== tag.key || t.value !== tag.value));
   };
 
-  const handleSelectAllTags = () => {
-    if (!includeTags || availableTags.length === 0) return;
-    setSelectedTags(prev => {
-      const tagsToAdd = availableTags.filter(avail => !prev.some(sel => sel.key === avail.key && sel.value === avail.value));
-      return [...prev, ...tagsToAdd];
-    });
+  const handleSelectAllTags = async () => {
+    if (!includeTags) return;
+    
+    try {
+      // Fetch all tags from the system when "Select All" is pressed
+      const allTags: Tag[] = [];
+      let offset = 0;
+      const pageSize = 100;
+      let hasMore = true;
+
+      while (hasMore) {
+        const page = await api.tags.get({ limit: pageSize, offset });
+        allTags.push(...page.items);
+        offset += pageSize;
+        hasMore = page.items.length === pageSize;
+      }
+
+      // Add only tags that aren't already selected
+      setSelectedTags(prev => {
+        const tagsToAdd = allTags.filter(
+          tag => !prev.some(sel => sel.key === tag.key && sel.value === tag.value)
+        );
+        return [...prev, ...tagsToAdd];
+      });
+    } catch (err) {
+      console.error("Failed to fetch all tags", err);
+    }
   };
 
   const handleStatusToggle = (status: AnnotationStatus | string) => {
@@ -216,11 +215,11 @@ export function useExportSelection(options: UseExportSelectionOptions = {}) {
   // Selection validation
   const getSelectionValidation = () => {
     const hasProjects = selectedProjects.length > 0;
-    const hasTags = !includeTags || selectedTags.length > 0;
-    const hasStatuses = !includeStatuses || selectedStatuses.length > 0;
+    const hasTags = selectedTags.length > 0;
+    const hasStatuses = selectedStatuses.length > 0;
     
     return {
-      isValid: hasProjects && hasTags && hasStatuses,
+      isValid: hasProjects,
       hasProjects,
       hasTags,
       hasStatuses
@@ -234,8 +233,6 @@ export function useExportSelection(options: UseExportSelectionOptions = {}) {
     projectTagList,
     selectedProjectTags,
     selectedTags,
-    projectTags,
-    availableTags,
     selectedStatuses,
     allStatusOptions,
     startDate,

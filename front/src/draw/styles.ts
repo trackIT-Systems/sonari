@@ -17,9 +17,9 @@ export interface FillStyle {
   fillColor?: Color;
 }
 
-export type FontWeight = "normal" | "bold" | "lighter" | "bolder" | number;
+type FontWeight = "normal" | "bold" | "lighter" | "bolder" | number;
 
-export interface FontStyle {
+interface FontStyle {
   fontFamily?: string;
   fontSize?: number;
   fontStyle?: "normal" | "italic" | "oblique";
@@ -68,10 +68,6 @@ export const MAYOR_TICK_STYLE_GRID = {
 }
 
 export type Style = BorderStyle & FillStyle;
-
-export type Styler<T> = (obj: T) => Style;
-
-export type StyleModifier = (style: Style, properties: JSONObject) => Style;
 
 export const DEFAULT_FONT_STYLE = "normal";
 export const DEFAULT_FONT_WEIGHT = "normal";

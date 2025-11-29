@@ -2,7 +2,7 @@
 
 from enum import Enum
 from pathlib import Path
-from uuid import UUID
+from typing import Optional
 
 from pydantic import BaseModel, DirectoryPath, Field
 
@@ -11,10 +11,11 @@ from sonari.schemas.recordings import Recording
 
 __all__ = [
     "Dataset",
-    "DatasetRecording",
     "DatasetCreate",
-    "DatasetUpdate",
+    "DatasetFile",
+    "DatasetRecording",
     "DatasetRecordingCreate",
+    "DatasetUpdate",
     "FileState",
 ]
 
@@ -35,14 +36,8 @@ class DatasetCreate(BaseModel):
 class Dataset(BaseSchema):
     """Schema for Dataset objects returned to the user."""
 
-    uuid: UUID
-    """The uuid of the dataset."""
-
-    id: int = Field(..., exclude=True)
+    id: int
     """The database id of the dataset."""
-
-    audio_dir: Path
-    """The path to the directory containing the audio files."""
 
     name: str
     """The name of the dataset."""
@@ -50,8 +45,14 @@ class Dataset(BaseSchema):
     description: str | None
     """The description of the dataset."""
 
+    audio_dir: Path
+    """The path to the directory containing the audio files."""
+
     recording_count: int = 0
     """The number of recordings in the dataset."""
+
+    recordings: Optional[list[Recording]]
+    """All recordings of that dataset"""
 
 
 class DatasetUpdate(BaseModel):
@@ -118,7 +119,7 @@ class DatasetRecording(BaseSchema):
     """Schema for DatasetRecording objects returned to the user."""
 
     recording: Recording
-    """The uuid of the recording."""
+    """The recording."""
 
     state: FileState = Field(default=FileState.REGISTERED)
     """The state of the file."""

@@ -3,7 +3,6 @@
 import datetime
 from abc import ABC
 from typing import List
-from uuid import UUID
 
 from ..data import resolve_project_ids
 from ..utils import DateFormatter
@@ -16,9 +15,9 @@ class BaseExportService(ABC):
     def __init__(self, session: Session):
         self.session = session
 
-    async def resolve_projects(self, annotation_project_uuids: List[UUID]):
-        """Resolve annotation project UUIDs to IDs and project mapping."""
-        return await resolve_project_ids(self.session, annotation_project_uuids)
+    async def resolve_projects(self, annotation_project_ids: List[int]):
+        """Resolve annotation project IDs to project objects and mapping."""
+        return await resolve_project_ids(self.session, annotation_project_ids)
 
     def parse_date_range(self, start_date: str | None, end_date: str | None):
         """Parse date range strings to date objects."""

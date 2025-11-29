@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import { type AnnotationTaskFilter } from "@/api/annotation_tasks";
 import api from "@/app/api";
 import useFilter from "@/hooks/utils/useFilter";
@@ -22,11 +23,23 @@ export default function useAnnotationTasks({
     fixed
   });
 
+  // Apply defaults only if not explicitly set in the filter
+  const filterWithDefaults = useMemo(() => ({
+    include_recording: true,
+    include_sound_event_annotations: true,
+    include_sound_event_tags: true,
+    include_tags: true,
+    include_notes: true,
+    include_status_badges: true,
+    include_status_badge_users: true,
+    ...filter.filter,
+  }), [filter.filter]);
+
   const { query, pagination, items, total, queryKey } = usePagedQuery({
     name: "annotation_tasks",
     queryFn: api.annotationTasks.getMany,
     pageSize,
-    filter: filter.filter,
+    filter: filterWithDefaults,
     enabled,
   });
 

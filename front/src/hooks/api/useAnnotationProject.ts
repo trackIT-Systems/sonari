@@ -1,36 +1,22 @@
-import { useMutation as useQueryMutation } from "@tanstack/react-query";
 import { type AxiosError } from "axios";
-import { useCallback, useMemo } from "react";
-
-import { type ClipCreateMany } from "@/api/clips";
 import api from "@/app/api";
 import useObject from "@/hooks/utils/useObject";
 
-import type { AnnotationProject, AnnotationTask, AnnotationStatus } from "@/types";
+import type { AnnotationProject } from "@/types";
 
 export default function useAnnotationProject({
-  uuid,
+  id,
   annotationProject,
-  onUpdate,
-  onDelete,
-  onAddTag,
-  onRemoveTag,
-  onAddAnnotationTasks,
   onError,
   enabled = true,
 }: {
-  uuid: string;
+  id: number;
   annotationProject?: AnnotationProject;
-  onUpdate?: (annotationProject: AnnotationProject) => void;
-  onDelete?: (annotationProject: AnnotationProject) => void;
-  onAddTag?: (annotationProject: AnnotationProject) => void;
-  onRemoveTag?: (annotationProject: AnnotationProject) => void;
-  onAddAnnotationTasks?: (tasks: AnnotationTask[]) => void;
   onError?: (error: AxiosError) => void;
   enabled?: boolean;
 }) {
-  const { query, useMutation, client } = useObject<AnnotationProject>({
-    uuid,
+  const { query } = useObject<AnnotationProject>({
+    id,
     initial: annotationProject,
     name: "annotation_project",
     enabled,
@@ -38,53 +24,7 @@ export default function useAnnotationProject({
     onError,
   });
 
-  const update = useMutation({
-    mutationFn: api.annotationProjects.update,
-    onSuccess: onUpdate,
-  });
-
-  const addTag = useMutation({
-    mutationFn: api.annotationProjects.addTag,
-    onSuccess: onAddTag,
-  });
-
-  const removeTag = useMutation({
-    mutationFn: api.annotationProjects.removeTag,
-    onSuccess: onRemoveTag,
-  });
-
-  const delete_ = useMutation({
-    mutationFn: api.annotationProjects.delete,
-    onSuccess: onDelete,
-  });
-
-  const { data } = query;
-  const addTasks = useCallback(
-    async (clips: ClipCreateMany) => {
-      if (data == null) return;
-      const created_clips = await api.clips.createMany(clips);
-      return await api.annotationTasks.createMany(data, created_clips);
-    },
-    [data],
-  );
-
-  const addAnnotationTasks = useQueryMutation({
-    mutationFn: addTasks,
-    onSuccess: (data) => {
-      if (data == null) return;
-      onAddAnnotationTasks?.(data);
-      client.invalidateQueries({
-        queryKey: ["annotation_project", uuid],
-      });
-    },
-  });
-
   return {
     ...query,
-    update,
-    addTag,
-    addAnnotationTasks,
-    removeTag,
-    delete: delete_,
   } as const;
 }

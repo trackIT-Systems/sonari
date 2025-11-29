@@ -4,7 +4,7 @@ import useKeyFilter from "@/hooks/utils/useKeyFilter";
 
 import { PLAY_SHORTCUT } from "@/utils/keyboard";
 
-export default function useAnnotateClipKeyShortcuts(props: {
+export default function useAudioKeyShortcuts(props: {
   onTogglePlay: () => void;
   enabled?: boolean;
 }) {

@@ -244,14 +244,12 @@ async def get_objects_from_query(
         if isinstance(sort_by, str):
             if sort_by == "recording_datetime":
                 # Join with related tables to access recording date and time
-                query = (
-                    query.join(models.Clip, models.AnnotationTask.clip_id == models.Clip.id)
-                    .join(models.Recording, models.Clip.recording_id == models.Recording.id)
-                    .order_by(
-                        models.Recording.date.asc(),
-                        models.Recording.time.asc(),
-                        models.AnnotationTask.id.asc(),  # Add stable secondary sort
-                    )
+                query = query.join(
+                    models.Recording, models.AnnotationTask.recording_id == models.Recording.id
+                ).order_by(
+                    models.Recording.date.asc(),
+                    models.Recording.time.asc(),
+                    models.AnnotationTask.id.asc(),  # Add stable secondary sort
                 )
             else:
                 sort_by = get_sort_by_col_from_str(model, sort_by)
@@ -260,8 +258,7 @@ async def get_objects_from_query(
             query = query.order_by(sort_by)
 
     # For recording_datetime sorting, the join shouldn't create duplicates
-    # since it's a simple 1:1:1 relationship (AnnotationTask -> Clip -> Recording)
-    # The issue might be elsewhere. Let's remove the distinct logic for now.
+    # since it's a direct 1:1 relationship (AnnotationTask -> Recording)
 
     if limit is not None and limit >= 0:
         query = query.limit(limit)
@@ -738,7 +735,7 @@ async def add_feature_to_object(
     session: AsyncSession,
     model: type[A],
     condition: _ColumnExpressionArgument,
-    feature_name_id: int,
+    feature_name: str,
     value: float,
 ) -> A:
     """Add a feature to an object.
@@ -754,8 +751,8 @@ async def add_feature_to_object(
     condition : _ColumnExpressionArgument
         The condition to use.
 
-    feature_name_id : int
-        The id of the feature name to add.
+    feature_name : str
+        The name of the feature to add.
 
     value : float
         The value of the feature to add.
@@ -773,16 +770,10 @@ async def add_feature_to_object(
     obj = await get_object(session, model, condition)
 
     if any(
-        feature.feature_name_id == feature_name_id
+        feature.name == feature_name
         for feature in obj.features  # type: ignore
     ):
         return obj
-
-    feature_name = await get_object(
-        session,
-        models.FeatureName,
-        models.FeatureName.id == feature_name_id,
-    )
 
     name = _to_snake_case(model.__name__)
     feature_model_name = f"{model.__name__}Feature"
@@ -791,7 +782,7 @@ async def add_feature_to_object(
 
     feature = association_model(**{
         foreign_key: obj.id,  # type: ignore
-        "feature_name_id": feature_name.id,  # type: ignore
+        "name": feature_name,  # type: ignore
         "value": value,  # type: ignore
     })
     obj.features.append(feature)  # type: ignore
@@ -804,7 +795,7 @@ async def update_feature_on_object(
     session: AsyncSession,
     model: type[A],
     condition: _ColumnExpressionArgument,
-    feature_name_id: int,
+    feature_name: str,
     value: float,
 ) -> A:
     """Update a feature on an object.
@@ -820,8 +811,8 @@ async def update_feature_on_object(
     condition : _ColumnExpressionArgument
         The condition to use.
 
-    feature_name_id : int
-        The id of the feature name to update.
+    feature_name : str
+        The name of the feature to update.
 
     value : float
         The value of the feature to update.
@@ -842,13 +833,13 @@ async def update_feature_on_object(
         (
             feature
             for feature in obj.features  # type: ignore
-            if feature.feature_name_id == feature_name_id
+            if feature.name == feature_name
         ),
         None,
     )
 
     if feature is None:
-        return await add_feature_to_object(session, model, condition, feature_name_id, value)
+        return await add_feature_to_object(session, model, condition, feature_name, value)
 
     feature.value = value
 
@@ -965,7 +956,7 @@ async def remove_feature_from_object(
     session: AsyncSession,
     model: type[A],
     condition: _ColumnExpressionArgument,
-    feature_name_id: int,
+    feature_name: str,
 ) -> A:
     """Remove a feature from an object.
 
@@ -980,8 +971,8 @@ async def remove_feature_from_object(
     condition : _ColumnExpressionArgument
         The condition to use.
 
-    feature_name_id : int
-        The id of the feature name to remove.
+    feature_name : str
+        The name of the feature to remove.
 
     Returns
     -------
@@ -999,7 +990,7 @@ async def remove_feature_from_object(
         (
             feature
             for feature in obj.features  # type: ignore
-            if feature.feature_name_id == feature_name_id
+            if feature.name == feature_name
         ),
         None,
     )
@@ -1034,7 +1025,7 @@ def _get_defaults(model: type[A]):
         if field.default is not MISSING:
             defaults[field.name] = field.default
 
-        elif field.default_factory is not MISSING and field.default_factory != list:
+        elif field.default_factory is not MISSING and not isinstance(list, field.default_factory):
             default_factories[field.name] = field.default_factory
 
     return defaults, default_factories

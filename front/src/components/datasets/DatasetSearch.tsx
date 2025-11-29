@@ -42,13 +42,13 @@ export default function DatasetSearch({
       options={items}
       fields={["name", "description"]}
       displayValue={(dataset) => dataset.name}
-      getOptionKey={(dataset) => dataset.uuid}
+      getOptionKey={(dataset) => dataset.id.toString()}
       onChangeSearch={onChangeSearch}
       onSelect={onSelect}
       showMax={showMax}
       isLoading={isLoading}
     >
-      {(dataset) => <Item key={dataset.uuid}>{dataset.name}</Item>}
+      {(dataset) => <Item key={dataset.id}>{dataset.name}</Item>}
     </Search>
   );
 }

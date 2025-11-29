@@ -1,5 +1,6 @@
 # == Build Front End
 FROM node:current-alpine AS web_builder
+RUN apk add --no-cache git
 RUN mkdir /statics
 
 WORKDIR /front/
@@ -7,10 +8,14 @@ WORKDIR /front/
 COPY front/ /front/
 
 ARG SONARI_FOLDER
+ARG NEXT_PUBLIC_APP_VERSION
+# Set as ENV so it's available when next.config.js runs
+ENV NEXT_PUBLIC_APP_VERSION=$NEXT_PUBLIC_APP_VERSION
 RUN echo NEXT_PUBLIC_SONARI_FOLDER=$SONARI_FOLDER > /front/.env.local
 RUN echo NEXT_TELEMETRY_DISABLED=1 >> /front/.env.local
 
 RUN npm install
+RUN npx update-browserslist-db@latest --yes
 
 RUN npm run build
 

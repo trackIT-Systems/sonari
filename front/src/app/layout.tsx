@@ -7,7 +7,10 @@ import Notification from "@/components/Notification";
 
 import { HOST } from "@/api/common";
 
-const mulish = Mulish({ subsets: ["latin"] });
+const mulish = Mulish({
+  subsets: ["latin"],
+  weight: ["200", "400", "500", "600", "700", "800"],
+});
 
 export const metadata: Metadata = {
   title: "Sonari",

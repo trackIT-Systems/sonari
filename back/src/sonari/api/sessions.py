@@ -21,12 +21,15 @@ DEFAULT_DB_URL = "sqlite+aiosqlite://"
 async def create_session(
     db_url: str | URL = DEFAULT_DB_URL,
 ) -> AsyncGenerator[AsyncSession, None]:
-    """Create a database session.
+    """Create a database session with a dedicated engine.
 
     This function creates a database session that can be used to interact with
     the database.
 
     It is a context manager, so it can be used with the ``async with`` syntax.
+
+    Note: This creates a new engine per call - prefer using the singleton
+    engine via routes/dependencies for request handling.
 
     Parameters
     ----------
@@ -63,5 +66,8 @@ async def create_session(
     keyword.
     """
     engine = database.create_async_db_engine(db_url)
-    async with database.get_async_session(engine) as session:
-        yield session
+    try:
+        async with database.get_async_session(engine) as session:
+            yield session
+    finally:
+        await engine.dispose()

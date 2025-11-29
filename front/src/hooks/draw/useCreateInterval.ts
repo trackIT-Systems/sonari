@@ -4,7 +4,7 @@ import drawGeometry from "@/draw/geometry";
 import { DEFAULT_INTERVAL_STYLE } from "@/draw/interval";
 import { type Style } from "@/draw/styles";
 import useWindowMotions from "@/hooks/window/useWindowMotions";
-import { scaleGeometryToViewport } from "@/utils/geometry";
+import { scaleGeometryToWindow } from "@/utils/geometry";
 
 import type {
   Dimensions,
@@ -14,14 +14,12 @@ import type {
 } from "@/types";
 
 export default function useCreateInterval({
-  viewport,
-  dimensions,
+  window,
   enabled = true,
   style = DEFAULT_INTERVAL_STYLE,
   onCreate,
 }: {
-  viewport: SpectrogramWindow;
-  dimensions: Dimensions;
+  window: SpectrogramWindow;
   enabled?: boolean;
   style?: Style;
   onCreate?: (interval: TimeInterval) => void;
@@ -53,8 +51,7 @@ export default function useCreateInterval({
 
   const { props, isDragging } = useWindowMotions({
     enabled,
-    viewport,
-    dimensions,
+    window,
     onMoveStart: handleMoveStart,
     onMove: handleMove,
     onMoveEnd: handleMoveEnd,
@@ -67,10 +64,10 @@ export default function useCreateInterval({
   const draw = useCallback(
     (ctx: CanvasRenderingContext2D) => {
       if (!enabled || !isDragging || interval == null) return;
-      const scaled = scaleGeometryToViewport(dimensions, interval, viewport);
+      const scaled = scaleGeometryToWindow(interval, window);
       drawGeometry(ctx, scaled, style);
     },
-    [enabled, interval, style, isDragging, dimensions, viewport],
+    [enabled, interval, style, isDragging, window],
   );
 
   return {

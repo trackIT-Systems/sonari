@@ -14,21 +14,21 @@ const HANDLE_BORDER_SIZE_HOVER = 3;
 const EDGE_WIDTH_HOVER = 3;
 const AREA_FILL_HOVER = 0.3;
 
-export type Keypoint<T> = {
+type Keypoint<T> = {
   id: string;
   type: "Keypoint";
   coords: Coordinates;
   drag: (current: T, start: Pixel, end: Pixel) => T;
 };
 
-export type Edge<T> = {
+type Edge<T> = {
   id: string;
   type: "Edge";
   coords: [Coordinates, Coordinates];
   drag: (current: T, start: Pixel, end: Pixel) => T;
 };
 
-export type Area<T> = {
+type Area<T> = {
   id: string;
   type: "Area";
   coords: Coordinates[][];
@@ -37,7 +37,7 @@ export type Area<T> = {
 
 export type EditableElement<T> = Keypoint<T> | Edge<T> | Area<T>;
 
-export function drawKeypoint<T>(
+function drawKeypoint<T>(
   ctx: CanvasRenderingContext2D,
   keypoint: Keypoint<T>,
   isHovering = false,
@@ -49,7 +49,7 @@ export function drawKeypoint<T>(
   });
 }
 
-export function drawEdge<T>(
+function drawEdge<T>(
   ctx: CanvasRenderingContext2D,
   edge: Edge<T>,
   { borderColor, borderWidth, borderAlpha, borderDash }: Style,
@@ -80,7 +80,7 @@ export function drawEdge<T>(
   });
 }
 
-export function drawArea<T>(
+function drawArea<T>(
   ctx: CanvasRenderingContext2D,
   area: Area<T>,
   { fillAlpha, fillColor, borderColor }: Style,

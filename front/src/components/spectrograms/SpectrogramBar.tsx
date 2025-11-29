@@ -1,25 +1,27 @@
 import { useMemo, useRef, useState } from "react";
 import useCanvas from "@/hooks/draw/useCanvas";
-import useSpectrogramWindow from "@/hooks/spectrogram/useSpectrogramWindow";
 import useWindowDrag from "@/hooks/window/useWindowDrag";
-import { getViewportPosition } from "@/utils/windows";
+import { getWindowPosition } from "@/utils/windows";
 
-import type { SpectrogramWindow, Recording, SpectrogramParameters } from "@/types";
+import type { SpectrogramWindow, SpectrogramParameters } from "@/types";
+import useSpectrogramOverview from "@/hooks/spectrogram/useSpectrogramOverview";
 
 export default function SpectrogramBar({
+  recordingId,
   bounds,
-  viewport,
+  window,
   onMove,
-  recording,
+  samplerate,
   parameters,
   withSpectrogram,
 }: {
+  recordingId: number;
   bounds: SpectrogramWindow;
-  viewport: SpectrogramWindow;
-  recording: Recording;
+  window: SpectrogramWindow;
+  samplerate: number;
   parameters: SpectrogramParameters;
   withSpectrogram: boolean;
-  onMove?: (viewport: SpectrogramWindow) => void;
+  onMove?: (window: SpectrogramWindow) => void;
 }) {
   const barRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -31,54 +33,58 @@ export default function SpectrogramBar({
 
   const barPosition = useMemo(
     () =>
-      getViewportPosition({
+      getWindowPosition({
         width,
         height,
-        viewport,
+        window,
         bounds,
       }),
-    [viewport, bounds, width, height],
+    [window, bounds, width, height],
   );
 
-  const [intialViewport, setInitialViewport] = useState(viewport);
+  const [intialWindow, setInitialWindow] = useState(window);
 
-  // Get the complete spectrogram image
-  const { draw: drawFullSpectrogram } = useSpectrogramWindow({
-    recording,
-    window: bounds,
-    parameters,
-    withSpectrogram,
-    lowRes: true,
+  // Memoize parameters to prevent creating new object on every render
+  const overviewParameters = useMemo(
+    () => ({ ...parameters, window_size_samples: 128, overlap_percent: 1 }),
+    [parameters]
+  );
+
+  // Get the spectrogram image(s) - automatically handles chunked loading for long recordings
+  const { draw: drawSpectrogram } = useSpectrogramOverview({
+    recording_id: recordingId,
+    segment: bounds,
+    parameters: overviewParameters,
+    withSpectrogram: withSpectrogram,
   });
 
   // Draw function for the canvas
   const draw = useMemo(
     () => (ctx: CanvasRenderingContext2D) => {
-      // Draw the full spectrogram
-      drawFullSpectrogram(ctx, bounds);
+      drawSpectrogram(ctx, bounds);
     },
-    [drawFullSpectrogram, bounds]
+    [drawSpectrogram, bounds]
   );
 
   useCanvas({ ref: canvasRef as React.RefObject<HTMLCanvasElement>, draw });
 
   const { moveProps } = useWindowDrag({
-    dimensions: { width, height },
-    viewport: bounds,
-    onMoveStart: () => setInitialViewport(viewport),
+    window: bounds,
+    elementRef: barRef as React.RefObject<HTMLElement | null>,
+    onMoveStart: () => setInitialWindow(window),
     onMove: ({ shift: { time, freq } }) => {
       onMove?.({
         time: {
-          min: intialViewport.time.min + time,
-          max: intialViewport.time.max + time,
+          min: intialWindow.time.min + time,
+          max: intialWindow.time.max + time,
         },
         freq: {
-          min: intialViewport.freq.min - freq,
-          max: intialViewport.freq.max - freq,
+          min: intialWindow.freq.min - freq,
+          max: intialWindow.freq.max - freq,
         },
       });
     },
-    onMoveEnd: () => setInitialViewport(viewport),
+    onMoveEnd: () => setInitialWindow(window),
   });
 
   return (

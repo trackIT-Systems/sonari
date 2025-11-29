@@ -1,18 +1,18 @@
 import { useCallback, useEffect } from "react";
 
 import drawOnset from "@/draw/onset";
-import { scaleTimeToViewport } from "@/utils/geometry";
+import { scaleTimeToWindow } from "@/utils/geometry";
 
 import type { SpectrogramWindow } from "@/types";
 
 export default function useSpectrogramTrackAudio({
-  viewport,
+  window,
   currentTime,
   isPlaying,
   onTimeChange,
   enabled = true,
 }: {
-  viewport: SpectrogramWindow;
+  window: SpectrogramWindow;
   currentTime: number;
   isPlaying: boolean;
   onTimeChange?: (time: number) => void;
@@ -25,11 +25,10 @@ export default function useSpectrogramTrackAudio({
 
   const drawOnsetAt = useCallback(
     (ctx: CanvasRenderingContext2D, time: number) => {
-      const { width } = ctx.canvas;
-      const x = scaleTimeToViewport(time, viewport, width);
+      const x = scaleTimeToWindow(time, window);
       drawOnset(ctx, x);
     },
-    [viewport],
+    [window],
   );
 
   const draw = useCallback(

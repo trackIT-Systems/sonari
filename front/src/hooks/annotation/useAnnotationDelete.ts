@@ -4,7 +4,7 @@ import { mergeProps, usePress } from "react-aria";
 import drawGeometry from "@/draw/geometry";
 import { RED } from "@/draw/styles";
 import useHoveredAnnotation from "@/hooks/annotation/useHoveredAnnotation";
-import { scaleGeometryToViewport } from "@/utils/geometry";
+import { scaleGeometryToWindow } from "@/utils/geometry";
 
 import type {
   Dimensions,
@@ -21,15 +21,13 @@ const DELETE_STYLE = {
 
 export default function useAnnotationDelete({
   annotations,
-  viewport,
-  dimensions,
+  window,
   enabled = true,
   onDelete,
   onDeselect,
 }: {
   annotations: SoundEventAnnotation[];
-  dimensions: Dimensions;
-  viewport: SpectrogramWindow;
+  window: SpectrogramWindow;
   enabled: boolean;
   onDelete?: (annotation: SoundEventAnnotation) => void;
   onDeselect?: () => void;
@@ -39,8 +37,7 @@ export default function useAnnotationDelete({
     hoveredAnnotation: hovered,
     clear,
   } = useHoveredAnnotation({
-    viewport,
-    dimensions,
+    window,
     annotations,
     enabled,
   });
@@ -64,15 +61,14 @@ export default function useAnnotationDelete({
     (ctx: CanvasRenderingContext2D) => {
       if (!enabled || hovered == null) return;
       ctx.canvas.style.cursor = "pointer";
-      const geometry = scaleGeometryToViewport(
-        { width: ctx.canvas.width, height: ctx.canvas.height },
-        hovered.sound_event.geometry,
-        viewport,
+      const geometry = scaleGeometryToWindow(
+        hovered.geometry,
+        window,
       );
 
       drawGeometry(ctx, geometry, DELETE_STYLE);
     },
-    [viewport, hovered, enabled],
+    [window, hovered, enabled],
   );
 
   const props = mergeProps(pressProps, hoverProps);

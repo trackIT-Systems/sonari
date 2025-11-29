@@ -4,19 +4,13 @@ import {
   AnnotationProjectSchema,
   AnnotationStatusBadgeSchema,
   AnnotationStatusSchema,
-  AnnotationTagSchema,
   AnnotationTaskSchema,
   BoundingBoxSchema,
-  ClipAnnotationSchema,
-  ClipSchema,
   DatasetSchema,
-  DateFilterSchema,
   FeatureSchema,
-  FileStateSchema,
   FloatEqFilterSchema,
   GeometrySchema,
   GeometryTypeSchema,
-  IntegerFilterSchema,
   IntervalSchema,
   LineStringSchema,
   MultiLineStringSchema,
@@ -27,14 +21,10 @@ import {
   PointSchema,
   PolygonSchema,
   RecordingSchema,
-  RecordingStateSchema,
   SoundEventAnnotationSchema,
-  SoundEventSchema,
   SpectrogramParametersSchema,
   SpectrogramWindowSchema,
-  StringFilterSchema,
   TagSchema,
-  TimeFilterSchema,
   TimeIntervalSchema,
   TimeStampSchema,
   UserSchema,
@@ -49,10 +39,6 @@ export type Feature = z.infer<typeof FeatureSchema>;
 export type Note = z.infer<typeof NoteSchema>;
 
 export type Recording = z.infer<typeof RecordingSchema>;
-
-export type FileState = z.infer<typeof FileStateSchema>;
-
-export type RecordingState = z.infer<typeof RecordingStateSchema>;
 
 export type Dataset = z.infer<typeof DatasetSchema>;
 
@@ -78,21 +64,29 @@ export type MultiPolygon = z.infer<typeof MultiPolygonSchema>;
 
 export type Geometry = z.infer<typeof GeometrySchema>;
 
-export type SoundEvent = z.infer<typeof SoundEventSchema>;
-
-export type Clip = z.infer<typeof ClipSchema>;
-
-export type AnnotationTag = z.infer<typeof AnnotationTagSchema>;
-
 export type SoundEventAnnotation = z.infer<typeof SoundEventAnnotationSchema>;
-
-export type ClipAnnotation = z.infer<typeof ClipAnnotationSchema>;
 
 export type AnnotationStatus = z.infer<typeof AnnotationStatusSchema>;
 
 export type AnnotationStatusBadge = z.infer<typeof AnnotationStatusBadgeSchema>;
 
 export type AnnotationTask = z.infer<typeof AnnotationTaskSchema>;
+
+export type AnnotationTaskIndex = {
+  id: number;
+  recording_id: number;
+  start_time: number;
+};
+
+export type AnnotationTaskStats = {
+  total: number;
+  done_count: number;
+  verified_count: number;
+  rejected_count: number;
+  completed_count: number;
+  pending_count: number;
+  assigned_count: number;
+};
 
 export type AnnotationProject = z.infer<typeof AnnotationProjectSchema>;
 
@@ -125,22 +119,14 @@ export type SpectrogramWindow = z.infer<typeof SpectrogramWindowSchema>;
 
 export type SpectrogramParameters = z.infer<typeof SpectrogramParametersSchema>;
 
-export type JSONValue = string | number | boolean | JSONObject | JSONArray;
+type JSONValue = string | number | boolean | JSONObject | JSONArray;
 
-export interface JSONObject {
+interface JSONObject {
   [x: string]: JSONValue;
 }
 
-export type JSONArray = Array<JSONValue>;
-
-export type DateFilter = z.input<typeof DateFilterSchema>;
-
-export type TimeFilter = z.input<typeof TimeFilterSchema>;
+type JSONArray = Array<JSONValue>;
 
 export type NumberFilter = z.input<typeof NumberFilterSchema>;
-
-export type StringFilter = z.input<typeof StringFilterSchema>;
-
-export type IntegerFilter = z.input<typeof IntegerFilterSchema>;
 
 export type FloatEqFilter = z.input<typeof FloatEqFilterSchema>;

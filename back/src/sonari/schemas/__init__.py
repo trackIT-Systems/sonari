@@ -15,6 +15,7 @@ to validate data before it is inserted into the database.
 from sonari.schemas.annotation_projects import (
     AnnotationProject,
     AnnotationProjectCreate,
+    AnnotationProjectProgress,
     AnnotationProjectUpdate,
 )
 from sonari.schemas.annotation_tasks import (
@@ -22,17 +23,13 @@ from sonari.schemas.annotation_tasks import (
     AnnotationStatusBadgeUpdate,
     AnnotationTask,
     AnnotationTaskCreate,
+    AnnotationTaskTag,
+    AnnotationTaskIndex,
+    AnnotationTaskStats,
     AnnotationTaskUpdate,
 )
 from sonari.schemas.audio import AudioParameters
 from sonari.schemas.base import Page
-from sonari.schemas.clip_annotations import (
-    ClipAnnotation,
-    ClipAnnotationCreate,
-    ClipAnnotationTag,
-    ClipAnnotationUpdate,
-)
-from sonari.schemas.clips import Clip, ClipCreate, ClipUpdate
 from sonari.schemas.datasets import (
     Dataset,
     DatasetCreate,
@@ -42,18 +39,12 @@ from sonari.schemas.datasets import (
     DatasetUpdate,
     FileState,
 )
-from sonari.schemas.features import (
-    Feature,
-    FeatureName,
-    FeatureNameCreate,
-    FeatureNameUpdate,
-)
+from sonari.schemas.features import Feature
 from sonari.schemas.notes import Note, NoteCreate, NoteUpdate
 from sonari.schemas.plugin import PluginInfo
 from sonari.schemas.recordings import (
     Recording,
     RecordingCreate,
-    RecordingTag,
     RecordingUpdate,
 )
 from sonari.schemas.sound_event_annotations import (
@@ -61,11 +52,6 @@ from sonari.schemas.sound_event_annotations import (
     SoundEventAnnotationCreate,
     SoundEventAnnotationTag,
     SoundEventAnnotationUpdate,
-)
-from sonari.schemas.sound_events import (
-    SoundEvent,
-    SoundEventCreate,
-    SoundEventUpdate,
 )
 from sonari.schemas.spectrograms import (
     AmplitudeParameters,
@@ -81,20 +67,17 @@ __all__ = [
     "AmplitudeParameters",
     "AnnotationProject",
     "AnnotationProjectCreate",
+    "AnnotationProjectProgress",
     "AnnotationProjectUpdate",
     "AnnotationStatusBadge",
     "AnnotationStatusBadgeUpdate",
     "AnnotationTask",
     "AnnotationTaskCreate",
+    "AnnotationTaskTag",
     "AnnotationTaskUpdate",
+    "AnnotationTaskIndex",
+    "AnnotationTaskStats",
     "AudioParameters",
-    "Clip",
-    "ClipAnnotation",
-    "ClipAnnotationCreate",
-    "ClipAnnotationTag",
-    "ClipAnnotationUpdate",
-    "ClipCreate",
-    "ClipUpdate",
     "Dataset",
     "DatasetCreate",
     "DatasetFile",
@@ -102,9 +85,6 @@ __all__ = [
     "DatasetRecordingCreate",
     "DatasetUpdate",
     "Feature",
-    "FeatureName",
-    "FeatureNameCreate",
-    "FeatureNameUpdate",
     "FileState",
     "Note",
     "NoteCreate",
@@ -113,18 +93,14 @@ __all__ = [
     "PluginInfo",
     "Recording",
     "RecordingCreate",
-    "RecordingTag",
     "RecordingUpdate",
     "STFTParameters",
     "Scale",
     "SimpleUser",
-    "SoundEvent",
     "SoundEventAnnotation",
     "SoundEventAnnotationCreate",
     "SoundEventAnnotationTag",
     "SoundEventAnnotationUpdate",
-    "SoundEventCreate",
-    "SoundEventUpdate",
     "SpectrogramParameters",
     "Tag",
     "TagCreate",
@@ -134,3 +110,10 @@ __all__ = [
     "UserUpdate",
     "Window",
 ]
+
+
+AnnotationTask.model_rebuild()
+AnnotationProject.model_rebuild()
+Recording.model_rebuild()
+SoundEventAnnotation.model_rebuild()
+Note.model_rebuild()

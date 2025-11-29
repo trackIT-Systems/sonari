@@ -2,11 +2,11 @@ import { useCallback, useState, useMemo } from "react";
 
 import drawBBox from "@/draw/bbox";
 import useWindowMotions from "@/hooks/window/useWindowMotions";
-import { scaleBBoxToViewport } from "@/utils/geometry";
+import { scaleBBoxToWindow } from "@/utils/geometry";
 
 import type { Position, SpectrogramWindow } from "@/types";
 
-export const VALID_STYLE = {
+const VALID_STYLE = {
   fillAlpha: 0.3,
   fillColor: "yellow",
   borderWidth: 1,
@@ -14,7 +14,7 @@ export const VALID_STYLE = {
   borderDash: [4, 4],
 };
 
-export const INVALID_STYLE = {
+const INVALID_STYLE = {
   fillAlpha: 0.3,
   fillColor: "red",
   borderWidth: 1,
@@ -75,33 +75,31 @@ function enforceAspectRatio(
 }
 
 export default function useSpectrogramZoom({
-  viewport,
-  dimensions,
+  window,
   onZoom,
   fixedAspectRatio,
   enabled = true,
 }: {
-  viewport: SpectrogramWindow;
-  dimensions: { width: number; height: number };
+  window: SpectrogramWindow;
   onZoom?: (window: SpectrogramWindow) => void;
   fixedAspectRatio: boolean;
   enabled?: boolean;
 }) {
   const [isValid, setIsValid] = useState(false);
-  const [currentWindow, setCurrentWindow] = useState<SpectrogramWindow | null>(
+  const [currentZoomWindow, setCurrentZoomWindow] = useState<SpectrogramWindow | null>(
     null,
   );
 
-  // Calculate the target aspect ratio from the current viewport
+  // Calculate the target aspect ratio from the current window
   const targetRatio = useMemo(() => {
     if (!fixedAspectRatio) return null;
-    const timeSpan = viewport.time.max - viewport.time.min;
-    const freqSpan = viewport.freq.max - viewport.freq.min;
+    const timeSpan = window.time.max - window.time.min;
+    const freqSpan = window.freq.max - window.freq.min;
     return timeSpan / freqSpan;
-  }, [viewport, fixedAspectRatio]);
+  }, [window, fixedAspectRatio]);
 
   const handleMoveStart = useCallback(() => {
-    setCurrentWindow(null);
+    setCurrentZoomWindow(null);
   }, []);
 
   const handleMove = useCallback(
@@ -121,24 +119,23 @@ export default function useSpectrogramZoom({
         window = enforceAspectRatio(window, targetRatio, initial, shift);
       }
 
-      setCurrentWindow(window);
+      setCurrentZoomWindow(window);
       setIsValid(validateWindow(window));
     },
     [fixedAspectRatio, targetRatio],
   );
 
   const handleMoveEnd = useCallback(() => {
-    if (currentWindow == null) return;
+    if (currentZoomWindow == null) return;
     if (isValid) {
-      onZoom?.(currentWindow);
+      onZoom?.(currentZoomWindow);
     }
-    setCurrentWindow(null);
-  }, [currentWindow, isValid, onZoom]);
+    setCurrentZoomWindow(null);
+  }, [currentZoomWindow, isValid, onZoom]);
 
   const { props, isDragging } = useWindowMotions({
     enabled,
-    viewport,
-    dimensions,
+    window,
     onMoveStart: handleMoveStart,
     onMove: handleMove,
     onMoveEnd: handleMoveEnd,
@@ -148,25 +145,23 @@ export default function useSpectrogramZoom({
     (ctx: CanvasRenderingContext2D) => {
       if (!enabled) return;
 
-      if (currentWindow == null) return;
+      if (currentZoomWindow == null) return;
       ctx.canvas.style.cursor = "nwse-resize";
 
-      const dimensions = ctx.canvas.getBoundingClientRect();
-      const bbox = scaleBBoxToViewport(
-        dimensions,
+      const bbox = scaleBBoxToWindow(
         [
-          currentWindow.time.min,
-          currentWindow.freq.min,
-          currentWindow.time.max,
-          currentWindow.freq.max,
+          currentZoomWindow.time.min,
+          currentZoomWindow.freq.min,
+          currentZoomWindow.time.max,
+          currentZoomWindow.freq.max,
         ],
-        viewport,
+        window,
       );
 
       const style = isValid ? VALID_STYLE : INVALID_STYLE;
       drawBBox(ctx, bbox, style);
     },
-    [enabled, currentWindow, viewport, isValid],
+    [enabled, currentZoomWindow, window, isValid],
   );
 
   return {

@@ -37,7 +37,7 @@ export default function ExportTimePeriodConfiguration({
     { id: 'night', label: 'Night (6PM-6AM)', value: 'night' },
     { id: 'day', label: 'Day (24 hours)', value: 'day' },
     { id: 'week', label: 'Week', value: 'week' },
-    { id: 'overall', label: 'Overall (entire dataset)', value: 'overall' },
+    { id: 'overall', label: 'Overall (entire project)', value: 'overall' },
   ];
 
   // Options for custom time units

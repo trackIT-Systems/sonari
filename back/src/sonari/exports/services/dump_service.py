@@ -4,7 +4,6 @@ import csv
 import logging
 from io import StringIO
 from typing import List
-from uuid import UUID
 
 from fastapi.responses import StreamingResponse
 
@@ -17,12 +16,12 @@ from .base import BaseExportService
 class DumpService(BaseExportService):
     """Service for dump format exports."""
 
-    async def export_dump(self, annotation_project_uuids: List[UUID]) -> StreamingResponse:
+    async def export_dump(self, annotation_project_ids: List[int]) -> StreamingResponse:
         """Export sound event annotation data in CSV format with streaming."""
         logger = logging.getLogger(__name__)
 
         # Get the projects and their IDs
-        project_ids, _ = await self.resolve_projects(annotation_project_uuids)
+        project_ids, _ = await self.resolve_projects(annotation_project_ids)
 
         # Configuration
         batch_size = ExportConstants.DEFAULT_BATCH_SIZE
@@ -75,14 +74,13 @@ class DumpService(BaseExportService):
                                 data["end_time"],
                                 data["higher_frequency"],
                                 data["user"],
-                                data["recording_tags"],
                                 data["task_status_badges"],
                                 data["geometry_type"],
                             ])
                             yield output.getvalue()
 
                         except Exception as e:
-                            logger.error(f"Error processing annotation {annotation.uuid}: {e}")
+                            logger.error(f"Error processing annotation {annotation.id}: {e}")
                             raise e  # Stop processing on error as requested
 
                     offset += batch_size
