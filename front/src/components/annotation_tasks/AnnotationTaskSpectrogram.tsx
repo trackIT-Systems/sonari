@@ -382,7 +382,7 @@ export default function AnnotationTaskSpectrogram({
     
     // Draw measurement-aware annotations (includes measurement reflection from spectrogram)
     annotate?.drawWaveform(ctx);
-  }, [waveform, trackingAudio, drawTrackAudio, drawOnsetAt, audio.currentTime, withSoundEvent, soundEventAnnotations, drawWaveformAnnotationsLegacy]);
+  }, [waveform, trackingAudio, drawTrackAudio, drawOnsetAt, audio.currentTime, withSoundEvent, soundEventAnnotations, drawWaveformAnnotationsLegacy, annotate]);
 
   useCanvas({ ref: spectrogramCanvasRef as React.RefObject<HTMLCanvasElement>, draw: drawSpectrogramCanvas });
   useCanvas({ ref: waveformCanvasRef as React.RefObject<HTMLCanvasElement>, draw: drawWaveformCanvas });
