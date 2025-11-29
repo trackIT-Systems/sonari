@@ -1,6 +1,7 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import api from "@/app/api";
 import { applyAutoSTFT } from "@/api/spectrograms";
+import usePositionPopover from "@/hooks/utils/usePositionPopover";
 import type { AnnotationTask, SoundEventAnnotation, SpectrogramParameters } from "@/types";
 import type { PSDParameters } from "@/api/psd";
 
@@ -105,6 +106,7 @@ export default function SoundEventAnnotationPSD({
     width?: number;
     height?: number;
 }) {
+    const imageRef = useRef<HTMLImageElement>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [hasError, setHasError] = useState(false);
     const [imageSrc, setImageSrc] = useState<string | null>(null);
@@ -124,6 +126,28 @@ export default function SoundEventAnnotationPSD({
         () => getFrequencyRangeFromGeometry(soundEventAnnotation, samplerate),
         [soundEventAnnotation, samplerate]
     );
+
+    // Formatter for frequency (X-axis)
+    const formatFreqValue = useCallback((freq: number) => {
+        if (freq >= 1000) {
+            return `${(freq / 1000).toFixed(1)} kHz`;
+        }
+        return `${freq.toFixed(0)} Hz`;
+    }, []);
+
+    // Formatter for dB (Y-axis)
+    const formatDbValue = useCallback((value: number) => {
+        return `${value.toFixed(0)} dB`;
+    }, []);
+
+    // Position popover for hover coordinates
+    const positionPopoverProps = usePositionPopover(imageRef, {
+        xBounds: frequencyRange,
+        yBounds: { min: psdMin ?? 0, max: psdMax ?? 0 },
+        formatX: formatFreqValue,
+        formatY: formatDbValue,
+        enabled: psdMin !== null && psdMax !== null && !isLoading,
+    });
 
     const psdParameters: PSDParameters = useMemo(() => ({
         width,
@@ -215,10 +239,12 @@ export default function SoundEventAnnotationPSD({
                     {imageSrc && (
                         // eslint-disable-next-line @next/next/no-img-element
                         <img
+                            ref={imageRef}
                             src={imageSrc}
                             alt="Power Spectral Density"
-                            style={{ width: `${width}px`, height: `${height}px` }}
+                            style={{ width: `${width}px`, height: `${height}px`, cursor: "crosshair" }}
                             className="rounded-md"
+                            {...positionPopoverProps}
                         />
                     )}
                     {isLoading && (

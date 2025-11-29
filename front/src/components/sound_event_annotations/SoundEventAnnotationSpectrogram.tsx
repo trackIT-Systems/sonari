@@ -217,6 +217,7 @@ export default function SoundEventAnnotationSpectrogramView({
         bounds: window,
         initial: window,
         parameters: selectedParameters,
+        canvasRef,
         enabled: true,
         withSpectrogram,
         withShortcuts: false,
@@ -286,6 +287,7 @@ export default function SoundEventAnnotationSpectrogramView({
                             ref={canvasRef}
                             style={dimensions}
                             className="rounded-md"
+                            {...spectrogram.props}
                         />
                         {spectrogram.isLoading && (
                             <div className="absolute inset-0 flex items-center justify-center bg-stone-100 dark:bg-stone-800 bg-opacity-50">

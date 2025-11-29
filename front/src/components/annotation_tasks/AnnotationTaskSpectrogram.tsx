@@ -234,6 +234,7 @@ export default function AnnotationTaskSpectrogram({
     bounds: taskBounds,
     initial,
     parameters: effectiveParameters,
+    canvasRef: spectrogramCanvasRef,
     onDoubleClick: handleDoubleClick,
     onModeChange: handleSpectrogramModeChange,
     enabled: !isAnnotating && !audio.isPlaying,

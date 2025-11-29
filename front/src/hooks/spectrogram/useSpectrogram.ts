@@ -1,11 +1,11 @@
-import { useCallback, useEffect, useMemo, useState, useRef } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
-import { DEFAULT_SPECTROGRAM_PARAMETERS } from "@/api/spectrograms";
 import drawFrequencyAxis from "@/draw/freqAxis";
 import drawTimeAxis from "@/draw/timeAxis";
 import { drawStitchedImage } from "@/draw/image";
 import useSpectrogramImages from "@/hooks/spectrogram/useSpectrogramImages";
 import useSpectrogramKeyShortcuts from "@/hooks/spectrogram/useSpectrogramKeyShortcuts";
+import usePositionPopover from "@/hooks/utils/usePositionPopover";
 import {
   adjustWindowToBounds,
   centerWindowOn,
@@ -14,6 +14,7 @@ import {
 } from "@/utils/windows";
 
 import useSpectrogramMotions, { MotionMode } from "@/hooks/spectrogram/useSpectrogramMotions";
+import type { RefObject } from "react";
 import type {
   AnnotationTask,
   Position,
@@ -82,83 +83,6 @@ type SpectrogramControls = {
   disable: () => void;
 };
 
-function hoverCallback(event: MouseEvent, canvas: HTMLCanvasElement, window: SpectrogramWindow) {
-  if (event.currentTarget == null) {
-    return;
-  }
-
-  const rect = canvas.getBoundingClientRect();
-
-  // Calculate mouse coordinates relative to the canvas
-  const mouseX = event.clientX - rect.left;
-  const mouseY = event.clientY - rect.top;
-
-  // Calculate the scaling factors using the rendered dimensions (rect), not buffer dimensions (canvas)
-  // This accounts for CSS scaling applied to the canvas
-  const scaleX = (window.time.max - window.time.min) / rect.width;
-  const scaleY = (window.freq.max - window.freq.min) / rect.height;
-
-  // Translate canvas coordinates to custom bounding box coordinates
-  const time = Math.round((mouseX * scaleX + window.time.min) * 1000);
-  const freq = Math.round(((rect.height - mouseY) * scaleY + window.freq.min) / 1000); // The y-axis needs to be inverted...
-
-  var popover = document.getElementById("popover-id");
-  if (popover != null) {
-    popover.innerText = `${time}ms, ${freq} kHz`;
-    popover.style.padding = '4px 8px';
-    popover.style.display = 'block';
-    
-    const padding = 8;
-    const offsetDistance = 120; // Distance from top-left corner to trigger offset
-    
-    // Check if mouse is near the top-left corner
-    const isNearTopLeft = mouseX < offsetDistance && mouseY < offsetDistance;
-    
-    if (isNearTopLeft) {
-      // Mouse is near top-left, offset the popover to avoid obscuring
-      popover.style.left = `${event.pageX + 15}px`;
-      popover.style.top = `${event.pageY + 15}px`;
-    } else {
-      // Default: always position in top-left corner
-      popover.style.left = `${rect.left + padding}px`;
-      popover.style.top = `${rect.top + padding}px`;
-    }
-  }
-}
-
-function drawPosition(ctx: CanvasRenderingContext2D, window: SpectrogramWindow) {
-  // Create the popover element dynamically
-  // This will be used to show the position of the mouse on the spectrogram
-  var popover = document.getElementById("popover-id");
-  if (popover == null) {
-    popover = document.createElement('div');
-  }
-  popover.setAttribute('id', 'popover-id');
-  popover.style.position = 'absolute';
-  popover.style.background = 'rgba(28, 25, 23, 0.7)';
-  popover.style.color = 'rgb(245, 245, 244)';
-  popover.style.fontSize = '0.75rem';
-  popover.style.borderRadius = '6px';
-  popover.style.pointerEvents = 'none';
-  popover.style.display = 'none';
-  document.body.appendChild(popover);
-
-  // Create the callback function by referencing the actual callback.
-  // We can not add the callback directly, because the addEventListener expects
-  // a function with (event: MousEvent) => any, but we have to pass the canvas
-  // and window as additional arguments.
-  const hoverCallbackRef = (event: MouseEvent) => hoverCallback(event, ctx.canvas, window);
-
-  // First, we remove mousemove event listeners to not create an infinit number of them
-  // on multiple call event. Then we add it again and finally add a mousleave event
-  // to hide the popover.
-  ctx.canvas.removeEventListener('mousemove', hoverCallbackRef);
-  ctx.canvas.addEventListener('mousemove', hoverCallbackRef);
-  ctx.canvas.addEventListener('mouseleave', () => {
-    if (popover != null) popover.style.display = 'none';
-  });
-}
-
 function drawFrequencyLines(
   ctx: CanvasRenderingContext2D,
   freqLines: number[],
@@ -217,6 +141,7 @@ export default function useSpectrogram({
   bounds,
   initial: initialWindow,
   parameters: initialParameters,
+  canvasRef,
   onParameterChange,
   onModeChange,
   onDoubleClick,
@@ -234,6 +159,8 @@ export default function useSpectrogram({
   /** The starting window position - required, must be provided by parent */
   initial: SpectrogramWindow;
   parameters: SpectrogramParameters;
+  /** Optional canvas ref for position popover - if provided, shows coordinates on hover */
+  canvasRef?: RefObject<HTMLCanvasElement | null>;
   onParameterChange?: (parameters: SpectrogramParameters) => void;
   onModeChange?: (mode: MotionMode) => void;
   onDoubleClick?: (dblClickProps: { position: Position }) => void;
@@ -439,10 +366,29 @@ export default function useSpectrogram({
     onParameterChange?.(validated);
   }, [initialParameters, samplerate, onParameterChange]);
 
+  // Formatters for position popover
+  const formatTime = useCallback((time: number) => {
+    return `${Math.round(time * 1000)}ms`;
+  }, []);
 
+  const formatFreq = useCallback((freq: number) => {
+    return `${Math.round(freq / 1000)} kHz`;
+  }, []);
+
+  // Position popover for hover coordinates (only if canvasRef is provided)
+  const positionPopoverProps = usePositionPopover(
+    canvasRef ?? { current: null },
+    {
+      xBounds: window.time,
+      yBounds: window.freq,
+      formatX: formatTime,
+      formatY: formatFreq,
+      enabled: canvasRef != null,
+    }
+  );
 
   const {
-    props,
+    props: motionProps,
     draw: drawMotions,
     canDrag,
     canZoom,
@@ -462,6 +408,12 @@ export default function useSpectrogram({
     enabled,
     fixedAspectRatio,
   });
+
+  // Merge motion props with position popover props
+  const props = useMemo(() => ({
+    ...motionProps,
+    ...positionPopoverProps,
+  }), [motionProps, positionPopoverProps]);
 
   // Create the drawing function
   const draw = useCallback<DrawFn>(
@@ -503,7 +455,6 @@ export default function useSpectrogram({
         drawFrequencyAxis(ctx, window.freq);
       }
       drawMotions(ctx);
-      drawPosition(ctx, window)
       if (parameters.freqLines && Array.isArray(parameters.freqLines)) {
         parameters.freqLines.forEach((freq, index) => {
           const color = FREQ_LINE_COLORS[index % FREQ_LINE_COLORS.length];
