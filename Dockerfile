@@ -15,6 +15,7 @@ RUN echo NEXT_PUBLIC_SONARI_FOLDER=$SONARI_FOLDER > /front/.env.local
 RUN echo NEXT_TELEMETRY_DISABLED=1 >> /front/.env.local
 
 RUN npm install
+RUN npx update-browserslist-db@latest --yes
 
 RUN npm run build
 
