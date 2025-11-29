@@ -9,6 +9,8 @@ import type { SpectrogramParameters } from "@/types";
 export type SpectrogramSlice = {
   spectrogramSettings: SpectrogramParameters;
   setSpectrogramSettings: (settings: SpectrogramParameters) => void;
+  showPSD: boolean;
+  setShowPSD: (show: boolean) => void;
 };
 
 export const createSpectrogramSlice: StateCreator<SpectrogramSlice> = (
@@ -20,6 +22,15 @@ export const createSpectrogramSlice: StateCreator<SpectrogramSlice> = (
       return {
         ...state,
         spectrogramSettings: settings,
+      };
+    });
+  },
+  showPSD: false,
+  setShowPSD: (show) => {
+    set((state) => {
+      return {
+        ...state,
+        showPSD: show,
       };
     });
   },

@@ -1,4 +1,4 @@
-import { useRef, useMemo, useState } from "react";
+import { useRef, useMemo } from "react";
 import { useKeyPressEvent } from "react-use";
 import useCanvas from "@/hooks/draw/useCanvas";
 import useSpectrogram from "@/hooks/spectrogram/useSpectrogram";
@@ -13,6 +13,8 @@ import {
 } from "@/utils/spectrogram_calculations";
 import { PSD_TOGGLE_SHORTCUT } from "@/utils/keyboard";
 import SoundEventAnnotationPSD from "./SoundEventAnnotationPSD";
+import useStore from "@/store";
+import Button from "../Button";
 
 function getWindowFromGeometry(annotation: SoundEventAnnotation, duration: number, samplerate: number) {
     const { geometry, geometry_type } = annotation;
@@ -180,10 +182,11 @@ export default function SoundEventAnnotationSpectrogramView({
 }) {
     const containerRef = useRef<HTMLDivElement>(null);
     const canvasRef = useRef<HTMLCanvasElement>(null);
-    const [showPSD, setShowPSD] = useState(false);
+    const showPSD = useStore((s) => s.showPSD);
+    const setShowPSD = useStore((s) => s.setShowPSD);
 
     // Keyboard shortcut to toggle PSD view
-    useKeyPressEvent(useKeyFilter({ key: PSD_TOGGLE_SHORTCUT }), () => setShowPSD((v) => !v));
+    useKeyPressEvent(useKeyFilter({ key: PSD_TOGGLE_SHORTCUT }), () => setShowPSD(!showPSD));
 
     const selectedParameters = useMemo(() => {
         // Apply auto STFT calculation if enabled
@@ -237,16 +240,14 @@ export default function SoundEventAnnotationSpectrogramView({
                     <ExplorationIcon className="inline-block mr-1 w-5 h-5" />
                     {showPSD ? "Power Spectral Density" : "Sound Event Spectrogram"}
                 </H4>
-                <button
+                <Button
+                    variant={showPSD ? "primary" : "secondary"}
+                    padding="px-2 py-1"
                     onClick={() => setShowPSD(!showPSD)}
-                    className="min-w-[8rem] px-2 py-1 text-xs font-medium rounded-md border transition-colors
-                        border-stone-300 dark:border-stone-600
-                        bg-stone-100 dark:bg-stone-700
-                        hover:bg-stone-200 dark:hover:bg-stone-600
-                        text-stone-700 dark:text-stone-300"
+                    className="min-w-[8rem] text-xs justify-center items-center leading-tight"
                 >
-                    {showPSD ? "Show Spectrogram" : "Show PSD"}
-                </button>
+                    {showPSD ? "PSD" : "Spectrogram"}
+                </Button>
             </div>
             {/* PSD view - hidden when showing spectrogram */}
             <div style={{ display: showPSD ? "block" : "none" }}>
