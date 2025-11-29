@@ -92,7 +92,7 @@ export const DEFAULT_SPECTROGRAM_PARAMETERS: SpectrogramParameters = {
   resample: false,
   auto_stft: true,
   scale: DEFAULT_SCALE,
-  pcen: false,
+  pcen: true,
   window_size_samples: DEFAULT_WINDOW_SIZE_SAMPLES,
   overlap_percent: DEFAULT_OVERLAP_PERCENT,
   cmap: DEFAULT_CMAP,
@@ -100,10 +100,10 @@ export const DEFAULT_SPECTROGRAM_PARAMETERS: SpectrogramParameters = {
   filter_order: DEFAULT_FILTER_ORDER,
   normalize: false,
   clamp: true,
-  min_dB: -90,
+  min_dB: -140,
   max_dB: 0,
   channel: 0,
-  gamma: 1.2,
+  gamma: 1.0,
   freqLines: []
 };
 
