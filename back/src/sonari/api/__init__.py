@@ -6,6 +6,7 @@ from sonari.api.audio import load_audio, load_clip_bytes
 from sonari.api.datasets import datasets
 from sonari.api.features import find_feature, find_feature_value
 from sonari.api.notes import notes
+from sonari.api.psd import compute_psd
 from sonari.api.recordings import recordings
 from sonari.api.sessions import create_session
 from sonari.api.sound_event_annotations import sound_event_annotations
@@ -16,6 +17,7 @@ from sonari.api.users import users
 __all__ = [
     "annotation_projects",
     "annotation_tasks",
+    "compute_psd",
     "compute_spectrogram",
     "compute_waveform",
     "create_session",

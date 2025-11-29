@@ -62,7 +62,13 @@ def create_app(settings: Settings) -> FastAPI:
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],
-        expose_headers=["Content-Disposition"],
+        expose_headers=[
+            "Content-Disposition",
+            "X-PSD-Min",
+            "X-PSD-Max",
+            "X-Freq-Min",
+            "X-Freq-Max",
+        ],
     )
 
     # Add default routes.

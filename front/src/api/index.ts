@@ -13,6 +13,7 @@ import { registerAuthAPI } from "./auth";
 import { registerDatasetAPI } from "./datasets";
 import { registerExportAPI } from "./export";
 import { registerNotesAPI } from "./notes";
+import { registerPsdAPI } from "./psd";
 import { registerRecordingAPI } from "./recordings";
 import { registerSoundEventAnnotationsAPI } from "./sound_event_annotations";
 import { registerSpectrogramAPI } from "./spectrograms";
@@ -38,6 +39,7 @@ export default function createAPI(config: APIConfig) {
     datasets: registerDatasetAPI(instance),
     export: registerExportAPI(instance),
     notes: registerNotesAPI(instance),
+    psd: registerPsdAPI(instance),
     recordings: registerRecordingAPI(instance),
     spectrograms: registerSpectrogramAPI(instance),
     waveforms: registerWaveformsAPI(instance),

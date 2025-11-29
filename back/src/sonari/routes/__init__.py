@@ -11,6 +11,7 @@ from sonari.routes.datasets import get_dataset_router
 from sonari.routes.features import features_router
 from sonari.routes.notes import notes_router
 from sonari.routes.plugins import plugin_router
+from sonari.routes.psd import psd_router
 from sonari.routes.recordings import get_recording_router
 from sonari.routes.sound_event_annotations import (
     get_sound_event_annotations_router,
@@ -90,6 +91,11 @@ def get_main_router(settings: Settings):
         waveform_router,
         prefix="/waveforms",
         tags=["Waveforms"],
+    )
+    main_router.include_router(
+        psd_router,
+        prefix="/psd",
+        tags=["PSD"],
     )
 
     # Annotation

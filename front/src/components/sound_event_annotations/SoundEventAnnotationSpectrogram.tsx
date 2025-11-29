@@ -1,6 +1,8 @@
-import { useRef, useMemo } from "react";
+import { useRef, useMemo, useState } from "react";
+import { useKeyPressEvent } from "react-use";
 import useCanvas from "@/hooks/draw/useCanvas";
 import useSpectrogram from "@/hooks/spectrogram/useSpectrogram";
+import useKeyFilter from "@/hooks/utils/useKeyFilter";
 import { applyAutoSTFT } from "@/api/spectrograms";
 import type { AnnotationTask, SoundEventAnnotation, SpectrogramParameters } from "@/types";
 import { H4 } from "../Headings";
@@ -9,7 +11,8 @@ import {
   calculateTimeFrames,
   frequencyRangeToBinRange,
 } from "@/utils/spectrogram_calculations";
-import tasksFilterDefs from "../filters/tasks";
+import { PSD_TOGGLE_SHORTCUT } from "@/utils/keyboard";
+import SoundEventAnnotationPSD from "./SoundEventAnnotationPSD";
 
 function getWindowFromGeometry(annotation: SoundEventAnnotation, duration: number, samplerate: number) {
     const { geometry, geometry_type } = annotation;
@@ -177,6 +180,10 @@ export default function SoundEventAnnotationSpectrogramView({
 }) {
     const containerRef = useRef<HTMLDivElement>(null);
     const canvasRef = useRef<HTMLCanvasElement>(null);
+    const [showPSD, setShowPSD] = useState(false);
+
+    // Keyboard shortcut to toggle PSD view
+    useKeyPressEvent(useKeyFilter({ key: PSD_TOGGLE_SHORTCUT }), () => setShowPSD((v) => !v));
 
     const selectedParameters = useMemo(() => {
         // Apply auto STFT calculation if enabled
@@ -228,48 +235,73 @@ export default function SoundEventAnnotationSpectrogramView({
             <div className="flex justify-between items-center gap-2 mb-2">
                 <H4 className="text-center whitespace-nowrap">
                     <ExplorationIcon className="inline-block mr-1 w-5 h-5" />
-                    Sound Event Spectrogram
+                    {showPSD ? "Power Spectral Density" : "Sound Event Spectrogram"}
                 </H4>
-            </div>
-            <div className="flex">
-                <div className="flex flex-col justify-between pr-2 text-right w-16">
-                    <span className="text-xs text-stone-600">
-                        {displayCoords.freq.max > 0 ? (displayCoords.freq.max / 1000).toFixed(2) + " kHz" : ""}
-                    </span>
-                    <span className="text-xs text-stone-600 text-center">
-                        {displayCoords.freq.max > displayCoords.freq.min ? 
-                            ((displayCoords.freq.max - displayCoords.freq.min) / 1000).toFixed(2) + " kHz" : ""}
-                    </span>
-                    <span className="text-xs text-stone-600">
-                        {displayCoords.freq.min > 0 ? (displayCoords.freq.min / 1000).toFixed(2) + " kHz" : ""}
-                    </span>
-                </div>
-
-                <div
-                    ref={containerRef}
-                    className="relative flex items-center justify-center overflow-clip rounded-md border border-stone-200 dark:border-stone-600"
-                    style={{ width: "28rem", height: "14rem" }}
+                <button
+                    onClick={() => setShowPSD(!showPSD)}
+                    className="min-w-[8rem] px-2 py-1 text-xs font-medium rounded-md border transition-colors
+                        border-stone-300 dark:border-stone-600
+                        bg-stone-100 dark:bg-stone-700
+                        hover:bg-stone-200 dark:hover:bg-stone-600
+                        text-stone-700 dark:text-stone-300"
                 >
-                    <canvas
-                        ref={canvasRef}
-                        style={dimensions}
-                        className="rounded-md"
-                    />
-                    {spectrogram.isLoading && (
-                        <div className="absolute inset-0 flex items-center justify-center bg-stone-100 dark:bg-stone-800 bg-opacity-50">
-                            <span className="text-sm text-stone-500">Loading...</span>
-                        </div>
-                    )}
-                </div>
+                    {showPSD ? "Show Spectrogram" : "Show PSD"}
+                </button>
+            </div>
+            {/* PSD view - hidden when showing spectrogram */}
+            <div style={{ display: showPSD ? "block" : "none" }}>
+                <SoundEventAnnotationPSD
+                    soundEventAnnotation={soundEventAnnotation}
+                    task={task}
+                    samplerate={samplerate}
+                    parameters={selectedParameters}
+                    width={448}
+                    height={224}
+                />
             </div>
 
-            <div className="flex justify-between pl-16 pr-2 pt-2">
-                <span className="text-xs text-stone-600">{(soundEventCoords.time.min * 1000).toFixed(0)}ms</span>
-                <span className="text-xs text-stone-600 text-center">
-                    {soundEventCoords.time.max > soundEventCoords.time.min ? 
-                        ((soundEventCoords.time.max - soundEventCoords.time.min) * 1000).toFixed(0) + "ms" : ""}
-                </span>
-                <span className="text-xs text-stone-600">{(soundEventCoords.time.max * 1000).toFixed(0)}ms</span>
+            {/* Spectrogram view - hidden when showing PSD */}
+            <div style={{ display: showPSD ? "none" : "block" }}>
+                <div className="flex">
+                    <div className="flex flex-col justify-between pr-2 text-right w-16">
+                        <span className="text-xs text-stone-600">
+                            {displayCoords.freq.max > 0 ? (displayCoords.freq.max / 1000).toFixed(2) + " kHz" : ""}
+                        </span>
+                        <span className="text-xs text-stone-600 text-center">
+                            {displayCoords.freq.max > displayCoords.freq.min ? 
+                                "∆: " + ((displayCoords.freq.max - displayCoords.freq.min) / 1000).toFixed(2) + " kHz" : ""}
+                        </span>
+                        <span className="text-xs text-stone-600">
+                            {displayCoords.freq.min > 0 ? (displayCoords.freq.min / 1000).toFixed(2) + " kHz" : ""}
+                        </span>
+                    </div>
+
+                    <div
+                        ref={containerRef}
+                        className="relative flex items-center justify-center overflow-clip rounded-md border border-stone-200 dark:border-stone-600"
+                        style={{ width: "28rem", height: "14rem" }}
+                    >
+                        <canvas
+                            ref={canvasRef}
+                            style={dimensions}
+                            className="rounded-md"
+                        />
+                        {spectrogram.isLoading && (
+                            <div className="absolute inset-0 flex items-center justify-center bg-stone-100 dark:bg-stone-800 bg-opacity-50">
+                                <span className="text-sm text-stone-500">Loading...</span>
+                            </div>
+                        )}
+                    </div>
+                </div>
+
+                <div className="flex justify-between pl-16 pr-2 pt-2">
+                    <span className="text-xs text-stone-600">{(soundEventCoords.time.min * 1000).toFixed(0)}ms</span>
+                    <span className="text-xs text-stone-600 text-center">
+                        {soundEventCoords.time.max > soundEventCoords.time.min ? 
+                            "∆: " + ((soundEventCoords.time.max - soundEventCoords.time.min) * 1000).toFixed(0) + "ms" : ""}
+                    </span>
+                    <span className="text-xs text-stone-600">{(soundEventCoords.time.max * 1000).toFixed(0)}ms</span>
+                </div>
             </div>
         </div>
     );
