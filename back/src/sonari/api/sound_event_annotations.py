@@ -302,7 +302,15 @@ class SoundEventAnnotationAPI(
     ) -> schemas.SoundEventAnnotation:
         """Add a tag to a sound event annotation."""
         user_id = user.id if user else None
-        for t in obj.tags:
+        
+        # If tags are not loaded, fetch the annotation with tags to check for duplicates
+        if obj.tags is None:
+            obj = await self.get(session, obj.id, include_tags=True)
+        
+        # Safety check: even after eager loading, tags might still be None in edge cases
+        existing_tags = obj.tags if obj.tags is not None else []
+        
+        for t in existing_tags:
             if t.key == tag.key and t.value == tag.value:
                 raise exceptions.DuplicateObjectError(f"Tag {tag} already exists in annotation {obj}.")
 
@@ -318,7 +326,7 @@ class SoundEventAnnotationAPI(
             update=dict(
                 tags=[
                     tag,
-                    *obj.tags,
+                    *existing_tags,
                 ],
             )
         )
