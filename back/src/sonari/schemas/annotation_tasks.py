@@ -2,7 +2,7 @@
 
 from typing import TYPE_CHECKING, Optional
 
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, model_validator
 from soundevent.data import AnnotationState
 
 from sonari.schemas.base import BaseSchema
@@ -111,7 +111,7 @@ class AnnotationTask(BaseSchema):
     features: Optional[list[Feature]] = None
     """Features of that task"""
 
-    status_badges: list[AnnotationStatusBadge] = Field(default_factory=list)
+    status_badges: Optional[list[AnnotationStatusBadge]] = None
     """Status badges for the task."""
 
 

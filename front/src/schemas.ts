@@ -262,7 +262,7 @@ const AnnotationTaskBaseSchema = z.object({
   tags: z.array(TagSchema).nullish(),
   sound_event_tags: z.array(TagSchema).nullish(),
   features: z.array(FeatureSchema).nullish(),
-  status_badges: z.array(AnnotationStatusBadgeSchema),
+  status_badges: z.array(AnnotationStatusBadgeSchema).nullish(),
   created_on: z.coerce.date(),
 });
 
@@ -291,7 +291,7 @@ export const AnnotationTaskSchema: z.ZodType<AnnotationTask> = z.object({
   sound_event_tags: z.array(TagSchema).nullish(),
   notes: z.array(z.lazy(() => NoteSchema)).nullish(),
   features: z.array(FeatureSchema).nullish(),
-  status_badges: z.array(AnnotationStatusBadgeSchema),
+  status_badges: z.array(AnnotationStatusBadgeSchema).nullish(),
   created_on: z.coerce.date(),
 }) as z.ZodType<AnnotationTask>;
 
