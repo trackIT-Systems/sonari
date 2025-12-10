@@ -72,7 +72,10 @@ async def get_filtered_annotation_tasks(
             .selectinload(models.Recording.recording_datasets)
             .joinedload(models.DatasetRecording.dataset),
             selectinload(models.AnnotationTask.status_badges).joinedload(models.AnnotationStatusBadge.user),
-            selectinload(models.AnnotationTask.sound_event_annotations).selectinload(models.SoundEventAnnotation.tags),
+            selectinload(models.AnnotationTask.sound_event_annotations).options(
+                selectinload(models.SoundEventAnnotation.tags),
+                selectinload(models.SoundEventAnnotation.features),
+            ),
             selectinload(models.AnnotationTask.notes),
         )
     )

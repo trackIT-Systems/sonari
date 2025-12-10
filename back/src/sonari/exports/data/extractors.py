@@ -21,7 +21,6 @@ async def extract_batch(
         .options(
             # Essential relationships with optimized eager loading
             selectinload(models.SoundEventAnnotation.features),
-            joinedload(models.SoundEventAnnotation.recording).selectinload(models.Recording.tags),
             joinedload(models.SoundEventAnnotation.recording)
             .selectinload(models.Recording.recording_datasets)
             .joinedload(models.DatasetRecording.dataset),

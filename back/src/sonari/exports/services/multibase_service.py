@@ -66,6 +66,24 @@ class MultiBaseService(BaseExportService):
                     else:
                         station = str(recording.path)
 
+                    # Extract detection and species probability from features
+                    detection_prob = None
+                    species_prob = None
+                    for feature in sound_event_annotation.features:
+                        if feature.name == "detection_confidence":
+                            detection_prob = feature.value
+                        elif feature.name == "species_confidence":
+                            species_prob = feature.value
+
+                    # Build Bemerkung field with probabilities and notes
+                    bemerkung_parts = []
+                    if detection_prob is not None or species_prob is not None:
+                        prob_str = f"Detection probability: {detection_prob}, Species probability: {species_prob}"
+                        bemerkung_parts.append(prob_str)
+                    if task_notes and task_notes != "|":
+                        bemerkung_parts.append(task_notes)
+                    bemerkung = " | ".join(bemerkung_parts) if bemerkung_parts else ""
+
                     # Write the content to the worksheet
                     ws.append([
                         species,
@@ -80,7 +98,7 @@ class MultiBaseService(BaseExportService):
                         longitude,
                         "4326",
                         "Akustik",
-                        task_notes,
+                        bemerkung,
                     ])
 
         # Save the workbook to a BytesIO object
