@@ -1,6 +1,6 @@
 [project]
 name = "Sonari"
-version = "2025.12.4"
+version = "2025.12.5"
 description = "Audio Annotation Tool"
 authors = [{ name = "Santiago Martinez", email = "santiago.mbal@gmail.com" }, { name = "Artur Sterz", email = "sterz@trackit.systems" }]
 dependencies = [
