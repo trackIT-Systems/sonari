@@ -56,6 +56,7 @@ const AnnotationTaskFilterSchema = z.object({
   completed: z.boolean().optional(),
   assigned_to: UserSchema.optional(),
   search_recordings: z.string().optional(),
+  sort_by: z.string().optional(),
   date_range: z.union([
     z.object({
       start_date: z.date().nullish(),

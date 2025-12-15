@@ -7,6 +7,7 @@ import {
   TagFilter,
   FloatFilter,
   FloatEqFilterFn,
+  TextFilter,
 } from "@/components/filters/Filters";
 import {
   DatasetIcon,
@@ -21,6 +22,7 @@ import {
   MoonIcon,
   FilterIcon,
   SpectrogramIcon,
+  SearchIcon,
 } from "@/components/icons";
 
 import type { AnnotationTaskFilter } from "@/api/annotation_tasks";
@@ -571,6 +573,28 @@ const tasksFilterDefs: FilterDef<AnnotationTaskFilter>[] = [
     description: "Filter by the maximum frequency of sound events. Only show tasks containing sound events with a maximum frequency within the specified range.",
     icon: (
       <SpectrogramIcon className="h-5 w-5 inline-block text-stone-500 mr-1 align-middle" />
+    ),
+  },
+  {
+    field: "search_recordings",
+    name: "Search Recordings",
+    render: ({ value, clear }) => (
+      <FilterBadge
+        field="Search"
+        value={value}
+        onRemove={clear}
+      />
+    ),
+    selector: ({ setFilter }) => (
+      <TextFilter
+        name="Recording path"
+        placeholder="Search recordings..."
+        onChange={(val) => setFilter("search_recordings", val)}
+      />
+    ),
+    description: "Filter tasks by recording file name or path.",
+    icon: (
+      <SearchIcon className="h-5 w-5 inline-block text-stone-500 mr-1 align-middle" />
     ),
   },
 ];

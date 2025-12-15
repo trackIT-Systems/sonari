@@ -251,6 +251,14 @@ async def get_objects_from_query(
                     models.Recording.time.asc(),
                     models.AnnotationTask.id.asc(),  # Add stable secondary sort
                 )
+            elif sort_by == "duration" or sort_by == "-duration":
+                # Sort by computed duration (end_time - start_time)
+                descending = sort_by.startswith("-")
+                duration_expr = models.AnnotationTask.end_time - models.AnnotationTask.start_time
+                if descending:
+                    query = query.order_by(duration_expr.desc())
+                else:
+                    query = query.order_by(duration_expr.asc())
             else:
                 sort_by = get_sort_by_col_from_str(model, sort_by)
                 query = query.order_by(sort_by)

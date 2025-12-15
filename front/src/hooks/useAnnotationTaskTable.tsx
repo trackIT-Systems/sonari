@@ -1,7 +1,7 @@
 import type { AnnotationStatusBadge, AnnotationTask, Note, Recording, Tag } from "@/types";
 import { useMemo } from "react";
 import { ColumnDef, getCoreRowModel, useReactTable, createColumnHelper } from "@tanstack/react-table";
-import TableHeader from "@/components/tables/TableHeader";
+import TableHeader, { SortableTableHeader, SortDirection } from "@/components/tables/TableHeader";
 import TableCell from "@/components/tables/TableCell";
 import StatusBadge from "@/components/StatusBadge";
 import TagComponent, { TagCount, getTagKey } from "@/components/tags/Tag";
@@ -23,17 +23,36 @@ function NoteOverview({
   );
 }
 
+/** Parse sort_by string to get direction for a specific column */
+function getSortDirection(sortBy: string | undefined, columnId: string): SortDirection {
+  if (!sortBy) return null;
+  if (sortBy === columnId) return "asc";
+  if (sortBy === `-${columnId}`) return "desc";
+  return null;
+}
+
+/** Toggle sort direction: null -> asc -> desc -> null */
+function getNextSortBy(currentSortBy: string | undefined, columnId: string): string | undefined {
+  const currentDirection = getSortDirection(currentSortBy, columnId);
+  if (currentDirection === null) return columnId;
+  if (currentDirection === "asc") return `-${columnId}`;
+  return undefined;
+}
 
 export default function useAnnotationTaskTable({
   data,
   pathFormatter = defaultPathFormatter,
   getAnnotationTaskLink,
   pagination,
+  sortBy,
+  onSortChange,
 }: {
   data: AnnotationTask[];
   pathFormatter?: (path: string) => string;
   getAnnotationTaskLink: (annotationProjectId: number, annotationTaskId: number) => string;
   pagination?: { page: number; pageSize: number };
+  sortBy?: string;
+  onSortChange?: (sortBy: string | undefined) => void;
 }) {
 
   // Column definitions
@@ -110,7 +129,14 @@ export default function useAnnotationTaskTable({
       },
       {
         id: "duration",
-        header: () => <TableHeader>Duration</TableHeader>,
+        header: () => (
+          <SortableTableHeader
+            sortDirection={getSortDirection(sortBy, "duration")}
+            onSort={() => onSortChange?.(getNextSortBy(sortBy, "duration"))}
+          >
+            Duration
+          </SortableTableHeader>
+        ),
         enableResizing: true,
         size: 40,
         cell: ({ row }) => {
@@ -198,7 +224,7 @@ export default function useAnnotationTaskTable({
         },
       },
     ],
-    [getAnnotationTaskLink, pathFormatter, pagination, data],
+    [getAnnotationTaskLink, pathFormatter, pagination, data, sortBy, onSortChange],
   );
   return useReactTable<AnnotationTask>({
     data,

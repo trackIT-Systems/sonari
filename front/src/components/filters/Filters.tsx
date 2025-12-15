@@ -314,3 +314,54 @@ export function DatasetFilter({
     </div>
   );
 }
+
+export function TextFilter({
+  name = "Search",
+  placeholder = "Type to search...",
+  onChange,
+}: {
+  name?: string;
+  placeholder?: string;
+  onChange: (value: string) => void;
+}) {
+  const [value, setValue] = useState("");
+
+  const handleSubmit = useCallback(() => {
+    if (value.trim()) {
+      onChange(value.trim());
+    }
+  }, [onChange, value]);
+
+  return (
+    <div>
+      <label
+        htmlFor={name}
+        className="block mb-2 text-sm font-medium leading-6 text-gray-700 dark:text-stone-300"
+      >
+        {name}
+      </label>
+      <div className="relative rounded-md">
+        <input
+          type="text"
+          id={name}
+          name={name}
+          placeholder={placeholder}
+          className="block py-1 pr-14 pl-4 w-full rounded-md border-0 ring-1 ring-inset outline-none sm:text-sm sm:leading-6 focus:ring-2 focus:ring-inset focus:ring-emerald-600 bg-stone-50 text-stone-900 ring-stone-300 placeholder:text-stone-400 dark:bg-stone-900 dark:text-stone-300 dark:ring-stone-800"
+          value={value}
+          onKeyDown={(e) => {
+            if (e.key === ACCEPT_SHORTCUT) {
+              handleSubmit();
+            }
+          }}
+          onChange={(e) => setValue(e.target.value)}
+        />
+        <button
+          onClick={handleSubmit}
+          className="inline-block absolute inset-y-0 right-0 px-2 text-emerald-700 bg-emerald-300 rounded-r-md dark:text-emerald-300 dark:bg-emerald-700 dark:hover:bg-emerald-800 dark:hover:text-emerald-400"
+        >
+          set
+        </button>
+      </div>
+    </div>
+  );
+}

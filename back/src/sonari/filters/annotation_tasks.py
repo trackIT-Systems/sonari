@@ -255,12 +255,9 @@ class SoundEventAnnotationTagFilter(base.Filter):
         keys = self.keys.split(",")
         values = self.values.split(",")
 
-        # Create alias for Recording table
-        Task = models.Recording.__table__.alias("task_tag_task")
-
-        # Create subqueries for each key-value pair for sound event annotations
+        # Create subqueries for each key-value pair
         sound_event_subqueries = []
-        task_subqueries = []
+        task_tag_subqueries = []
 
         for k, v in zip(keys, values, strict=True):
             # Sound event annotation subquery
@@ -274,8 +271,8 @@ class SoundEventAnnotationTagFilter(base.Filter):
             )
             sound_event_subqueries.append(sound_event_subquery)
 
-            # Recording tag subquery
-            task_subquery = (
+            # Annotation task tag subquery
+            task_tag_subquery = (
                 select(1)
                 .select_from(models.AnnotationTaskTag)
                 .join(
@@ -285,10 +282,10 @@ class SoundEventAnnotationTagFilter(base.Filter):
                 .where(
                     models.Tag.key == k,
                     models.Tag.value == v,
-                    models.AnnotationTaskTag.id == Task.c.id,
+                    models.AnnotationTaskTag.annotation_task_id == models.AnnotationTask.id,
                 )
             )
-            task_subqueries.append(task_subquery)
+            task_tag_subqueries.append(task_tag_subquery)
 
         # Combine sound event conditions with OR
         sound_event_condition = or_(
@@ -303,17 +300,11 @@ class SoundEventAnnotationTagFilter(base.Filter):
             )
         )
 
-        # Join the query with Recording table
-        query = query.join(
-            Task,
-            Task.c.id == models.AnnotationTask.recording_id,
-        )
-
-        # Combine recording conditions with OR
-        recording_condition = or_(*(exists(subquery) for subquery in task_subqueries))
+        # Combine annotation task tag conditions with OR
+        task_tag_condition = or_(*(exists(subquery) for subquery in task_tag_subqueries))
 
         # Return query with combined conditions using OR
-        return query.where(or_(sound_event_condition, recording_condition))
+        return query.where(or_(sound_event_condition, task_tag_condition))
 
 
 class EmptyFilter(base.Filter):

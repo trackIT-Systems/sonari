@@ -38,11 +38,17 @@ export default function AnnotationTaskTable({
     return `${url}&annotation_project_id=${annotationProjectId}`;
   }, []);
 
+  const handleSortChange = useCallback((sortBy: string | undefined) => {
+    annotationTasks.filter.set("sort_by", sortBy);
+  }, [annotationTasks.filter]);
+
   const table = useAnnotationTaskTable({
     data: annotationTasks.items,
     getAnnotationTaskLink: getAnnotationTaskLink,
     pathFormatter,
-    pagination: annotationTasks.pagination
+    pagination: annotationTasks.pagination,
+    sortBy: annotationTasks.filter.get("sort_by") as string | undefined,
+    onSortChange: handleSortChange,
   });
 
   const handleSearchKeyDown = useCallback((e: React.KeyboardEvent) => {
