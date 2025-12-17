@@ -259,6 +259,16 @@ async def get_objects_from_query(
                     query = query.order_by(duration_expr.desc())
                 else:
                     query = query.order_by(duration_expr.asc())
+            elif sort_by == "recording" or sort_by == "-recording":
+                # Sort by recording path (lexicographical/alphabetical)
+                descending = sort_by.startswith("-")
+                query = query.join(
+                    models.Recording, models.AnnotationTask.recording_id == models.Recording.id
+                )
+                if descending:
+                    query = query.order_by(models.Recording.path.desc())
+                else:
+                    query = query.order_by(models.Recording.path.asc())
             else:
                 sort_by = get_sort_by_col_from_str(model, sort_by)
                 query = query.order_by(sort_by)

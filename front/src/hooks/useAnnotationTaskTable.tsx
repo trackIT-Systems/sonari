@@ -80,7 +80,14 @@ export default function useAnnotationTaskTable({
       },
       {
         id: "recording",
-        header: () => <TableHeader>Recording</TableHeader>,
+        header: () => (
+          <SortableTableHeader
+            sortDirection={getSortDirection(sortBy, "recording")}
+            onSort={() => onSortChange?.(getNextSortBy(sortBy, "recording"))}
+          >
+            Recording
+          </SortableTableHeader>
+        ),
         enableResizing: true,
         size: 100,
         accessorFn: (row) => row.recording,
@@ -145,13 +152,44 @@ export default function useAnnotationTaskTable({
         },
       },
       {
-        id: "sound_event_tags",
-        header: () => <TableHeader>Tags</TableHeader>,
+        id: "task_tags",
+        header: () => <TableHeader>Task Tags</TableHeader>,
         accessorFn: (row) => {
-          // Combine task tags with aggregated sound event tags
-          const soundEventAnnotationTags = (row.sound_event_annotations || []).flatMap(event => event.tags || []);
-          const annotationTaskTags = row.tags || [];
-          const tags = soundEventAnnotationTags.concat(annotationTaskTags);
+          const tags = row.tags || [];
+          const tagCounts = new Map<string, TagCount>();
+
+          tags.forEach(tag => {
+            const key = `${tag.key}-${tag.value}`;
+            const existing = tagCounts.get(key);
+            if (existing) {
+              existing.count++;
+            } else {
+              tagCounts.set(key, { tag, count: 1 });
+            }
+          });
+
+          return Array.from(tagCounts.values());
+        },
+        cell: (props) => {
+          const tagCounts = props.getValue() as Array<{ tag: Tag; count: number }>;
+          return (
+            <div className="flex flex-wrap gap-1 p-1">
+              {tagCounts.map(({ tag, count }) => (
+                <TagComponent
+                  key={getTagKey(tag)}
+                  tag={tag}
+                  count={count}
+                />
+              ))}
+            </div>
+          );
+        },
+      },
+      {
+        id: "sound_event_tags",
+        header: () => <TableHeader>Sound Event Tags</TableHeader>,
+        accessorFn: (row) => {
+          const tags = (row.sound_event_annotations || []).flatMap(event => event.tags || []);
           const tagCounts = new Map<string, TagCount>();
 
           tags.forEach(tag => {

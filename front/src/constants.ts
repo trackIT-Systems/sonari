@@ -4,7 +4,7 @@ import { Dimensions } from "./types";
 
 /* Default values for the settings of the STFT computation
  */
-export const MAX_SAMPLERATE = 500_000;
+export const MAX_SAMPLERATE = 1_000_000;
 export const MIN_SAMPLERATE = 4000;
 export const MIN_DB = -140;
 export const DEFAULT_WINDOW_SIZE_SAMPLES = 1024;
