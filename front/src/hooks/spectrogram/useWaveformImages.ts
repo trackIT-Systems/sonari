@@ -212,4 +212,3 @@ export default function useWaveformImages({
     isError: chunksWithImages.some((c) => c.isError),
   };
 }
-

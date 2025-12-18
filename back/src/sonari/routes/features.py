@@ -2,10 +2,7 @@
 
 from sqlalchemy import func, select, union
 
-from fastapi import Depends
-
 from sonari import models, schemas
-from sonari.filters.feature_names import FeatureNameFilter
 from sonari.routes.dependencies import Session
 from sonari.routes.dependencies.auth import create_authenticated_router
 from sonari.routes.types import Limit, Offset
