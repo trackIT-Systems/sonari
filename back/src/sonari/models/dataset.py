@@ -147,12 +147,14 @@ class DatasetRecording(Base):
         init=False,
         repr=False,
         back_populates="dataset_recordings",
+        lazy="selectin",
     )
     recording: orm.Mapped[Recording] = orm.relationship(
         Recording,
         init=False,
         repr=False,
         back_populates="recording_datasets",
+        lazy="selectin",
     )
 
 
