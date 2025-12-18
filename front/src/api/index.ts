@@ -9,7 +9,7 @@ import axios from "axios";
 import { registerAnnotationProjectAPI } from "./annotation_projects";
 import { registerAnnotationTasksAPI } from "./annotation_tasks";
 import { registerAudioAPI } from "./audio";
-import { registerAuthAPI } from "./auth";
+import { registerAuthAPI, setupAuthInterceptor } from "./auth";
 import { registerDatasetAPI } from "./datasets";
 import { registerExportAPI } from "./export";
 import { registerNotesAPI } from "./notes";
@@ -23,28 +23,49 @@ import { registerWaveformsAPI } from "./waveforms";
 
 type APIConfig = {
   baseURL: string;
-  withCredentials: boolean;
+  withCredentials?: boolean;
 };
 
 /**
  * Create an instance of the Sonari API.
  */
 export default function createAPI(config: APIConfig) {
-  let instance = axios.create(config);
+  const { baseURL, withCredentials = true } = config;
+
+  const instance = axios.create({
+    baseURL,
+    withCredentials,
+  });
+
+  setupAuthInterceptor(instance);
+
+  const annotationProjectAPI = registerAnnotationProjectAPI(instance);
+  const annotationTasksAPI = registerAnnotationTasksAPI(instance);
+  const audioAPI = registerAudioAPI(instance);
+  const authAPI = registerAuthAPI(instance)
+  const datasetAPI = registerDatasetAPI(instance);
+  const notesAPI = registerNotesAPI(instance);
+  const recordingAPI = registerRecordingAPI(instance);
+  const soundEventAnnotationsAPI = registerSoundEventAnnotationsAPI(instance);
+  const spectrogramAPI = registerSpectrogramAPI(instance);
+  const tagAPI = registerTagAPI(instance);
+  const waveformAPI = registerWaveformsAPI(instance);
+  const exportAPI = registerExportAPI(instance);
+  const psdAPI = registerPsdAPI(instance);
+
   return {
-    annotationProjects: registerAnnotationProjectAPI(instance),
-    soundEventAnnotations: registerSoundEventAnnotationsAPI(instance),
-    audio: registerAudioAPI(instance),
-    auth: registerAuthAPI(instance),
-    datasets: registerDatasetAPI(instance),
-    export: registerExportAPI(instance),
-    notes: registerNotesAPI(instance),
-    psd: registerPsdAPI(instance),
-    recordings: registerRecordingAPI(instance),
-    spectrograms: registerSpectrogramAPI(instance),
-    waveforms: registerWaveformsAPI(instance),
-    tags: registerTagAPI(instance),
-    annotationTasks: registerAnnotationTasksAPI(instance),
-    user: registerUserAPI(instance),
+    annotationProjects: annotationProjectAPI,
+    annotationTasks: annotationTasksAPI,
+    audio: audioAPI,
+    auth: authAPI,
+    datasets: datasetAPI,
+    notes: notesAPI,
+    recordings: recordingAPI,
+    soundEventAnnotations: soundEventAnnotationsAPI,
+    spectrograms: spectrogramAPI,
+    tags: tagAPI,
+    waveform: waveformAPI,
+    export: exportAPI,
+    psd: psdAPI
   } as const;
-}
+} 

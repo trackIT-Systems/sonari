@@ -1,22 +1,43 @@
-"""Module containing the router for the Auth."""
+"""Authentication router supporting Keycloak OIDC."""
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
+from pydantic import BaseModel
 
-from sonari.routes.dependencies.auth import get_auth_backend, get_users_api
-from sonari.schemas.users import User, UserCreate
-from sonari.system.settings import Settings
+from sonari import models, schemas
+from sonari.routes.dependencies.settings import SonariSettings
+from sonari.system.keycloak import get_current_user
 
 __all__ = [
     "get_auth_router",
 ]
 
 
-def get_auth_router(settings: Settings) -> APIRouter:
+class AuthConfig(BaseModel):
+    """Authentication configuration response."""
+
+    server_url: str
+    realm: str
+    client_id: str
+
+
+def get_auth_router(settings: SonariSettings) -> APIRouter:
+    """Get authentication router supporting Keycloak OIDC."""
     auth_router = APIRouter()
-    auth_backend = get_auth_backend(settings)
-    fastapi_users = get_users_api(settings)
-    auth_router.include_router(fastapi_users.get_auth_router(auth_backend))
-    auth_router.include_router(fastapi_users.get_register_router(User, UserCreate))
-    auth_router.include_router(fastapi_users.get_reset_password_router())
-    auth_router.include_router(fastapi_users.get_verify_router(User))
+
+    @auth_router.get("/config", response_model=AuthConfig)
+    async def get_auth_config() -> AuthConfig:
+        """Get Keycloak configuration for frontend OIDC integration."""
+        return AuthConfig(
+            server_url=settings.keycloak_server_url,
+            realm=settings.keycloak_realm,
+            client_id=settings.keycloak_client_id,
+        )
+
+    @auth_router.get("/me", response_model=schemas.SimpleUser)
+    async def get_current_user_info(
+        current_user: models.User = Depends(get_current_user),
+    ) -> schemas.SimpleUser:
+        """Get current user information."""
+        return current_user
+
     return auth_router

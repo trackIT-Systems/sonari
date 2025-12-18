@@ -28,5 +28,8 @@ const nextConfig = {
   env: {
     NEXT_PUBLIC_APP_VERSION: getAppVersion(),
   },
+  images: {
+    unoptimized: true,
+  },
 };
 module.exports = nextConfig;

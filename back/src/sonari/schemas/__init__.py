@@ -61,7 +61,7 @@ from sonari.schemas.spectrograms import (
     Window,
 )
 from sonari.schemas.tags import Tag, TagCreate, TagUpdate
-from sonari.schemas.users import SimpleUser, User, UserCreate, UserUpdate
+from sonari.schemas.users import SimpleUser, UserCreate, UserUpdate
 
 __all__ = [
     "AmplitudeParameters",
@@ -105,7 +105,6 @@ __all__ = [
     "Tag",
     "TagCreate",
     "TagUpdate",
-    "User",
     "UserCreate",
     "UserUpdate",
     "Window",

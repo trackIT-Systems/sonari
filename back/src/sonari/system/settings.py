@@ -118,11 +118,26 @@ class Settings(BaseSettings):
         "https://localhost",
         "https://localhost:3000",
         "https://localhost:5000",
+        "https://wdev.trackit-system.de",
+        "https://auth.trackit.systems",
     ]
     """Allowed origins for CORS."""
 
     open_on_startup: bool = True
     """Open the application in the browser on startup."""
+
+    # Keycloak Authentication Settings
+    keycloak_server_url: str = "https://auth.trackit.systems/"
+    """Keycloak server URL."""
+
+    keycloak_realm: str = "wdev.trackit-system.de"
+    """Keycloak realm name."""
+
+    keycloak_client_id: str = "sonari-oauth"
+    """Keycloak client ID."""
+
+    keycloak_client_secret: str | None = None
+    """Keycloak client secret (not used for public clients)."""
 
     @classmethod
     def settings_customise_sources(
