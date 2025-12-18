@@ -188,15 +188,21 @@ export default function SoundEventAnnotationSpectrogramView({
     // Keyboard shortcut to toggle PSD view
     useKeyPressEvent(useKeyFilter({ key: PSD_TOGGLE_SHORTCUT }), () => setShowPSD(!showPSD));
 
+    // Calculate effective samplerate accounting for resampling
+    const effectiveSamplerate = useMemo(() => {
+        return parameters.resample && parameters.samplerate
+            ? parameters.samplerate
+            : samplerate;
+    }, [parameters.resample, parameters.samplerate, samplerate]);
+
     const selectedParameters = useMemo(() => {
         // Apply auto STFT calculation if enabled
         return applyAutoSTFT(parameters, samplerate);
     }, [parameters, samplerate]);
 
-
     const window = useMemo(
-        () => getWindowFromGeometry(soundEventAnnotation, task.end_time - task.start_time, samplerate),
-        [soundEventAnnotation, samplerate, task.start_time, task.end_time]
+        () => getWindowFromGeometry(soundEventAnnotation, task.end_time - task.start_time, effectiveSamplerate),
+        [soundEventAnnotation, effectiveSamplerate, task.start_time, task.end_time]
     );
 
     const soundEventCoords = useMemo(
@@ -207,13 +213,13 @@ export default function SoundEventAnnotationSpectrogramView({
     const displayCoords = useMemo(() => window, [window]);
 
     const dimensions = useMemo(
-        () => calculateSpectrogramDimensions(window, selectedParameters, samplerate),
-        [window, selectedParameters, samplerate]
+        () => calculateSpectrogramDimensions(window, selectedParameters, effectiveSamplerate),
+        [window, selectedParameters, effectiveSamplerate]
     );
 
     const spectrogram = useSpectrogram({
         task,
-        samplerate,
+        samplerate: effectiveSamplerate,
         bounds: window,
         initial: window,
         parameters: selectedParameters,
@@ -255,7 +261,7 @@ export default function SoundEventAnnotationSpectrogramView({
                 <SoundEventAnnotationPSD
                     soundEventAnnotation={soundEventAnnotation}
                     task={task}
-                    samplerate={samplerate}
+                    samplerate={effectiveSamplerate}
                     parameters={selectedParameters}
                     width={448}
                     height={224}
