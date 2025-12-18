@@ -41,7 +41,7 @@ class UserAPI(
 
         Returns
         -------
-        user : schemas.User
+        user : schemas.SimpleUser
 
         Raises
         ------
@@ -66,7 +66,7 @@ class UserAPI(
 
         Returns
         -------
-        user : schemas.User
+        user : schemas.SimpleUser
 
         Raises
         ------

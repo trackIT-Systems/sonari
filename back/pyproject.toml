@@ -27,6 +27,7 @@ dependencies = [
     "requests>=2.32.4",
     "pyjwt[crypto]>=2.10.1",
     "python-multipart>=0.0.20",
+    "fastapi-users[sqlalchemy]>=14.0.1", # Needed for backward-compatibility
 ]
 requires-python = ">=3.11,<3.14"
 readme = "README.md"

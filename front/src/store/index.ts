@@ -7,10 +7,9 @@ import {
 } from "zustand/middleware";
 
 import { type ClipboardSlice, createClipboardSlice } from "./clipboard";
-import { type SessionSlice, createSessionSlice } from "./session";
 import { type SpectrogramSlice, createSpectrogramSlice } from "./spectrogram";
 
-type Store = SessionSlice & ClipboardSlice & SpectrogramSlice;
+type Store = ClipboardSlice & SpectrogramSlice;
 
 const STORAGE_KEY = "sonari-storage";
 
@@ -46,7 +45,6 @@ const safeStorage: StateStorage = {
 const useStore = create<Store>()(
   persist(
     (...a) => ({
-      ...createSessionSlice(...a),
       ...createClipboardSlice(...a),
       ...createSpectrogramSlice(...a),
     }),
