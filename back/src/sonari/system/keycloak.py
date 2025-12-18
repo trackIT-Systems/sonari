@@ -1,4 +1,4 @@
-"""Simplified Keycloak authentication module for Sonari."""
+"""Keycloak authentication module for Sonari."""
 
 import logging
 from typing import AsyncGenerator, Dict, List, Optional
@@ -43,35 +43,32 @@ class KeycloakUser(BaseModel):
     resource_access: Optional[Dict[str, Dict[str, List[str]]]] = None
 
 
+SecDep = Depends(security)
+
+
 async def verify_keycloak_token(
-    credentials: HTTPAuthorizationCredentials = Depends(security),
+    credentials: HTTPAuthorizationCredentials = SecDep,
 ) -> KeycloakUser:
     """Verify Keycloak JWT token and return user information."""
     try:
-        # Get settings
         settings = get_settings()
-
-        # Get JWKS URL for the realm
         jwks_url = f"{settings.keycloak_server_url}realms/{settings.keycloak_realm}/protocol/openid-connect/certs"
 
-        # Create JWKS client
+        # Create JWKS client and verify token
         jwks_client = PyJWKClient(jwks_url)
-
-        # Get signing key from token
         signing_key = jwks_client.get_signing_key_from_jwt(credentials.credentials)
 
-        # Decode and verify token
         payload = jwt.decode(
             credentials.credentials,
             signing_key.key,
             algorithms=["RS256"],
-            audience=["account", settings.keycloak_client_id],  # Allow both account and client_id
-            issuer=f"{settings.keycloak_server_url}realms/{settings.keycloak_realm}",  # Remove trailing slash
+            audience=["account", settings.keycloak_client_id],
+            issuer=f"{settings.keycloak_server_url}realms/{settings.keycloak_realm}",
             options={"verify_exp": True},
         )
 
         # Additional validation: check if token is intended for our client
-        azp = payload.get("azp")  # Authorized party (client_id)
+        azp = payload.get("azp")
         if azp and azp != settings.keycloak_client_id:
             logger.error(f"Token not intended for this client. Expected: {settings.keycloak_client_id}, Got: {azp}")
             raise jwt.exceptions.InvalidAudienceError("Token not intended for this client")
@@ -80,11 +77,6 @@ async def verify_keycloak_token(
 
     except jwt.exceptions.InvalidTokenError as e:
         logger.error(f"Token verification error: {e}")
-        logger.error(
-            f"JWKS URL: {settings.keycloak_server_url}realms/{settings.keycloak_realm}/protocol/openid-connect/certs"
-        )
-        logger.error(f"Expected issuer: {settings.keycloak_server_url}realms/{settings.keycloak_realm}")
-        logger.error(f"Expected audience: ['account', '{settings.keycloak_client_id}']")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Authentication failed",
@@ -92,9 +84,6 @@ async def verify_keycloak_token(
         ) from e
     except Exception as e:
         logger.error(f"Unexpected error during token verification: {e}")
-        logger.error(
-            f"Settings: server_url={settings.keycloak_server_url}, realm={settings.keycloak_realm}, client_id={settings.keycloak_client_id}"
-        )
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Authentication failed",
@@ -106,15 +95,14 @@ async def get_or_create_user(
     keycloak_user: KeycloakUser,
     session: AsyncSession,
 ) -> models.User:
-    """Get or create a Sonari user from Keycloak user information."""
+    """Get or create a Sonari user from Keycloak user information.
+
+    Uses the Keycloak username as the primary identifier for user lookup.
+    """
     from sqlalchemy import select
 
-    # Try to find existing user by Keycloak ID (sub) or username
-    stmt = select(models.User).where(
-        (models.User.username == keycloak_user.preferred_username)
-        | (models.User.email == keycloak_user.email if keycloak_user.email else False)
-    )
-
+    # Find user by username (primary identifier)
+    stmt = select(models.User).where(models.User.username == keycloak_user.preferred_username)
     result = await session.execute(stmt)
     user = result.scalar_one_or_none()
 
@@ -130,6 +118,7 @@ async def get_or_create_user(
 
         if updated:
             await session.commit()
+            await session.refresh(user)
 
         return user
 
@@ -141,9 +130,10 @@ async def get_or_create_user(
         username=keycloak_user.preferred_username,
         email=keycloak_user.email or f"{keycloak_user.preferred_username}@keycloak.local",
         name=full_name or keycloak_user.preferred_username,
+        hashed_password="",  # Not used with Keycloak
         is_active=True,
         is_superuser=_is_superuser(keycloak_user),
-        is_verified=True,
+        is_verified=True,  # Keycloak users are considered verified
     )
 
     session.add(new_user)
@@ -154,23 +144,28 @@ async def get_or_create_user(
 
 
 def _is_superuser(keycloak_user: KeycloakUser) -> bool:
-    """Check if Keycloak user should be a superuser."""
+    """Check if Keycloak user should be a superuser based on roles."""
     # Check realm roles
     if keycloak_user.realm_access and "ts_admin" in keycloak_user.realm_access.get("roles", []):
         return True
 
     # Check client roles
     if keycloak_user.resource_access:
-        for client, access in keycloak_user.resource_access.items():
+        for _, access in keycloak_user.resource_access.items():
             if "ts_admin" in access.get("roles", []):
                 return True
 
     return False
 
 
+# Dependencies at module level
+SessionDep = Depends(get_session)
+KeycloakUserDep = Depends(verify_keycloak_token)
+
+
 async def get_current_user(
-    session: AsyncSession = Depends(get_session),
-    keycloak_user: KeycloakUser = Depends(verify_keycloak_token),
+    session: AsyncSession = SessionDep,
+    keycloak_user: KeycloakUser = KeycloakUserDep,
 ) -> models.User:
-    """Get current user from Keycloak token."""
+    """Get current authenticated user from Keycloak token."""
     return await get_or_create_user(keycloak_user, session)

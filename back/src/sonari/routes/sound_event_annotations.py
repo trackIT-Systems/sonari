@@ -7,7 +7,7 @@ from fastapi import APIRouter, Depends
 from sonari import api, schemas
 from sonari.filters.sound_event_annotations import SoundEventAnnotationFilter
 from sonari.routes.dependencies import Session
-from sonari.routes.dependencies.auth import CurrentUser
+from sonari.routes.dependencies.auth import CurrentUser, create_authenticated_router
 from sonari.routes.dependencies.settings import SonariSettings
 from sonari.routes.types import Limit, Offset
 
@@ -18,7 +18,7 @@ __all__ = [
 
 def get_sound_event_annotations_router(settings: SonariSettings) -> APIRouter:
     """Get the API router for sound_event_annotations."""
-    sound_event_annotations_router = APIRouter()
+    sound_event_annotations_router = create_authenticated_router()
 
     @sound_event_annotations_router.post(
         "/",

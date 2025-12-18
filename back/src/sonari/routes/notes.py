@@ -2,18 +2,19 @@
 
 from typing import Annotated
 
-from fastapi import APIRouter, Depends
+from fastapi import Depends
 
 from sonari import api, schemas
 from sonari.filters.notes import NoteFilter
 from sonari.routes.dependencies import Session
+from sonari.routes.dependencies.auth import create_authenticated_router
 from sonari.routes.types import Limit, Offset
 
 __all__ = [
     "notes_router",
 ]
 
-notes_router = APIRouter()
+notes_router = create_authenticated_router()
 
 
 @notes_router.get(

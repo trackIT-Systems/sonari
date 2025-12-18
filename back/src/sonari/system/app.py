@@ -13,7 +13,6 @@ from fastapi.staticfiles import StaticFiles
 from starlette.middleware.base import BaseHTTPMiddleware
 
 from sonari import exceptions
-from sonari.plugins import add_plugin_pages, add_plugin_routes, load_plugins
 from sonari.shared_cache_global import set_shared_cache
 from sonari.system.boot import sonari_init
 from sonari.system.database import dispose_async_engine
@@ -110,17 +109,10 @@ def create_app(settings: Settings) -> FastAPI:
     main_router = get_main_router(settings)
     app.include_router(main_router)
 
-    # Load plugins.
-    for name, plugin in load_plugins():
-        add_plugin_routes(app, name, plugin)
-        add_plugin_pages(app, name, plugin)
-
     statics_dir = ROOT_DIR / "statics"
     if not statics_dir.exists():
         statics_dir.mkdir(parents=True, exist_ok=True)
 
-    # NOTE: It is important that the static files are mounted after the
-    # plugin routes, otherwise the plugin routes will not be found.
     app.mount(
         "/",
         StaticFiles(packages=["sonari"], html=True),

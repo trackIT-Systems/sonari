@@ -11,6 +11,9 @@ Sonari stores minimal information about users. The only required
 information is a username, which is used to identify the user.
 Additional information can be added, such as a full name, email, and
 affiliation. This information is not required.
+
+Authentication is handled via Keycloak OIDC, so users are created
+automatically when they first authenticate.
 """
 
 from typing import TYPE_CHECKING, Optional
@@ -35,6 +38,8 @@ class User(Base):
         The unique identifier for the user.
     email
         The email address of the user.
+    hashed_password
+        The hashed password of the user (unused with OIDC authentication).
     username
         The username of the user.
     name
@@ -48,14 +53,8 @@ class User(Base):
 
     Notes
     -----
-    We are using the fastapi-users package to handle user authentication. This
-    package is built on top of SQLAlchemy. The User class inherits from the
-    SQLAlchemyBaseUserTableUUID class, which provides the id, email,
-    is_active, and is_superuser attributes. The username and
-    name attribute is added to the User class.
-
-    Do not instantiate this class directly. Instead, use the create_user
-    function of the `sonari.api.users` module.
+    Users are automatically created when they first authenticate via Keycloak OIDC.
+    The hashed_password field is maintained for database compatibility but is not used.
     """
 
     __tablename__ = "user"
@@ -65,6 +64,7 @@ class User(Base):
         unique=True,
         index=True,
     )
+    hashed_password: orm.Mapped[str] = orm.mapped_column(String(length=1024))
     username: orm.Mapped[str] = orm.mapped_column(unique=True)
     id: orm.Mapped[UUID] = orm.mapped_column(primary_key=True, default_factory=uuid4, kw_only=False)
     name: orm.Mapped[Optional[str]] = orm.mapped_column(default=None)

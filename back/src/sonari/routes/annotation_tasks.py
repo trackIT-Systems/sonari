@@ -7,14 +7,14 @@ from typing import Annotated, Dict, Sequence
 
 from astral import LocationInfo
 from astral.sun import sun
-from fastapi import APIRouter, Depends
+from fastapi import Depends
 from soundevent.data import AnnotationState
 
 from sonari import api, schemas
 from sonari.filters.annotation_tasks import AnnotationTaskFilter
 from sonari.filters.recordings import IDFilter as RecordingIDFilter
 from sonari.routes.dependencies import Session
-from sonari.routes.dependencies.auth import CurrentUser
+from sonari.routes.dependencies.auth import CurrentUser, create_authenticated_router
 from sonari.routes.dependencies.settings import SonariSettings
 from sonari.routes.types import Limit, Offset
 
@@ -65,9 +65,9 @@ def _get_night_day_tasks(
     return kept_tasks, len(kept_tasks)
 
 
-def get_annotation_tasks_router(settings: SonariSettings) -> APIRouter:
+def get_annotation_tasks_router(settings: SonariSettings):
     """Get the API router for annotation tasks."""
-    annotation_tasks_router = APIRouter()
+    annotation_tasks_router = create_authenticated_router()
 
     @annotation_tasks_router.post(
         "/",

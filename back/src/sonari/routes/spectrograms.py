@@ -2,15 +2,16 @@
 
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Response
+from fastapi import Depends, Request, Response
 
 from sonari import api, schemas
 from sonari.core import images
 from sonari.routes.dependencies import Session, SonariSettings
+from sonari.routes.dependencies.auth import create_authenticated_router
 
 __all__ = ["spectrograms_router"]
 
-spectrograms_router = APIRouter()
+spectrograms_router = create_authenticated_router()
 
 
 @spectrograms_router.get(

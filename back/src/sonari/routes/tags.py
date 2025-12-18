@@ -2,11 +2,12 @@
 
 from typing import Annotated
 
-from fastapi import APIRouter, Depends
+from fastapi import Depends
 
 from sonari import api, schemas
 from sonari.filters.tags import TagFilter
-from sonari.routes.dependencies import Session, SonariSettings, get_current_user_dependency
+from sonari.routes.dependencies import Session, SonariSettings
+from sonari.routes.dependencies.auth import create_authenticated_router
 from sonari.routes.types import Limit, Offset
 
 __all__ = [
@@ -15,7 +16,7 @@ __all__ = [
 
 
 def get_tags_router(settings: SonariSettings) -> APIRouter:
-    active_user = get_current_user_dependency(settings)
+    active_user = create_authenticated_router(settings)
     tags_router = APIRouter()
 
     @tags_router.get("/", response_model=schemas.Page[schemas.Tag])
