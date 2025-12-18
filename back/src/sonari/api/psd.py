@@ -74,11 +74,24 @@ def compute_psd(
     # Get samplerate from loaded audio
     samplerate = 1 / get_dim_step(wav, Dimensions.time.value)
 
+    # Get audio length in samples
+    audio_length = wav.sizes.get("time", len(wav.time))
+
     # Calculate hop size from overlap
     window_size_samples = spectrogram_parameters.window_size_samples
     overlap_percent = spectrogram_parameters.overlap_percent
+
+    # Clamp window size to not exceed audio length
+    if window_size_samples > audio_length:
+        window_size_samples = max(64, audio_length)  # Minimum 64 samples
+
     overlap_samples = int(window_size_samples * overlap_percent / 100)
     hop_size_samples = window_size_samples - overlap_samples
+
+    # Ensure hop size is at least 1
+    if hop_size_samples < 1:
+        hop_size_samples = 1
+        overlap_samples = window_size_samples - 1
 
     # Compute spectrogram
     spectrogram = compute_spectrogram_from_samples(

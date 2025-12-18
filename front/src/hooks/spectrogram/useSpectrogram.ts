@@ -207,11 +207,13 @@ export default function useSpectrogram({
     });
   }, [bounds]);
 
+  // Calculate effective samplerate accounting for resampling
+  // Used for image loading, drawing, and window bounds updates
+  const effectiveSamplerate = clampSamplerate(parameters, samplerate);
+
   // Handle significant parameter changes that affect frequency bounds (e.g., resampling)
   // When resampling changes, reset window to show full new frequency range
   useEffect(() => {
-    const effectiveSamplerate = clampSamplerate(parameters, samplerate)
-    
     const prevEffectiveSamplerate = window.freq.max * 2; // Reverse calculate from current window
     const freqBoundsChanged = Math.abs(effectiveSamplerate / 2 - prevEffectiveSamplerate) > 1000; // 1kHz threshold
     
@@ -222,7 +224,7 @@ export default function useSpectrogram({
         freq: { min: 0, max: effectiveSamplerate / 2 },
       }));
     }
-  }, [parameters, samplerate, setConstrainedWindow]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [effectiveSamplerate, setConstrainedWindow]); // eslint-disable-line react-hooks/exhaustive-deps
   // Note: window intentionally not in deps to avoid infinite loop
 
   const zoom = useCallback(
@@ -268,14 +270,13 @@ export default function useSpectrogram({
     }
   }, [initialWindow, setConstrainedWindow]);
 
-
   const {
     chunks,
     isLoading,
     isError,
   } = useSpectrogramImages({
     task,
-    samplerate,
+    samplerate: effectiveSamplerate,
     window,
     parameters,
     withSpectrogram,
@@ -442,7 +443,7 @@ export default function useSpectrogram({
           ctx,
           viewport: relativeViewport,
           chunks,
-          samplerate,
+          samplerate: effectiveSamplerate,
         });
       } else {
         // Clear canvas if spectrogram is disabled
@@ -467,7 +468,7 @@ export default function useSpectrogram({
       }
 
     },
-    [chunks, drawMotions, window, canDrag, canZoom, withSpectrogram, parameters.freqLines, samplerate, task.start_time],
+    [chunks, drawMotions, window, canDrag, canZoom, withSpectrogram, parameters.freqLines, effectiveSamplerate, task.start_time],
   );
 
   const handleMoveLeft = useCallback(() => {

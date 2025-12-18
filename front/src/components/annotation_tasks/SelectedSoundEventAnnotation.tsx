@@ -51,10 +51,19 @@ export default function SelectedSoundEventAnnotation({
     }
   }, [currentAnnotation, onUpdate, data]);
 
+  // Calculate effective samplerate for keying the spectrogram component
+  // This forces a complete re-mount when resampling parameters change
+  const effectiveSamplerate = useMemo(() => {
+    return parameters.resample && parameters.samplerate
+      ? parameters.samplerate
+      : samplerate;
+  }, [parameters.resample, parameters.samplerate, samplerate]);
+
   return (
     <div className="w-full flex flex-col gap-4 py-4">
       <Card className="grow">
         <SoundEventAnnotationSpectrogramView
+          key={`spectrogram-${currentAnnotation.id}-${effectiveSamplerate}`}
           soundEventAnnotation={currentAnnotation}
           task={annotationTask}
           samplerate={samplerate}
