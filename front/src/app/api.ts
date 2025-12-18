@@ -6,4 +6,4 @@ const api = createAPI({
   withCredentials: true,
 });
 
-export default api;
+export default api; 

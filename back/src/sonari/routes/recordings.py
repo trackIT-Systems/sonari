@@ -7,6 +7,7 @@ from fastapi import APIRouter, Depends
 from sonari import api, schemas
 from sonari.filters.recordings import RecordingFilter
 from sonari.routes.dependencies import Session
+from sonari.routes.dependencies.auth import CurrentUser
 from sonari.routes.dependencies.settings import SonariSettings
 from sonari.routes.types import Limit, Offset
 

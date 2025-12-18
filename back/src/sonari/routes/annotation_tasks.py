@@ -13,7 +13,8 @@ from soundevent.data import AnnotationState
 from sonari import api, schemas
 from sonari.filters.annotation_tasks import AnnotationTaskFilter
 from sonari.filters.recordings import IDFilter as RecordingIDFilter
-from sonari.routes.dependencies import Session, get_current_user_dependency
+from sonari.routes.dependencies import Session
+from sonari.routes.dependencies.auth import CurrentUser
 from sonari.routes.dependencies.settings import SonariSettings
 from sonari.routes.types import Limit, Offset
 
@@ -66,8 +67,6 @@ def _get_night_day_tasks(
 
 def get_annotation_tasks_router(settings: SonariSettings) -> APIRouter:
     """Get the API router for annotation tasks."""
-    active_user = get_current_user_dependency(settings)
-
     annotation_tasks_router = APIRouter()
 
     @annotation_tasks_router.post(
@@ -295,7 +294,7 @@ def get_annotation_tasks_router(settings: SonariSettings) -> APIRouter:
         session: Session,
         annotation_task_id: int,
         tag: schemas.TagCreate,
-        user: Annotated[schemas.SimpleUser, Depends(active_user)],
+        user: Annotated[schemas.SimpleUser, Depends(CurrentUser)],
     ):
         """Add a tag to an annotation task."""
         annotation_task = await api.annotation_tasks.get(
@@ -356,7 +355,7 @@ def get_annotation_tasks_router(settings: SonariSettings) -> APIRouter:
         session: Session,
         annotation_task_id: int,
         note: schemas.NoteCreate,
-        user: Annotated[schemas.SimpleUser, Depends(active_user)],
+        user: Annotated[schemas.SimpleUser, Depends(CurrentUser)],
     ):
         """Add a note to an annotation task."""
         annotation_task = await api.annotation_tasks.get(
@@ -421,7 +420,7 @@ def get_annotation_tasks_router(settings: SonariSettings) -> APIRouter:
         session: Session,
         annotation_task_id: int,
         state: AnnotationState,
-        user: Annotated[schemas.SimpleUser, Depends(active_user)],
+        user: CurrentUser,
     ):
         """Add a badge to an annotation task."""
         annotation_task = await api.annotation_tasks.get(

@@ -67,7 +67,7 @@ export default function AnnotationProjectHeader({
               icon: <DatasetIcon className="w-5 h-5 align-middle" />,
               onClick: () => {
                 router.push(
-                  `/annotation_projects/detail/?${params.toString()}`,
+                  `/annotation_projects/detail/?${params?.toString() || ''}`,
                 );
               },
             },
