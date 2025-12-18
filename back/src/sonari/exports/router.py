@@ -2,13 +2,14 @@
 
 from typing import Annotated
 
-from fastapi import APIRouter, Query
+from fastapi import Query
 
 from .constants import ExportConstants
 from .services import DumpService, MultiBaseService, PassesService, StatsService, TimeService, YearlyActivityService
 from sonari.routes.dependencies import Session
+from sonari.routes.dependencies.auth import create_authenticated_router
 
-export_router = APIRouter()
+export_router = create_authenticated_router()
 
 
 @export_router.get("/multibase/")

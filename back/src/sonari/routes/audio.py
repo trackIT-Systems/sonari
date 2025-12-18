@@ -2,7 +2,7 @@
 
 import os
 
-from fastapi import APIRouter, Depends, Header, Response
+from fastapi import Header, Response
 from fastapi.responses import FileResponse
 
 from sonari import api

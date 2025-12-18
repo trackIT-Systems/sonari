@@ -175,22 +175,21 @@ export default function SoundEventAnnotationPSD({
         setPsdMin(null);
         setPsdMax(null);
 
-        fetch(psdUrl, { credentials: "include" })
-            .then(async (response) => {
+        // Use authenticated API method to get blob
+        api.psd.getBlob({
+            recording_id: task.recording_id,
+            segment: timeRange,
+            parameters: selectedParameters,
+            psdParameters,
+        })
+            .then(({ blob, psdMin, psdMax }) => {
                 if (cancelled) return;
-                if (!response.ok) {
-                    throw new Error(`HTTP ${response.status}`);
-                }
 
-                // Read dB range from headers
-                const minHeader = response.headers.get("X-PSD-Min");
-                const maxHeader = response.headers.get("X-PSD-Max");
-                if (minHeader) setPsdMin(parseFloat(minHeader));
-                if (maxHeader) setPsdMax(parseFloat(maxHeader));
+                // Set dB range from headers
+                if (psdMin !== null) setPsdMin(psdMin);
+                if (psdMax !== null) setPsdMax(psdMax);
 
                 // Create blob URL for image
-                const blob = await response.blob();
-                if (cancelled) return;
                 blobUrl = URL.createObjectURL(blob);
                 setImageSrc(blobUrl);
                 setIsLoading(false);
@@ -208,7 +207,7 @@ export default function SoundEventAnnotationPSD({
                 URL.revokeObjectURL(blobUrl);
             }
         };
-    }, [psdUrl]);
+    }, [task.recording_id, timeRange, selectedParameters, psdParameters]);
 
     // Clean up blob URL when imageSrc changes
     useEffect(() => {

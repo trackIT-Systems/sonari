@@ -294,7 +294,7 @@ def get_annotation_tasks_router(settings: SonariSettings):
         session: Session,
         annotation_task_id: int,
         tag: schemas.TagCreate,
-        user: Annotated[schemas.SimpleUser, Depends(CurrentUser)],
+        user: CurrentUser,
     ):
         """Add a tag to an annotation task."""
         annotation_task = await api.annotation_tasks.get(
@@ -355,7 +355,7 @@ def get_annotation_tasks_router(settings: SonariSettings):
         session: Session,
         annotation_task_id: int,
         note: schemas.NoteCreate,
-        user: Annotated[schemas.SimpleUser, Depends(CurrentUser)],
+        user: CurrentUser,
     ):
         """Add a note to an annotation task."""
         annotation_task = await api.annotation_tasks.get(

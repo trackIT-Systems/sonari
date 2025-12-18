@@ -110,7 +110,8 @@ export default function useWaveformImages({
           },
           parameters,
           async () => {
-            const url = api.waveforms.getUrl({
+            // Use authenticated API method to get blob
+            const blob = await api.waveforms.getBlob({
               recording,
               segment: {
                 min: chunk.buffer.min,
@@ -119,12 +120,7 @@ export default function useWaveformImages({
               parameters,
             });
 
-            const response = await fetch(url);
-            const size = parseInt(
-              response.headers.get("content-length") || "0",
-              10,
-            );
-            const blob = await response.blob();
+            const size = blob.size;
             const objectUrl = URL.createObjectURL(blob);
 
             try {

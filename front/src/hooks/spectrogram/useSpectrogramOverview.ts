@@ -60,7 +60,8 @@ export default function useSpectrogramOverview({
           segment,
           parameters,
           async () => {
-            const url = api.spectrograms.getUrl({
+            // Use authenticated API method to get blob
+            const blob = await api.spectrograms.getBlob({
               recording_id,
               segment: {
                 min: segment.time.min,
@@ -69,12 +70,7 @@ export default function useSpectrogramOverview({
               parameters,
             });
 
-            const response = await fetch(url);
-            const size = parseInt(
-              response.headers.get("content-length") || "0",
-              10,
-            );
-            const blob = await response.blob();
+            const size = blob.size;
             const objectUrl = URL.createObjectURL(blob);
 
             try {
@@ -138,7 +134,8 @@ export default function useSpectrogramOverview({
               chunkSegment,
               parameters,
               async () => {
-                const url = api.spectrograms.getUrl({
+                // Use authenticated API method to get blob
+                const blob = await api.spectrograms.getBlob({
                   recording_id,
                   segment: {
                     min: chunkSegment.time.min,
@@ -147,12 +144,7 @@ export default function useSpectrogramOverview({
                   parameters,
                 });
 
-                const response = await fetch(url);
-                const size = parseInt(
-                  response.headers.get("content-length") || "0",
-                  10,
-                );
-                const blob = await response.blob();
+                const size = blob.size;
                 const objectUrl = URL.createObjectURL(blob);
 
                 try {

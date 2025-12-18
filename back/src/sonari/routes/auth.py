@@ -3,7 +3,7 @@
 from fastapi import APIRouter
 from pydantic import BaseModel
 
-from sonari import models, schemas
+from sonari import schemas
 from sonari.routes.dependencies.auth import CurrentUser
 from sonari.routes.dependencies.settings import SonariSettings
 
@@ -35,7 +35,7 @@ def get_auth_router(settings: SonariSettings) -> APIRouter:
 
     @auth_router.get("/me", response_model=schemas.SimpleUser)
     async def get_current_user_info(
-        current_user: models.User = CurrentUser,
+        current_user: CurrentUser,
     ) -> schemas.SimpleUser:
         """Get current user information."""
         return current_user

@@ -124,7 +124,8 @@ export default function useSpectrogramImages({
             chunkWindow,
             parameters,
             async () => {
-              const url = api.spectrograms.getUrl({
+              // Use authenticated API method to get blob
+              const blob = await api.spectrograms.getBlob({
                 recording_id: task.recording_id,
                 segment: {
                   min: chunk.buffer.min + task.start_time,
@@ -133,12 +134,7 @@ export default function useSpectrogramImages({
                 parameters,
               });
 
-              const response = await fetch(url);
-              const size = parseInt(
-                response.headers.get("content-length") || "0",
-                10,
-              );
-              const blob = await response.blob();
+              const size = blob.size;
               const objectUrl = URL.createObjectURL(blob);
 
               try {
