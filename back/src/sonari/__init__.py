@@ -1,5 +1,5 @@
 """Top-level package for Sonari."""
 
-__author__ = """Artur Sterz"""
-__email__ = "sterz@trackit.systems"
-__version__ = "2025.12.5"
+__author__ = """Melli Morch"""
+__email__ = "morch@trackit.systems"
+__version__ = "2025.12.6"

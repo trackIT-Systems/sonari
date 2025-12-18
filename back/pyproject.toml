@@ -1,8 +1,8 @@
 [project]
 name = "Sonari"
-version = "2025.12.5"
+version = "2025.12.6"
 description = "Audio Annotation Tool"
-authors = [{ name = "Santiago Martinez", email = "santiago.mbal@gmail.com" }, { name = "Artur Sterz", email = "sterz@trackit.systems" }]
+authors = [{ name = "Santiago Martinez", email = "santiago.mbal@gmail.com" }, { name = "Artur Sterz", email = "sterz@trackit.systems" }, { name = "Melli Morch", email = "morch@trackit.systems" }]
 dependencies = [
     "uvicorn[standard]>=0.34.3",
     "aiosqlite>=0.21.0",
