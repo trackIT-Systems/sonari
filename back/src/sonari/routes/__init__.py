@@ -10,7 +10,6 @@ from sonari.routes.auth import get_auth_router
 from sonari.routes.datasets import get_dataset_router
 from sonari.routes.features import features_router
 from sonari.routes.notes import notes_router
-from sonari.routes.plugins import plugin_router
 from sonari.routes.psd import psd_router
 from sonari.routes.recordings import get_recording_router
 from sonari.routes.sound_event_annotations import (
@@ -18,7 +17,6 @@ from sonari.routes.sound_event_annotations import (
 )
 from sonari.routes.spectrograms import spectrograms_router
 from sonari.routes.tags import get_tags_router
-from sonari.routes.users import get_users_router
 from sonari.routes.waveforms import waveform_router
 from sonari.system.settings import Settings
 
@@ -39,13 +37,7 @@ def get_main_router(settings: Settings):
     )
 
     # Descriptors
-    users_router = get_users_router(settings)
-    main_router.include_router(
-        users_router,
-        prefix="/users",
-        tags=["Users"],
-    )
-    tags_router = get_tags_router(settings)
+    tags_router = get_tags_router()
     main_router.include_router(
         tags_router,
         prefix="/tags",
@@ -122,13 +114,6 @@ def get_main_router(settings: Settings):
         export_router,
         prefix="/export",
         tags=["Export"],
-    )
-
-    # Extensions
-    main_router.include_router(
-        plugin_router,
-        prefix="/plugins",
-        tags=["Plugins"],
     )
 
     return main_router

@@ -9,7 +9,6 @@ from sqlalchemy import func, select
 from sonari import api, models, schemas
 from sonari.filters.annotation_projects import AnnotationProjectFilter
 from sonari.routes.dependencies import Session
-from sonari.routes.dependencies.auth import create_authenticated_router
 from sonari.routes.types import Limit, Offset
 
 __all__ = [
@@ -17,7 +16,7 @@ __all__ = [
 ]
 
 
-annotation_projects_router = create_authenticated_router()
+annotation_projects_router = APIRouter()
 
 
 @annotation_projects_router.get(
@@ -127,339 +126,8 @@ async def get_annotation_project_progress(
     session: Session,
     annotation_project_id: int,
 ):
-    """Add a tag to an annotation project."""
-    annotation_project = await api.annotation_projects.get(
-        session,
-        annotation_project_uuid,
-    )
-    tag = await api.tags.get(session, (key, value))
-    project = await api.annotation_projects.add_tag(
-        session,
-        annotation_project,
-        tag,
-    )
-    await session.commit()
-    return project
-
-
-@annotation_projects_router.delete(
-    "/detail/tags/",
-    response_model=schemas.AnnotationProject,
-)
-async def remove_tag_from_annotation_project(
-    session: Session,
-    annotation_project_uuid: UUID,
-    key: str,
-    value: str,
-):
-    """Remove a tag from an annotation project."""
-    annotation_project = await api.annotation_projects.get(
-        session,
-        annotation_project_uuid,
-    )
-    tag = await api.tags.get(session, (key, value))
-    project = await api.annotation_projects.remove_tag(
-        session,
-        annotation_project,
-        tag,
-    )
-    await session.commit()
-    return project
-
-
-async def export_annotation_project_soundevent(
-    session: Session,
-    annotation_project_uuids: list[UUID],
-):
-    """Export an annotation project."""
-    all_objs = []
-    for uuid in annotation_project_uuids:
-        sonari_project = await api.annotation_projects.get(session, uuid)
-        soundevent_project = await api.annotation_projects.to_soundevent(session, sonari_project)
-        obj = to_aeof(soundevent_project)
-        all_objs.append(obj.model_dump())
-    filename = "soundevent_export.json"
-    return Response(
-        all_objs,
-        media_type="application/json",
-        headers={"Content-Disposition": f"attachment; filename={filename}"},
-    )
-
-
-async def export_annotation_project_territory(
-    session: Session,
-    project_ids: list[int],
-    tags: Annotated[list[str], Query()],
-    statuses: Annotated[list[str], Query()],
-) -> Response:
-    """Export an annotation project."""
-    tasks = await api.annotation_tasks.get_many(
-        session,
-        limit=-1,
-        filters=[
-            models.AnnotationTask.annotation_project_id.in_(project_ids),
-            models.AnnotationTask.status_badges.any(models.AnnotationStatusBadge.state.in_(statuses)),
-        ],
-    )
-
-    # Create a new workbook
-    wb = Workbook()
-    # Remove default sheet
-    ws = wb.active
-    if ws is None:
-        return Response(status_code=422)
-    wb.remove(ws)
-
-    # Keep track of species, stations, dates and status badges
-    # Structure: species -> station -> date -> list of status badges
-    species_data: dict[str, dict[str, dict[datetime.date, list[str]]]] = {}
-    all_dates: set[datetime.date] = set()
-    all_stations: set[str] = set()
-
-    # Collect all data
-    for task in tasks[0]:
-        if not task.clip_annotation or not task.clip:
-            continue
-
-        clip_annotation: schemas.ClipAnnotation = task.clip_annotation
-
-        for sound_event_annotation in clip_annotation.sound_events:
-            tag_set: set[str] = {f"{tag.key}:{tag.value}" for tag in sound_event_annotation.tags}
-            for tag in tags:
-                if tag in tag_set:
-                    if not task.clip.recording.date:
-                        continue
-
-                    species = tag.split(":")[-1]
-                    station = task.clip.recording.path.stem.split("_")[0]
-                    date = task.clip.recording.date
-
-                    # Track all dates and stations across all species
-                    all_dates.add(date)
-                    all_stations.add(station)
-
-                    if species not in species_data:
-                        species_data[species] = {}
-                    if station not in species_data[species]:
-                        species_data[species][station] = {}
-                    if date not in species_data[species][station]:
-                        species_data[species][station][date] = []
-
-                    # Collect status badges for this task
-                    status_badges = []
-                    for s in task.status_badges:
-                        status_badges.append(f"{s.state.name}")
-
-                    species_data[species][station][date].extend(status_badges)
-
-    # After collecting all_dates, generate complete date range
-    if all_dates:  # Only if we have any dates
-        min_date = min(all_dates)
-        max_date = max(all_dates)
-        complete_dates = set()
-
-        current_date = min_date
-        while current_date <= max_date:
-            complete_dates.add(current_date)
-            current_date += datetime.timedelta(days=1)
-
-        # Replace all_dates with complete range
-        all_dates = complete_dates
-
-    # Sort all dates and stations once
-    sorted_dates = sorted(all_dates)
-    sorted_stations = sorted(all_stations)
-
-    # Create worksheets and populate headers
-    for species in species_data:
-        ws = wb.create_sheet(species)
-
-        # Write date headers starting from B1 using all dates
-        for col, date in enumerate(sorted_dates, start=2):
-            ws.cell(row=1, column=col, value=date.strftime("%Y-%m-%d"))
-
-        # Write station names in first column using all stations
-        for row, station in enumerate(sorted_stations, start=2):
-            ws.cell(row=row, column=1, value=station)
-
-            # Fill in status badges for each date
-            for col, date in enumerate(sorted_dates, start=2):
-                badges = species_data[species].get(station, {}).get(date, [])
-                cell_value = " | ".join(badges) if badges else ""
-                ws.cell(row=row, column=col, value=cell_value)
-
-    # Save the workbook to a BytesIO object
-    excel_file = BytesIO()
-    wb.save(excel_file)
-    excel_file.seek(0)
-
-    # Generate the filename
-    filename = f"{datetime.datetime.now().strftime('%d.%m.%Y_%H_%M')}_territory.xlsx"
-
-    return Response(
-        excel_file.getvalue(),
-        status_code=200,
-        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        headers={
-            "content-disposition": f"attachment; filename={filename}",
-            "content-type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        },
-    )
-
-
-async def export_annotation_project_multibase(
-    session: Session,
-    project_ids: list[int],
-    tags: Annotated[list[str], Query()],
-    statuses: Annotated[list[str], Query()],
-) -> Response:
-    """Export an annotation project."""
-    tasks = await api.annotation_tasks.get_many(
-        session,
-        limit=-1,
-        filters=[
-            models.AnnotationTask.annotation_project_id.in_(project_ids),
-            models.AnnotationTask.status_badges.any(models.AnnotationStatusBadge.state.in_(statuses)),
-        ],
-    )
-
-    # Create a new workbook and select the active sheet
-    wb = Workbook()
-    ws = wb.active
-    if ws is None:
-        return Response(status_code=422)
-    ws.title = "Beobachtungen"
-
-    # Append the header to the excel file
-    ws.append([
-        "Art",
-        "Datum",
-        "Tag",
-        "Monat",
-        "Jahr",
-        "Beobachter",
-        "Bestimmer",
-        "Fundort",
-        "X",
-        "Y",
-        "EPSG",
-        "Nachweistyp",
-        "Bemerkung_1",
-        "Bemerkung_2",
-    ])
-
-    for task in tasks[0]:
-        if not task.clip_annotation:
-            continue
-
-        clip_annotation: schemas.ClipAnnotation = task.clip_annotation
-        clip_annotation_notes: str = "|"
-        for n in clip_annotation.notes:
-            clip_annotation_notes += f" {n.message} "
-            clip_annotation_notes += "|"
-
-        for sound_event_annotation in clip_annotation.sound_events:
-            tag_set: set[str] = {f"{tag.key}:{tag.value}" for tag in sound_event_annotation.tags}
-            for tag in tags:
-                if tag in tag_set:
-                    if not task.clip:
-                        continue
-
-                    species = tag.split(":")[-1]
-
-                    date = task.clip.recording.date
-                    if date is None:
-                        date = ""
-                        day = ""
-                        month = ""
-                        year = ""
-                    else:
-                        day = date.day
-                        month = date.month
-                        year = date.year
-
-                    station = task.clip.recording.path.stem.split("_")[0]
-                    latitude = task.clip.recording.latitude
-                    longitude = task.clip.recording.longitude
-
-                    sound_event_notes: str = "|"
-                    for n in sound_event_annotation.notes:
-                        msg: str = n.message
-                        if msg.startswith(f"{species},"):
-                            msg = msg.replace(f"{species},", "")
-
-                        sound_event_notes += f" {msg} "
-                        sound_event_notes += "|"
-
-                    # Write the content to the worksheet
-                    ws.append(
-                        f"{species};{date};{day};{month};{year};;;{station};{latitude};{longitude};4326;Akustik;{sound_event_notes};{clip_annotation_notes}".split(
-                            ";"
-                        )
-                    )
-
-    # Save the workbook to a BytesIO object
-    excel_file = BytesIO()
-    wb.save(excel_file)
-    excel_file.seek(0)
-
-    # Generate the filename
-    filename = f"{datetime.datetime.now().strftime('%d.%m.%Y_%H_%M')}_multibase.xlsx"
-
-    return Response(
-        excel_file.getvalue(),
-        status_code=200,
-        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        headers={
-            "content-disposition": f"attachment; filename={filename}",
-            "content-type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        },
-    )
-
-
-@annotation_projects_router.get(
-    "/detail/export/",
-)
-async def export_annotation_project(
-    session: Session,
-    annotation_project_uuids: Annotated[list[UUID], Query()],
-    tags: Annotated[list[str], Query()],
-    statuses: Annotated[list[str], Query()],
-    format: str,
-) -> Response:
-    projects = await api.annotation_projects.get_many(
-        session, limit=-1, filters=[models.AnnotationProject.uuid.in_(annotation_project_uuids)]
-    )
-    project_ids = [p.id for p in projects[0]]
-    if format == "MultiBase":
-        return await export_annotation_project_multibase(session, project_ids, tags, statuses)
-    elif format == "Territory":
-        return await export_annotation_project_territory(session, project_ids, tags, statuses)
-    elif format == "SoundEvent":
-        return await export_annotation_project_soundevent(session, annotation_project_uuids)
-    else:
-        return Response(status_code=501)
-
-
-@annotation_projects_router.post(
-    "/import/",
-    response_model=schemas.AnnotationProject,
-)
-async def import_annotation_project(
-    settings: SonariSettings,
-    session: Session,
-    annotation_project: UploadFile,
-):
-    """Import an annotation project."""
-    obj = json.loads(annotation_project.file.read())
-
-    db_dataset = await aoef.import_annotation_project(
-        session,
-        obj,
-        audio_dir=settings.audio_dir,
-        base_audio_dir=settings.audio_dir,
     """Get progress statistics for an annotation project.
-    
+
     This endpoint efficiently computes task status counts using SQL aggregation,
     avoiding the need to load all task objects into memory.
     """
@@ -475,49 +143,43 @@ async def import_annotation_project(
     status_query = (
         select(
             models.AnnotationStatusBadge.state,
-            func.count(func.distinct(models.AnnotationStatusBadge.annotation_task_id))
+            func.count(func.distinct(models.AnnotationStatusBadge.annotation_task_id)),
         )
-        .join(
-            models.AnnotationTask,
-            models.AnnotationTask.id == models.AnnotationStatusBadge.annotation_task_id
-        )
+        .join(models.AnnotationTask, models.AnnotationTask.id == models.AnnotationStatusBadge.annotation_task_id)
         .where(models.AnnotationTask.annotation_project_id == annotation_project_id)
         .group_by(models.AnnotationStatusBadge.state)
     )
-    
+
     status_result = await session.execute(status_query)
     status_counts = dict(status_result.all())
-    
+
     # Extract counts for each state
     verified = status_counts.get(AnnotationState.verified, 0)
     rejected = status_counts.get(AnnotationState.rejected, 0)
     completed = status_counts.get(AnnotationState.completed, 0)
     assigned = status_counts.get(AnnotationState.assigned, 0)
-    
+
     # Count tasks that are "done" (verified, rejected, or completed)
     # A task is done if it has at least one of these badges
     done_query = (
         select(func.count(func.distinct(models.AnnotationTask.id)))
         .select_from(models.AnnotationTask)
-        .join(
-            models.AnnotationStatusBadge,
-            models.AnnotationTask.id == models.AnnotationStatusBadge.annotation_task_id
-        )
+        .join(models.AnnotationStatusBadge, models.AnnotationTask.id == models.AnnotationStatusBadge.annotation_task_id)
         .where(
             models.AnnotationTask.annotation_project_id == annotation_project_id,
             models.AnnotationStatusBadge.state.in_([
                 AnnotationState.verified,
                 AnnotationState.rejected,
                 AnnotationState.completed,
-            ])
+            ]),
         )
     )
     done_result = await session.execute(done_query)
     done_count = done_result.scalar_one()
-    
+
     # Pending is total minus done
     pending = total - done_count
-    
+
     return schemas.AnnotationProjectProgress(
         total=total,
         verified=verified,

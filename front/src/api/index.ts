@@ -64,7 +64,7 @@ export default function createAPI(config: APIConfig) {
     soundEventAnnotations: soundEventAnnotationsAPI,
     spectrograms: spectrogramAPI,
     tags: tagAPI,
-    waveform: waveformAPI,
+    waveforms: waveformAPI,
     export: exportAPI,
     psd: psdAPI
   } as const;

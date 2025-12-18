@@ -112,7 +112,7 @@ def get_sound_event_annotations_router(settings: SonariSettings) -> APIRouter:
     )
     async def update_annotation(
         session: Session,
-        user: Annotated[schemas.SimpleUser, Depends(active_user)],
+        user: CurrentUser,
         sound_event_annotation_id: int,
         data: schemas.SoundEventAnnotationUpdate,
     ):
@@ -208,7 +208,7 @@ def get_sound_event_annotations_router(settings: SonariSettings) -> APIRouter:
         sound_event_annotation_id: int,
         key: str,
         value: str,
-        user: Annotated[schemas.SimpleUser, Depends(active_user)],
+        user: CurrentUser,
     ):
         """Remove a tag from a sound event annotation."""
         sound_event_annotation = await api.sound_event_annotations.get(

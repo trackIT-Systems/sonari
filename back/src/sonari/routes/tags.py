@@ -2,11 +2,11 @@
 
 from typing import Annotated
 
-from fastapi import Depends
+from fastapi import APIRouter, Depends
 
 from sonari import api, schemas
 from sonari.filters.tags import TagFilter
-from sonari.routes.dependencies import Session, SonariSettings
+from sonari.routes.dependencies import CurrentUser, Session
 from sonari.routes.dependencies.auth import create_authenticated_router
 from sonari.routes.types import Limit, Offset
 
@@ -15,9 +15,8 @@ __all__ = [
 ]
 
 
-def get_tags_router(settings: SonariSettings) -> APIRouter:
-    active_user = create_authenticated_router(settings)
-    tags_router = APIRouter()
+def get_tags_router() -> APIRouter:
+    tags_router = create_authenticated_router()
 
     @tags_router.get("/", response_model=schemas.Page[schemas.Tag])
     async def get_tags(
@@ -46,7 +45,7 @@ def get_tags_router(settings: SonariSettings) -> APIRouter:
     async def create_tag(
         session: Session,
         data: schemas.TagCreate,
-        user: Annotated[schemas.SimpleUser, Depends(active_user)],
+        user: CurrentUser,
     ):
         """Create a new tag."""
         # Create the tag
