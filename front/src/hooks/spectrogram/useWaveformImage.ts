@@ -15,25 +15,44 @@ export default function useWaveformImage({ recording, window, parameters }: UseW
   const [isLoading, setIsLoading] = useState(true);
   const [isError, setIsError] = useState(false);
 
-  const url = useMemo(() => {
-    return api.waveforms.getUrl({
-      recording,
-      parameters
-    });
-  }, [recording, parameters]);
-
   useEffect(() => {
-    const img = new Image();
-    img.src = url;
-    img.onload = () => {
-      setImage(img);
-      setIsLoading(false);
+    const loadImage = async () => {
+      setIsLoading(true);
+      setIsError(false);
+      
+      try {
+        // Use authenticated API method to get blob
+        const blob = await api.waveforms.getBlob({
+          recording,
+          parameters,
+        });
+        const objectUrl = URL.createObjectURL(blob);
+        
+        const img = new Image();
+        await new Promise<void>((resolve, reject) => {
+          img.onload = () => {
+            setImage(img);
+            setIsLoading(false);
+            URL.revokeObjectURL(objectUrl);
+            resolve();
+          };
+          img.onerror = () => {
+            setIsError(true);
+            setIsLoading(false);
+            URL.revokeObjectURL(objectUrl);
+            reject(new Error('Failed to load image'));
+          };
+          img.src = objectUrl;
+        });
+      } catch (error) {
+        console.error('Failed to load waveform image:', error);
+        setIsError(true);
+        setIsLoading(false);
+      }
     };
-    img.onerror = () => {
-      setIsError(true);
-      setIsLoading(false);
-    };
-  }, [recording.id, window.time.min, window.time.max, url]);
+    
+    loadImage();
+  }, [recording, parameters]);
 
   const draw = useCallback((ctx: CanvasRenderingContext2D) => {
     if (!image) return;

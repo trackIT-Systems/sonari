@@ -53,7 +53,48 @@ export function registerWaveformsAPI(
     return `${instsance.defaults.baseURL}${endpoints.get}?${params}`;
   }
 
+  async function getBlob({
+    recording,
+    segment,
+    parameters = DEFAULT_SPECTROGRAM_PARAMETERS,
+  }: {
+    recording: Recording;
+    segment?: Interval;
+    parameters?: SpectrogramParameters;
+  }): Promise<Blob> {
+    const parsed_params = SpectrogramParametersSchema.parse(parameters);
+    const { gamma, cmap, window_size_samples, overlap_percent } = parsed_params;
+    
+    // Construct query
+    const query: Record<string, string | number | boolean> = {
+      recording_id: recording.id,
+      gamma,
+      cmap,
+      window_size_samples,
+      overlap_percent,
+    };
+
+    // Add segment parameters if provided, otherwise use full recording
+    if (segment) {
+      const parsed_segment = IntervalSchema.parse(segment);
+      query.start_time = parsed_segment.min;
+      query.end_time = parsed_segment.max;
+    } else {
+      query.start_time = 0;
+      query.end_time = recording.duration;
+    }
+
+    // Make authenticated request
+    const response = await instsance.get(endpoints.get, {
+      params: query,
+      responseType: 'blob',
+    });
+
+    return response.data;
+  }
+
   return {
     getUrl,
+    getBlob,
   };
 }

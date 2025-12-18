@@ -54,6 +54,7 @@ export default function createAPI(config: APIConfig) {
   const psdAPI = registerPsdAPI(instance);
 
   return {
+    instance,
     annotationProjects: annotationProjectAPI,
     annotationTasks: annotationTasksAPI,
     audio: audioAPI,

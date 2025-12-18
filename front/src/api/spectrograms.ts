@@ -144,7 +144,38 @@ export function registerSpectrogramAPI(
     return `${instsance.defaults.baseURL}${endpoints.get}?${params}`;
   }
 
+  async function getBlob({
+    recording_id,
+    segment,
+    parameters = DEFAULT_SPECTROGRAM_PARAMETERS,
+  }: {
+    recording_id: number;
+    segment: Interval;
+    parameters?: SpectrogramParameters;
+  }): Promise<Blob> {
+    // Validate parameters
+    const parsed_params = SpectrogramParametersSchema.parse(parameters);
+    const parsed_segment = IntervalSchema.parse(segment);
+
+    // Construct query
+    const query = {
+      recording_id,
+      start_time: parsed_segment.min,
+      end_time: parsed_segment.max,
+      ...parsed_params,
+    };
+
+    // Make authenticated request
+    const response = await instsance.get(endpoints.get, {
+      params: query,
+      responseType: 'blob',
+    });
+
+    return response.data;
+  }
+
   return {
     getUrl,
+    getBlob,
   };
 }

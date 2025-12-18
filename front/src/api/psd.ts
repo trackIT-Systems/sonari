@@ -60,8 +60,54 @@ export function registerPsdAPI(
     return `${instance.defaults.baseURL}${endpoints.get}?${params}`;
   }
 
+  async function getBlob({
+    recording_id,
+    segment,
+    parameters = DEFAULT_SPECTROGRAM_PARAMETERS,
+    psdParameters = DEFAULT_PSD_PARAMETERS,
+  }: {
+    recording_id: number;
+    segment: Interval;
+    parameters?: SpectrogramParameters;
+    psdParameters?: PSDParameters;
+  }): Promise<{ blob: Blob; psdMin: number | null; psdMax: number | null; freqMin: number | null; freqMax: number | null }> {
+    // Validate parameters
+    const parsed_params = SpectrogramParametersSchema.parse(parameters);
+    const parsed_segment = IntervalSchema.parse(segment);
+
+    // Construct query
+    const query = {
+      recording_id,
+      start_time: parsed_segment.min,
+      end_time: parsed_segment.max,
+      ...parsed_params,
+      ...psdParameters,
+    };
+
+    // Make authenticated request
+    const response = await instance.get(endpoints.get, {
+      params: query,
+      responseType: 'blob',
+    });
+
+    // Extract headers
+    const psdMin = response.headers['x-psd-min'] ? parseFloat(response.headers['x-psd-min']) : null;
+    const psdMax = response.headers['x-psd-max'] ? parseFloat(response.headers['x-psd-max']) : null;
+    const freqMin = response.headers['x-freq-min'] ? parseFloat(response.headers['x-freq-min']) : null;
+    const freqMax = response.headers['x-freq-max'] ? parseFloat(response.headers['x-freq-max']) : null;
+
+    return {
+      blob: response.data,
+      psdMin,
+      psdMax,
+      freqMin,
+      freqMax,
+    };
+  }
+
   return {
     getUrl,
+    getBlob,
   };
 }
 

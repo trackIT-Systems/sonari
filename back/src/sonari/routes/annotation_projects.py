@@ -2,13 +2,14 @@
 
 from typing import Annotated
 
-from fastapi import APIRouter, Depends
+from fastapi import Depends
 from soundevent.data import AnnotationState
 from sqlalchemy import func, select
 
 from sonari import api, models, schemas
 from sonari.filters.annotation_projects import AnnotationProjectFilter
 from sonari.routes.dependencies import Session
+from sonari.routes.dependencies.auth import create_authenticated_router
 from sonari.routes.types import Limit, Offset
 
 __all__ = [
@@ -16,7 +17,7 @@ __all__ = [
 ]
 
 
-annotation_projects_router = APIRouter()
+annotation_projects_router = create_authenticated_router()
 
 
 @annotation_projects_router.get(

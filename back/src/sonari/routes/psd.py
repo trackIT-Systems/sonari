@@ -2,15 +2,16 @@
 
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Response
+from fastapi import Depends, Response
 
 from sonari import api, schemas
 from sonari.core.psd import psd_image_to_buffer, psd_to_plot_image
 from sonari.routes.dependencies import Session, SonariSettings
+from sonari.routes.dependencies.auth import create_authenticated_router
 
 __all__ = ["psd_router"]
 
-psd_router = APIRouter()
+psd_router = create_authenticated_router()
 
 
 @psd_router.get(
