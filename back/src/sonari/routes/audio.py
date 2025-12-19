@@ -2,16 +2,15 @@
 
 import os
 
-from fastapi import Header, Response
+from fastapi import APIRouter, Header, Response
 from fastapi.responses import FileResponse
 
 from sonari import api
 from sonari.routes.dependencies import Session, SonariSettings
-from sonari.routes.dependencies.auth import create_authenticated_router
 
 __all__ = ["audio_router"]
 
-audio_router = create_authenticated_router()
+audio_router = APIRouter()
 
 
 @audio_router.get("/stream/")
