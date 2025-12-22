@@ -1,7 +1,7 @@
 """Keycloak authentication module for Sonari."""
 
 import logging
-from typing import AsyncGenerator, Dict, List, Optional
+from typing import AsyncGenerator, Optional
 from uuid import uuid4
 
 import jwt
@@ -39,8 +39,7 @@ class KeycloakUser(BaseModel):
     given_name: Optional[str] = None
     family_name: Optional[str] = None
     name: Optional[str] = None
-    realm_access: Optional[Dict[str, List[str]]] = None
-    resource_access: Optional[Dict[str, Dict[str, List[str]]]] = None
+    groups: list[str] = None
 
 
 SecDep = Depends(security)
@@ -143,17 +142,31 @@ async def get_or_create_user(
     return new_user
 
 
-def _is_superuser(keycloak_user: KeycloakUser) -> bool:
-    """Check if Keycloak user should be a superuser based on roles."""
-    # Check realm roles
-    if keycloak_user.realm_access and "ts_admin" in keycloak_user.realm_access.get("roles", []):
-        return True
+def _check_tenant_authorization(keycloak_user: KeycloakUser, domain: str) -> None:
+    """Check if user is authorized for the tenant domain.
 
-    # Check client roles
-    if keycloak_user.resource_access:
-        for _, access in keycloak_user.resource_access.items():
-            if "ts_admin" in access.get("roles", []):
-                return True
+    Raises HTTPException 403 if user is not in tenant_{domain} or ts_admin group.
+    """
+    if not keycloak_user.groups:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+        )
+
+    required_group = f"tenant_{domain}"
+    admin_group = "ts_admin"
+
+    if required_group not in keycloak_user.groups and admin_group not in keycloak_user.groups:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=f"User is not authorized for tenant '{domain}'",
+        )
+
+
+def _is_superuser(keycloak_user: KeycloakUser) -> bool:
+    """Check if Keycloak user should be a superuser based on groups."""
+    # Check groups for ts_admin
+    if keycloak_user.groups and "ts_admin" in keycloak_user.groups:
+        return True
 
     return False
 
@@ -168,4 +181,9 @@ async def get_current_user(
     keycloak_user: KeycloakUser = KeycloakUserDep,
 ) -> models.User:
     """Get current authenticated user from Keycloak token."""
+    settings = get_settings()
+
+    # Check tenant authorization
+    _check_tenant_authorization(keycloak_user, settings.domain)
+
     return await get_or_create_user(keycloak_user, session)

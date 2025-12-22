@@ -5,13 +5,14 @@ import { type ReactNode, useEffect, useState } from "react";
 import Loading from "@/app/loading";
 import { SonariIcon } from "@/components/icons";
 import { useAuth } from "@/components/auth/AuthContext";
+import { ForbiddenPage } from "@/components/auth/ForbiddenPage";
 
 interface AuthGuardProps {
   children: ReactNode;
 }
 
 export function AuthGuard({ children }: AuthGuardProps) {
-  const { isAuthenticated, isLoading: authLoading, user, login } = useAuth();
+  const { isAuthenticated, isLoading: authLoading, isForbidden, forbiddenMessage, user, login } = useAuth();
   const [isInitializing, setIsInitializing] = useState(true);
 
   useEffect(() => {
@@ -37,6 +38,11 @@ export function AuthGuard({ children }: AuthGuardProps) {
       login();
     }
   }, [authLoading, isAuthenticated, user, isInitializing, login]);
+
+  // Show forbidden page if user is not authorized (403 error)
+  if (isForbidden) {
+    return <ForbiddenPage message={forbiddenMessage || undefined} />;
+  }
 
   // Show loading screen during initialization, authentication, or user loading
   if (isInitializing || authLoading) {
