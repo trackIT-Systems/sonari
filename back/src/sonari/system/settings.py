@@ -118,7 +118,6 @@ class Settings(BaseSettings):
         "https://localhost",
         "https://localhost:3000",
         "https://localhost:5000",
-        "https://wdev.trackit-system.de",
         "https://auth.trackit.systems",
     ]
     """Allowed origins for CORS."""
@@ -130,7 +129,7 @@ class Settings(BaseSettings):
     keycloak_server_url: str = "https://auth.trackit.systems/"
     """Keycloak server URL."""
 
-    keycloak_realm: str = "wdev.trackit-system.de"
+    keycloak_realm: str = "trackit-system.de"
     """Keycloak realm name."""
 
     keycloak_client_id: str = "sonari-oauth"

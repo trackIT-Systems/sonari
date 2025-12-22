@@ -119,7 +119,7 @@ class AuthClient {
     authUrl.searchParams.set('client_id', this.config.clientId);
     authUrl.searchParams.set('redirect_uri', window.location.origin + window.location.pathname);
     authUrl.searchParams.set('response_type', 'code');
-    authUrl.searchParams.set('scope', 'openid profile email');
+    authUrl.searchParams.set('scope', 'openid profile email groups');
     authUrl.searchParams.set('code_challenge', codeChallenge);
     authUrl.searchParams.set('code_challenge_method', 'S256');
     authUrl.searchParams.set('state', state);

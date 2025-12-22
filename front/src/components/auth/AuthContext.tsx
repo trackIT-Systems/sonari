@@ -3,15 +3,20 @@
 import React, { createContext, useContext, useEffect, useState, ReactNode, useCallback } from 'react';
 import authClient, { UserInfo } from './authClient';
 import api from '@/app/api';
+import { setForbiddenCallback, clearForbiddenCallback } from '@/api/auth';
 import type { User } from '@/types';
 
 interface AuthContextType {
   isAuthenticated: boolean;
   isLoading: boolean;
+  isForbidden: boolean;
+  forbiddenMessage: string | null;
   user: User | null;
   login: () => Promise<void>;
   logout: () => Promise<void>;
   getAuthToken: () => Promise<string | null>;
+  setForbidden: (message?: string) => void;
+  clearForbidden: () => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -31,6 +36,8 @@ interface AuthProviderProps {
 export function AuthProvider({ children }: AuthProviderProps) {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [isForbidden, setIsForbidden] = useState(false);
+  const [forbiddenMessage, setForbiddenMessage] = useState<string | null>(null);
   const [user, setUser] = useState<User | null>(null);
 
   const convertUserInfo = (userInfo: UserInfo): User => ({
@@ -43,7 +50,14 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const fetchUserFromBackend = async (): Promise<User | null> => {
     try {
       return await api.auth.me();
-    } catch (error) {
+    } catch (error: any) {
+      // Check if it's a 403 Forbidden error
+      if (error?.response?.status === 403) {
+        const message = error?.response?.data?.detail || "You do not have permission to access this application.";
+        setIsForbidden(true);
+        setForbiddenMessage(message);
+        return null;
+      }
       console.error('Failed to fetch user from backend:', error);
       return null;
     }
@@ -64,8 +78,11 @@ export function AuthProvider({ children }: AuthProviderProps) {
         const backendUser = await fetchUserFromBackend();
         if (backendUser) {
           setUser(backendUser);
-        } else {
-          // Fallback to user info from token if backend fails
+          // Clear forbidden state on successful user fetch
+          setIsForbidden(false);
+          setForbiddenMessage(null);
+        } else if (!isForbidden) {
+          // Only fallback if not forbidden (backend returned something other than 403)
           const userInfo = authClient.getUserInfo();
           if (userInfo) {
             setUser(convertUserInfo(userInfo));
@@ -73,6 +90,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
         }
       } else {
         setUser(null);
+        setIsForbidden(false);
+        setForbiddenMessage(null);
       }
     } catch (error) {
       console.error('Auth check failed:', error);
@@ -81,7 +100,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [isForbidden]);
 
   useEffect(() => {
     const initializeAuth = async () => {
@@ -95,6 +114,17 @@ export function AuthProvider({ children }: AuthProviderProps) {
     };
 
     initializeAuth();
+
+    // Register the forbidden callback
+    setForbiddenCallback((message?: string) => {
+      setIsForbidden(true);
+      setForbiddenMessage(message || "You do not have permission to access this application.");
+    });
+
+    // Cleanup on unmount
+    return () => {
+      clearForbiddenCallback();
+    };
   }, [checkAuthStatus]);
 
   const login = async () => {
@@ -113,11 +143,23 @@ export function AuthProvider({ children }: AuthProviderProps) {
       await authClient.logout();
       setIsAuthenticated(false);
       setUser(null);
+      setIsForbidden(false);
+      setForbiddenMessage(null);
     } catch (error) {
       console.error('Logout failed:', error);
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const setForbiddenFunc = (message?: string) => {
+    setIsForbidden(true);
+    setForbiddenMessage(message || "You do not have permission to access this application.");
+  };
+
+  const clearForbidden = () => {
+    setIsForbidden(false);
+    setForbiddenMessage(null);
   };
 
   const getAuthToken = async (): Promise<string | null> => {
@@ -132,10 +174,14 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const value: AuthContextType = {
     isAuthenticated,
     isLoading,
+    isForbidden,
+    forbiddenMessage,
     user,
     login,
     logout,
     getAuthToken,
+    setForbidden: setForbiddenFunc,
+    clearForbidden,
   };
 
   return (

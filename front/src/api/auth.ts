@@ -8,6 +8,17 @@ const DEFAULT_ENDPOINTS = {
   me: "/api/v1/auth/me",
 };
 
+// Global callback for handling 403 errors
+let forbiddenCallback: ((message?: string) => void) | null = null;
+
+export function setForbiddenCallback(callback: (message?: string) => void) {
+  forbiddenCallback = callback;
+}
+
+export function clearForbiddenCallback() {
+  forbiddenCallback = null;
+}
+
 export function registerAuthAPI(
   instance: AxiosInstance,
   endpoints: typeof DEFAULT_ENDPOINTS = DEFAULT_ENDPOINTS,
@@ -66,6 +77,13 @@ export function setupAuthInterceptor(instance: AxiosInstance) {
         console.warn('Received 401, triggering re-authentication');
         // Force re-authentication on 401
         await authClient.login();
+      } else if (error.response?.status === 403) {
+        console.warn('Received 403 Forbidden - user not authorized');
+        // Handle forbidden error - user is authenticated but not authorized
+        if (forbiddenCallback) {
+          const message = error.response?.data?.detail;
+          forbiddenCallback(message);
+        }
       }
       
       return Promise.reject(error);
