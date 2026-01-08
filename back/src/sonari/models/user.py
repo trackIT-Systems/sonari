@@ -12,7 +12,7 @@ information is a username, which is used to identify the user.
 Additional information can be added, such as a full name, email, and
 affiliation. This information is not required.
 
-Authentication is handled via Keycloak OIDC, so users are created
+Authentication is handled via OIDC, so users are created
 automatically when they first authenticate.
 """
 
@@ -53,7 +53,7 @@ class User(Base):
 
     Notes
     -----
-    Users are automatically created when they first authenticate via Keycloak OIDC.
+    Users are automatically created when they first authenticate via OIDC.
     The hashed_password field is maintained for database compatibility but is not used.
     """
 

@@ -23,7 +23,7 @@ dependencies = [
     "scipy==1.15.3",
     "shapely==2.1.1",
     "matplotlib==3.10.3",
-    # Keycloak dependencies
+    # OIDC dependencies
     "requests>=2.32.4",
     "pyjwt[crypto]>=2.10.1",
     "python-multipart>=0.0.20",

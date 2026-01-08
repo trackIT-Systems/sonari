@@ -20,7 +20,7 @@ class SimpleUser(BaseSchema):
 
 
 class UserCreate(BaseSchema):
-    """Schema for User objects created from Keycloak."""
+    """Schema for User objects created from OIDC."""
 
     username: str
     email: EmailStr

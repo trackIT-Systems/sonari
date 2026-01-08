@@ -1,11 +1,11 @@
-"""Keycloak authentication dependencies."""
+"""OIDC authentication dependencies."""
 
 from typing import Annotated
 
 from fastapi import APIRouter, Depends
 
 from sonari import models
-from sonari.system.keycloak import get_current_user
+from sonari.system.oidc import get_current_user
 
 __all__ = [
     "CurrentUser",
