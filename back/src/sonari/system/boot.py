@@ -21,7 +21,7 @@ def print_ready_message(settings: Settings):
     {Fore.GREEN}{Style.DIM}Sonari is ready to go!{Style.RESET_ALL}
 
     {Fore.GREEN}{Style.BRIGHT} * Listening on http://{host}:{port}/{Style.RESET_ALL}
-    {Fore.CYAN}{Style.BRIGHT} * Authentication via Keycloak: {settings.keycloak_server_url}{Style.RESET_ALL}
+    {Fore.CYAN}{Style.BRIGHT} * Authentication via OIDC: {settings.oidc_server_url}{Style.RESET_ALL}
 
     {Fore.YELLOW}Press Ctrl+C to exit.{Style.RESET_ALL}
     """
@@ -43,7 +43,7 @@ def print_dev_message(settings: Settings):
     database_url = get_database_url(settings)
     settings_str = settings.model_dump_json(
         indent=4,
-        exclude={"db_username", "db_password", "db_url", "keycloak_client_secret"},
+        exclude={"db_username", "db_password", "db_url"},
     )
     print(
         f"""

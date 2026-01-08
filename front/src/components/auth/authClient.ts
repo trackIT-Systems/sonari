@@ -2,7 +2,7 @@ import { jwtDecode } from 'jwt-decode';
 
 export interface oidcConfig {
   serverUrl: string;
-  realm: string;
+  application: string;
   clientId: string;
 }
 
@@ -39,24 +39,14 @@ class AuthClient {
     if (config) {
       this.config = config;
     } else {
-      // Try to fetch config from backend first
-      try {
-        const basePath = process.env.NEXT_PUBLIC_SONARI_FOLDER || '';
-        const response = await fetch(`${basePath}/api/v1/auth/config`);
-        if (response.ok) {
-          const backendConfig = await response.json();
-          this.config = {
-            serverUrl: backendConfig.server_url,
-            realm: backendConfig.realm,
-            clientId: backendConfig.client_id,
-          };
-        }
-      } catch (error) {
-        console.warn('Failed to fetch config from backend, using defaults');
+      const basePath = process.env.NEXT_PUBLIC_SONARI_FOLDER || '';
+      const response = await fetch(`${basePath}/api/v1/auth/config`);
+      if (response.ok) {
+        const backendConfig = await response.json();
         this.config = {
-          serverUrl: "https://auth.trackit.systems/",
-          realm: process.env.NEXT_PUBLIC_SONARI_DOMAIN || "",
-          clientId: "sonari-oauth",
+          serverUrl: backendConfig.server_url,
+          application: backendConfig.application,
+          clientId: backendConfig.client_id,
         };
       }
     }
@@ -112,10 +102,10 @@ class AuthClient {
     const state = this.generateState();
 
     // Store PKCE parameters in sessionStorage
-    sessionStorage.setItem('keycloak_code_verifier', codeVerifier);
-    sessionStorage.setItem('keycloak_state', state);
+    sessionStorage.setItem('oidc_code_verifier', codeVerifier);
+    sessionStorage.setItem('oidc_state', state);
 
-    const authUrl = new URL(`${this.config.serverUrl}realms/${this.config.realm}/protocol/openid-connect/auth`);
+    const authUrl = new URL(`${this.config.serverUrl}application/o/authorize/`);
     authUrl.searchParams.set('client_id', this.config.clientId);
     authUrl.searchParams.set('redirect_uri', window.location.origin + window.location.pathname);
     authUrl.searchParams.set('response_type', 'code');
@@ -133,7 +123,7 @@ class AuthClient {
     this.clearTokens();
     
     if (this.config && idToken) {
-      const logoutUrl = new URL(`${this.config.serverUrl}realms/${this.config.realm}/protocol/openid-connect/logout`);
+      const logoutUrl = new URL(`${this.config.serverUrl}application/o/${this.config.application}/end-session/`);
       logoutUrl.searchParams.set('id_token_hint', idToken);
       logoutUrl.searchParams.set('post_logout_redirect_uri', window.location.origin);
       
@@ -148,8 +138,8 @@ class AuthClient {
       throw new Error('authClient not initialized');
     }
 
-    const storedState = sessionStorage.getItem('keycloak_state');
-    const codeVerifier = sessionStorage.getItem('keycloak_code_verifier');
+    const storedState = sessionStorage.getItem('oidc_state');
+    const codeVerifier = sessionStorage.getItem('oidc_code_verifier');
 
     if (state !== storedState) {
       throw new Error('Invalid state parameter');
@@ -160,10 +150,10 @@ class AuthClient {
     }
 
     // Clean up session storage
-    sessionStorage.removeItem('keycloak_state');
-    sessionStorage.removeItem('keycloak_code_verifier');
+    sessionStorage.removeItem('oidc_state');
+    sessionStorage.removeItem('oidc_code_verifier');
 
-    const tokenUrl = `${this.config.serverUrl}realms/${this.config.realm}/protocol/openid-connect/token`;
+    const tokenUrl = `${this.config.serverUrl}application/o/token/`;
     
     const response = await fetch(tokenUrl, {
       method: 'POST',
@@ -235,7 +225,7 @@ class AuthClient {
       return;
     }
 
-    const tokenUrl = `${this.config.serverUrl}realms/${this.config.realm}/protocol/openid-connect/token`;
+    const tokenUrl = `${this.config.serverUrl}application/o/token/`;
     
     const response = await fetch(tokenUrl, {
       method: 'POST',
@@ -282,17 +272,17 @@ class AuthClient {
 
   private saveToStorage(): void {
     if (typeof window !== 'undefined' && this.tokenSet) {
-      localStorage.setItem('keycloak_tokens', JSON.stringify(this.tokenSet));
+      localStorage.setItem('oidc_tokens', JSON.stringify(this.tokenSet));
       if (this.userInfo) {
-        localStorage.setItem('keycloak_user', JSON.stringify(this.userInfo));
+        localStorage.setItem('oidc_user', JSON.stringify(this.userInfo));
       }
     }
   }
 
   private loadFromStorage(): void {
     if (typeof window !== 'undefined') {
-      const storedTokens = localStorage.getItem('keycloak_tokens');
-      const storedUser = localStorage.getItem('keycloak_user');
+      const storedTokens = localStorage.getItem('oidc_tokens');
+      const storedUser = localStorage.getItem('oidc_user');
 
       if (storedTokens) {
         try {
@@ -328,8 +318,8 @@ class AuthClient {
     }
 
     if (typeof window !== 'undefined') {
-      localStorage.removeItem('keycloak_tokens');
-      localStorage.removeItem('keycloak_user');
+      localStorage.removeItem('oidc_tokens');
+      localStorage.removeItem('oidc_user');
     }
   }
 

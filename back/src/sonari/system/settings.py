@@ -9,7 +9,7 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Tuple, Type
 
-from pydantic import ValidationError
+from pydantic import ValidationError, computed_field
 from pydantic_settings import (
     BaseSettings,
     PydanticBaseSettingsSource,
@@ -29,6 +29,7 @@ class Settings(BaseSettings):
 
     model_config = SettingsConfigDict(
         env_prefix="SONARI_",
+        extra="ignore",  # Ignore extra fields from old settings files (needed during schema migrations)
     )
 
     dev: bool = False
@@ -125,18 +126,21 @@ class Settings(BaseSettings):
     open_on_startup: bool = True
     """Open the application in the browser on startup."""
 
-    # Keycloak Authentication Settings
-    keycloak_server_url: str = "https://auth.trackit.systems/"
-    """Keycloak server URL."""
+    # OIDC Authentication Settings
+    oidc_server_url: str = "https://auth.trackit.systems/"
+    """OIDC server URL."""
 
-    keycloak_realm: str = "trackit-system.de"
-    """Keycloak realm name."""
+    @computed_field
+    @property
+    def oidc_client_id(self) -> str:
+        """OIDC client ID derived from the domain."""
+        return f"{self.domain}/sonari"
 
-    keycloak_client_id: str = "sonari-oauth"
-    """Keycloak client ID."""
-
-    keycloak_client_secret: str | None = None
-    """Keycloak client secret (not used for public clients)."""
+    @computed_field
+    @property
+    def oidc_application(self) -> str:
+        """OIDC application name derived from the domain."""
+        return f"{self.domain.replace('.', '-')}-sonari"
 
     @classmethod
     def settings_customise_sources(

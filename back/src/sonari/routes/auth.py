@@ -1,4 +1,4 @@
-"""Authentication router supporting Keycloak OIDC."""
+"""Authentication router supporting OIDC."""
 
 from fastapi import APIRouter
 from pydantic import BaseModel
@@ -16,21 +16,21 @@ class AuthConfig(BaseModel):
     """Authentication configuration response."""
 
     server_url: str
-    realm: str
+    application: str
     client_id: str
 
 
 def get_auth_router(settings: SonariSettings) -> APIRouter:
-    """Get authentication router supporting Keycloak OIDC."""
+    """Get authentication router supporting OIDC."""
     auth_router = APIRouter()
 
     @auth_router.get("/config", response_model=AuthConfig)
     async def get_auth_config() -> AuthConfig:
-        """Get Keycloak configuration for frontend OIDC integration."""
+        """Get configuration for frontend OIDC integration."""
         return AuthConfig(
-            server_url=settings.keycloak_server_url,
-            realm=settings.keycloak_realm,
-            client_id=settings.keycloak_client_id,
+            server_url=settings.oidc_server_url,
+            application=settings.oidc_application,
+            client_id=settings.oidc_client_id,
         )
 
     @auth_router.get("/me", response_model=schemas.SimpleUser)
