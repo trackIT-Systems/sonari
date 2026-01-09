@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Logout</title>
+</head>
+<body>
+    <script>
+        (function() {
+            try {
+                // Clear OIDC tokens from localStorage
+                localStorage.removeItem('oidc_tokens');
+                localStorage.removeItem('oidc_user');
+                
+                console.log('Front-channel logout completed: tokens cleared');
+            } catch (error) {
+                console.error('Front-channel logout failed:', error);
+            }
+        })();
+    </script>
+    <noscript>
+        <p>JavaScript is required for logout functionality.</p>
+    </noscript>
+</body>
+</html>
+
