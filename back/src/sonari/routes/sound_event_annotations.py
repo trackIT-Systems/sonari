@@ -121,6 +121,8 @@ def get_sound_event_annotations_router(settings: SonariSettings) -> APIRouter:
         sound_event_annotation = await api.sound_event_annotations.get(
             session,
             sound_event_annotation_id,
+            include_tags=True,
+            include_features=True,
         )
 
         # Update geometry

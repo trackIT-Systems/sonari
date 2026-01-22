@@ -227,7 +227,7 @@ class SoundEventAnnotationAPI(
         )
 
         # Create updated schema object with the new created_by info and features
-        updated_annotation = sound_event_annotation.model_copy(update=dict(created_by=user, features=updated_features))
+        updated_annotation = sound_event_annotation.model_copy(update=dict(created_by=user, features=updated_features, tags=sound_event_annotation.tags))
         self._update_cache(updated_annotation)
 
         return updated_annotation
