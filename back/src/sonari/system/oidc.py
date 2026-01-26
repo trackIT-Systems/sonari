@@ -151,7 +151,7 @@ async def get_or_create_user(
 def _check_tenant_authorization(oidc_user: OIDCUser, domain: str) -> None:
     """Check if user is authorized for the tenant domain.
 
-    Raises HTTPException 403 if user is not in tenant_{domain} or ts_admin group.
+    Raises HTTPException 403 if user is not in tenant_{domain} ts_admin or ts_staff group.
     """
     if not oidc_user.groups:
         raise HTTPException(
@@ -160,8 +160,13 @@ def _check_tenant_authorization(oidc_user: OIDCUser, domain: str) -> None:
 
     required_group = f"tenant_{domain}"
     admin_group = "ts_admin"
+    staff_group = "ts_staff"
 
-    if required_group not in oidc_user.groups and admin_group not in oidc_user.groups:
+    if (
+        required_group not in oidc_user.groups
+        and admin_group not in oidc_user.groups
+        and staff_group not in oidc_user.groups
+    ):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail=f"User is not authorized for tenant '{domain}'",
