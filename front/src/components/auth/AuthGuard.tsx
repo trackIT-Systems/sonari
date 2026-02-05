@@ -14,6 +14,7 @@ interface AuthGuardProps {
 export function AuthGuard({ children }: AuthGuardProps) {
   const { isAuthenticated, isLoading: authLoading, isForbidden, forbiddenMessage, user, login } = useAuth();
   const [isInitializing, setIsInitializing] = useState(true);
+  const [hasTriggeredLogin, setHasTriggeredLogin] = useState(false); // Prevent multiple redirects
 
   useEffect(() => {
     // Small delay to prevent flash
@@ -24,20 +25,25 @@ export function AuthGuard({ children }: AuthGuardProps) {
     return () => clearTimeout(timer);
   }, []);
 
-  // Handle authentication redirect
+  // Single effect to handle authentication redirect
+  // Only redirect when: not loading, not authenticated, not initializing, and haven't already triggered login
   useEffect(() => {
-    if (!authLoading && !isAuthenticated && !isInitializing) {
-      login();
+    if (!authLoading && !isAuthenticated && !isInitializing && !hasTriggeredLogin) {
+      // If authenticated but no user data, wait a bit longer - might be loading
+      // Only redirect if we're sure we're not authenticated
+      setHasTriggeredLogin(true);
+      login().catch((error) => {
+        console.error('Login redirect failed:', error);
+        // Reset flag on error so we can retry
+        setHasTriggeredLogin(false);
+      });
     }
-  }, [authLoading, isAuthenticated, isInitializing, login]);
-
-  // Handle user loading errors - redirect to login
-  useEffect(() => {
-    if (!authLoading && isAuthenticated && !user && !isInitializing) {
-      console.error('User data not available, redirecting to login...');
-      login();
+    
+    // Reset flag if authentication succeeds
+    if (isAuthenticated && hasTriggeredLogin) {
+      setHasTriggeredLogin(false);
     }
-  }, [authLoading, isAuthenticated, user, isInitializing, login]);
+  }, [authLoading, isAuthenticated, isInitializing, hasTriggeredLogin, login]);
 
   // Show forbidden page if user is not authorized (403 error)
   if (isForbidden) {

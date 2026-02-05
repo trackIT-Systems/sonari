@@ -58,13 +58,17 @@ export function setupAuthInterceptor(instance: AxiosInstance) {
   instance.interceptors.request.use(async (config) => {
     try {
       // Get valid access token (will refresh if needed)
+      // ensureValidToken() will throw if refresh fails, which is fine
+      // We'll handle 401s in the response interceptor
       const token = await authClient.ensureValidToken();
       
       if (token) {
         config.headers.set('Authorization', `Bearer ${token}`);
       }
     } catch (error) {
-      console.error('Failed to get auth token for request:', error);
+      // Token refresh failed - let the request proceed without token
+      // The response interceptor will handle 401s appropriately
+      console.warn('Failed to get auth token for request:', error);
     }
     
     return config;
@@ -74,9 +78,13 @@ export function setupAuthInterceptor(instance: AxiosInstance) {
     (response) => response,
     async (error) => {
       if (error.response?.status === 401) {
-        console.warn('Received 401, triggering re-authentication');
-        // Force re-authentication on 401
-        await authClient.login();
+        console.warn('Received 401 Unauthorized - clearing tokens');
+        // Clear tokens on 401 - AuthGuard will detect this and trigger login
+        // Do NOT redirect here - let AuthGuard handle it to prevent redirect loops
+        authClient.clearTokens();
+        
+        // Don't call login() here - AuthGuard will handle the redirect
+        // This prevents redirects during API calls
       } else if (error.response?.status === 403) {
         console.warn('Received 403 Forbidden - user not authorized');
         // Handle forbidden error - user is authenticated but not authorized

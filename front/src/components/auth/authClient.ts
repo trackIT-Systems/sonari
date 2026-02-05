@@ -28,6 +28,7 @@ class AuthClient {
   private tokenSet: TokenSet | null = null;
   private userInfo: UserInfo | null = null;
   private refreshTimer: NodeJS.Timeout | null = null;
+  private isRedirecting: boolean = false; // Prevent multiple simultaneous redirects
 
   constructor() {
     if (typeof window !== 'undefined') {
@@ -92,9 +93,44 @@ class AuthClient {
     return btoa(String.fromCharCode.apply(null, Array.from(array)));
   }
 
+  /**
+   * Get the fixed OIDC callback redirect URI
+   */
+  private getCallbackUri(): string {
+    if (typeof window === 'undefined') {
+      return '';
+    }
+    const basePath = process.env.NEXT_PUBLIC_SONARI_FOLDER || '';
+    return `${window.location.origin}${basePath}/auth/callback`;
+  }
+
   async login(): Promise<void> {
     if (!this.config) {
       throw new Error('authClient not initialized');
+    }
+
+    // Prevent multiple simultaneous redirects
+    if (this.isRedirecting) {
+      return;
+    }
+
+    this.isRedirecting = true;
+
+    // Store the current destination so we can redirect back after auth
+    // Remove base path prefix to avoid double base path issue with Next.js router
+    if (typeof window !== 'undefined') {
+      const basePath = process.env.NEXT_PUBLIC_SONARI_FOLDER || '';
+      let currentPath = window.location.pathname + window.location.search;
+      
+      // Remove base path prefix if present (Next.js router will add it back)
+      if (basePath && currentPath.startsWith(basePath)) {
+        currentPath = currentPath.substring(basePath.length) || '/';
+      }
+      
+      // Don't store callback route as destination
+      if (!currentPath.includes('/auth/callback')) {
+        sessionStorage.setItem('oidc_redirect_destination', currentPath);
+      }
     }
 
     const codeVerifier = this.generateCodeVerifier();
@@ -105,9 +141,10 @@ class AuthClient {
     sessionStorage.setItem('oidc_code_verifier', codeVerifier);
     sessionStorage.setItem('oidc_state', state);
 
+    const callbackUri = this.getCallbackUri();
     const authUrl = new URL(`${this.config.serverUrl}application/o/authorize/`);
     authUrl.searchParams.set('client_id', this.config.clientId);
-    authUrl.searchParams.set('redirect_uri', window.location.origin + window.location.pathname);
+    authUrl.searchParams.set('redirect_uri', callbackUri);
     authUrl.searchParams.set('response_type', 'code');
     authUrl.searchParams.set('scope', 'openid profile email groups');
     authUrl.searchParams.set('code_challenge', codeChallenge);
@@ -142,17 +179,17 @@ class AuthClient {
     const codeVerifier = sessionStorage.getItem('oidc_code_verifier');
 
     if (state !== storedState) {
-      throw new Error('Invalid state parameter');
+      // Clean up on error
+      sessionStorage.removeItem('oidc_state');
+      sessionStorage.removeItem('oidc_code_verifier');
+      throw new Error('Invalid state parameter - possible CSRF attack or expired session');
     }
 
     if (!codeVerifier) {
-      throw new Error('Code verifier not found');
+      throw new Error('Code verifier not found - session may have expired');
     }
 
-    // Clean up session storage
-    sessionStorage.removeItem('oidc_state');
-    sessionStorage.removeItem('oidc_code_verifier');
-
+    const callbackUri = this.getCallbackUri();
     const tokenUrl = `${this.config.serverUrl}application/o/token/`;
     
     const response = await fetch(tokenUrl, {
@@ -164,18 +201,27 @@ class AuthClient {
         grant_type: 'authorization_code',
         client_id: this.config.clientId,
         code,
-        redirect_uri: window.location.origin + window.location.pathname,
+        redirect_uri: callbackUri,
         code_verifier: codeVerifier,
       }),
     });
 
+    // Clean up session storage regardless of success/failure
+    sessionStorage.removeItem('oidc_state');
+    sessionStorage.removeItem('oidc_code_verifier');
+
     if (!response.ok) {
-      throw new Error('Failed to exchange code for tokens');
+      const errorText = await response.text();
+      console.error('Token exchange failed:', errorText);
+      throw new Error(`Failed to exchange code for tokens: ${response.status} ${response.statusText}`);
     }
 
     const tokens = await response.json();
     this.setTokens(tokens);
     await this.loadUserInfo();
+    
+    // Reset redirect flag after successful callback
+    this.isRedirecting = false;
   }
 
   private setTokens(tokens: any): void {
@@ -213,16 +259,23 @@ class AuthClient {
     }
   }
 
+  /**
+   * Refresh access token using refresh token.
+   * Does NOT redirect - throws error on failure so caller can handle appropriately.
+   * Only login() should trigger redirects to OIDC provider.
+   */
   async refreshTokens(): Promise<void> {
     if (!this.config || !this.tokenSet?.refresh_token) {
-      throw new Error('Cannot refresh tokens');
+      this.clearTokens();
+      throw new Error('Cannot refresh tokens: no refresh token available');
     }
 
     const now = Date.now();
     if (now >= this.tokenSet.refresh_expires_at) {
-      // Refresh token expired, need to re-authenticate
-      await this.login();
-      return;
+      // Refresh token expired - clear tokens and throw error
+      // Let the caller (AuthGuard or API interceptor) handle the redirect
+      this.clearTokens();
+      throw new Error('Refresh token expired');
     }
 
     const tokenUrl = `${this.config.serverUrl}application/o/token/`;
@@ -240,9 +293,12 @@ class AuthClient {
     });
 
     if (!response.ok) {
-      // Refresh failed, need to re-authenticate
-      await this.login();
-      return;
+      // Refresh failed - clear tokens and throw error
+      // Do NOT redirect here - let the caller handle it
+      this.clearTokens();
+      const errorText = await response.text();
+      console.error('Token refresh failed:', errorText);
+      throw new Error(`Token refresh failed: ${response.status} ${response.statusText}`);
     }
 
     const tokens = await response.json();
@@ -308,7 +364,11 @@ class AuthClient {
     }
   }
 
-  private clearTokens(): void {
+  /**
+   * Clear all tokens and reset auth state.
+   * Public method for use by API interceptors and other components.
+   */
+  clearTokens(): void {
     this.tokenSet = null;
     this.userInfo = null;
     
@@ -321,6 +381,9 @@ class AuthClient {
       localStorage.removeItem('oidc_tokens');
       localStorage.removeItem('oidc_user');
     }
+    
+    // Reset redirect flag when tokens are cleared
+    this.isRedirecting = false;
   }
 
   isAuthenticated(): boolean {
@@ -343,6 +406,10 @@ class AuthClient {
     return this.userInfo;
   }
 
+  /**
+   * Ensure we have a valid access token, refreshing if needed.
+   * Does NOT redirect - throws error on failure so caller can handle appropriately.
+   */
   async ensureValidToken(): Promise<string | null> {
     if (!this.tokenSet) {
       return null;
@@ -350,9 +417,16 @@ class AuthClient {
 
     const now = Date.now();
     
-    // If access token is expired but refresh token is still valid
+    // If access token is expired but refresh token is still valid, try to refresh
     if (now >= this.tokenSet.expires_at && now < this.tokenSet.refresh_expires_at) {
-      await this.refreshTokens();
+      try {
+        await this.refreshTokens();
+      } catch (error) {
+        // Refresh failed - return null so caller knows auth is needed
+        // Don't redirect here - let AuthGuard or API interceptor handle it
+        console.warn('Token refresh failed in ensureValidToken:', error);
+        return null;
+      }
     }
 
     return this.getAccessToken();
