@@ -20,6 +20,11 @@ logger = logging.getLogger(__name__)
 # Security scheme for Bearer token
 security = HTTPBearer()
 
+# Cached JWKS client instance (reused across all requests within each worker process)
+# Note: With multiple uvicorn workers, each worker process will have its own cached instance.
+# This is fine because PyJWKClient has built-in caching (default 300 seconds) for JWKS keys.
+_jwks_client: Optional[PyJWKClient] = None
+
 
 async def get_session() -> AsyncGenerator[AsyncSession, None]:
     """Get database session for OIDC operations."""
@@ -45,18 +50,47 @@ class OIDCUser(BaseModel):
 SecDep = Depends(security)
 
 
+def _get_jwks_client() -> PyJWKClient:
+    """Get or create the cached JWKS client instance.
+
+    The JWKS client is cached at module level to avoid creating a new instance
+    and fetching JWKS keys on every request, which significantly improves performance.
+
+    With multiple uvicorn workers, each worker process will have its own cached instance.
+    PyJWKClient has built-in caching (default 300 seconds) for JWKS keys, so reusing
+    the instance leverages that cache effectively.
+
+    Returns
+    -------
+    PyJWKClient
+        The cached JWKS client instance for this worker process.
+    """
+    global _jwks_client
+
+    if _jwks_client is None:
+        settings = get_settings()
+        server_url = settings.oidc_server_url.rstrip("/")
+        jwks_url = f"{server_url}/application/o/{settings.oidc_application}/jwks/"
+
+        # Create JWKS client with caching enabled (default: 300 seconds)
+        # This will cache the JWKS keys locally, reducing auth server requests
+        _jwks_client = PyJWKClient(jwks_url)
+        logger.info(f"Initialized JWKS client for {jwks_url}")
+
+    return _jwks_client
+
+
 async def verify_oidc_token(
     credentials: HTTPAuthorizationCredentials = SecDep,
 ) -> OIDCUser:
     """Verify OIDC JWT token and return user information."""
     try:
         settings = get_settings()
-        # Normalize the server URL to ensure no double slashes
-        server_url = settings.oidc_server_url.rstrip("/")
-        jwks_url = f"{server_url}/application/o/{settings.oidc_application}/jwks/"
 
-        # Create JWKS client and verify token
-        jwks_client = PyJWKClient(jwks_url)
+        # Use cached JWKS client instead of creating a new one on every request
+        # This significantly improves performance by reusing the client and its
+        # built-in JWKS key cache across all requests within this worker process.
+        jwks_client = _get_jwks_client()
         signing_key = jwks_client.get_signing_key_from_jwt(credentials.credentials)
 
         # First decode without verification to see the actual issuer (for debugging)
@@ -103,8 +137,11 @@ async def get_or_create_user(
     """Get or create a Sonari user from OIDC user information.
 
     Uses the OIDC username as the primary identifier for user lookup.
+    Falls back to email lookup if username is not found, to handle cases
+    where a user exists with the same email but different username.
     """
     from sqlalchemy import select
+    from sqlalchemy.exc import IntegrityError
 
     # Find user by username (primary identifier)
     stmt = select(models.User).where(models.User.username == oidc_user.preferred_username)
@@ -127,13 +164,37 @@ async def get_or_create_user(
 
         return user
 
+    # If not found by username and email is provided, check by email
+    # This handles cases where a user exists with the same email but different username
+    if oidc_user.email:
+        stmt = select(models.User).where(models.User.email == oidc_user.email)
+        result = await session.execute(stmt)
+        user = result.scalar_one_or_none()
+
+        if user:
+            # User exists with same email but different username - update username
+            logger.info(
+                f"User found by email {oidc_user.email} with username {user.username}, "
+                f"updating to {oidc_user.preferred_username}"
+            )
+            user.username = oidc_user.preferred_username
+            updated = False
+            if oidc_user.name and user.name != oidc_user.name:
+                user.name = oidc_user.name
+                updated = True
+
+            await session.commit()
+            await session.refresh(user)
+            return user
+
     # Create new user
     full_name = oidc_user.name or f"{oidc_user.given_name or ''} {oidc_user.family_name or ''}".strip()
+    user_email = oidc_user.email or f"{oidc_user.preferred_username}@oidc.local"
 
     new_user = models.User(
         id=uuid4(),
         username=oidc_user.preferred_username,
-        email=oidc_user.email or f"{oidc_user.preferred_username}@oidc.local",
+        email=user_email,
         name=full_name or oidc_user.preferred_username,
         hashed_password="",  # Not used with OIDC
         is_active=True,
@@ -142,10 +203,42 @@ async def get_or_create_user(
     )
 
     session.add(new_user)
-    await session.commit()
-    await session.refresh(new_user)
 
-    return new_user
+    try:
+        await session.commit()
+        await session.refresh(new_user)
+        return new_user
+    except IntegrityError as e:
+        # Handle race condition: another request created the user between our check and creation
+        await session.rollback()
+
+        # Check if it's a unique constraint violation
+        error_str = str(e.orig) if hasattr(e, "orig") else str(e)
+        if "unique constraint" in error_str.lower() or "duplicate key" in error_str.lower():
+            logger.warning(
+                f"Race condition detected: user creation failed due to unique constraint. "
+                f"Retrying lookup for username={oidc_user.preferred_username}, email={user_email}"
+            )
+
+            # Retry lookup by username first
+            stmt = select(models.User).where(models.User.username == oidc_user.preferred_username)
+            result = await session.execute(stmt)
+            user = result.scalar_one_or_none()
+
+            if user:
+                return user
+
+            # Retry lookup by email if provided
+            if oidc_user.email:
+                stmt = select(models.User).where(models.User.email == oidc_user.email)
+                result = await session.execute(stmt)
+                user = result.scalar_one_or_none()
+
+                if user:
+                    return user
+
+        # Re-raise if we couldn't handle it
+        raise
 
 
 def _check_tenant_authorization(oidc_user: OIDCUser, domain: str) -> None:
