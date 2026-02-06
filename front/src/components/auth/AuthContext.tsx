@@ -39,6 +39,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const [isForbidden, setIsForbidden] = useState(false);
   const [forbiddenMessage, setForbiddenMessage] = useState<string | null>(null);
   const [user, setUser] = useState<User | null>(null);
+  const checkAuthStatusTimeoutRef = React.useRef<NodeJS.Timeout | null>(null);
 
   const convertUserInfo = (userInfo: UserInfo): User => ({
     id: userInfo.sub,
@@ -64,6 +65,16 @@ export function AuthProvider({ children }: AuthProviderProps) {
   };
 
   const checkAuthStatus = useCallback(async () => {
+    // Skip auth check if refresh is in progress to prevent showing loading screen
+    // during automatic token renewal
+    if (authClient.isRefreshInProgress()) {
+      // Refresh is happening in background - don't trigger loading state
+      // Just update authenticated state optimistically
+      const authenticated = authClient.isAuthenticated();
+      setIsAuthenticated(authenticated);
+      return;
+    }
+
     setIsLoading(true);
     
     try {
@@ -124,6 +135,9 @@ export function AuthProvider({ children }: AuthProviderProps) {
     // Cleanup on unmount
     return () => {
       clearForbiddenCallback();
+      if (checkAuthStatusTimeoutRef.current) {
+        clearTimeout(checkAuthStatusTimeoutRef.current);
+      }
     };
   }, [checkAuthStatus]);
 

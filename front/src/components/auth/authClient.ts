@@ -8,7 +8,7 @@ export interface oidcConfig {
 
 export interface TokenSet {
   access_token: string;
-  refresh_token: string;
+  refresh_token: string | null;
   id_token?: string;
   expires_at: number;
   refresh_expires_at: number;
@@ -29,6 +29,7 @@ class AuthClient {
   private userInfo: UserInfo | null = null;
   private refreshTimer: NodeJS.Timeout | null = null;
   private isRedirecting: boolean = false; // Prevent multiple simultaneous redirects
+  private isRefreshing: boolean = false; // Track active refresh operations
 
   constructor() {
     if (typeof window !== 'undefined') {
@@ -146,7 +147,7 @@ class AuthClient {
     authUrl.searchParams.set('client_id', this.config.clientId);
     authUrl.searchParams.set('redirect_uri', callbackUri);
     authUrl.searchParams.set('response_type', 'code');
-    authUrl.searchParams.set('scope', 'openid profile email groups');
+    authUrl.searchParams.set('scope', 'openid profile email groups offline_access');
     authUrl.searchParams.set('code_challenge', codeChallenge);
     authUrl.searchParams.set('code_challenge_method', 'S256');
     authUrl.searchParams.set('state', state);
@@ -226,12 +227,21 @@ class AuthClient {
 
   private setTokens(tokens: any): void {
     const now = Date.now();
+    
+    // Preserve existing refresh_token if new response doesn't include one
+    // (Some OIDC providers only return refresh_token on initial exchange, not on refresh)
+    const refreshToken = tokens.refresh_token !== undefined 
+      ? tokens.refresh_token 
+      : this.tokenSet?.refresh_token || null;
+
+    const refreshExpiresAt = now + (30 * 24 * 60 * 60 * 1000);
+
     this.tokenSet = {
       access_token: tokens.access_token,
-      refresh_token: tokens.refresh_token,
-      id_token: tokens.id_token,
+      refresh_token: refreshToken,
+      id_token: tokens.id_token !== undefined ? tokens.id_token : this.tokenSet?.id_token,
       expires_at: now + (tokens.expires_in * 1000),
-      refresh_expires_at: now + (tokens.refresh_expires_in * 1000),
+      refresh_expires_at: refreshExpiresAt,
     };
 
     this.saveToStorage();
@@ -265,6 +275,13 @@ class AuthClient {
    * Only login() should trigger redirects to OIDC provider.
    */
   async refreshTokens(): Promise<void> {
+    // Prevent multiple simultaneous refresh attempts
+    if (this.isRefreshing) {
+      // If already refreshing, wait for the existing refresh to complete
+      // This prevents race conditions
+      return;
+    }
+
     if (!this.config || !this.tokenSet?.refresh_token) {
       this.clearTokens();
       throw new Error('Cannot refresh tokens: no refresh token available');
@@ -278,37 +295,49 @@ class AuthClient {
       throw new Error('Refresh token expired');
     }
 
-    const tokenUrl = `${this.config.serverUrl}application/o/token/`;
-    
-    const response = await fetch(tokenUrl, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
-      },
-      body: new URLSearchParams({
-        grant_type: 'refresh_token',
-        client_id: this.config.clientId,
-        refresh_token: this.tokenSet.refresh_token,
-      }),
-    });
+    this.isRefreshing = true;
 
-    if (!response.ok) {
-      // Refresh failed - clear tokens and throw error
-      // Do NOT redirect here - let the caller handle it
-      this.clearTokens();
-      const errorText = await response.text();
-      console.error('Token refresh failed:', errorText);
-      throw new Error(`Token refresh failed: ${response.status} ${response.statusText}`);
+    try {
+      const tokenUrl = `${this.config.serverUrl}application/o/token/`;
+      
+      // Ensure refresh_token is not null before making request
+      if (!this.tokenSet.refresh_token) {
+        throw new Error('Refresh token is null');
+      }
+      
+      const response = await fetch(tokenUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: new URLSearchParams({
+          grant_type: 'refresh_token',
+          client_id: this.config.clientId,
+          refresh_token: this.tokenSet.refresh_token,
+        }),
+      });
+
+      if (!response.ok) {
+        // Refresh failed - clear tokens and throw error
+        // Do NOT redirect here - let the caller handle it
+        this.clearTokens();
+        const errorText = await response.text();
+        console.error('Token refresh failed:', errorText);
+        throw new Error(`Token refresh failed: ${response.status} ${response.statusText}`);
+      }
+
+      const tokens = await response.json();
+      this.setTokens(tokens);
+      await this.loadUserInfo();
+    } finally {
+      this.isRefreshing = false;
     }
-
-    const tokens = await response.json();
-    this.setTokens(tokens);
-    await this.loadUserInfo();
   }
 
   private scheduleTokenRefresh(): void {
     if (this.refreshTimer) {
       clearTimeout(this.refreshTimer);
+      this.refreshTimer = null;
     }
 
     if (!this.tokenSet) {
@@ -317,12 +346,31 @@ class AuthClient {
 
     const now = Date.now();
     const expiresAt = this.tokenSet.expires_at;
-    const refreshAt = expiresAt - (5 * 60 * 1000); // Refresh 5 minutes before expiry
+    const timeUntilExpiry = expiresAt - now;
 
-    if (refreshAt > now) {
-      this.refreshTimer = setTimeout(() => {
-        this.refreshTokens().catch(console.error);
-      }, refreshAt - now);
+    // Only schedule if token hasn't expired yet
+    if (timeUntilExpiry <= 0) {
+      console.warn('Token already expired, cannot schedule refresh');
+      return;
+    }
+
+    // Refresh when 80% of token lifetime has passed (i.e., refresh at 20% remaining)
+    // This works for tokens of any duration:
+    // - Long tokens (e.g., 1 hour): refresh at 12 minutes remaining
+    // - Short tokens (e.g., 2 minutes): refresh at 24 seconds remaining
+    // - Very short tokens (e.g., 30 seconds): refresh at 6 seconds remaining
+    const refreshDelay = Math.max(1000, timeUntilExpiry * 0.8); // At least 1 second delay
+
+    // Schedule the refresh
+    this.refreshTimer = setTimeout(() => {
+      this.refreshTokens().catch((error) => {
+        console.error('Scheduled token refresh failed:', error);
+      });
+    }, refreshDelay);
+    
+    // Log for debugging (can be removed in production)
+    if (process.env.NODE_ENV === 'development') {
+      console.log(`Token refresh scheduled in ${Math.round(refreshDelay / 1000)}s (token expires in ${Math.round(timeUntilExpiry / 1000)}s)`);
     }
   }
 
@@ -384,6 +432,8 @@ class AuthClient {
     
     // Reset redirect flag when tokens are cleared
     this.isRedirecting = false;
+    // Reset refresh flag when tokens are cleared
+    this.isRefreshing = false;
   }
 
   isAuthenticated(): boolean {
@@ -391,8 +441,22 @@ class AuthClient {
       return false;
     }
 
+    // If refresh is in progress, return true optimistically
+    // This prevents false negatives during background token refresh
+    if (this.isRefreshing) {
+      return true;
+    }
+
     const now = Date.now();
     return now < this.tokenSet.expires_at;
+  }
+
+  /**
+   * Check if a token refresh is currently in progress.
+   * Useful for preventing redundant auth checks during refresh.
+   */
+  isRefreshInProgress(): boolean {
+    return this.isRefreshing;
   }
 
   getAccessToken(): string | null {
@@ -419,6 +483,22 @@ class AuthClient {
     
     // If access token is expired but refresh token is still valid, try to refresh
     if (now >= this.tokenSet.expires_at && now < this.tokenSet.refresh_expires_at) {
+      // If refresh is already in progress, wait a bit for it to complete
+      if (this.isRefreshing) {
+        // Wait for refresh to complete (max 5 seconds)
+        const maxWait = 5000;
+        const startWait = Date.now();
+        while (this.isRefreshing && (Date.now() - startWait) < maxWait) {
+          await new Promise(resolve => setTimeout(resolve, 100));
+        }
+        // After waiting, check if we now have a valid token
+        if (this.tokenSet && Date.now() < this.tokenSet.expires_at) {
+          return this.getAccessToken();
+        }
+        // If still expired after waiting, return null
+        return null;
+      }
+
       try {
         await this.refreshTokens();
       } catch (error) {
