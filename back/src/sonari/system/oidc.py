@@ -12,7 +12,7 @@ from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from sonari import models
-from sonari.system.database import create_async_db_engine, get_async_session, get_database_url
+from sonari.system.database import get_async_session, get_database_url, get_or_create_async_engine
 from sonari.system.settings import get_settings
 
 logger = logging.getLogger(__name__)
@@ -30,7 +30,7 @@ async def get_session() -> AsyncGenerator[AsyncSession, None]:
     """Get database session for OIDC operations."""
     settings = get_settings()
     url = get_database_url(settings)
-    engine = create_async_db_engine(url)
+    engine = get_or_create_async_engine(url)
     async with get_async_session(engine) as session:
         yield session
 
