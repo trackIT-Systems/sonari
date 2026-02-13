@@ -16,16 +16,21 @@ import SoundEventAnnotationPSD from "./SoundEventAnnotationPSD";
 import useStore from "@/store";
 import Button from "../Button";
 
-function getWindowFromGeometry(annotation: SoundEventAnnotation, duration: number, samplerate: number) {
+function getWindowFromGeometry(annotation: SoundEventAnnotation, taskStartTime: number, taskEndTime: number, samplerate: number) {
     const { geometry, geometry_type } = annotation;
+    const duration = taskEndTime - taskStartTime;
+    
     switch (geometry_type) {
         case "TimeInterval":
             const ti_coordinates = geometry.coordinates as [number, number];
-            var duration_margin = (ti_coordinates[1] - ti_coordinates[0]) * 0.1
+            // Coordinates are in absolute recording time, convert to relative
+            const ti_start_rel = ti_coordinates[0] - taskStartTime;
+            const ti_end_rel = ti_coordinates[1] - taskStartTime;
+            var ti_duration_margin = (ti_end_rel - ti_start_rel) * 0.1;
             return {
                 time: {
-                    min: Math.max(0, ti_coordinates[0] - duration_margin),
-                    max: Math.min(ti_coordinates[1] + duration_margin, duration),
+                    min: Math.max(0, ti_start_rel - ti_duration_margin),
+                    max: Math.min(ti_end_rel + ti_duration_margin, duration),
                 },
                 freq: {
                     min: 0,
@@ -35,12 +40,15 @@ function getWindowFromGeometry(annotation: SoundEventAnnotation, duration: numbe
 
         case "BoundingBox":
             const bb_coordinates = geometry.coordinates as [number, number, number, number];
+            // Coordinates are in absolute recording time, convert to relative
+            const bb_start_rel = bb_coordinates[0] - taskStartTime;
+            const bb_end_rel = bb_coordinates[2] - taskStartTime;
             var bandwidth_margin = (bb_coordinates[3] - bb_coordinates[1]) * 0.1;
-            var duration_margin = (bb_coordinates[2] - bb_coordinates[0]) * 0.1
+            var bb_duration_margin = (bb_end_rel - bb_start_rel) * 0.1;
             return {
                 time: {
-                    min: Math.max(0, bb_coordinates[0] - duration_margin),
-                    max: Math.min(bb_coordinates[2] + duration_margin, duration),
+                    min: Math.max(0, bb_start_rel - bb_duration_margin),
+                    max: Math.min(bb_end_rel + bb_duration_margin, duration),
                 },
                 freq: {
                     min: Math.max(0, bb_coordinates[1] - bandwidth_margin),
@@ -61,15 +69,16 @@ function getWindowFromGeometry(annotation: SoundEventAnnotation, duration: numbe
     }
 }
 
-function getSoundEventCoordinates(annotation: SoundEventAnnotation) {
+function getSoundEventCoordinates(annotation: SoundEventAnnotation, taskStartTime: number) {
     const { geometry, geometry_type } = annotation;
+    // Coordinates are in absolute recording time, convert to relative for display
     switch (geometry_type) {
         case "TimeInterval":
             const ti_coordinates = geometry.coordinates as [number, number];
             return {
                 time: {
-                    min: ti_coordinates[0],
-                    max: ti_coordinates[1],
+                    min: ti_coordinates[0] - taskStartTime,
+                    max: ti_coordinates[1] - taskStartTime,
                 },
                 freq: {
                     min: 0,
@@ -81,8 +90,8 @@ function getSoundEventCoordinates(annotation: SoundEventAnnotation) {
             const bb_coordinates = geometry.coordinates as [number, number, number, number];
             return {
                 time: {
-                    min: bb_coordinates[0],
-                    max: bb_coordinates[2],
+                    min: bb_coordinates[0] - taskStartTime,
+                    max: bb_coordinates[2] - taskStartTime,
                 },
                 freq: {
                     min: bb_coordinates[1],
@@ -94,8 +103,8 @@ function getSoundEventCoordinates(annotation: SoundEventAnnotation) {
             const time = geometry.coordinates as number;
             return {
                 time: {
-                    min: time,
-                    max: time,
+                    min: time - taskStartTime,
+                    max: time - taskStartTime,
                 },
                 freq: {
                     min: 0,
@@ -107,8 +116,8 @@ function getSoundEventCoordinates(annotation: SoundEventAnnotation) {
             const point_coordinates = geometry.coordinates as [number, number];
             return {
                 time: {
-                    min: point_coordinates[0],
-                    max: point_coordinates[0],
+                    min: point_coordinates[0] - taskStartTime,
+                    max: point_coordinates[0] - taskStartTime,
                 },
                 freq: {
                     min: point_coordinates[1],
@@ -200,14 +209,27 @@ export default function SoundEventAnnotationSpectrogramView({
         return applyAutoSTFT(parameters, samplerate);
     }, [parameters, samplerate]);
 
-    const window = useMemo(
-        () => getWindowFromGeometry(soundEventAnnotation, task.end_time - task.start_time, effectiveSamplerate),
-        [soundEventAnnotation, effectiveSamplerate, task.start_time, task.end_time]
-    );
+    // getWindowFromGeometry converts absolute annotation coords to relative [0, duration],
+    // then we convert back to absolute for useSpectrogram.
+    const window = useMemo(() => {
+        const relWindow = getWindowFromGeometry(
+            soundEventAnnotation,
+            task.start_time,
+            task.end_time,
+            effectiveSamplerate
+        );
+        return {
+            time: {
+                min: relWindow.time.min + task.start_time,
+                max: relWindow.time.max + task.start_time,
+            },
+            freq: relWindow.freq,
+        };
+    }, [soundEventAnnotation, effectiveSamplerate, task.start_time, task.end_time]);
 
     const soundEventCoords = useMemo(
-        () => getSoundEventCoordinates(soundEventAnnotation),
-        [soundEventAnnotation]
+        () => getSoundEventCoordinates(soundEventAnnotation, task.start_time),
+        [soundEventAnnotation, task.start_time]
     );
 
     const displayCoords = useMemo(() => window, [window]);
