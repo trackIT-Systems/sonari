@@ -10,49 +10,83 @@ function formatDb(value: number | null): string {
     return `${value.toFixed(0)} dB`;
 }
 
-function getTimeRangeFromGeometry(annotation: SoundEventAnnotation, taskStartTime: number, taskEndTime: number) {
+function getTimeRangeFromGeometry(annotation: SoundEventAnnotation, taskStartTime: number, taskEndTime: number, minDuration: number = 0.01) {
     const { geometry, geometry_type } = annotation;
+
+    let timeRange: { min: number; max: number };
 
     switch (geometry_type) {
         case "TimeInterval":
             const ti_coordinates = geometry.coordinates as [number, number];
-            return {
+            timeRange = {
                 min: taskStartTime + ti_coordinates[0],
                 max: taskStartTime + ti_coordinates[1],
             };
+            break;
 
         case "BoundingBox":
             const bb_coordinates = geometry.coordinates as [number, number, number, number];
-            return {
+            timeRange = {
                 min: taskStartTime + bb_coordinates[0],
                 max: taskStartTime + bb_coordinates[2],
             };
+            break;
 
         case "TimeStamp":
             const time = geometry.coordinates as number;
             // For a timestamp, use a small window around it
             const margin = 0.05; // 50ms
-            return {
+            timeRange = {
                 min: Math.max(taskStartTime, taskStartTime + time - margin),
                 max: Math.min(taskEndTime, taskStartTime + time + margin),
             };
+            break;
 
         case "Point":
             const point_coordinates = geometry.coordinates as [number, number];
             // For a point, use a small window around the time
             const pointMargin = 0.05;
-            return {
+            timeRange = {
                 min: Math.max(taskStartTime, taskStartTime + point_coordinates[0] - pointMargin),
                 max: Math.min(taskEndTime, taskStartTime + point_coordinates[0] + pointMargin),
             };
+            break;
 
         default:
             // Default to full task duration
-            return {
+            timeRange = {
                 min: taskStartTime,
                 max: taskEndTime,
             };
     }
+
+    // Ensure the time range is at least minDuration
+    const duration = timeRange.max - timeRange.min;
+    if (duration < minDuration) {
+        const center = (timeRange.min + timeRange.max) / 2;
+        const halfDuration = minDuration / 2;
+        
+        let newMin = center - halfDuration;
+        let newMax = center + halfDuration;
+        
+        // Adjust if we're outside task boundaries
+        if (newMin < taskStartTime) {
+            newMin = taskStartTime;
+            newMax = Math.min(taskEndTime, taskStartTime + minDuration);
+        }
+        
+        if (newMax > taskEndTime) {
+            newMax = taskEndTime;
+            newMin = Math.max(taskStartTime, taskEndTime - minDuration);
+        }
+        
+        timeRange = {
+            min: newMin,
+            max: newMax,
+        };
+    }
+
+    return timeRange;
 }
 
 function getFrequencyRangeFromGeometry(annotation: SoundEventAnnotation, samplerate: number) {
@@ -117,9 +151,15 @@ export default function SoundEventAnnotationPSD({
         return applyAutoSTFT(parameters, samplerate);
     }, [parameters, samplerate]);
 
+    // Calculate minimum duration based on window size and sample rate
+    const minDuration = useMemo(() => {
+        const windowDuration = selectedParameters.window_size_samples / samplerate;
+        return Math.max(0.02, windowDuration * 3); // At least 3 windows or 20ms
+    }, [selectedParameters.window_size_samples, samplerate]);
+
     const timeRange = useMemo(
-        () => getTimeRangeFromGeometry(soundEventAnnotation, task.start_time, task.end_time),
-        [soundEventAnnotation, task.start_time, task.end_time]
+        () => getTimeRangeFromGeometry(soundEventAnnotation, task.start_time, task.end_time, minDuration),
+        [soundEventAnnotation, task.start_time, task.end_time, minDuration]
     );
 
     const frequencyRange = useMemo(

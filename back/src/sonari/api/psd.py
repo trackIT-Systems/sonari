@@ -54,13 +54,80 @@ def compute_psd(
     if audio_dir is None:
         audio_dir = Path.cwd()
 
-    wav = audio_api.load_audio(
-        recording,
-        start_time,
-        end_time,
-        audio_parameters=audio_parameters,
-        audio_dir=audio_dir,
+    # Gracefully clip time range to valid bounds
+    start_time = max(0, start_time)
+    end_time = min(recording.duration, end_time)
+    
+    # If start_time >= end_time, swap them or use a small default window
+    if start_time >= end_time:
+        # If they're equal or invalid, create a small window around that time
+        center_time = max(0, min(start_time, recording.duration))
+        min_duration = max(
+            0.02,  # 20ms minimum window
+            spectrogram_parameters.window_size_samples / recording.samplerate * 3
+        )
+        start_time = max(0, center_time - min_duration / 2)
+        end_time = min(recording.duration, center_time + min_duration / 2)
+    
+    # Check if the time segment is too small and expand it if needed
+    min_duration = max(
+        0.02,  # 20ms absolute minimum
+        spectrogram_parameters.window_size_samples / recording.samplerate * 3  # At least 3 windows
     )
+    duration = end_time - start_time
+    
+    if duration < min_duration:
+        # Expand the window around the center while respecting recording bounds
+        center = (start_time + end_time) / 2
+        half_duration = min_duration / 2
+        
+        start_time = center - half_duration
+        end_time = center + half_duration
+        
+        # Adjust if we're out of bounds
+        if start_time < 0:
+            start_time = 0
+            end_time = min(min_duration, recording.duration)
+        
+        if end_time > recording.duration:
+            end_time = recording.duration
+            start_time = max(0, recording.duration - min_duration)
+
+    try:
+        wav = audio_api.load_audio(
+            recording,
+            start_time,
+            end_time,
+            audio_parameters=audio_parameters,
+            audio_dir=audio_dir,
+        )
+    except Exception as e:
+        # Log the error but try to recover by loading from the start of the recording
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.warning(
+            f"Failed to load audio at {start_time:.6f}s - {end_time:.6f}s for recording {recording.id}. "
+            f"Error: {type(e).__name__}: {e}. Attempting to load from start..."
+        )
+        
+        # Try loading from the beginning with the same duration
+        duration = end_time - start_time
+        try:
+            wav = audio_api.load_audio(
+                recording,
+                0,
+                min(duration, recording.duration),
+                audio_parameters=audio_parameters,
+                audio_dir=audio_dir,
+            )
+        except Exception as e2:
+            # If that also fails, raise a more informative error
+            raise RuntimeError(
+                f"Failed to load audio for PSD calculation even after fallback attempt. "
+                f"Recording: {recording.id}, Original time range: {start_time:.6f}s - {end_time:.6f}s. "
+                f"Fallback range: 0s - {min(duration, recording.duration):.6f}s. "
+                f"Error: {type(e2).__name__}: {e2}"
+            ) from e2
 
     # Select channel
     available_channels = wav.sizes.get("channel", 1)
@@ -101,8 +168,8 @@ def compute_psd(
         window_type=spectrogram_parameters.window,
     )
 
-    # De-noise spectrogram with PCEN if not disabled
-    if not spectrogram_parameters.pcen:
+    # De-noise spectrogram with PCEN if enabled
+    if spectrogram_parameters.pcen:
         spectrogram = audio.pcen(spectrogram)
 
     # Convert to dB scale
