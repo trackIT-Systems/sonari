@@ -72,12 +72,12 @@ def generate_dev_logging_config():
         },
         "loggers": {
             "uvicorn": {
-                "handlers": ["default", "console"],
+                "handlers": ["default"],
                 "level": "INFO",
                 "propagate": False,
             },
             "uvicorn.error": {
-                "handlers": ["default", "console.error"],
+                "handlers": ["console.error"],
                 "level": "INFO",
                 "propagate": False,
             },
@@ -87,7 +87,7 @@ def generate_dev_logging_config():
                 "propagate": False,
             },
             "sonari": {
-                "handlers": ["default", "console"],
+                "handlers": ["default"],
                 "level": "DEBUG",
                 "propagate": False,
             },
@@ -150,6 +150,11 @@ def generate_logging_config(settings: Settings) -> dict[str, Any]:
             "formatter": "access",
             "stream": "ext://sys.stdout",
         },
+        "console.default": {
+            "class": "logging.StreamHandler",
+            "formatter": "sonari",
+            "stream": "ext://sys.stdout",
+        },
         "console.error": {
             "class": "logging.StreamHandler",
             "formatter": "default",
@@ -176,7 +181,7 @@ def generate_logging_config(settings: Settings) -> dict[str, Any]:
         "handlers": handlers,
         "loggers": {
             "uvicorn": {
-                "handlers": _get_handlers("default", "console", settings),
+                "handlers": _get_handlers("default", "console.default", settings),
                 "level": "INFO",
                 "propagate": False,
             },
@@ -191,7 +196,7 @@ def generate_logging_config(settings: Settings) -> dict[str, Any]:
                 "propagate": False,
             },
             "sonari": {
-                "handlers": _get_handlers("default", "console", settings),
+                "handlers": _get_handlers("default", "console.default", settings),
                 "level": settings.log_level.upper(),
                 "propagate": False,
             },
