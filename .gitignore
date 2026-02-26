@@ -154,3 +154,4 @@ back/.build_venv
 .DS_STORE
 back/settings.json
 back/tests/pytest_config.toml
+back/.python-version
