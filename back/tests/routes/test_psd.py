@@ -33,8 +33,8 @@ async def test_get_psd_not_found(auth_client: AsyncClient):
             "height": 225,
         },
     )
-    # Should return 404 or 500 for non-existent recording
-    assert response.status_code in [404, 500]
+    # Should return 404 for non-existent recording
+    assert response.status_code == 404
 
 
 @pytest.mark.asyncio

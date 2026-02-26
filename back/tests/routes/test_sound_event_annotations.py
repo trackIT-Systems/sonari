@@ -46,8 +46,8 @@ async def test_create_sound_event_annotation_no_task(auth_client: AsyncClient):
             "tags": [],
         },
     )
-    # Should fail because task doesn't exist
-    assert response.status_code in [404, 422, 500]
+    # Should fail because task doesn't exist - expecting 404 or validation error 422
+    assert response.status_code in [404, 422]
 
 
 @pytest.mark.asyncio
@@ -59,7 +59,7 @@ async def test_get_sound_event_annotation_detail_not_found(auth_client: AsyncCli
         params={"sound_event_annotation_id": fake_id},
     )
     # Should return 404 for non-existent annotation
-    assert response.status_code in [404, 500]
+    assert response.status_code == 404
 
 
 @pytest.mark.asyncio
@@ -76,8 +76,8 @@ async def test_update_sound_event_annotation_not_found(auth_client: AsyncClient)
             }
         },
     )
-    # Should return 404 for non-existent annotation
-    assert response.status_code in [404, 422, 500]
+    # Should return 404 for non-existent annotation (422 if validation fails first)
+    assert response.status_code in [404, 422]
 
 
 @pytest.mark.asyncio
@@ -89,7 +89,7 @@ async def test_delete_sound_event_annotation_not_found(auth_client: AsyncClient)
         params={"sound_event_annotation_id": fake_id},
     )
     # Should return 404 for non-existent annotation
-    assert response.status_code in [404, 500]
+    assert response.status_code == 404
 
 
 @pytest.mark.asyncio
@@ -105,7 +105,7 @@ async def test_add_tag_to_sound_event_annotation_not_found(auth_client: AsyncCli
         },
     )
     # Should return 404 for non-existent annotation
-    assert response.status_code in [404, 500]
+    assert response.status_code == 404
 
 
 @pytest.mark.asyncio
@@ -121,7 +121,7 @@ async def test_remove_tag_from_sound_event_annotation_not_found(auth_client: Asy
         },
     )
     # Should return 404 for non-existent annotation
-    assert response.status_code in [404, 500]
+    assert response.status_code == 404
 
 
 # ============================================================================
@@ -343,4 +343,4 @@ async def test_delete_sound_event_annotation(
         "/api/v1/sound_event_annotations/detail/",
         params={"sound_event_annotation_id": annotation["id"]},
     )
-    assert get_response.status_code in [404, 500]  # Should not be found
+    assert get_response.status_code == 404  # Should not be found

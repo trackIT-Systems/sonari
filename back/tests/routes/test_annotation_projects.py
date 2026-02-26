@@ -5,6 +5,8 @@ import uuid
 import pytest
 from httpx import AsyncClient
 
+from sonari import schemas
+
 
 @pytest.mark.asyncio
 async def test_get_annotation_projects(auth_client: AsyncClient):
@@ -33,9 +35,12 @@ async def test_create_annotation_project(auth_client: AsyncClient):
     )
     assert response.status_code in [200, 201]
     data = response.json()
-    assert data["name"] == project_name
-    assert data["description"] == "A test annotation project"
-    assert "id" in data
+    
+    # Validate response against schema
+    project = schemas.AnnotationProject.model_validate(data)
+    assert project.name == project_name
+    assert project.description == "A test annotation project"
+    assert project.id is not None
 
 
 @pytest.mark.asyncio

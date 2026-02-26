@@ -12,8 +12,8 @@ async def test_stream_audio_not_found(auth_client: AsyncClient):
         params={"recording_id": 999999},
         headers={"Range": "bytes=0-"},
     )
-    # Should return 404 or 500 for non-existent recording
-    assert response.status_code in [404, 500]
+    # Should return 404 for non-existent recording
+    assert response.status_code == 404
 
 
 @pytest.mark.asyncio
@@ -75,8 +75,8 @@ async def test_download_audio_not_found(auth_client: AsyncClient):
         "/api/v1/audio/download/",
         params={"recording_id": 999999},
     )
-    # Should return 404 or 500 for non-existent recording
-    assert response.status_code in [404, 500]
+    # Should return 404 for non-existent recording
+    assert response.status_code == 404
 
 
 @pytest.mark.asyncio

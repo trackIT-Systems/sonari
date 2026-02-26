@@ -1,15 +1,15 @@
-# API Endpoint Tests
+# Sonari Tests
 
-This directory contains comprehensive integration tests for all Sonari API endpoints.
+This directory contains comprehensive tests for the Sonari backend: HTTP route tests, database API tests, and export layer tests.
 
 ## Overview
 
-These tests perform integration testing on all API endpoints to ensure they respond correctly. The tests use:
+The tests use:
 
 - **Test Database**: SQLite by default (unique temp file per run); PostgreSQL optional via `tests/pytest_config.toml`
 - **Authentication**: Mocked via dependency override (OIDC bypassed in tests)
 - **Testing Framework**: pytest with pytest-asyncio
-- **Test Coverage**: ~95% of active API endpoints
+- **Test Coverage**: ~95% of active API endpoints, plus database API and export layer
 
 ## Running Tests
 
@@ -20,16 +20,24 @@ These tests perform integration testing on all API endpoints to ensure they resp
 pytest tests/
 ```
 
+### Run tests by category
+
+```bash
+pytest tests/routes/      # HTTP endpoint tests only
+pytest tests/api/         # Database API tests only
+pytest tests/exports/     # Export layer tests only
+```
+
 ### Run specific test file
 
 ```bash
-pytest tests/test_psd.py
+pytest tests/routes/test_psd.py
 ```
 
 ### Run specific test
 
 ```bash
-pytest tests/test_psd.py::test_get_psd
+pytest tests/routes/test_psd.py::test_get_psd
 ```
 
 ### Run with more verbose output
@@ -46,29 +54,41 @@ pytest tests/ --cov=sonari --cov-report=html
 
 ## Test Structure
 
-Each route module has its own test file:
+Tests are organized into three directories:
 
-### Core API Tests
+### `tests/routes/` – HTTP endpoint tests
+
+Integration tests against API endpoints via `auth_client`.
+
 - `test_users.py` - User authentication endpoints (`/api/v1/auth/me`)
 - `test_datasets.py` - Dataset listing and filtering
 - `test_recordings.py` - Recording CRUD operations and feature management
 - `test_tags.py` - Tag creation, listing, and duplicate handling
 - `test_features.py` - Feature name listing
 - `test_notes.py` - Note CRUD operations
-
-### Annotation Tests
 - `test_annotation_projects.py` - Annotation project CRUD and progress tracking
 - `test_annotation_tasks.py` - Annotation task management, stats, and indexing
 - `test_sound_event_annotations.py` - Sound event annotation CRUD with tags and geometry
-
-### Audio Processing Tests
 - `test_audio.py` - Audio streaming and download endpoints
 - `test_waveforms.py` - Waveform image generation
 - `test_spectrograms.py` - Spectrogram image generation
 - `test_psd.py` - Power Spectral Density plot generation
+- `test_export.py` - Data export endpoints (multibase, dump, passes, stats, time, yearly activity)
 
-### Export Tests
-- `test_export.py` - Data export in various formats (multibase, dump, passes, stats, time, yearly activity)
+### `tests/api/` – Database API tests
+
+Direct tests of the database layer (no HTTP).
+
+- `test_utils.py` - Low-level CRUD utilities (`api/common/utils.py`)
+- `test_base.py` - BaseAPI via TagAPI
+- `test_api_datasets.py` - DatasetAPI
+- `test_api_recordings.py` - RecordingAPI
+- `test_api_annotation_tasks.py` - AnnotationTaskAPI
+
+### `tests/exports/` – Export layer tests
+
+- `test_query_builder.py` - Query construction for exports
+- `test_extractors.py` - Data extraction utilities
 
 ## Fixtures
 
@@ -93,6 +113,8 @@ The `conftest.py` file provides the following fixtures:
 - `test_annotation_project` - Test annotation project (function scope)
 - `test_annotation_task` - Test annotation task (function scope)
 - `test_tag` - Test tag (function scope)
+- `test_note` - Test note attached to annotation task (function scope)
+- `test_sound_event_annotation` - Test sound event annotation (function scope)
 
 ## Configuration
 

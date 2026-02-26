@@ -68,7 +68,7 @@ async def test_get_annotation_task_detail_not_found(auth_client: AsyncClient):
         params={"annotation_task_id": fake_id},
     )
     # Should return 404 for non-existent task
-    assert response.status_code in [404, 500]
+    assert response.status_code == 404
 
 
 @pytest.mark.asyncio
@@ -83,7 +83,12 @@ async def test_get_annotation_task_detail(
     )
     assert response.status_code == 200
     data = response.json()
-    assert data["id"] == test_annotation_task.id
+    
+    # Validate response against schema
+    task = schemas.AnnotationTask.model_validate(data)
+    assert task.id == test_annotation_task.id
+    assert task.start_time is not None
+    assert task.end_time is not None
 
 
 @pytest.mark.asyncio
@@ -117,7 +122,7 @@ async def test_delete_annotation_task_not_found(auth_client: AsyncClient):
         params={"annotation_task_id": fake_id},
     )
     # Should return 404 for non-existent task
-    assert response.status_code in [404, 500]
+    assert response.status_code == 404
 
 
 @pytest.mark.asyncio

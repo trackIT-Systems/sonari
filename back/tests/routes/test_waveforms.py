@@ -17,8 +17,8 @@ async def test_get_waveform_not_found(auth_client: AsyncClient):
             "end_time": 1.0,
         },
     )
-    # Should return 404, 422, or 500 for non-existent recording
-    assert response.status_code in [404, 422, 500]
+    # Should return 404 for non-existent recording (422 possible if validation fails first)
+    assert response.status_code in [404, 422]
 
 
 @pytest.mark.asyncio

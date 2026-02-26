@@ -330,13 +330,14 @@ async def test_recording_id(db_session, test_dataset, test_settings) -> int:
         return recordings[0].id
 
     # Create minimal recording - need a WAV file with actual audio data
+    import os
     import struct
 
     dataset_abs_path = test_settings.audio_dir / test_dataset.audio_dir
     dataset_abs_path.mkdir(parents=True, exist_ok=True)
     wav_path = dataset_abs_path / f"seed_{uuid.uuid4().hex[:8]}.wav"
 
-    # Create minimal valid WAV file (44 bytes header + 1 second of silence)
+    # Create minimal valid WAV file (44 bytes header + 1 second of random audio)
     sample_rate = 44100
     duration_seconds = 1
     num_samples = sample_rate * duration_seconds
@@ -355,8 +356,7 @@ async def test_recording_id(db_session, test_dataset, test_settings) -> int:
         f.write(struct.pack("<H", 16))  # bits per sample
         f.write(b"data")
         f.write(struct.pack("<I", data_size))  # data size
-        # Write silence (zeros) for the audio data
-        f.write(b"\x00" * data_size)
+        f.write(os.urandom(data_size))
 
     recording = await api.recordings.create(db_session, path=wav_path)
     await db_session.commit()
@@ -461,3 +461,46 @@ async def test_tag(db_session: AsyncSession, test_user: User) -> schemas.Tag:
 
     await db_session.commit()
     return tag
+
+
+@pytest.fixture
+async def test_note(
+    db_session: AsyncSession,
+    test_annotation_task: schemas.AnnotationTask,
+    test_user: User,
+) -> schemas.Note:
+    """Create a test note for use in tests."""
+    created_by = schemas.SimpleUser.model_validate(test_user)
+    note = await api.notes.create(
+        db_session,
+        message=f"Test note {uuid.uuid4().hex[:8]}",
+        is_issue=False,
+        created_by=created_by,
+        annotation_task_id=test_annotation_task.id,
+    )
+    await db_session.commit()
+    return note
+
+
+@pytest.fixture
+async def test_sound_event_annotation(
+    db_session: AsyncSession,
+    test_annotation_task: schemas.AnnotationTask,
+    test_user: User,
+) -> schemas.SoundEventAnnotation:
+    """Create a test sound event annotation for use in tests."""
+    from sonari.schemas.sound_event_annotations import SoundEventAnnotationCreate
+
+    created_by = schemas.SimpleUser.model_validate(test_user)
+    create_data = SoundEventAnnotationCreate(
+        geometry={"type": "BoundingBox", "coordinates": [0.5, 100.0, 1.5, 500.0]},
+        tags=[],
+    )
+    annotation = await api.sound_event_annotations.create(
+        db_session,
+        annotation_task=test_annotation_task,
+        geometry=create_data.geometry,
+        created_by=created_by,
+    )
+    await db_session.commit()
+    return annotation

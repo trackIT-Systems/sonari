@@ -36,10 +36,10 @@ async def test_get_recording_detail_not_found(auth_client: AsyncClient):
     # Use a random ID that doesn't exist
     response = await auth_client.get(
         "/api/v1/recordings/detail/",
-        params={"recording_id": 125},
+        params={"recording_id": 999999},
     )
     # Should return 404 for non-existent recording
-    assert response.status_code in [404, 500]
+    assert response.status_code == 404
 
 
 @pytest.mark.asyncio
@@ -47,11 +47,11 @@ async def test_update_recording_not_found(auth_client: AsyncClient):
     """Test updating non-existent recording."""
     response = await auth_client.patch(
         "/api/v1/recordings/detail/",
-        params={"recording_id": 125},
+        params={"recording_id": 999999},
         json={},
     )
     # Should return 404 for non-existent recording
-    assert response.status_code in [404, 500]
+    assert response.status_code == 404
 
 
 @pytest.mark.asyncio
@@ -60,13 +60,13 @@ async def test_add_recording_feature_not_found(auth_client: AsyncClient):
     response = await auth_client.post(
         "/api/v1/recordings/detail/features/",
         params={
-            "recording_id": 125,
+            "recording_id": 999999,
             "name": "test_feature",
             "value": 1.0,
         },
     )
     # Should return 404 for non-existent recording
-    assert response.status_code in [404, 500]
+    assert response.status_code == 404
 
 
 @pytest.mark.asyncio
@@ -75,13 +75,13 @@ async def test_remove_recording_feature_not_found(auth_client: AsyncClient):
     response = await auth_client.delete(
         "/api/v1/recordings/detail/features/",
         params={
-            "recording_id": 125,
+            "recording_id": 999999,
             "name": "test_feature",
             "value": 1.0,
         },
     )
     # Should return 404 for non-existent recording
-    assert response.status_code in [404, 500]
+    assert response.status_code == 404
 
 
 @pytest.mark.asyncio
@@ -90,13 +90,13 @@ async def test_update_recording_feature_not_found(auth_client: AsyncClient):
     response = await auth_client.patch(
         "/api/v1/recordings/detail/features/",
         params={
-            "recording_id": 125,
+            "recording_id": 999999,
             "name": "test_feature",
             "value": 2.0,
         },
     )
     # Should return 404 for non-existent recording
-    assert response.status_code in [404, 500]
+    assert response.status_code == 404
 
 
 @pytest.mark.asyncio
@@ -104,10 +104,10 @@ async def test_delete_recording_not_found(auth_client: AsyncClient):
     """Test deleting non-existent recording."""
     response = await auth_client.delete(
         "/api/v1/recordings/detail/",
-        params={"recording_id": 125},
+        params={"recording_id": 999999},
     )
     # Should return 404 for non-existent recording
-    assert response.status_code in [404, 500]
+    assert response.status_code == 404
 
 
 # Happy path tests - using fixed IDs (to be adjusted with real data)
@@ -122,8 +122,15 @@ async def test_get_recording_detail(auth_client: AsyncClient, test_recording_id:
     )
     assert response.status_code == 200
     data = response.json()
-    assert "id" in data
+    
+    # Validate basic structure without strict schema validation since some fields are optional
     assert data["id"] == test_recording_id
+    assert "path" in data
+    assert data["path"] is not None
+    assert "duration" in data
+    assert data["duration"] is not None
+    assert "samplerate" in data
+    assert data["samplerate"] is not None
 
 
 @pytest.mark.asyncio
@@ -140,6 +147,8 @@ async def test_update_recording(auth_client: AsyncClient, test_recording: schema
     )
     assert response.status_code == 200
     data = response.json()
+    
+    # Validate response structure
     assert data["id"] == test_recording.id
     assert data["latitude"] == update_data["latitude"]
     assert data["longitude"] == update_data["longitude"]
@@ -158,6 +167,8 @@ async def test_add_recording_feature(auth_client: AsyncClient, test_recording: s
     )
     assert response.status_code == 200
     data = response.json()
+    
+    # Validate response structure
     assert data["id"] == test_recording.id
     assert "features" in data
     # Check if the feature was added
