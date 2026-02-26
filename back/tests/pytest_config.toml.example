@@ -1,0 +1,12 @@
+# Test configuration for Sonari pytest suite.
+# Override these values as needed for your environment.
+
+[test]
+# Database backend: "sqlite" or "postgres"
+database = "postgres"
+
+postgres_host = "127.0.0.1"
+postgres_port = 5432
+postgres_user = USER
+postgres_password = PASSWORD
+postgres_database = DB

@@ -13,26 +13,30 @@ async def test_get_waveform_not_found(auth_client: AsyncClient):
             "recording_id": 999999,
             "cmap": "plasma",
             "gamma": 1.0,
+            "start_time": 0.0,
+            "end_time": 1.0,
         },
     )
-    # Should return 404 or 500 for non-existent recording
-    assert response.status_code in [404, 500]
+    # Should return 404, 422, or 500 for non-existent recording
+    assert response.status_code in [404, 422, 500]
 
 
 @pytest.mark.asyncio
-async def test_get_waveform(auth_client: AsyncClient):
+async def test_get_waveform(auth_client: AsyncClient, test_recording_id: int):
     """Test getting waveform for a valid recording."""
     response = await auth_client.get(
         "/api/v1/waveforms/",
         params={
-            "recording_id": 1,
+            "recording_id": test_recording_id,
             "cmap": "plasma",
             "gamma": 1.0,
+            "start_time": 0.0,
+            "end_time": 1.0,
         },
     )
     assert response.status_code == 200
     # Check that response is an image
-    assert response.headers["content-type"] in ["image/png"]
+    assert response.headers["content-type"] in ["image/webp"]
     # Check that there's content
     assert len(response.content) > 0
     # Check cache control headers

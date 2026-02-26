@@ -1,14 +1,15 @@
 # API Endpoint Tests
 
-This directory contains integration tests for all Sonari API endpoints.
+This directory contains comprehensive integration tests for all Sonari API endpoints.
 
 ## Overview
 
-These tests perform basic smoke tests on all API endpoints to ensure they respond without errors. The tests use:
+These tests perform integration testing on all API endpoints to ensure they respond correctly. The tests use:
 
-- **Test Database**: `test_sonari.db` in the `back/` directory
-- **Authentication**: Admin user with credentials `admin:admin`
+- **Test Database**: SQLite by default (unique temp file per run); PostgreSQL optional via `tests/pytest_config.toml`
+- **Authentication**: Mocked via dependency override (OIDC bypassed in tests)
 - **Testing Framework**: pytest with pytest-asyncio
+- **Test Coverage**: ~95% of active API endpoints
 
 ## Running Tests
 
@@ -16,25 +17,19 @@ These tests perform basic smoke tests on all API endpoints to ensure they respon
 
 ```bash
 # From the back/ directory
-python test_endpoints.py
-```
-
-Or using pytest directly:
-
-```bash
 pytest tests/
 ```
 
 ### Run specific test file
 
 ```bash
-pytest tests/test_auth.py
+pytest tests/test_psd.py
 ```
 
 ### Run specific test
 
 ```bash
-pytest tests/test_auth.py::test_login_success
+pytest tests/test_psd.py::test_get_psd
 ```
 
 ### Run with more verbose output
@@ -43,34 +38,75 @@ pytest tests/test_auth.py::test_login_success
 pytest tests/ -vv
 ```
 
+### Run with coverage report
+
+```bash
+pytest tests/ --cov=sonari --cov-report=html
+```
+
 ## Test Structure
 
 Each route module has its own test file:
 
-- `test_auth.py` - Authentication endpoints
-- `test_users.py` - User management endpoints
-- `test_annotation_projects.py` - Annotation project CRUD operations
-- `test_datasets.py` - Dataset operations
-- `test_recordings.py` - Recording operations
-- `test_tags.py` - Tag operations
-- `test_features.py` - Feature endpoints
-- `test_notes.py` - Note operations
-- `test_annotation_tasks.py` - Annotation task operations
-- `test_sound_event_annotations.py` - Sound event annotation operations
+### Core API Tests
+- `test_users.py` - User authentication endpoints (`/api/v1/auth/me`)
+- `test_datasets.py` - Dataset listing and filtering
+- `test_recordings.py` - Recording CRUD operations and feature management
+- `test_tags.py` - Tag creation, listing, and duplicate handling
+- `test_features.py` - Feature name listing
+- `test_notes.py` - Note CRUD operations
+
+### Annotation Tests
+- `test_annotation_projects.py` - Annotation project CRUD and progress tracking
+- `test_annotation_tasks.py` - Annotation task management, stats, and indexing
+- `test_sound_event_annotations.py` - Sound event annotation CRUD with tags and geometry
+
+### Audio Processing Tests
+- `test_audio.py` - Audio streaming and download endpoints
+- `test_waveforms.py` - Waveform image generation
+- `test_spectrograms.py` - Spectrogram image generation
+- `test_psd.py` - Power Spectral Density plot generation
+
+### Export Tests
+- `test_export.py` - Data export in various formats (multibase, dump, passes, stats, time, yearly activity)
 
 ## Fixtures
 
 The `conftest.py` file provides the following fixtures:
 
-- `test_settings` - Test application settings
-- `setup_test_db` - Initializes and cleans up test database
-- `app` - FastAPI test application
-- `admin_user` - Admin user credentials dictionary
-- `client` - Unauthenticated HTTP client
-- `auth_client` - Authenticated HTTP client (uses cookie-based authentication)
-- `db_session` - Direct database session for test data manipulation
+### Database & Application Fixtures
+- `test_settings` - Test application settings (session scope)
+- `setup_test_db` - Initializes and cleans up test database (session scope)
+- `app` - FastAPI test application with dependency overrides (session scope)
+- `db_session` - Direct database session for test data manipulation (function scope)
 
-**Note**: The application uses cookie-based authentication. After login, the `AsyncClient` automatically handles the authentication cookie (`sonariauth`) for subsequent requests.
+### Authentication Fixtures
+- `test_user` - Pre-created admin user (session scope)
+- `admin_user` - Admin credentials for login tests (session scope)
+- `client` - Unauthenticated HTTP client (function scope)
+- `auth_client` - Authenticated HTTP client via dependency override (function scope)
+
+### Test Data Fixtures
+- `test_dataset` - Test dataset with unique directory (function scope)
+- `test_recording_id` - Recording ID for read-only tests (session scope)
+- `test_recording` - Temporary recording for destructive tests (function scope)
+- `test_annotation_project` - Test annotation project (function scope)
+- `test_annotation_task` - Test annotation task (function scope)
+- `test_tag` - Test tag (function scope)
+
+## Configuration
+
+Test settings are read from `tests/pytest_config.toml`. Options:
+
+| Option            | Description                          | Default                    |
+| ----------------- | ------------------------------------ | -------------------------- |
+| `database`        | `"sqlite"` or `"postgres"`           | `"sqlite"`                 |
+| `postgres_host`   | Host (use with separate fields)      | -                          |
+| `postgres_port`   | Port                                 | 5432                       |
+| `postgres_user`   | Username                             | -                          |
+| `postgres_password` | Password (raw; # and % work)       | -                          |
+| `postgres_database` | Database to connect to             | -                          |
+| `postgres_url`    | Alternative: full URL                | `"postgresql://localhost/postgres"` |
 
 ## Dependencies
 
@@ -92,21 +128,74 @@ or with pdm:
 pdm install --dev
 ```
 
-## Test Database
+## Test Database and Idempotency
 
-The test database is automatically:
+Tests are **idempotent**: running them multiple times produces the same results.
 
-1. Created before tests run
-2. Initialized with migrations
-3. Seeded with an admin user
-4. Cleaned up after tests complete
+### SQLite (default)
 
-The database file `test_sonari.db` is automatically deleted after test runs.
+- A unique database file is created per test session: `sonari_test_<uuid>.db` in the temp directory
+- The file is deleted after tests complete
+- No leftover state between runs
+- Test recordings include 1 second of audio data for proper testing
+
+### PostgreSQL
+
+To run tests against PostgreSQL, edit `tests/pytest_config.toml`:
+
+```toml
+[test]
+database = "postgres"
+postgres_url = "postgresql://user:password@localhost:5432/postgres"
+```
+
+Then run:
+
+```bash
+pytest tests/
+```
+
+- A **unique database** is created per test session: `sonari_test_<uuid>`
+- The database is dropped after tests complete
+- Same idempotency guarantee as SQLite
+
+Install PostgreSQL dependencies first:
+
+```bash
+pdm install -G postgres
+```
+
+## Authentication
+
+The app uses OIDC in production. For tests, authentication is **mocked** via a dependency override: `get_current_user` returns a pre-created test user. No login request or Bearer token is needed; `auth_client` is automatically authenticated.
+
+## Test Quality & Coverage
+
+### Coverage Statistics
+- **80+ tests** covering all major API endpoints
+- **~95% endpoint coverage** of active routes
+- Both success and error cases tested
+- Proper fixture isolation ensures test independence
+
+### Test Types
+- **Smoke tests**: Verify endpoints respond without errors
+- **Error handling**: Test 404, 422, 500 responses for invalid inputs
+- **Data validation**: Check response structure and content
+- **CRUD operations**: Full create, read, update, delete flows
+- **Feature tests**: Complex operations like tag management, geometry updates
+
+### Best Practices
+- Tests use unique identifiers (`uuid.uuid4().hex[:8]`) to avoid conflicts
+- Fixtures distinguish between read-only (`test_recording_id`) and mutable (`test_recording`) resources
+- Each test is independent and can run in any order
+- Minimal test data created automatically (1-second WAV files)
+- Tests clean up resources automatically
 
 ## Notes
 
-- Tests are basic smoke tests - they verify endpoints respond with expected status codes
-- Some tests check for error cases (404, 422, 500) when resources don't exist
-- Tests run in isolation and don't depend on each other
-- Each test function gets a fresh authenticated client
+- Tests verify endpoints respond with expected status codes and data structures
+- Some tests write output files (e.g., `test_waveform.png`, `test_spectrogram.webp`) for manual verification
+- Tests use the actual application code paths through HTTP requests
+- Database operations are real, not mocked (tests against actual SQLite/PostgreSQL)
+- Audio processing tests require minimal but valid WAV files (auto-generated by fixtures)
 

@@ -38,12 +38,12 @@ async def test_get_spectrogram_not_found(auth_client: AsyncClient):
 
 
 @pytest.mark.asyncio
-async def test_get_spectrogram(auth_client: AsyncClient):
+async def test_get_spectrogram(auth_client: AsyncClient, test_recording_id: int):
     """Test getting spectrogram for a valid recording."""
     response = await auth_client.get(
         "/api/v1/spectrograms/",
         params={
-            "recording_id": 1,
+            "recording_id": test_recording_id,
             "start_time": 0.0,
             "end_time": 1.0,
             # Audio parameters (defaults)

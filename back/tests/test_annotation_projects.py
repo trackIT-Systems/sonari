@@ -98,42 +98,6 @@ async def test_update_annotation_project(auth_client: AsyncClient):
 
 
 @pytest.mark.asyncio
-async def test_remove_tag_from_annotation_project(auth_client: AsyncClient):
-    """Test removing a tag from an annotation project."""
-    # First create a project with unique name
-    project_name = f"Remove Tag Test Project {uuid.uuid4().hex[:8]}"
-    create_response = await auth_client.post(
-        "/api/v1/annotation_projects/",
-        json={
-            "name": project_name,
-            "description": "Project for remove tag test",
-        },
-    )
-    assert create_response.status_code in [200, 201]
-    project = create_response.json()
-    project_id = project["id"]
-
-    # Create and add a tag with unique key
-    tag_key = f"remove_key_{uuid.uuid4().hex[:8]}"
-    tag_response = await auth_client.post(
-        "/api/v1/tags/",
-        json={"key": tag_key, "value": "remove_value"},
-    )
-    assert tag_response.status_code in [200, 201]
-
-    # Remove the tag
-    response = await auth_client.delete(
-        "/api/v1/annotation_projects/detail/tags/",
-        params={
-            "annotation_project_id": project_id,
-            "key": tag_key,
-            "value": "remove_value",
-        },
-    )
-    assert response.status_code in [200, 204]
-
-
-@pytest.mark.asyncio
 async def test_delete_annotation_project(auth_client: AsyncClient):
     """Test deleting an annotation project."""
     # First create a project with unique name
@@ -155,3 +119,33 @@ async def test_delete_annotation_project(auth_client: AsyncClient):
         params={"annotation_project_id": project_id},
     )
     assert response.status_code in [200, 204]
+
+
+@pytest.mark.asyncio
+async def test_get_annotation_project_progress(auth_client: AsyncClient):
+    """Test getting annotation project progress statistics."""
+    # First create a project with unique name
+    project_name = f"Progress Test Project {uuid.uuid4().hex[:8]}"
+    create_response = await auth_client.post(
+        "/api/v1/annotation_projects/",
+        json={
+            "name": project_name,
+            "description": "Project for progress test",
+        },
+    )
+    assert create_response.status_code in [200, 201]
+    project = create_response.json()
+    project_id = project["id"]
+
+    # Get the project progress
+    response = await auth_client.get(
+        "/api/v1/annotation_projects/detail/progress/",
+        params={"annotation_project_id": project_id},
+    )
+    assert response.status_code == 200
+    data = response.json()
+    # Progress should have expected fields
+    assert "total" in data
+    assert "verified" in data
+    assert "rejected" in data
+

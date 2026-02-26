@@ -1,124 +1,281 @@
 """Pytest configuration and fixtures for API endpoint tests."""
 
-import asyncio
+import tempfile
+import tomllib
 import uuid
 from pathlib import Path
-from typing import AsyncGenerator
+from typing import Any, AsyncGenerator
 
 import pytest
 from httpx import ASGITransport, AsyncClient
+from passlib.context import CryptContext
+from sqlalchemy import create_engine, text
+from sqlalchemy.engine import URL
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from sonari import api, schemas
+from sonari.models.user import User
 from sonari.system import create_app
 from sonari.system.database import (
     create_alembic_config,
     create_async_db_engine,
     create_or_update_db,
+    dispose_async_engine,
     get_async_session,
     get_database_url,
+    validate_database_url,
 )
-from sonari.system.settings import Settings
+from sonari.system.oidc import get_current_user
+from sonari.system.settings import Settings, get_settings
 
-# Test database path
-TEST_DB_PATH = Path(__file__).parent.parent / "sonari.db"
-
-
-@pytest.fixture(scope="session")
-def event_loop():
-    """Create an event loop for the test session."""
-    loop = asyncio.get_event_loop_policy().new_event_loop()
-    yield loop
-    loop.close()
+# Config file path (tests/pytest_config.toml)
+TEST_CONFIG_PATH = Path(__file__).parent / "pytest_config.toml"
 
 
-@pytest.fixture(scope="session")
-def test_settings():
-    """Create test settings with a test database."""
-    # Clean up test database if it exists
-    # if TEST_DB_PATH.exists():
-    #     TEST_DB_PATH.unlink()
+def _load_test_config() -> dict[str, Any]:
+    """Load test configuration from pytest_config.toml."""
+    if not TEST_CONFIG_PATH.exists():
+        return {}
+    with open(TEST_CONFIG_PATH, "rb") as f:
+        return tomllib.load(f)
 
-    settings = Settings(
-        db_name=str(TEST_DB_PATH),
+
+def _is_postgres_test() -> bool:
+    """Check if tests should run against PostgreSQL."""
+    config = _load_test_config()
+    db = config.get("test", {}).get("database", "sqlite")
+    return str(db).lower() == "postgres"
+
+
+def _get_postgres_config() -> dict[str, Any] | None:
+    """Get PostgreSQL config from separate fields. Returns None if not configured."""
+    config = _load_test_config().get("test", {})
+    host = config.get("postgres_host")
+    user = config.get("postgres_user")
+    database = config.get("postgres_database")
+    if host is not None and user is not None and database is not None:
+        return {
+            "host": host,
+            "port": config.get("postgres_port", 5432),
+            "user": user,
+            "password": config.get("postgres_password") or "",
+            "database": database,
+        }
+    return None
+
+
+def _build_postgres_url(database: str, use_async: bool = True) -> URL:
+    """Build PostgreSQL URL using SQLAlchemy URL.create() - handles special chars in password.
+
+    URL.create() passes credentials directly to the driver without string round-tripping,
+    avoiding encoding issues with passwords containing # or %.
+    """
+    cfg = _get_postgres_config()
+    if cfg is None:
+        from sqlalchemy.engine import make_url
+
+        base = _load_test_config().get("test", {}).get("postgres_url", "postgresql://localhost/postgres")
+        url = make_url(base)
+        return url.set(database=database)
+
+    drivername = "postgresql+asyncpg" if use_async else "postgresql+psycopg2"
+    return URL.create(
+        drivername=drivername,
+        username=cfg["user"],
+        password=cfg["password"],
+        host=cfg["host"],
+        port=cfg["port"],
+        database=database,
+    )
+
+
+def _get_test_db_path() -> Path:
+    """Get test database path - unique per run for SQLite idempotency."""
+    return Path(tempfile.gettempdir()) / f"sonari_test_{uuid.uuid4().hex}.db"
+
+
+def _get_test_db_name() -> str:
+    """Get unique test database name for PostgreSQL idempotency."""
+    return f"sonari_test_{uuid.uuid4().hex}"
+
+
+def _get_test_settings_sqlite(db_path: Path) -> Settings:
+    """Create test settings for SQLite. Uses dev=False so db_name is respected."""
+    return Settings(
+        db_name=str(db_path),
         db_dialect="sqlite",
-        dev=True,
+        dev=False,
         log_to_stdout=True,
         log_to_file=False,
         open_on_startup=False,
-        domain=None,  # Set to None for proper cookie handling in tests
+        domain="localhost",
+        audio_dir=Path.home(),
     )
-    return settings
+
+
+def _get_test_settings_postgres(db_name: str) -> Settings:
+    """Create test settings for PostgreSQL. Uses URL.create() when separate fields set."""
+    url = _build_postgres_url(db_name, use_async=True)
+    # Settings expects db_url as string; URL.create() produces correct encoding
+    db_url_str = url.render_as_string(hide_password=False)
+
+    return Settings(
+        db_url=db_url_str,
+        dev=False,
+        log_to_stdout=True,
+        log_to_file=False,
+        open_on_startup=False,
+        domain="localhost",
+        audio_dir=Path.home(),
+    )
 
 
 @pytest.fixture(scope="session")
-async def setup_test_db(test_settings):
-    """Initialize the test database."""
+def test_db_path():
+    """Unique test database path for this session (SQLite only)."""
+    return _get_test_db_path()
+
+
+@pytest.fixture(scope="session")
+def test_db_name():
+    """Unique test database name for this session (PostgreSQL only)."""
+    return _get_test_db_name()
+
+
+@pytest.fixture(scope="session")
+def test_settings(test_db_path, test_db_name):
+    """Create test settings with a test database (SQLite or PostgreSQL)."""
+    if _is_postgres_test():
+        return _get_test_settings_postgres(test_db_name)
+    return _get_test_settings_sqlite(test_db_path)
+
+
+@pytest.fixture(scope="session")
+async def setup_test_db(test_settings, test_db_path, test_db_name):
+    """Initialize the test database. Cleans up at session end.
+
+    For SQLite: creates a unique file per run, deletes it at teardown.
+    For PostgreSQL: creates a unique database per run, drops it at teardown.
+    Both approaches ensure idempotency.
+    """
+    use_postgres = _is_postgres_test()
+
+    if use_postgres:
+        # PostgreSQL: create unique database. Connect to existing DB (e.g. sonari) to run CREATE.
+        # URL.create() when separate fields configured - passes raw password to driver.
+        cfg = _get_postgres_config()
+        admin_db = cfg["database"] if cfg else "postgres"
+        admin_url = _build_postgres_url(admin_db, use_async=True)
+        admin_url = validate_database_url(admin_url, is_async=False)
+        admin_engine = create_engine(admin_url, isolation_level="AUTOCOMMIT")
+        with admin_engine.connect() as conn:
+            conn.execute(text(f"CREATE DATABASE {test_db_name}"))
+        admin_engine.dispose()
+
+    else:
+        # SQLite: clean up any existing file from previous failed runs
+        if test_db_path.exists():
+            test_db_path.unlink()
+
     db_url = get_database_url(test_settings)
     engine = create_async_db_engine(db_url)
 
-    # Create database tables
+    # Create database tables (run migrations)
     async with engine.begin() as conn:
         cfg = create_alembic_config(db_url, is_async=False)
         await conn.run_sync(create_or_update_db, cfg)
 
     yield engine
 
-    # Cleanup: close engine and remove test database
-    # await engine.dispose()
-    # if TEST_DB_PATH.exists():
-    #     TEST_DB_PATH.unlink()
+    # Cleanup: dispose engine and remove test database
+    await engine.dispose()
+    await dispose_async_engine()
+
+    if use_postgres:
+        cfg = _get_postgres_config()
+        admin_db = cfg["database"] if cfg else "postgres"
+        admin_url = _build_postgres_url(admin_db, use_async=True)
+        admin_url = validate_database_url(admin_url, is_async=False)
+        admin_engine = create_engine(admin_url, isolation_level="AUTOCOMMIT")
+        with admin_engine.connect() as conn:
+            # Terminate all connections to the test database before dropping.
+            # Required because async engine pool may leave connections open.
+            conn.execute(
+                text(
+                    "SELECT pg_terminate_backend(pid) FROM pg_stat_activity "
+                    "WHERE datname = :dbname AND pid <> pg_backend_pid()"
+                ),
+                {"dbname": test_db_name},
+            )
+            conn.execute(text(f"DROP DATABASE IF EXISTS {test_db_name}"))
+        admin_engine.dispose()
+    else:
+        if test_db_path.exists():
+            test_db_path.unlink(missing_ok=True)
 
 
 @pytest.fixture(scope="session")
-async def app(test_settings, setup_test_db):
-    """Create a test FastAPI application."""
-    test_app = create_app(test_settings)
-    return test_app
-
-
-@pytest.fixture(scope="session")
-async def admin_user(test_settings, setup_test_db) -> dict:
-    """Create an admin user for testing."""
+async def test_user(test_settings, setup_test_db):
+    """Create a test admin user for testing. Uses direct model insert (no UserManager)."""
     db_url = get_database_url(test_settings)
     engine = create_async_db_engine(db_url)
 
     async with get_async_session(engine) as session:
-        # Import here to avoid circular imports
-        from sonari.models.user import User
-        from sonari.system.users import UserDatabase, UserManager
-
-        user_db = UserDatabase(session, User)
-        user_manager = UserManager(user_db)
-
-        # Check if admin user already exists
-        try:
-            existing_user = await user_manager.get_by_email("admin@trackit.de")
-            if existing_user:
-                return {
-                    "username": "admin",
-                    "password": "admin",
-                }
-        except Exception:
-            pass
-
-        # Create admin user
-        from sonari.schemas.users import UserCreate
-
-        user_create = UserCreate(
+        # Create admin user directly via model
+        user = User(
             username="admin",
-            password="admin",
+            email="admin@trackit.de",
+            hashed_password="",  # Not used with OIDC; tests use auth override
+            name="Admin",
+            is_active=True,
             is_superuser=True,
             is_verified=True,
         )
-
-        await user_manager.create(user_create)
+        session.add(user)
         await session.commit()
+        await session.refresh(user)
 
-    return {
-        "username": "admin",
-        "password": "admin",
-    }
+    await engine.dispose()
+    return user
+
+
+@pytest.fixture(scope="session")
+async def admin_user(test_user, test_settings, setup_test_db) -> dict[str, str]:
+    """Admin user credentials for login tests (username/password auth).
+
+    Creates/updates the admin user with a known password so login tests can authenticate.
+    Returns dict with 'username' and 'password' keys.
+    """
+    pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+    password = "admin"
+    hashed = pwd_context.hash(password)
+
+    db_url = get_database_url(test_settings)
+    engine = create_async_db_engine(db_url)
+    async with get_async_session(engine) as session:
+        test_user.hashed_password = hashed
+        session.add(test_user)
+        await session.commit()
+    await engine.dispose()
+
+    return {"username": test_user.username, "password": password}
+
+
+@pytest.fixture(scope="session")
+async def app(test_settings, setup_test_db, test_user):
+    """Create a test FastAPI application with dependency overrides."""
+    test_app = create_app(test_settings)
+
+    # Override get_settings so routes use test database
+    test_app.dependency_overrides[get_settings] = lambda: test_settings
+
+    # Override get_current_user to bypass OIDC and return test user
+    async def override_get_current_user():
+        return test_user
+
+    test_app.dependency_overrides[get_current_user] = override_get_current_user
+
+    return test_app
 
 
 @pytest.fixture(scope="function")
@@ -130,23 +287,12 @@ async def client(app) -> AsyncGenerator[AsyncClient, None]:
 
 
 @pytest.fixture(scope="function")
-async def auth_client(client: AsyncClient, admin_user: dict) -> AsyncClient:
+async def auth_client(client: AsyncClient) -> AsyncClient:
     """Create an authenticated HTTP client.
 
-    The backend uses cookie-based authentication, so the client will
-    automatically handle the authentication cookie after login.
+    Authentication is provided via dependency override (get_current_user),
+    so no login request is needed. All requests are automatically authenticated.
     """
-    response = await client.post(
-        "/api/v1/auth/login",
-        data={
-            "username": admin_user["username"],
-            "password": admin_user["password"],
-        },
-    )
-    # CookieTransport returns 204 No Content on successful login
-    assert response.status_code == 204, f"Login failed with status {response.status_code}: {response.text}"
-    # The login response sets a cookie that AsyncClient automatically handles
-    # No need to manually extract tokens or set headers
     return client
 
 
@@ -171,12 +317,50 @@ async def db_session(test_settings, setup_test_db) -> AsyncGenerator[AsyncSessio
 
 
 @pytest.fixture
-def test_recording_id() -> int:
-    """Return the hardcoded recording ID for tests that need existing recordings with files.
+async def test_recording_id(db_session, test_dataset, test_settings) -> int:
+    """Return a recording ID for tests that need existing recordings with files.
 
-    This recording should have physical audio files on disk for spectrogram/waveform tests.
+    Creates a minimal recording in test_dataset if none exist, or returns the
+    first available recording ID. For spectrogram/waveform tests, a seed
+    recording with physical audio files may be required - see README.
     """
-    return 1
+    # Try to get or create a recording
+    recordings, count = await api.recordings.get_many(db_session, limit=1, offset=0, filters=[])
+    if recordings:
+        return recordings[0].id
+
+    # Create minimal recording - need a WAV file with actual audio data
+    import struct
+
+    dataset_abs_path = test_settings.audio_dir / test_dataset.audio_dir
+    dataset_abs_path.mkdir(parents=True, exist_ok=True)
+    wav_path = dataset_abs_path / f"seed_{uuid.uuid4().hex[:8]}.wav"
+
+    # Create minimal valid WAV file (44 bytes header + 1 second of silence)
+    sample_rate = 44100
+    duration_seconds = 1
+    num_samples = sample_rate * duration_seconds
+    data_size = num_samples * 2  # 16-bit samples = 2 bytes per sample
+
+    with open(wav_path, "wb") as f:
+        f.write(b"RIFF")
+        f.write(struct.pack("<I", 36 + data_size))  # file size - 8
+        f.write(b"WAVEfmt ")
+        f.write(struct.pack("<I", 16))  # fmt chunk size
+        f.write(struct.pack("<H", 1))  # PCM
+        f.write(struct.pack("<H", 1))  # mono
+        f.write(struct.pack("<I", sample_rate))  # sample rate
+        f.write(struct.pack("<I", sample_rate * 2))  # byte rate (sample_rate * channels * bytes_per_sample)
+        f.write(struct.pack("<H", 2))  # block align (channels * bytes_per_sample)
+        f.write(struct.pack("<H", 16))  # bits per sample
+        f.write(b"data")
+        f.write(struct.pack("<I", data_size))  # data size
+        # Write silence (zeros) for the audio data
+        f.write(b"\x00" * data_size)
+
+    recording = await api.recordings.create(db_session, path=wav_path)
+    await db_session.commit()
+    return recording.id
 
 
 @pytest.fixture
@@ -185,7 +369,6 @@ async def test_dataset(db_session: AsyncSession, test_settings: Settings) -> sch
 
     Creates a unique dataset with its own directory for each test.
     """
-    # Generate unique dataset name to avoid conflicts
     dataset_name = f"test_dataset_{uuid.uuid4().hex[:8]}"
     dataset_dir = test_settings.audio_dir / dataset_name
     dataset_dir.mkdir(parents=True, exist_ok=True)
@@ -197,19 +380,13 @@ async def test_dataset(db_session: AsyncSession, test_settings: Settings) -> sch
         description="Test dataset for testing",
     )
 
-    # Commit so HTTP tests can see this data
     await db_session.commit()
-
     return dataset
 
 
 @pytest.fixture
 async def test_annotation_project(db_session: AsyncSession) -> schemas.AnnotationProject:
-    """Create a test annotation project for use in tests.
-
-    Creates a unique project for each test.
-    """
-    # Generate unique project name to avoid conflicts
+    """Create a test annotation project for use in tests."""
     project_name = f"test_project_{uuid.uuid4().hex[:8]}"
 
     project = await api.annotation_projects.create(
@@ -219,9 +396,7 @@ async def test_annotation_project(db_session: AsyncSession) -> schemas.Annotatio
         annotation_instructions="Test instructions",
     )
 
-    # Commit so HTTP tests can see this data
     await db_session.commit()
-
     return project
 
 
@@ -231,25 +406,18 @@ async def test_annotation_task(
     test_annotation_project: schemas.AnnotationProject,
     test_recording_id: int,
 ) -> schemas.AnnotationTask:
-    """Create a test annotation task for use in tests.
-
-    Creates a task linked to the test project and test recording.
-    """
-    # Get the recording
+    """Create a test annotation task for use in tests."""
     recording = await api.recordings.get(db_session, test_recording_id)
 
-    # Create annotation task
     task = await api.annotation_tasks.create(
         db_session,
         annotation_project=test_annotation_project,
         recording=recording,
         start_time=0.0,
-        end_time=min(5.0, recording.duration),  # Use first 5 seconds or full duration
+        end_time=min(5.0, recording.duration) if recording.duration else 5.0,
     )
 
-    # Commit so HTTP tests can see this data
     await db_session.commit()
-
     return task
 
 
@@ -258,65 +426,38 @@ async def test_recording(
     db_session: AsyncSession,
     test_dataset: schemas.Dataset,
     test_settings: Settings,
+    test_recording_id: int,
 ) -> schemas.Recording:
     """Create a temporary test recording for tests that modify recordings.
 
     This should be used for UPDATE/DELETE operations, not for READ operations.
-    For READ operations, use test_recording_id fixture with the hardcoded ID.
-
-    Note: This creates a copy of an existing audio file with a slight modification
-    to ensure a different MD5 hash (since the backend checks for unique recordings).
     """
     import shutil
 
-    # Get the existing test recording to copy its file
-    existing_recording = await api.recordings.get(db_session, 1)
-
-    # Get the absolute path of the existing recording
-    # The recording.path is relative to audio_dir, so we need to make it absolute
+    existing_recording = await api.recordings.get(db_session, test_recording_id)
     source_path = test_settings.audio_dir / existing_recording.path
 
-    # Create a new recording entry with a unique path in the test dataset
-    # Dataset audio_dir is stored as relative path, so we need to make it absolute
     dataset_abs_path = test_settings.audio_dir / test_dataset.audio_dir
     temp_path = dataset_abs_path / f"temp_{uuid.uuid4().hex[:8]}.wav"
 
-    # Copy the file instead of symlinking
     if not temp_path.exists():
         shutil.copy2(source_path, temp_path)
-
-        # Modify the file slightly to change its MD5 hash
-        # We'll append a few random bytes at the end of the file
-        # Most audio formats are tolerant of trailing garbage data
         with open(temp_path, "ab") as f:
             f.write(uuid.uuid4().bytes)
 
-    recording = await api.recordings.create(
-        db_session,
-        path=temp_path,
-    )
-
-    # Commit so HTTP tests can see this data
+    recording = await api.recordings.create(db_session, path=temp_path)
     await db_session.commit()
-
     return recording
 
 
 @pytest.fixture
-async def test_tag(db_session: AsyncSession) -> schemas.Tag:
-    """Create a test tag for use in tests.
-
-    Creates a unique tag for each test.
-    """
-    # Generate unique project name to avoid conflicts
+async def test_tag(db_session: AsyncSession, test_user: User) -> schemas.Tag:
+    """Create a test tag for use in tests."""
     tag_key = f"test_tag_{uuid.uuid4().hex[:8]}"
     tag_value = "bat"
+    created_by = schemas.SimpleUser.model_validate(test_user)
 
-    user = await api.users.get_by_username(db_session, username="admin")
+    tag = await api.tags.create(db_session, key=tag_key, value=tag_value, created_by=created_by)
 
-    tag = await api.tags.create(db_session, key=tag_key, value=tag_value, created_by=user)
-
-    # Commit so HTTP tests can see this data
     await db_session.commit()
-
     return tag

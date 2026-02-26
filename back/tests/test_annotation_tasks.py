@@ -5,6 +5,8 @@ import uuid
 import pytest
 from httpx import AsyncClient
 
+from sonari import schemas
+
 
 @pytest.mark.asyncio
 async def test_get_annotation_tasks(auth_client: AsyncClient):
@@ -70,6 +72,43 @@ async def test_get_annotation_task_detail_not_found(auth_client: AsyncClient):
 
 
 @pytest.mark.asyncio
+async def test_get_annotation_task_detail(
+    auth_client: AsyncClient,
+    test_annotation_task: schemas.AnnotationTask,
+):
+    """Test getting annotation task details."""
+    response = await auth_client.get(
+        "/api/v1/annotation_tasks/detail/",
+        params={"annotation_task_id": test_annotation_task.id},
+    )
+    assert response.status_code == 200
+    data = response.json()
+    assert data["id"] == test_annotation_task.id
+
+
+@pytest.mark.asyncio
+async def test_get_annotation_task_detail_with_includes(
+    auth_client: AsyncClient,
+    test_annotation_task: schemas.AnnotationTask,
+):
+    """Test getting annotation task details with related data."""
+    response = await auth_client.get(
+        "/api/v1/annotation_tasks/detail/",
+        params={
+            "annotation_task_id": test_annotation_task.id,
+            "include_recording": True,
+            "include_annotation_project": True,
+        },
+    )
+    assert response.status_code == 200
+    data = response.json()
+    assert data["id"] == test_annotation_task.id
+    # Check that related data is included
+    assert "recording" in data or data.get("recording") is not None
+    assert "annotation_project" in data or data.get("annotation_project") is not None
+
+
+@pytest.mark.asyncio
 async def test_delete_annotation_task_not_found(auth_client: AsyncClient):
     """Test deleting non-existent annotation task."""
     fake_id = 999999
@@ -79,3 +118,28 @@ async def test_delete_annotation_task_not_found(auth_client: AsyncClient):
     )
     # Should return 404 for non-existent task
     assert response.status_code in [404, 500]
+
+
+@pytest.mark.asyncio
+async def test_get_annotation_tasks_stats(auth_client: AsyncClient):
+    """Test getting annotation task statistics."""
+    response = await auth_client.get("/api/v1/annotation_tasks/stats")
+    # Stats endpoint may not be available in all configurations
+    assert response.status_code in [200, 404]
+    if response.status_code == 200:
+        data = response.json()
+        # Stats should have some expected fields
+        assert isinstance(data, dict)
+
+
+@pytest.mark.asyncio
+async def test_get_annotation_tasks_index(auth_client: AsyncClient):
+    """Test getting annotation task index."""
+    response = await auth_client.get("/api/v1/annotation_tasks/index")
+    # Index endpoint may not be available in all configurations
+    assert response.status_code in [200, 404]
+    if response.status_code == 200:
+        data = response.json()
+        assert "items" in data
+        assert "total" in data
+

@@ -185,7 +185,8 @@ async def test_create_sound_event_annotation_without_tags(
 
     assert "id" in data
     assert data["geometry"]["type"] == "TimeInterval"
-    assert len(data["tags"]) == 0
+    # API may return None for empty tags
+    assert len(data.get("tags") or []) == 0
 
 
 @pytest.mark.asyncio
