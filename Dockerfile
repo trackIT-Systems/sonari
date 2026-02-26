@@ -19,16 +19,8 @@ RUN npx update-browserslist-db@latest --yes
 
 RUN npm run build
 
-# Prebuild rasterio, so that lateron builts will be quicker
-FROM python:3.13-alpine3.22 AS rasterio_builder
-RUN apk add \
-    gdal-dev \
-    python3-dev \
-    build-base
-RUN pip wheel --no-cache-dir --wheel-dir /wheels rasterio
-
 # == Run the web server
-FROM python:3.13-alpine3.22
+FROM python:3.13-alpine
 
 WORKDIR /back
 
@@ -40,15 +32,12 @@ RUN apk update && apk add \
     build-base \
     curl
 
-COPY --from=rasterio_builder /wheels /wheels
-
 # Set the working directory to /code
 WORKDIR /code
 
 # Install the Python dependencies
 COPY /back/requirements.txt /code/requirements.txt
 RUN pip install -r requirements.txt
-RUN pip install --no-index --find-links /wheels rasterio
 
 # Copy the sonari source code
 COPY /back/src /code/src
