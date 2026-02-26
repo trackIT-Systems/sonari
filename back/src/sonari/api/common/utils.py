@@ -98,7 +98,7 @@ def get_values(
     values = dict(data)
 
     if isinstance(data, BaseModel):
-        for key in data.model_computed_fields:
+        for key in type(data).model_computed_fields:
             values[key] = getattr(data, key)
 
     return values

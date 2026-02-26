@@ -18,7 +18,7 @@ class BaseSchema(BaseModel):
 
     created_on: datetime.datetime = Field(
         repr=False,
-        default_factory=datetime.datetime.utcnow,
+        default_factory=lambda: datetime.datetime.now(datetime.UTC),
     )
 
     model_config = ConfigDict(from_attributes=True)
