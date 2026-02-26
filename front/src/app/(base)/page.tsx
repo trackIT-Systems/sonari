@@ -47,19 +47,6 @@ export default function Page() {
               Export
             </Link>
           </Card>
-          <Card className="p-6 justify-between">
-            <h2 className="text-2xl font-bold mb-4">Account</h2>
-            <p className="text-sm mb-4">
-              Edit your account.
-            </p>
-            <Link
-              mode="text"
-              href="/profile/"
-              className="text-sm underline font-bold"
-            >
-              Account
-            </Link>
-          </Card>
         </div>
       </div>
     </div>
