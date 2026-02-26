@@ -133,4 +133,11 @@ def create_app(settings: Settings) -> FastAPI:
             content={"message": str(exc)},
         )
 
+    @app.exception_handler(ValueError)
+    async def value_error_handler(_, exc: ValueError):
+        return JSONResponse(
+            status_code=400,
+            content={"message": str(exc)},
+        )
+
     return app

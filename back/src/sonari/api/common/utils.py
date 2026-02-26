@@ -9,7 +9,7 @@ from sqlalchemy import Result, Select, func, insert, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.inspection import inspect
-from sqlalchemy.orm import InstrumentedAttribute, noload
+from sqlalchemy.orm import InstrumentedAttribute, noload, selectinload
 from sqlalchemy.sql._typing import _ColumnExpressionArgument
 from sqlalchemy.sql.expression import ColumnElement
 
@@ -95,11 +95,16 @@ def get_values(
     dict[str, Any]
         The values.
     """
-    values = dict(data)
-
     if isinstance(data, BaseModel):
+        values = data.model_dump()
         for key in type(data).model_computed_fields:
             values[key] = getattr(data, key)
+        # Convert created_by (SimpleUser) to created_by_id for models like Tag
+        if "created_by" in values:
+            created_by = values.pop("created_by")
+            values["created_by_id"] = created_by.id if created_by is not None else None
+    else:
+        values = dict(data)
 
     return values
 
@@ -108,6 +113,8 @@ async def get_object(
     session: AsyncSession,
     model: type[A],
     condition: _ColumnExpressionArgument,
+    *,
+    options: Sequence[Any] | None = None,
 ) -> A:
     """Get an object by some condition.
 
@@ -119,6 +126,8 @@ async def get_object(
         The model to query.
     condition : _ColumnExpressionArgument
         The condition to use.
+    options : Sequence[Any] | None
+        Optional SQLAlchemy loader options (e.g. selectinload) for eager loading.
 
     Returns
     -------
@@ -131,6 +140,8 @@ async def get_object(
         If the object was not found.
     """
     query = select(model).where(condition)
+    for opt in options or []:
+        query = query.options(opt)
     result = await session.execute(query)
     obj = result.unique().scalar_one_or_none()
 
@@ -206,7 +217,10 @@ def get_sort_by_col_from_str(
     if descending:
         sort_by = sort_by[1:]
 
-    col = getattr(model, sort_by)
+    try:
+        col = getattr(model, sort_by)
+    except AttributeError:
+        raise ValueError(f"The model {model.__name__} does not have a column named {sort_by}") from None
 
     if not col:
         raise ValueError(f"The model {model.__name__} does not have a column named {sort_by}")
@@ -262,9 +276,7 @@ async def get_objects_from_query(
             elif sort_by == "recording" or sort_by == "-recording":
                 # Sort by recording path (lexicographical/alphabetical)
                 descending = sort_by.startswith("-")
-                query = query.join(
-                    models.Recording, models.AnnotationTask.recording_id == models.Recording.id
-                )
+                query = query.join(models.Recording, models.AnnotationTask.recording_id == models.Recording.id)
                 if descending:
                     query = query.order_by(models.Recording.path.desc())
                 else:
@@ -785,7 +797,9 @@ async def add_feature_to_object(
     exceptions.NotFoundError
         If the object was not found.
     """
-    obj = await get_object(session, model, condition)
+    # Eagerly load features to avoid lazy load in async context (MissingGreenlet)
+    options = [selectinload(model.features)] if hasattr(model, "features") else None
+    obj = await get_object(session, model, condition, options=options)
 
     if any(
         feature.name == feature_name
@@ -845,7 +859,9 @@ async def update_feature_on_object(
     exceptions.NotFoundError
         If the object was not found.
     """
-    obj = await get_object(session, model, condition)
+    # Eagerly load features to avoid lazy load in async context (MissingGreenlet)
+    options = [selectinload(model.features)] if hasattr(model, "features") else None
+    obj = await get_object(session, model, condition, options=options)
 
     feature = next(
         (
@@ -1002,7 +1018,9 @@ async def remove_feature_from_object(
     exceptions.NotFoundError
         If the object was not found.
     """
-    obj = await get_object(session, model, condition)
+    # Eagerly load features to avoid lazy load in async context (MissingGreenlet)
+    options = [selectinload(model.features)] if hasattr(model, "features") else None
+    obj = await get_object(session, model, condition, options=options)
 
     feature = next(
         (

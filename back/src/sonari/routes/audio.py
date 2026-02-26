@@ -1,8 +1,9 @@
 """REST API routes for audio."""
 
 import os
+from typing import Annotated
 
-from fastapi import APIRouter, Header, Response
+from fastapi import APIRouter, Header, HTTPException, Query, Response
 from fastapi.responses import FileResponse
 
 from sonari import api
@@ -20,7 +21,7 @@ async def stream_recording_audio(
     recording_id: int,
     start_time: float | None = None,
     end_time: float | None = None,
-    speed: float = 1,
+    speed: Annotated[float, Query(gt=0)] = 1,
     range: str = Header(None),
     user_agent: str = Header(None),
 ) -> Response:
@@ -50,6 +51,13 @@ async def stream_recording_audio(
     Response
         The audio file with appropriate status code for browser compatibility.
     """
+    if start_time is not None and start_time < 0:
+        raise HTTPException(status_code=400, detail="start_time must be non-negative")
+    if end_time is not None and end_time < 0:
+        raise HTTPException(status_code=400, detail="end_time must be non-negative")
+    if start_time is not None and end_time is not None and start_time > end_time:
+        raise HTTPException(status_code=400, detail="start_time must be less than end_time")
+
     audio_dir = settings.audio_dir
     recording = await api.recordings.get(
         session,

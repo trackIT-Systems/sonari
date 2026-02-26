@@ -421,7 +421,8 @@ class RecordingAPI(
         recording : schemas.recordings.Recording
             The updated recording.
         """
-        for f in obj.features:
+        features = obj.features or []
+        for f in features:
             if f.name == feature.name:
                 raise exceptions.DuplicateObjectError(f"Recording already has a feature with name {feature.name}")
 
@@ -433,7 +434,7 @@ class RecordingAPI(
             value=feature.value,
         )
 
-        obj = obj.model_copy(update=dict(features=[*obj.features, feature]))
+        obj = obj.model_copy(update=dict(features=[*features, feature]))
         self._update_cache(obj)
         return obj
 
@@ -579,7 +580,8 @@ class RecordingAPI(
         recording : schemas.recordings.Recording
             The updated recording.
         """
-        for f in obj.features:
+        features = obj.features or []
+        for f in features:
             if f.name == feature.name:
                 break
         else:
@@ -594,7 +596,7 @@ class RecordingAPI(
             ),
         )
 
-        obj = obj.model_copy(update=dict(features=[f for f in obj.features if f.name != feature.name]))
+        obj = obj.model_copy(update=dict(features=[f for f in features if f.name != feature.name]))
         self._update_cache(obj)
         return obj
 
