@@ -3,7 +3,7 @@
 from typing import TYPE_CHECKING, Optional
 from uuid import UUID
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 from soundevent import Geometry
 
 from sonari.schemas.base import BaseSchema
@@ -33,6 +33,30 @@ class SoundEventAnnotationTag(BaseModel):
     """User who created this annotation."""
 
 
+def _validate_geometry_non_negative_time(geometry: Geometry) -> None:
+    """Raise ValueError if geometry has negative time coordinates."""
+    if not hasattr(geometry, "coordinates"):
+        return
+    coords = geometry.coordinates
+    # TimeInterval: [start_time, end_time]
+    if geometry.type == "TimeInterval" and isinstance(coords, (list, tuple)) and len(coords) >= 2:
+        if coords[0] < 0 or coords[1] < 0:
+            raise ValueError("Time coordinates must be non-negative")
+    # TimeStamp: single time value
+    elif geometry.type == "TimeStamp":
+        val = coords if isinstance(coords, (int, float)) else (coords[0] if coords else None)
+        if val is not None and val < 0:
+            raise ValueError("Time coordinates must be non-negative")
+    # Point: [time, frequency]
+    elif geometry.type == "Point" and isinstance(coords, (list, tuple)) and len(coords) >= 1:
+        if coords[0] < 0:
+            raise ValueError("Time coordinates must be non-negative")
+    # BoundingBox: [start_time, lower_freq, end_time, higher_freq]
+    elif geometry.type == "BoundingBox" and isinstance(coords, (list, tuple)) and len(coords) >= 4:
+        if coords[0] < 0 or coords[2] < 0:
+            raise ValueError("Time coordinates must be non-negative")
+
+
 class SoundEventAnnotationCreate(BaseModel):
     """Schema for data required to create a SoundEventAnnotation."""
 
@@ -41,6 +65,12 @@ class SoundEventAnnotationCreate(BaseModel):
 
     tags: list[TagCreate] = Field(default_factory=list)
     """Tags attached to this annotation."""
+
+    @model_validator(mode="after")
+    def validate_geometry_times(self):
+        """Validate that geometry time coordinates are non-negative."""
+        _validate_geometry_non_negative_time(self.geometry)
+        return self
 
 
 class SoundEventAnnotation(BaseSchema):
@@ -89,3 +119,9 @@ class SoundEventAnnotationUpdate(BaseSchema):
 
     geometry: Geometry = Field(..., discriminator="type")
     """Geometry of this annotation."""
+
+    @model_validator(mode="after")
+    def validate_geometry_times(self):
+        """Validate that geometry time coordinates are non-negative."""
+        _validate_geometry_non_negative_time(self.geometry)
+        return self
