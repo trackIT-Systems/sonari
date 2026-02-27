@@ -115,8 +115,10 @@ export default forwardRef<HTMLInputElement, TagSearchBarProps>(
     return (
       <div className="relative">
         <Combobox
-          onChange={(tag: TagType) => {
-            onSelect?.(tag);
+          onChange={(tag: TagType | null) => {
+            if (tag != null) {
+              onSelect?.(tag);
+            }
           }}
         >
           <div className="relative w-full text-left cursor-default">

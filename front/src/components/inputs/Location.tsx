@@ -26,13 +26,12 @@ export type Location = {
 const numSchema = z.union([
   z.undefined(),
   z.null(),
-  z.number(),
-  
-])
+  z.number()
+]);
 
 const schema = z.object({
-  latitude: numSchema,
-  longitude: numSchema,
+  latitude: numSchema.optional(),
+  longitude: numSchema.optional(),
 });
 
 export default function LocationInput({

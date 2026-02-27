@@ -26,7 +26,7 @@ import KeyboardKey from "../KeyboardKey";
 import { SETTINGS_SHORTCUT } from "@/utils/keyboard";
 import useKeyFilter from "@/hooks/utils/useKeyFilter";
 import { useKeyPressEvent } from "react-use";
-import  FreqLineSettings  from "./settings/FreqLineSettings";
+import FreqLineSettings from "./settings/FreqLineSettings";
 
 const SpectrogramSettingForm = memo(function SpectrogramSettingForm({
   settings,
@@ -47,20 +47,20 @@ const SpectrogramSettingForm = memo(function SpectrogramSettingForm({
   // Create a custom resolver that will first validate the parameters
   // with respect to the constraints computed from the recording samplerate
   // and then validate the parameters with respect to the schema
-    const resolver = useMemo<Resolver<SpectrogramParameters>>(() => {
-  const schemaResolver = zodResolver(SpectrogramParametersSchema);
-  return async (values, context, options) => {
-    const { resample, samplerate } = values;
-    const currentSamplerate = resample
-      ? samplerate || recordingSamplerate
-      : recordingSamplerate;
-    const constraints = computeConstraints(currentSamplerate, maxChannels);
-    const validated = validateParameters(values, constraints);
-    
-    // Cast the options to match the expected type
-    return await schemaResolver(validated, context, options as any);
-  };
-}, [recordingSamplerate, maxChannels]);
+  const resolver = useMemo(() => {
+    const schemaResolver = zodResolver(SpectrogramParametersSchema);
+    return (async (values, context, options) => {
+      const { resample, samplerate } = values;
+      const currentSamplerate = resample
+        ? samplerate || recordingSamplerate
+        : recordingSamplerate;
+      const constraints = computeConstraints(currentSamplerate, maxChannels);
+      const validated = validateParameters(values, constraints);
+      
+      // Cast the options to match the expected type
+      return await schemaResolver(validated, context, options as any);
+    }) as Resolver<SpectrogramParameters>;
+  }, [recordingSamplerate, maxChannels]);
 
   const { handleSubmit, watch, control } = useForm({
     resolver,
@@ -94,7 +94,7 @@ const SpectrogramSettingForm = memo(function SpectrogramSettingForm({
   return (
     <div className="flex flex-col gap-2">
       <ChannelSettings control={control} maxChannels={maxChannels} />
-      <FreqLineSettings control={control}/>
+      <FreqLineSettings control={control} />
       <AmplitudeSettings control={control} />
       <ColorSettings constraints={constraints} control={control} />
       <ResamplingSettings control={control} />

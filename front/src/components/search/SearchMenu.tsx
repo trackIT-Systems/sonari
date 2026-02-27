@@ -71,7 +71,10 @@ export default function SearchMenu<
 
   if (isStatic) {
     return (
-      <Combobox value={value} onChange={onSelect}>
+      <Combobox
+        value={value}
+        onChange={(value) => { if (value != null) onSelect?.(value); }}
+      >
         {({ value, open }) => (
           <div className="relative">
             <ComboboxInput
@@ -104,7 +107,10 @@ export default function SearchMenu<
 
   return (
     <div className="flex flex-row w-full">
-      <Combobox value={value} onChange={onSelect}>
+      <Combobox
+        value={value}
+        onChange={(value) => { if (value != null) onSelect?.(value); }}
+      >
         <div className="relative w-full">
           <div className="w-full">
             <ComboboxInput
