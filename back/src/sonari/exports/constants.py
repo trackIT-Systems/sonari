@@ -34,6 +34,7 @@ class ExportConstants:
         "longitude",
         "latitude",
         "sound_event_tags",
+        "task_tags",
         "media_duration",
         "detection_confidence",
         "species_confidence",

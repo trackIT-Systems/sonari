@@ -109,6 +109,7 @@ async def test_extract_annotation_data_structure(
             joinedload(models.SoundEventAnnotation.annotation_task)
             .selectinload(models.AnnotationTask.status_badges)
             .joinedload(models.AnnotationStatusBadge.user),
+            joinedload(models.SoundEventAnnotation.annotation_task).selectinload(models.AnnotationTask.tags),
         )
     )
     result = await db_session.execute(stmt)
@@ -129,3 +130,4 @@ async def test_extract_annotation_data_structure(
     assert "start_time" in data
     assert "end_time" in data
     assert "geometry_type" in data
+    assert "task_tags" in data

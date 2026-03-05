@@ -29,6 +29,7 @@ async def extract_batch(
             joinedload(models.SoundEventAnnotation.annotation_task)
             .selectinload(models.AnnotationTask.status_badges)
             .joinedload(models.AnnotationStatusBadge.user),
+            joinedload(models.SoundEventAnnotation.annotation_task).selectinload(models.AnnotationTask.tags),
         )
         .offset(offset)
         .limit(batch_size)
@@ -116,6 +117,13 @@ async def extract_annotation_data(annotation: models.SoundEventAnnotation) -> Di
 
     status_badges_str = ", ".join([f"{user}:{status}" for user, status in status_badges.items()])
 
+    # Extract annotation task tags (key: value)
+    task_tags_str = ""
+    if annotation.annotation_task and annotation.annotation_task.tags:
+        task_tags_str = ", ".join(
+            f"{tag.key}: {tag.value}" for tag in annotation.annotation_task.tags
+        )
+
     # Extract recording fields (date, time, longitude, latitude)
     recording_date = recording.date.strftime("%Y-%m-%d") if recording.date else None
     recording_time = recording.time.strftime("%H:%M:%S") if recording.time else None
@@ -139,5 +147,6 @@ async def extract_annotation_data(annotation: models.SoundEventAnnotation) -> Di
         "higher_frequency": bbox_coords["higher_frequency"],
         "user": created_by_user,
         "task_status_badges": status_badges_str,
+        "task_tags": task_tags_str,
         "geometry_type": annotation.geometry_type,
     }

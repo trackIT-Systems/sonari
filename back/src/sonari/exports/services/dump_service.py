@@ -66,6 +66,7 @@ class DumpService(BaseExportService):
                                 data["longitude"],
                                 data["latitude"],
                                 data["sound_event_tags"],
+                                data["task_tags"],
                                 data["media_duration"],
                                 data["detection_confidence"],
                                 data["species_confidence"],
