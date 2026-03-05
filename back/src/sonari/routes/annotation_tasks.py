@@ -364,6 +364,8 @@ def get_annotation_tasks_router(settings: SonariSettings):
             include_notes=True,
             include_recording=True,
             include_sound_event_annotations=True,
+            include_status_badges=True,
+            include_status_badge_users=True,
             include_tags=True,
             include_features=True,
             include_note_users=True,
@@ -399,6 +401,8 @@ def get_annotation_tasks_router(settings: SonariSettings):
             include_notes=True,
             include_recording=True,
             include_sound_event_annotations=True,
+            include_status_badges=True,
+            include_status_badge_users=True,
             include_tags=True,
             include_features=True,
             include_note_users=True,
@@ -434,6 +438,8 @@ def get_annotation_tasks_router(settings: SonariSettings):
             include_tags=True,
             include_features=True,
             include_note_users=True,
+            include_sound_event_annotation_features=True,
+            include_sound_event_annotation_users=True,
         )
         updated = await api.annotation_tasks.add_status_badge(
             session,
@@ -466,6 +472,8 @@ def get_annotation_tasks_router(settings: SonariSettings):
             include_status_badges=True,
             include_status_badge_users=True,
             include_note_users=True,
+            include_sound_event_annotation_features=True,
+            include_sound_event_annotation_users=True,
         )
         updated = await api.annotation_tasks.remove_status_badge(
             session,
