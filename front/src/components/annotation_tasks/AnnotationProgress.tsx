@@ -4,6 +4,7 @@ import Button, { getButtonClassName } from "@/components/Button";
 import FilterBar from "@/components/filters/FilterBar";
 import FilterMenu from "@/components/filters/FilterMenu";
 import FilterPresets from "@/components/filters/FilterPresets";
+import { normalizeDateRangeForPreset } from "@/components/filters/DateRangeFilter";
 import taskFilterDefs from "@/components/filters/tasks";
 import { FilterIcon, NextIcon, PreviousIcon } from "@/components/icons";
 import Tooltip from "@/components/Tooltip";
@@ -144,6 +145,7 @@ export default function AnnotationProgress({
               storageKey="presets:annotation_tasks"
               filter={filter}
               className="ml-2"
+              normalizeForPreset={normalizeDateRangeForPreset}
             />
           )}
           <FilterBar

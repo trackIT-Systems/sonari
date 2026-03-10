@@ -32,10 +32,13 @@ export default function useFilterPresets<T extends Object>({
   storageKey,
   filter,
   maxRecents = 3,
+  normalizeForPreset,
 }: {
   storageKey: string;
   filter: Filter<T>;
   maxRecents?: number;
+  /** Normalize filter before saving to presets/recents (e.g. store time-only as "HH:mm" when date is blank) */
+  normalizeForPreset?: (filter: T) => T;
 }) {
   const savedKey = `${storageKey}:saved`;
   const recentKey = `${storageKey}:recents`;
@@ -56,9 +59,10 @@ export default function useFilterPresets<T extends Object>({
     
     // Strip annotation_project from the filter before processing
     const cleanedFilter = stripAnnotationProject(debouncedFilter);
-    
+    const filterToSave = normalizeForPreset ? normalizeForPreset(cleanedFilter) : cleanedFilter;
+
     // Check if cleaned filter has any meaningful values
-    const hasActiveFilters = Object.entries(cleanedFilter).some(([key, value]) => {
+    const hasActiveFilters = Object.entries(filterToSave).some(([key, value]) => {
       // Skip prototype fields and null/undefined/empty values
       if (key.startsWith('__') || value == null || value === '') return false;
       
@@ -84,16 +88,16 @@ export default function useFilterPresets<T extends Object>({
     const now = Date.now();
     // Avoid duplicating identical consecutive entries
     const last = recents[0]?.filter;
-    if (last && JSON.stringify(last) === JSON.stringify(cleanedFilter)) return;
+    if (last && JSON.stringify(last) === JSON.stringify(filterToSave)) return;
 
     // Don't add to recent if it matches an existing saved preset
-    const filterString = JSON.stringify(cleanedFilter);
-    const isAlreadySaved = saved.some(savedPreset => 
+    const filterString = JSON.stringify(filterToSave);
+    const isAlreadySaved = saved.some(savedPreset =>
       JSON.stringify(savedPreset.filter) === filterString
     );
     if (isAlreadySaved) return;
 
-    const updated = [{ filter: cleanedFilter, savedAt: now }, ...recents]
+    const updated = [{ filter: filterToSave, savedAt: now }, ...recents]
       .slice(0, maxRecents);
     setRecents(updated);
     try {
@@ -107,19 +111,20 @@ export default function useFilterPresets<T extends Object>({
       if (typeof window === "undefined") return;
       const now = Date.now();
       const cleanedFilter = stripAnnotationProject(debouncedFilter);
+      const filterToSave = normalizeForPreset ? normalizeForPreset(cleanedFilter) : cleanedFilter;
       const existingIndex = saved.findIndex((p) => p.name === name);
       let updated: SavedPreset<T>[];
       if (existingIndex >= 0) {
-        updated = saved.map((p, i) => (i === existingIndex ? { name, filter: cleanedFilter, savedAt: now } : p));
+        updated = saved.map((p, i) => (i === existingIndex ? { name, filter: filterToSave, savedAt: now } : p));
       } else {
-        updated = [...saved, { name, filter: cleanedFilter, savedAt: now }];
+        updated = [...saved, { name, filter: filterToSave, savedAt: now }];
       }
       setSaved(updated);
       try {
         localStorage.setItem(savedKey, JSON.stringify(updated));
       } catch {}
     },
-    [saved, debouncedFilter, savedKey],
+    [saved, debouncedFilter, savedKey, normalizeForPreset],
   );
 
   const deletePreset = useCallback(
