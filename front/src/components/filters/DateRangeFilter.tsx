@@ -14,20 +14,81 @@ interface DateRangeFilterProps {
 
 
 
-// Helper functions to format date and time
-export function formatDate(date: Date | null | undefined): string {
-  if (!date) return 'Any Date,';
-  return `${date.toLocaleDateString()},`;
+const TIME_ONLY_REGEX = /^\d{1,2}:\d{2}(:\d{2})?$/;
+
+function parseTimeOnly(s: string): Date {
+  const [h, m, sec = "0"] = s.split(":");
+  return new Date(1970, 0, 1, parseInt(h, 10), parseInt(m, 10), parseInt(sec, 10));
 }
 
-export function formatTime(date: Date | null | undefined): string {
-  if (!date) return 'Any Time';
-  return `${date.toLocaleTimeString()}`;
+// Coerce value (e.g. from URL/state) to Date for formatting/display; time-only "HH:mm" uses a fixed date
+function toDate(value: Date | string | number | null | undefined): Date | null {
+  if (value == null) return null;
+  if (value instanceof Date) return value;
+  if (typeof value === "string" && TIME_ONLY_REGEX.test(value)) return parseTimeOnly(value);
+  if (typeof value === "string" || typeof value === "number") {
+    const d = new Date(value);
+    return isNaN(d.getTime()) ? null : d;
+  }
+  return null;
 }
 
-export function formatDateForAPI(date: Date | null | undefined): string | undefined {
-  if (!date) return undefined;
-  return date.toISOString(); // This will format as "2023-12-25T12:00:00.000Z"
+// Helper functions to format date and time (accept Date, ISO string, time-only "HH:mm", or timestamp from URL/state)
+export function formatDate(date: Date | string | number | null | undefined): string {
+  if (date != null && typeof date === "string" && TIME_ONLY_REGEX.test(date)) return "Any Date,";
+  const d = toDate(date);
+  if (!d) return "Any Date,";
+  return `${d.toLocaleDateString()},`;
+}
+
+export function formatTime(date: Date | string | number | null | undefined): string {
+  const d = toDate(date);
+  if (!d) return "Any Time";
+  return d.toLocaleTimeString();
+}
+
+function toTimeOnlyString(date: Date | string | null | undefined): string | null {
+  if (date == null) return null;
+  const d = typeof date === "string" ? new Date(date) : date instanceof Date ? date : null;
+  if (!d || isNaN(d.getTime())) return null;
+  const h = d.getHours();
+  const m = d.getMinutes();
+  const s = d.getSeconds();
+  const pad = (n: number) => n.toString().padStart(2, "0");
+  return s ? `${pad(h)}:${pad(m)}:${pad(s)}` : `${pad(h)}:${pad(m)}`;
+}
+
+/** Normalize date_range for preset storage: when date is null, store time as "HH:mm" so preset doesn't carry current date. */
+export function normalizeDateRangeForPreset<T extends { date_range?: unknown }>(filter: T): T {
+  const dr = filter.date_range;
+  if (dr == null) return filter;
+  const entries = Array.isArray(dr) ? dr : [dr];
+  const normalized = entries.map((entry: Record<string, unknown>) => {
+    const startDate = entry.start_date;
+    const endDate = entry.end_date;
+    const startTime = entry.start_time;
+    const endTime = entry.end_time;
+    return {
+      ...entry,
+      start_time: startDate == null && startTime != null ? toTimeOnlyString(startTime as Date) ?? startTime : startTime,
+      end_time: endDate == null && endTime != null ? toTimeOnlyString(endTime as Date) ?? endTime : endTime,
+    };
+  });
+  return { ...filter, date_range: Array.isArray(dr) ? normalized : normalized[0] };
+}
+
+export function formatDateForAPI(date: Date | string | number | null | undefined): string | undefined {
+  if (date == null) return undefined;
+  if (typeof date === "string") {
+    if (TIME_ONLY_REGEX.test(date)) {
+      const [h, m, sec = "0"] = date.split(":");
+      const pad = (n: number) => n.toString().padStart(2, "0");
+      return `1970-01-01T${pad(parseInt(h, 10))}:${pad(parseInt(m, 10))}:${pad(parseInt(sec, 10))}.000Z`;
+    }
+    return date;
+  }
+  if (typeof date === "number") return new Date(date).toISOString();
+  return date.toISOString();
 }
 
 export function DateRangeFilter({ onChange }: DateRangeFilterProps) {

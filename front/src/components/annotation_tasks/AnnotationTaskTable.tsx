@@ -10,6 +10,7 @@ import Loading from "@/app/loading";
 import Search from "@/components/inputs/Search";
 import FilterPopover from "@/components/filters/FilterMenu";
 import FilterPresets from "@/components/filters/FilterPresets";
+import { normalizeDateRangeForPreset } from "@/components/filters/DateRangeFilter";
 import tasksFilterDefs from "../filters/tasks";
 import FilterBar from "@/components/filters/FilterBar";
 import Table from "@/components/tables/Table";
@@ -133,6 +134,7 @@ export default function AnnotationTaskTable({
           <FilterPresets
             storageKey="presets:annotation_tasks"
             filter={annotationTasks.filter}
+            normalizeForPreset={normalizeDateRangeForPreset}
           />
         </div>
       </div>

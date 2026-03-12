@@ -23,6 +23,28 @@ import type {
 
 import { formatDateForAPI } from "@/components/filters/DateRangeFilter";
 
+// Coerce date_range field from preset/URL (string or Date) to Date for schema and API
+const TIME_ONLY_REGEX = /^\d{1,2}:\d{2}(:\d{2})?$/;
+function coerceDateRangeField(
+  value: Date | string | number | null | undefined
+): Date | null {
+  if (value == null) return null;
+  if (value instanceof Date) return isNaN(value.getTime()) ? null : value;
+  if (typeof value === "number") {
+    const d = new Date(value);
+    return isNaN(d.getTime()) ? null : d;
+  }
+  if (typeof value === "string") {
+    if (TIME_ONLY_REGEX.test(value)) {
+      const [h, m, sec = "0"] = value.split(":");
+      return new Date(Date.UTC(1970, 0, 1, parseInt(h, 10), parseInt(m, 10), parseInt(sec, 10)));
+    }
+    const d = new Date(value);
+    return isNaN(d.getTime()) ? null : d;
+  }
+  return null;
+}
+
 const AnnotationTaskPageSchema = Page(AnnotationTaskSchema);
 
 export type AnnotationTaskPage = z.infer<typeof AnnotationTaskPageSchema>;
@@ -57,22 +79,48 @@ const AnnotationTaskFilterSchema = z.object({
   assigned_to: UserSchema.optional(),
   search_recordings: z.string().optional(),
   sort_by: z.string().optional(),
-  date_range: z.union([
-    z.object({
-      start_date: z.date().nullish(),
-      end_date: z.date().nullish(),
-      start_time: z.date().nullish(),
-      end_time: z.date().nullish(),
-    }),
-    z.array(
+  date_range: z
+    .union([
       z.object({
-        start_date: z.date().nullish(),
-        end_date: z.date().nullish(),
-        start_time: z.date().nullish(),
-        end_time: z.date().nullish(),
-      })
-    )
-  ]).optional(),
+        start_date: z
+          .union([z.date(), z.string(), z.number()])
+          .nullish()
+          .transform(coerceDateRangeField),
+        end_date: z
+          .union([z.date(), z.string(), z.number()])
+          .nullish()
+          .transform(coerceDateRangeField),
+        start_time: z
+          .union([z.date(), z.string(), z.number()])
+          .nullish()
+          .transform(coerceDateRangeField),
+        end_time: z
+          .union([z.date(), z.string(), z.number()])
+          .nullish()
+          .transform(coerceDateRangeField),
+      }),
+      z.array(
+        z.object({
+          start_date: z
+            .union([z.date(), z.string(), z.number()])
+            .nullish()
+            .transform(coerceDateRangeField),
+          end_date: z
+            .union([z.date(), z.string(), z.number()])
+            .nullish()
+            .transform(coerceDateRangeField),
+          start_time: z
+            .union([z.date(), z.string(), z.number()])
+            .nullish()
+            .transform(coerceDateRangeField),
+          end_time: z
+            .union([z.date(), z.string(), z.number()])
+            .nullish()
+            .transform(coerceDateRangeField),
+        })
+      ),
+    ])
+    .optional(),
   night: z.object({
     eq: z.boolean(),
     timezone: z.string(),

@@ -1,6 +1,6 @@
 """Filters for Annotation Tasks."""
 
-from datetime import datetime, time
+from datetime import datetime, timedelta, time
 
 from soundevent import data
 from sqlalchemy import Float, Select, and_, exists, func, literal, not_, or_, select
@@ -375,45 +375,74 @@ class DateRangeFilter(base.Filter):
         start_times = self.start_times.split(",") if self.start_times else []
         end_times = self.end_times.split(",") if self.end_times else []
 
-        # Create conditions for each date range
         range_conditions = []
         for i in range(max(len(start_dates), len(end_dates), len(start_times), len(end_times))):
             conditions = []
 
-            if i < len(start_dates) and start_dates[i]:
-                start_dt = self._parse_datetime(start_dates[i])
-                if start_dt:
-                    conditions.append(Recording.c.date >= start_dt.date())
+            # Parse dates and times for this index
+            start_date_dt = (
+                self._parse_datetime(start_dates[i]) if i < len(start_dates) and start_dates[i] else None
+            )
+            end_date_dt = (
+                self._parse_datetime(end_dates[i]) if i < len(end_dates) and end_dates[i] else None
+            )
+            start_time_dt = (
+                self._parse_datetime(start_times[i]) if i < len(start_times) and start_times[i] else None
+            )
+            end_time_dt = (
+                self._parse_datetime(end_times[i]) if i < len(end_times) and end_times[i] else None
+            )
 
-            if i < len(end_dates) and end_dates[i]:
-                end_dt = self._parse_datetime(end_dates[i])
-                if end_dt:
-                    conditions.append(Recording.c.date <= end_dt.date())
+            has_times = (i < len(start_times) and start_times[i]) or (i < len(end_times) and end_times[i])
+            start_time_val = start_time_dt.time() if start_time_dt else time.min
+            end_time_val = end_time_dt.time() if end_time_dt else time.max
+            crosses_midnight = (
+                start_time_dt is not None
+                and end_time_dt is not None
+                and end_time_val < start_time_val
+            )
 
-            if (i < len(start_times) and start_times[i]) or (i < len(end_times) and end_times[i]):
-                start_dt = self._parse_datetime(start_times[i]) if i < len(start_times) and start_times[i] else None
-                end_dt = self._parse_datetime(end_times[i]) if i < len(end_times) and end_times[i] else None
+            # Date conditions (end date extended by one day when range crosses midnight)
+            if start_date_dt:
+                conditions.append(Recording.c.date >= start_date_dt.date())
+            if end_date_dt:
+                end_date_bound = (
+                    end_date_dt.date() + timedelta(days=1) if crosses_midnight else end_date_dt.date()
+                )
+                conditions.append(Recording.c.date <= end_date_bound)
 
-                start_time = start_dt.time() if start_dt else time.min
-                end_time = end_dt.time() if end_dt else time.max
-
+            # Time/datetime conditions
+            if has_times:
                 virtual_datetime = func.datetime(Recording.c.date, Recording.c.time)
+                has_dates = (i < len(start_dates) and start_dates[i]) or (
+                    i < len(end_dates) and end_dates[i]
+                )
 
-                if i < len(start_dates) and start_dates[i] and start_dt:
-                    start_date_dt = self._parse_datetime(start_dates[i])
-                    if start_date_dt:
-                        start_datetime = datetime.combine(start_date_dt.date(), start_time)
+                if has_dates:
+                    if start_date_dt and start_time_dt:
+                        start_datetime = datetime.combine(start_date_dt.date(), start_time_val)
                         conditions.append(virtual_datetime >= start_datetime)
-                elif start_dt:
-                    conditions.append(Recording.c.time >= start_time)
-
-                if i < len(end_dates) and end_dates[i] and end_dt:
-                    end_date_dt = self._parse_datetime(end_dates[i])
-                    if end_date_dt:
-                        end_datetime = datetime.combine(end_date_dt.date(), end_time)
+                    if end_date_dt and end_time_dt:
+                        end_date_for_datetime = (
+                            end_date_dt.date() + timedelta(days=1)
+                            if crosses_midnight
+                            else end_date_dt.date()
+                        )
+                        end_datetime = datetime.combine(end_date_for_datetime, end_time_val)
                         conditions.append(virtual_datetime <= end_datetime)
-                elif end_dt:
-                    conditions.append(Recording.c.time <= end_time)
+                else:
+                    if crosses_midnight:
+                        conditions.append(
+                            or_(
+                                Recording.c.time >= start_time_val,
+                                Recording.c.time <= end_time_val,
+                            )
+                        )
+                    else:
+                        if start_time_dt:
+                            conditions.append(Recording.c.time >= start_time_val)
+                        if end_time_dt:
+                            conditions.append(Recording.c.time <= end_time_val)
 
             if conditions:
                 range_conditions.append(and_(*conditions))

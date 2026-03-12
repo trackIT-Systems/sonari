@@ -81,15 +81,19 @@ export default function FilterPresets<T extends Object>({
   filter,
   className,
   recentLimit = 1,
+  normalizeForPreset,
 }: {
   storageKey: string;
   filter: Filter<T>;
   className?: string;
   recentLimit?: number;
+  /** Normalize filter before saving to presets (e.g. time-only as "HH:mm" when date is blank) */
+  normalizeForPreset?: (filter: T) => T;
 }) {
   const { recentList, savedList, savePreset, deletePreset, applyPreset } = useFilterPresets<T>({
     storageKey,
     filter,
+    normalizeForPreset,
   });
 
   const [name, setName] = useState("");
