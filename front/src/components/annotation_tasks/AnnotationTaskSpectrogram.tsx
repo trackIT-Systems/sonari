@@ -249,6 +249,21 @@ export default function AnnotationTaskSpectrogram({
     onParameterSave?.(spectrogram.parameters);
   }, [onParameterSave, spectrogram.parameters]);
 
+  const currentTimeDurationSeconds = withSpectrogram
+    ? spectrogram.window.time.max - spectrogram.window.time.min
+    : null;
+
+  const handleUseCurrentZoom = useCallback(
+    (seconds: number) => {
+      spectrogram.setParameters({
+        ...spectrogram.parameters,
+        time_zoom_automatic: false,
+        time_zoom_duration_seconds: seconds,
+      });
+    },
+    [spectrogram],
+  );
+
   const waveform = useWaveform({
     recording: recording!,
     parameters: spectrogram.parameters,
@@ -449,6 +464,8 @@ export default function AnnotationTaskSpectrogram({
             onChange={spectrogram.setParameters}
             onReset={spectrogram.resetParameters}
             onSave={handleParameterSave}
+            currentTimeDurationSeconds={currentTimeDurationSeconds}
+            onUseCurrentZoom={handleUseCurrentZoom}
           />
         )}
         {withPlayer && <Player {...audio} />}

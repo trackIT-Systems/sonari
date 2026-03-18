@@ -76,12 +76,19 @@ export function getInitialViewingWindow({
   samplerate: number;
   parameters: SpectrogramParameters;
 }): SpectrogramWindow {
-  const duration = getInitialDuration({
-    interval: { min: startTime, max: endTime },
-    samplerate,
-    window_size_samples: parameters.window_size_samples,
-    overlap_percent: parameters.overlap_percent,
-  });
+  const taskDuration = endTime - startTime;
+  const useParameterZoom =
+    parameters.time_zoom_automatic === false &&
+    parameters.time_zoom_duration_seconds != null &&
+    parameters.time_zoom_duration_seconds >= 0.01;
+  const duration = useParameterZoom
+    ? Math.min(parameters.time_zoom_duration_seconds!, taskDuration)
+    : getInitialDuration({
+          interval: { min: startTime, max: endTime },
+          samplerate,
+          window_size_samples: parameters.window_size_samples,
+          overlap_percent: parameters.overlap_percent,
+        });
   return {
     time: { min: startTime, max: startTime + duration },
     freq: { min: 0, max: samplerate / 2 },

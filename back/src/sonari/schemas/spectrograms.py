@@ -109,3 +109,17 @@ class SpectrogramParameters(STFTParameters, AmplitudeParameters):
 
     gamma: float = 1.0
     """Gamma of the resulting spectrogram."""
+
+    time_zoom_automatic: bool = True
+    """If True, initial time window duration is computed automatically; if False, use time_zoom_duration_seconds."""
+
+    time_zoom_duration_seconds: float | None = None
+    """When time_zoom_automatic is False, initial spectrogram view uses this time window duration (seconds). Min 0.01. View-only; not used in computation."""
+
+    @field_validator("time_zoom_duration_seconds")
+    @classmethod
+    def check_time_zoom_min(cls, value):
+        """If set, time_zoom_duration_seconds must be >= 0.01."""
+        if value is not None and value < 0.01:
+            raise ValueError("time_zoom_duration_seconds must be >= 0.01 when set.")
+        return value

@@ -104,7 +104,9 @@ export const DEFAULT_SPECTROGRAM_PARAMETERS: SpectrogramParameters = {
   max_dB: 0,
   channel: 0,
   gamma: 1.0,
-  freqLines: []
+  freqLines: [],
+  time_zoom_automatic: true,
+  // time_zoom_duration_seconds omitted when automatic
 };
 
 export function registerSpectrogramAPI(

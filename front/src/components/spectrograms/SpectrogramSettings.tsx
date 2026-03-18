@@ -27,17 +27,22 @@ import { SETTINGS_SHORTCUT } from "@/utils/keyboard";
 import useKeyFilter from "@/hooks/utils/useKeyFilter";
 import { useKeyPressEvent } from "react-use";
 import FreqLineSettings from "./settings/FreqLineSettings";
+import ZoomSettings from "./settings/ZoomSettings";
 
 const SpectrogramSettingForm = memo(function SpectrogramSettingForm({
   settings,
   samplerate: recordingSamplerate,
   maxChannels = 1,
   onChange,
+  currentTimeDurationSeconds,
+  onUseCurrentZoom,
 }: {
   settings: SpectrogramParameters;
   samplerate: number;
   maxChannels?: number;
   onChange?: (parameters: SpectrogramParameters) => void;
+  currentTimeDurationSeconds?: number | null;
+  onUseCurrentZoom?: (seconds: number) => void;
 }) {
   const initialSettings = useMemo(() => {
     const constraints = computeConstraints(recordingSamplerate, maxChannels);
@@ -101,6 +106,11 @@ const SpectrogramSettingForm = memo(function SpectrogramSettingForm({
       <DeNoiseSettings control={control} />
       <STFTSettings constraints={constraints} control={control} />
       <FilteringSettings constraints={constraints} control={control} />
+      <ZoomSettings
+        control={control}
+        currentTimeDurationSeconds={currentTimeDurationSeconds}
+        onUseCurrentZoom={onUseCurrentZoom}
+      />
     </div>
   );
 });
@@ -112,6 +122,8 @@ const SpectrogramSettings = memo(function SpectrogramSettings({
   onChange,
   onReset,
   onSave,
+  currentTimeDurationSeconds,
+  onUseCurrentZoom,
 }: {
   settings: SpectrogramParameters;
   samplerate: number;
@@ -119,6 +131,8 @@ const SpectrogramSettings = memo(function SpectrogramSettings({
   onChange?: (parameters: SpectrogramParameters) => void;
   onReset?: () => void;
   onSave?: () => void;
+  currentTimeDurationSeconds?: number | null;
+  onUseCurrentZoom?: (seconds: number) => void;
 }) {
   const [open, setOpen] = useState(false);
 
@@ -164,6 +178,8 @@ const SpectrogramSettings = memo(function SpectrogramSettings({
           settings={settings}
           maxChannels={maxChannels}
           onChange={onChange}
+          currentTimeDurationSeconds={currentTimeDurationSeconds}
+          onUseCurrentZoom={onUseCurrentZoom}
         />
       </SlideOver>
     </div>

@@ -346,6 +346,8 @@ export const SpectrogramParametersSchema = z
     freqLines: z
       .array(z.coerce.number().int().nonnegative())
       .default([]),
+    time_zoom_automatic: z.boolean().default(true),
+    time_zoom_duration_seconds: z.coerce.number().gte(0.01).optional(),
   })
   .refine(
     (data) => {
