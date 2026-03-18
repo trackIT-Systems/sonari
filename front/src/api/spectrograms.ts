@@ -92,7 +92,7 @@ export const DEFAULT_SPECTROGRAM_PARAMETERS: SpectrogramParameters = {
   resample: false,
   auto_stft: true,
   scale: DEFAULT_SCALE,
-  pcen: true,
+  pcen: false,
   window_size_samples: DEFAULT_WINDOW_SIZE_SAMPLES,
   overlap_percent: DEFAULT_OVERLAP_PERCENT,
   cmap: DEFAULT_CMAP,

@@ -340,7 +340,7 @@ export const SpectrogramParametersSchema = z
     max_dB: z.coerce.number().nonpositive().gte(MIN_DB).default(0),
     normalize: z.boolean().default(false),
     channel: z.coerce.number().nonnegative().int().default(0),
-    pcen: z.boolean().default(true),
+    pcen: z.boolean().default(false),
     cmap: z.string().default(DEFAULT_CMAP),
     gamma: z.coerce.number().positive().default(2),
     freqLines: z

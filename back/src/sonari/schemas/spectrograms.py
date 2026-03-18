@@ -101,7 +101,7 @@ class SpectrogramParameters(STFTParameters, AmplitudeParameters):
     channel: int = 0
     """Channel to use for spectrogram computation."""
 
-    pcen: bool = True
+    pcen: bool = False
     """Whether to apply PCEN for de-noising."""
 
     cmap: str = "gray"
