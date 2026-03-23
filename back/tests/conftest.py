@@ -6,10 +6,10 @@ import uuid
 from pathlib import Path
 from typing import Any, AsyncGenerator
 
+import bcrypt
 import pytest
 from httpx import ASGITransport, AsyncClient
-from passlib.context import CryptContext
-from sqlalchemy import create_engine, text
+from sqlalchemy import create_engine, select, text
 from sqlalchemy.engine import URL
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -216,24 +216,26 @@ async def setup_test_db(test_settings, test_db_path, test_db_name):
 
 @pytest.fixture(scope="session")
 async def test_user(test_settings, setup_test_db):
-    """Create a test admin user for testing. Uses direct model insert (no UserManager)."""
+    """Ensure an admin user exists (migrations may have created one)."""
     db_url = get_database_url(test_settings)
     engine = create_async_db_engine(db_url)
 
     async with get_async_session(engine) as session:
-        # Create admin user directly via model
-        user = User(
-            username="admin",
-            email="admin@trackit.de",
-            hashed_password="",  # Not used with OIDC; tests use auth override
-            name="Admin",
-            is_active=True,
-            is_superuser=True,
-            is_verified=True,
-        )
-        session.add(user)
-        await session.commit()
-        await session.refresh(user)
+        result = await session.execute(select(User).where(User.username == "admin"))
+        user = result.scalar_one_or_none()
+        if user is None:
+            user = User(
+                username="admin",
+                email="admin@trackit.de",
+                hashed_password="",
+                name="Admin",
+                is_active=True,
+                is_superuser=True,
+                is_verified=True,
+            )
+            session.add(user)
+            await session.commit()
+            await session.refresh(user)
 
     await engine.dispose()
     return user
@@ -246,15 +248,15 @@ async def admin_user(test_user, test_settings, setup_test_db) -> dict[str, str]:
     Creates/updates the admin user with a known password so login tests can authenticate.
     Returns dict with 'username' and 'password' keys.
     """
-    pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
     password = "admin"
-    hashed = pwd_context.hash(password)
+    hashed = bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt()).decode("ascii")
 
     db_url = get_database_url(test_settings)
     engine = create_async_db_engine(db_url)
     async with get_async_session(engine) as session:
-        test_user.hashed_password = hashed
-        session.add(test_user)
+        user = await session.get(User, test_user.id)
+        assert user is not None
+        user.hashed_password = hashed
         await session.commit()
     await engine.dispose()
 

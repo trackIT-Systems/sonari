@@ -6,7 +6,7 @@ from enum import Enum
 from typing import AsyncGenerator
 
 from alembic import script
-from alembic.command import stamp, upgrade
+from alembic.command import upgrade
 from alembic.config import Config
 from alembic.runtime import migration
 from sqlalchemy import Connection, Engine, create_engine
@@ -31,7 +31,6 @@ _engine_url: str | None = None  # Track URL to detect mismatches
 
 __all__ = [
     "create_async_db_engine",
-    "create_db",
     "create_or_update_db",
     "create_async_db_engine",
     "create_sync_db_engine",
@@ -286,14 +285,8 @@ def run_migrations(cfg: Config) -> None:
     upgrade(cfg, "head")
 
 
-def create_db(conn: Connection, cfg: Config) -> None:
-    """Create the database."""
-    models.Base.metadata.create_all(conn)
-    stamp(cfg, "head")
-
-
 def create_or_update_db(conn: Connection, cfg: Config) -> None:
-    """Create the database and tables."""
+    """Run Alembic upgrades until head (empty DB runs the full chain)."""
     state = get_db_state(conn, cfg)
 
     if state == DatabaseState.OK:
@@ -301,9 +294,6 @@ def create_or_update_db(conn: Connection, cfg: Config) -> None:
 
     if state == DatabaseState.UNKNOWN:
         raise RuntimeError("Unknown database state.")
-
-    if state == DatabaseState.NEEDS_CREATION:
-        create_db(conn, cfg)
 
     run_migrations(cfg)
 
