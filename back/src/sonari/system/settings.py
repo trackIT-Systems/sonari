@@ -130,6 +130,9 @@ class Settings(BaseSettings):
     oidc_server_url: str = "https://auth.trackit.systems/"
     """OIDC server URL."""
 
+    oidc_account_url: str | None = None
+    """Optional IdP user portal URL (password, profile). If unset, defaults to Authentik ``/if/user/#/settings`` under ``oidc_server_url``. Set to empty string to hide the link in the UI."""
+
     @computed_field
     @property
     def oidc_client_id(self) -> str:

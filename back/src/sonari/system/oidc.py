@@ -5,15 +5,16 @@ from typing import AsyncGenerator, Optional
 from uuid import uuid4
 
 import jwt
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from jwt import PyJWKClient
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from sonari import models
+from sonari.system.app_token_auth import authenticate_app_token, looks_like_sonari_app_token
 from sonari.system.database import get_async_session, get_database_url, get_or_create_async_engine
-from sonari.system.settings import get_settings
+from sonari.system.settings import Settings, get_settings
 
 logger = logging.getLogger(__name__)
 
@@ -44,10 +45,40 @@ class OIDCUser(BaseModel):
     given_name: Optional[str] = None
     family_name: Optional[str] = None
     name: Optional[str] = None
-    groups: list[str] = None
+    groups: Optional[list[str]] = None
 
 
 SecDep = Depends(security)
+
+
+def _expected_oidc_issuer(settings: Settings) -> str:
+    """Authentik-style issuer URL (must match the access token ``iss`` claim exactly)."""
+    server_url = settings.oidc_server_url.rstrip("/")
+    return f"{server_url}/application/o/{settings.oidc_application}/"
+
+
+def _superuser_from_oidc_groups(oidc_user: OIDCUser) -> bool:
+    return bool(oidc_user.groups and "ts_admin" in oidc_user.groups)
+
+
+def _require_active_user(user: models.User) -> None:
+    if not user.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="User account is inactive",
+        )
+
+
+async def _maybe_sync_superuser_from_oidc(
+    session: AsyncSession,
+    user: models.User,
+    oidc_user: OIDCUser,
+) -> None:
+    want = _superuser_from_oidc_groups(oidc_user)
+    if user.is_superuser != want:
+        user.is_superuser = want
+        await session.commit()
+        await session.refresh(user)
 
 
 def _get_jwks_client() -> PyJWKClient:
@@ -64,6 +95,7 @@ def _get_jwks_client() -> PyJWKClient:
     -------
     PyJWKClient
         The cached JWKS client instance for this worker process.
+
     """
     global _jwks_client
 
@@ -80,10 +112,8 @@ def _get_jwks_client() -> PyJWKClient:
     return _jwks_client
 
 
-async def verify_oidc_token(
-    credentials: HTTPAuthorizationCredentials = SecDep,
-) -> OIDCUser:
-    """Verify OIDC JWT token and return user information."""
+async def verify_oidc_token_credentials(credentials: HTTPAuthorizationCredentials) -> OIDCUser:
+    """Verify OIDC JWT from Bearer credentials and return user information."""
     try:
         settings = get_settings()
 
@@ -92,17 +122,14 @@ async def verify_oidc_token(
         # built-in JWKS key cache across all requests within this worker process.
         jwks_client = _get_jwks_client()
         signing_key = jwks_client.get_signing_key_from_jwt(credentials.credentials)
-
-        # First decode without verification to see the actual issuer (for debugging)
-        unverified_payload = jwt.decode(credentials.credentials, options={"verify_signature": False})
-        actual_issuer = unverified_payload.get("iss")
+        expected_iss = _expected_oidc_issuer(settings)
 
         payload = jwt.decode(
             credentials.credentials,
             signing_key.key,
             algorithms=["RS256"],
             audience=["account", settings.oidc_client_id],
-            issuer=actual_issuer,  # Use the actual issuer from the token
+            issuer=expected_iss,
             options={"verify_exp": True},
         )
 
@@ -128,6 +155,13 @@ async def verify_oidc_token(
             detail="Authentication failed",
             headers={"WWW-Authenticate": "Bearer"},
         ) from e
+
+
+async def verify_oidc_token(
+    credentials: HTTPAuthorizationCredentials = SecDep,
+) -> OIDCUser:
+    """Verify OIDC JWT token and return user information."""
+    return await verify_oidc_token_credentials(credentials)
 
 
 async def get_or_create_user(
@@ -157,6 +191,10 @@ async def get_or_create_user(
         if oidc_user.name and user.name != oidc_user.name:
             user.name = oidc_user.name
             updated = True
+        want_super = _superuser_from_oidc_groups(oidc_user)
+        if user.is_superuser != want_super:
+            user.is_superuser = want_super
+            updated = True
 
         if updated:
             await session.commit()
@@ -182,6 +220,10 @@ async def get_or_create_user(
             if oidc_user.name and user.name != oidc_user.name:
                 user.name = oidc_user.name
                 updated = True
+            want_super = _superuser_from_oidc_groups(oidc_user)
+            if user.is_superuser != want_super:
+                user.is_superuser = want_super
+                updated = True
 
             await session.commit()
             await session.refresh(user)
@@ -198,7 +240,7 @@ async def get_or_create_user(
         name=full_name or oidc_user.preferred_username,
         hashed_password="",  # Not used with OIDC
         is_active=True,
-        is_superuser=_is_superuser(oidc_user),
+        is_superuser=_superuser_from_oidc_groups(oidc_user),
         is_verified=True,  # OIDC users are considered verified
     )
 
@@ -226,6 +268,7 @@ async def get_or_create_user(
             user = result.scalar_one_or_none()
 
             if user:
+                await _maybe_sync_superuser_from_oidc(session, user, oidc_user)
                 return user
 
             # Retry lookup by email if provided
@@ -235,6 +278,7 @@ async def get_or_create_user(
                 user = result.scalar_one_or_none()
 
                 if user:
+                    await _maybe_sync_superuser_from_oidc(session, user, oidc_user)
                     return user
 
         # Re-raise if we couldn't handle it
@@ -266,28 +310,59 @@ def _check_tenant_authorization(oidc_user: OIDCUser, domain: str) -> None:
         )
 
 
-def _is_superuser(oidc_user: OIDCUser) -> bool:
-    """Check if OIDC user should be a superuser based on groups."""
-    # Check groups for ts_admin
-    if oidc_user.groups and "ts_admin" in oidc_user.groups:
-        return True
-
-    return False
-
-
 # Dependencies at module level
 SessionDep = Depends(get_session)
 OIDCUserDep = Depends(verify_oidc_token)
 
 
+def _app_token_http_method_is_read(method: str) -> bool:
+    return method in ("GET", "HEAD")
+
+
 async def get_current_user(
+    request: Request,
     session: AsyncSession = SessionDep,
-    oidc_user: OIDCUser = OIDCUserDep,
+    credentials: HTTPAuthorizationCredentials = SecDep,
 ) -> models.User:
-    """Get current authenticated user from OIDC token."""
+    """Get current user from Sonari app token or OIDC JWT (Bearer)."""
+    token = credentials.credentials
+    if looks_like_sonari_app_token(token):
+        # Tenant/group checks apply only to OIDC Bearer tokens, not Sonari app tokens.
+        user, app_token_row = await authenticate_app_token(session, token)
+        if _app_token_http_method_is_read(request.method):
+            if not app_token_row.can_read:
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="App token does not allow read access",
+                )
+        elif not app_token_row.can_write:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="App token does not allow write access",
+            )
+    else:
+        oidc_user = await verify_oidc_token_credentials(credentials)
+        settings = get_settings()
+        _check_tenant_authorization(oidc_user, settings.domain)
+        user = await get_or_create_user(oidc_user, session)
+    _require_active_user(user)
+    return user
+
+
+async def get_current_user_oidc(
+    request: Request,
+    session: AsyncSession = SessionDep,
+    credentials: HTTPAuthorizationCredentials = SecDep,
+) -> models.User:
+    """Require an OIDC access token (not a Sonari app token)."""
+    if looks_like_sonari_app_token(credentials.credentials):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="OIDC session required for this endpoint",
+        )
+    oidc_user = await verify_oidc_token_credentials(credentials)
     settings = get_settings()
-
-    # Check tenant authorization
     _check_tenant_authorization(oidc_user, settings.domain)
-
-    return await get_or_create_user(oidc_user, session)
+    user = await get_or_create_user(oidc_user, session)
+    _require_active_user(user)
+    return user

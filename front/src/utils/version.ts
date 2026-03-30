@@ -51,3 +51,14 @@ export function getAppVersion(): string {
   return APP_VERSION;
 }
 
+/**
+ * First two dot-separated segments (e.g. YYYY.MM from YYYY.MM.id).
+ */
+export function getAppVersionShort(): string {
+  const parts = APP_VERSION.split(".");
+  if (parts.length >= 2) {
+    return `${parts[0]}.${parts[1]}`;
+  }
+  return APP_VERSION;
+}
+

@@ -19,6 +19,36 @@ export const UserSchema = z.object({
   name: z.string().nullable().optional(),
 });
 
+export const AuthConfigSchema = z.object({
+  server_url: z.string(),
+  application: z.string(),
+  client_id: z.string(),
+  account_url: z.string().nullable().optional(),
+});
+
+export const AppTokenPermissionsSchema = z.enum(["read", "write", "read_write"]);
+
+export const AppTokenPublicSchema = z.object({
+  id: z.string().uuid(),
+  title: z.string(),
+  created_on: z.coerce.date(),
+  expires_at: z.coerce.date().nullable().optional(),
+  revoked_at: z.coerce.date().nullable().optional(),
+  can_read: z.boolean(),
+  can_write: z.boolean(),
+  permissions: AppTokenPermissionsSchema,
+});
+
+export const AppTokenCreatedSchema = AppTokenPublicSchema.extend({
+  token: z.string(),
+});
+
+export const AppTokenCreateSchema = z.object({
+  title: z.string(),
+  expires_at: z.string().datetime().nullable().optional(),
+  permissions: AppTokenPermissionsSchema.optional(),
+});
+
 export const TagSchema = z.object({
   key: z.string(),
   value: z.string(),

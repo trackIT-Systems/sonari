@@ -1,12 +1,26 @@
 import { AxiosInstance } from "axios";
-import { UserSchema } from "@/schemas";
+import { z } from "zod";
+
+import {
+  AppTokenCreateSchema,
+  AppTokenCreatedSchema,
+  AppTokenPublicSchema,
+  AuthConfigSchema,
+  UserSchema,
+} from "@/schemas";
 import authClient from "@/components/auth/authClient";
 import type { User } from "@/types";
 
 const DEFAULT_ENDPOINTS = {
   config: "/api/v1/auth/config",
   me: "/api/v1/auth/me",
+  appTokens: "/api/v1/auth/app-tokens",
 };
+
+export type AppTokenCreateBody = z.infer<typeof AppTokenCreateSchema>;
+export type AppTokenPublic = z.infer<typeof AppTokenPublicSchema>;
+export type AppTokenCreated = z.infer<typeof AppTokenCreatedSchema>;
+export type AuthConfig = z.infer<typeof AuthConfigSchema>;
 
 // Global callback for handling 403 errors
 let forbiddenCallback: ((message?: string) => void) | null = null;
@@ -23,9 +37,28 @@ export function registerAuthAPI(
   instance: AxiosInstance,
   endpoints: typeof DEFAULT_ENDPOINTS = DEFAULT_ENDPOINTS,
 ) {
-  async function getAuthConfig() {
+  async function getAuthConfig(): Promise<AuthConfig> {
     const response = await instance.get(endpoints.config);
-    return response.data;
+    return AuthConfigSchema.parse(response.data);
+  }
+
+  async function listAppTokens(): Promise<AppTokenPublic[]> {
+    const response = await instance.get(endpoints.appTokens);
+    return z.array(AppTokenPublicSchema).parse(response.data);
+  }
+
+  async function createAppToken(body: AppTokenCreateBody): Promise<AppTokenCreated> {
+    const payload = AppTokenCreateSchema.parse(body);
+    const response = await instance.post(endpoints.appTokens, payload);
+    return AppTokenCreatedSchema.parse(response.data);
+  }
+
+  async function revokeAppToken(tokenId: string): Promise<void> {
+    await instance.delete(`${endpoints.appTokens}/${tokenId}`);
+  }
+
+  async function purgeAppToken(tokenId: string): Promise<void> {
+    await instance.post(`${endpoints.appTokens}/${tokenId}/purge`);
   }
 
   async function login() {
@@ -47,6 +80,10 @@ export function registerAuthAPI(
 
   return {
     getAuthConfig,
+    listAppTokens,
+    createAppToken,
+    revokeAppToken,
+    purgeAppToken,
     login,
     logout,
     me,

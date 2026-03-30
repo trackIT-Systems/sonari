@@ -7,6 +7,7 @@ from sonari.system.database import (
     get_database_url,
     init_database,
 )
+from sonari.system.env_app_users import sync_env_app_users
 from sonari.system.settings import Settings
 
 just_fix_windows_console()
@@ -64,6 +65,8 @@ async def sonari_init(settings: Settings, _: FastAPI):
     print("Please wait while the database is initialized...")
 
     await init_database(settings)
+
+    await sync_env_app_users(settings)
 
     print_ready_message(settings)
 

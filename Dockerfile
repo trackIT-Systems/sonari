@@ -70,6 +70,7 @@ ENV SONARI_LOG_TO_STDOUT="true"
 ENV SONARI_LOG_TO_FILE="false"
 ENV SONARI_OPEN_ON_STARTUP="false"
 ENV SONARI_DOMAIN="localhost"
+# Optional: SONARI_APP_TOKEN_<SUFFIX>=snr.<uuid>.<secret> provisions integration users at startup (see sonari.system.env_app_users).
 
 # Expose the port for the web server
 EXPOSE 5000

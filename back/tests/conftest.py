@@ -25,7 +25,7 @@ from sonari.system.database import (
     get_database_url,
     validate_database_url,
 )
-from sonari.system.oidc import get_current_user
+from sonari.system.oidc import get_current_user, get_current_user_oidc
 from sonari.system.settings import Settings, get_settings
 
 # Config file path (tests/pytest_config.toml)
@@ -236,6 +236,11 @@ async def test_user(test_settings, setup_test_db):
             session.add(user)
             await session.commit()
             await session.refresh(user)
+        elif user.email != "admin@trackit.de":
+            # Migration may create admin@sonari.local; EmailStr rejects .local in responses.
+            user.email = "admin@trackit.de"
+            await session.commit()
+            await session.refresh(user)
 
     await engine.dispose()
     return user
@@ -276,6 +281,7 @@ async def app(test_settings, setup_test_db, test_user):
         return test_user
 
     test_app.dependency_overrides[get_current_user] = override_get_current_user
+    test_app.dependency_overrides[get_current_user_oidc] = override_get_current_user
 
     return test_app
 

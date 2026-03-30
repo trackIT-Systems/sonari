@@ -14,6 +14,7 @@ from sonari.models.annotation_task import (
     AnnotationTaskFeature,
     AnnotationTaskTag,
 )
+from sonari.models.app_token import AppToken
 from sonari.models.base import Base
 from sonari.models.dataset import Dataset, DatasetRecording
 from sonari.models.note import Note
@@ -31,6 +32,7 @@ from sonari.models.tag import Tag
 from sonari.models.user import User
 
 __all__ = [
+    "AppToken",
     "AnnotationProject",
     "AnnotationStatusBadge",
     "AnnotationTask",

@@ -34,6 +34,9 @@ Homepage = "https://github.com/trackIT-Systems/sonari"
 Documentation = "https://github.com/trackIT-Systems/sonari"
 "Isue Tracker" = "https://github.com/trackIT-Systems/sonari/issues"
 
+[project.scripts]
+sonari-create_app_token = "sonari.cli.create_app_token:main"
+
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"

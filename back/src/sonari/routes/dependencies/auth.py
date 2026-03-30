@@ -5,15 +5,17 @@ from typing import Annotated
 from fastapi import APIRouter, Depends
 
 from sonari import models
-from sonari.system.oidc import get_current_user
+from sonari.system.oidc import get_current_user, get_current_user_oidc
 
 __all__ = [
     "CurrentUser",
+    "CurrentOIDCUser",
     "create_authenticated_router",
 ]
 
 # Type alias for current user dependency
 CurrentUser = Annotated[models.User, Depends(get_current_user)]
+CurrentOIDCUser = Annotated[models.User, Depends(get_current_user_oidc)]
 
 
 def create_authenticated_router(**kwargs) -> APIRouter:
