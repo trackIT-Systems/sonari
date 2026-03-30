@@ -55,6 +55,7 @@ class User(Base):
     -----
     Users are automatically created when they first authenticate via OIDC.
     The hashed_password field is maintained for database compatibility but is not used.
+
     """
 
     __tablename__ = "user"
@@ -75,6 +76,7 @@ class User(Base):
     # Back references
 
     if TYPE_CHECKING:
+        from sonari.models.app_token import AppToken
         from sonari.models.note import Note
         from sonari.models.recording import Recording, RecordingOwner
         from sonari.models.sound_event_annotation import (
@@ -102,6 +104,13 @@ class User(Base):
         init=False,
     )
     recording_owner: orm.Mapped[list["RecordingOwner"]] = orm.relationship(
+        back_populates="user",
+        default_factory=list,
+        repr=False,
+        init=False,
+    )
+    app_tokens: orm.Mapped[list["AppToken"]] = orm.relationship(
+        "AppToken",
         back_populates="user",
         default_factory=list,
         repr=False,
