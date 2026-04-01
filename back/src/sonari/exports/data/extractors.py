@@ -31,6 +31,7 @@ async def extract_batch(
             .joinedload(models.AnnotationStatusBadge.user),
             joinedload(models.SoundEventAnnotation.annotation_task).selectinload(models.AnnotationTask.tags),
         )
+        .order_by(models.SoundEventAnnotation.id.asc())
         .offset(offset)
         .limit(batch_size)
     )
