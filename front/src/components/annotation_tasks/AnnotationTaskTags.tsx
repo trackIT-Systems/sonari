@@ -239,13 +239,13 @@ export default function AnnotationTaskTags({
   );
 
   return (
-    <Card>
-      <div className="flex justify-between items-center gap-2 mb-2">
-        <H4 className="text-center whitespace-nowrap">
+    <Card className="min-w-0 max-w-full">
+      <div className="flex min-w-0 justify-between items-center gap-2 mb-2">
+        <H4 className="min-w-0 flex-1 text-center leading-tight">
           <TagsIcon className="inline-block mr-1 w-5 h-5" />
           All Sound Event Annotation Tags
         </H4>
-        <div className="flex items-center">
+        <div className="flex shrink-0 items-center">
           <Popover as="div" className="relative inline-block text-left">
             {({ open, close }) => {
               return (
@@ -368,7 +368,7 @@ export default function AnnotationTaskTags({
 
 
       </div>
-      <div className="flex flex-row items-center flex-wrap gap-1">
+      <div className="flex min-w-0 flex-row flex-wrap items-center gap-1">
         {tagsWithCount.map(({ tag, count }) => (
           <TagComponent
             key={getTagKey(tag)}

@@ -32,14 +32,14 @@ export default function SoundEventAnnotationTags({
   );
 
   return (
-    <div className="flex flex-col gap-2">
-      <div className="flex justify-between items-center gap-2 mb-2">
-        <H4 className="text-center whitespace-nowrap">
+    <div className="flex min-w-0 max-w-full flex-col gap-2">
+      <div className="flex min-w-0 justify-between items-center gap-2 mb-2">
+        <H4 className="min-w-0 flex-1 text-center leading-tight">
           <TagsIcon className="inline-block mr-1 w-5 h-5" />
           Sound Event Annotation Tags
         </H4>
       </div>
-      <div className="flex flex-row items-center flex-wrap gap-1">
+      <div className="flex min-w-0 flex-row flex-wrap items-center gap-1">
         {tags.map((tag) => (
           <TagComponent
             key={getTagKey(tag)}

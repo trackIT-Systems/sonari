@@ -60,8 +60,8 @@ export default function SelectedSoundEventAnnotation({
   }, [parameters.resample, parameters.samplerate, samplerate]);
 
   return (
-    <div className="w-full flex flex-col gap-4 py-4">
-      <Card className="grow">
+    <div className="flex w-full min-w-0 max-w-full flex-col gap-4 py-4">
+      <Card className="min-w-0 max-w-full grow">
         <SoundEventAnnotationSpectrogramView
           key={`spectrogram-${currentAnnotation.id}-${effectiveSamplerate}`}
           soundEventAnnotation={currentAnnotation}
@@ -71,9 +71,9 @@ export default function SelectedSoundEventAnnotation({
           withSpectrogram={withSpectrogram}
         />
       </Card>
-      <Card className="grow">
-        <div className="flex gap-4">
-          <div className="flex-1">
+      <Card className="min-w-0 max-w-full grow">
+        <div className="flex min-w-0 max-w-full gap-4">
+          <div className="min-w-0 flex-1">
             <SoundEventAnnotationTags
               tagFilter={tagFilter}
               soundEventAnnotation={currentAnnotation}
@@ -81,7 +81,7 @@ export default function SelectedSoundEventAnnotation({
               onRemoveTag={soundEventAnnotation.removeTag.mutate}
             />
           </div>
-          <div className="flex-1">
+          <div className="min-w-0 flex-1">
             <SoundEventAnnotationDetails
               soundEventAnnotation={currentAnnotation}
             />

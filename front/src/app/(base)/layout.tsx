@@ -17,9 +17,9 @@ function AuthenticatedContent({ children }: { children: ReactNode }) {
 
   return (
     <UserContext.Provider value={user}>
-      <div className="w-full h-full flex">
+      <div className="flex h-full min-w-0 w-full">
         <SideMenu />
-        <div className="flex-1 h-full">{children}</div>
+        <div className="min-w-0 flex-1 h-full">{children}</div>
       </div>
     </UserContext.Provider>
   );
