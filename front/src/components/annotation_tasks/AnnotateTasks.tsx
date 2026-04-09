@@ -1,4 +1,4 @@
-import { useCallback, useState, useMemo, useEffect, useRef } from "react";
+import { useCallback, useState, useMemo, useEffect, useRef, CSSProperties } from "react";
 
 import { DEFAULT_SPECTROGRAM_PARAMETERS } from "@/api/spectrograms";
 import AnnotationProgress from "@/components/annotation_tasks/AnnotationProgress";
@@ -409,8 +409,11 @@ export default function AnnotateTasks({
 
   return (
     <div className="w-full flex flex-col gap-4">
-      <div className="flex flex-row gap-4">
-        <div style={{ width: `${SPECTROGRAM_CONTAINER_WIDTH}px` }}>
+      <div className="flex flex-col gap-4 2xl:flex-row 2xl:items-start">
+        <div
+          className="max-w-full shrink-0"
+          style={{ width: `${SPECTROGRAM_CONTAINER_WIDTH}px` }}
+        >
           <AnnotationProgress
             current={tasks.current}
             taskCount={tasks.tasks.length}
@@ -421,8 +424,8 @@ export default function AnnotateTasks({
             onPrevious={tasks.prevTask}
           />
         </div>
-        <div className="w-[35rem] flex-none">
-          {annotationTask != null && (
+        {annotationTask != null && (
+          <div className="hidden w-[35rem] max-w-full shrink-0 2xl:block">
             <AnnotationTaskStatus
               task={annotationTask}
               onReview={handleMarkRejected}
@@ -431,25 +434,40 @@ export default function AnnotateTasks({
               onVerify={handleMarkVerified}
               onRemoveBadge={handleRemoveBadge}
             />
-          )}
-        </div>
+          </div>
+        )}
       </div>
       <div className="flex flex-col gap-4">
-        <div className="flex flex-row gap-4">
-          <div style={{ width: `${SPECTROGRAM_CONTAINER_WIDTH}px` }}>
+        {/*
+          Below 2xl: stacked column — sound-event + all-tags max width matches spectrogram column.
+          2xl+: row spectrogram | 35rem sidebar; bottom row as before.
+        */}
+        <div className="flex flex-col gap-4 2xl:flex-row 2xl:items-start">
+          <div
+            className="max-w-full shrink-0"
+            style={{ width: `${SPECTROGRAM_CONTAINER_WIDTH}px` }}
+          >
             {isLoadingTask ? (
               <Loading />
             ) : annotationTask == null ? (
               <NoTaskSelected />
             ) : (() => {
-              // Calculate annotation task position among annotation tasks from the same recording
-              // Find the index of the current annotation task in the list of recording annotation tasks (sorted by start time)
               const sortedTasks = [...tasks.tasks.filter(task => task.recording_id === annotationTask.recording_id)].sort((a, b) => a.start_time - b.start_time);
               const currentTaskIndex = sortedTasks.findIndex(
                 task => task.id === annotationTask.id
               );
               return (
               <div className="flex flex-col gap-2">
+                <div className="2xl:hidden w-full min-w-0">
+                  <AnnotationTaskStatus
+                    task={annotationTask}
+                    onReview={handleMarkRejected}
+                    onDone={handleMarkCompleted}
+                    onUnsure={handleMarkUnsure}
+                    onVerify={handleMarkVerified}
+                    onRemoveBadge={handleRemoveBadge}
+                  />
+                </div>
                 <RecordingAnnotationContext
                   recording={annotationTask.recording!}
                   currentTaskIndex={currentTaskIndex >= 0 ? currentTaskIndex + 1 : undefined}
@@ -487,32 +505,78 @@ export default function AnnotateTasks({
             })()}
           </div>
 
-          {selectedSoundEventAnnotation == null || annotationTask == null ? (
-            <div className="w-[35rem] flex-none mt-9">
-              <Empty
-                padding="p-0">
-                No sound event annotation selected. Select a sound event annotation to view details.
-              </Empty>
-            </div>
-          ) : (
-            <div className="w-[35rem] flex-none mt-5">
-              <SelectedSoundEventAnnotation
-                key={selectedSoundEventAnnotation.id}
-                annotationTask={annotationTask}
-                samplerate={annotationTask.recording!.samplerate}
-                soundEventAnnotation={selectedSoundEventAnnotation}
-                parameters={parameters}
-                withSpectrogram={withSpectrogram}
-                onUpdate={onUpdateSelectedSoundEventAnnotation}
-              />
-            </div>
-          )}
+          <div
+            data-annotate-stacked-sidebar
+            className="flex min-w-0 w-full shrink-0 flex-col gap-4 2xl:w-[35rem] 2xl:flex-none"
+            style={
+              {
+                ["--spectrogram-container-w"]: `${SPECTROGRAM_CONTAINER_WIDTH}px`,
+              } as CSSProperties
+            }
+          >
+            {selectedSoundEventAnnotation == null || annotationTask == null ? (
+              <div className="mt-0 w-full min-w-0 2xl:mt-9">
+                <Empty
+                  padding="p-0">
+                  No sound event annotation selected. Select a sound event annotation to view details.
+                </Empty>
+              </div>
+            ) : (
+              <div className="mt-0 w-full min-w-0 2xl:mt-5">
+                <SelectedSoundEventAnnotation
+                  key={selectedSoundEventAnnotation.id}
+                  annotationTask={annotationTask}
+                  samplerate={annotationTask.recording!.samplerate}
+                  soundEventAnnotation={selectedSoundEventAnnotation}
+                  parameters={parameters}
+                  withSpectrogram={withSpectrogram}
+                  onUpdate={onUpdateSelectedSoundEventAnnotation}
+                />
+              </div>
+            )}
+            {annotationTask != null && (
+              <div className="block w-full min-w-0 2xl:hidden">
+                <AnnotationTaskTags
+                  annotationTask={annotationTask}
+                  onReplaceTagInSoundEventAnnotations={handleReplaceTagInSoundEventAnnotations}
+                  selectedSoundEventAnnotation={selectedSoundEventAnnotation}
+                />
+              </div>
+            )}
+          </div>
         </div>
 
-
-        {annotationTask && (
-          <div className="flex flex-row gap-4 w-full">
-            <div className="min-w-[64.7rem] flex flex-col gap-4">
+        {annotationTask != null && (
+          <>
+            <div className="hidden w-full min-w-0 flex-row items-start gap-4 2xl:flex">
+              <div
+                className="flex max-w-full shrink-0 flex-col gap-4"
+                style={{ width: `${SPECTROGRAM_CONTAINER_WIDTH}px` }}
+              >
+                <AnnotationTaskTagBar
+                  annotationTask={annotationTask}
+                  onAddTag={onAddTag}
+                  onRemoveTag={onRemoveTag}
+                />
+                <AnnotationTaskNotes
+                  onCreateNote={onAddNote}
+                  onDeleteNote={onRemoveNote}
+                  annotationTask={annotationTask}
+                  currentUser={currentUser}
+                />
+              </div>
+              <div className="min-w-0 w-[35rem] max-w-full shrink-0">
+                <AnnotationTaskTags
+                  annotationTask={annotationTask}
+                  onReplaceTagInSoundEventAnnotations={handleReplaceTagInSoundEventAnnotations}
+                  selectedSoundEventAnnotation={selectedSoundEventAnnotation}
+                />
+              </div>
+            </div>
+            <div
+              className="flex max-w-full shrink-0 flex-col gap-4 2xl:hidden"
+              style={{ width: `${SPECTROGRAM_CONTAINER_WIDTH}px` }}
+            >
               <AnnotationTaskTagBar
                 annotationTask={annotationTask}
                 onAddTag={onAddTag}
@@ -525,14 +589,7 @@ export default function AnnotateTasks({
                 currentUser={currentUser}
               />
             </div>
-            <div style={{ width: `${SPECTROGRAM_CONTAINER_WIDTH}px` }}>
-              <AnnotationTaskTags
-                annotationTask={annotationTask}
-                onReplaceTagInSoundEventAnnotations={handleReplaceTagInSoundEventAnnotations}
-                selectedSoundEventAnnotation={selectedSoundEventAnnotation}
-              />
-            </div>
-          </div>
+          </>
         )}
       </div>
 

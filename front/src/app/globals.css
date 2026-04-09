@@ -1,5 +1,12 @@
 @import "tailwindcss";
 
+/* Annotate view: stacked (below-2xl) sound-event + all-tags column matches spectrogram column width */
+@media (max-width: 1535px) {
+  [data-annotate-stacked-sidebar] {
+    max-width: min(100%, var(--spectrogram-container-w, 1036px));
+  }
+}
+
 .remove-arrow::-webkit-inner-spin-button,
 .remove-arrow::-webkit-outer-spin-button {
   -webkit-appearance: none;

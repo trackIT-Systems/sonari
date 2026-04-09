@@ -31,7 +31,7 @@ export default function RootLayout({
       <link rel="manifest" href={`${HOST}/manifest.webmanifest`} />
       </head>
       <body
-        className={`${mulish.className} font-sans bg-stone-100 dark:bg-stone-900 text-stone-900 dark:text-stone-100 min-h-screen w-screen overflow-x-hidden`}
+        className={`${mulish.className} font-sans bg-stone-100 dark:bg-stone-900 text-stone-900 dark:text-stone-100 min-h-screen min-w-0 w-full overflow-x-hidden`}
       >
         <ClientProvider>
           {children}

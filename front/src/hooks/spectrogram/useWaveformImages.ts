@@ -29,15 +29,19 @@ export default function useWaveformImages({
   recording,
   window,
   parameters,
+  withSpectrogram,
   onAllSegmentsLoaded,
 }: {
   recording: Recording;
   window: WaveformWindow;
   parameters: SpectrogramParameters;
+  withSpectrogram: boolean;
   onAllSegmentsLoaded?: () => void;
 }) {
   // Calculate all chunks for this recording (using waveform-optimized chunking)
   const allChunks = useMemo(() => {
+    if (!withSpectrogram) return [];
+
     const duration = recording.duration;
     const windowSize = parameters.window_size_samples;
     const overlap = parameters.overlap_percent / 100;
@@ -53,6 +57,7 @@ export default function useWaveformImages({
     recording.samplerate,
     parameters.window_size_samples,
     parameters.overlap_percent,
+    withSpectrogram,
   ]);
 
   // Track loading state for each chunk
@@ -70,22 +75,25 @@ export default function useWaveformImages({
 
   // Find chunks that are visible in current viewport
   const visibleChunks = useMemo(() => {
-    if (allChunks.length === 0) return [];
+    if (!withSpectrogram || allChunks.length === 0) return [];
 
     const viewportMin = window.time.min;
     const viewportMax = window.time.max;
 
     return getVisibleChunks(allChunks, viewportMin, viewportMax);
-  }, [allChunks, window.time.min, window.time.max]);
+  }, [allChunks, window.time.min, window.time.max, withSpectrogram]);
 
   // Determine which chunks to load 
   // For waveforms, only load visible chunks (no preloading) to minimize requests
   const chunksToLoad = useMemo(() => {
+    if (!withSpectrogram) return [];
     return visibleChunks;
-  }, [visibleChunks]);
+  }, [visibleChunks, withSpectrogram]);
 
   // Load chunks when they become needed
   useEffect(() => {
+    if (!withSpectrogram) return;
+
     const loadChunk = async (chunk: Chunk) => {
       const index = chunk.index;
       const state = chunkStates[index];
@@ -183,6 +191,7 @@ export default function useWaveformImages({
     parameters,
     visibleChunks,
     onAllSegmentsLoaded,
+    withSpectrogram,
   ]);
 
   // Combine chunk data with images and states for rendering

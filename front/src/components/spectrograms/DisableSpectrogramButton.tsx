@@ -27,7 +27,7 @@ export default function DisableSpectrogramButton({
         portal={true}
         tooltip={
           <div className="inline-flex gap-2 items-center">
-            Disable spectrogram
+            Disable spectrogram and waveform
             <KeyboardKey code={DISABLE_SPECTROGRAM_SHORTCUT} />
           </div>
         }

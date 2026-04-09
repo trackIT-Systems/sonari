@@ -268,6 +268,7 @@ export default function AnnotationTaskSpectrogram({
     recording: recording!,
     parameters: spectrogram.parameters,
     window: spectrogram.window,
+    withSpectrogram,
   });
 
   const { centerOn } = spectrogram;
@@ -372,6 +373,12 @@ export default function AnnotationTaskSpectrogram({
   ]);
 
   const drawWaveformCanvas = useCallback((ctx: CanvasRenderingContext2D) => {
+    if (!withSpectrogram) {
+      ctx.canvas.style.cursor = "default";
+      ctx.fillStyle = "rgb(156 163 175)";
+      ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+      return;
+    }
     // Wait until all visible chunks are loaded before displaying
     if (waveform.isLoading) {
       ctx.canvas.style.cursor = "wait";
@@ -397,7 +404,7 @@ export default function AnnotationTaskSpectrogram({
     
     // Draw measurement-aware annotations (includes measurement reflection from spectrogram)
     annotate?.drawWaveform(ctx);
-  }, [waveform, trackingAudio, drawTrackAudio, drawOnsetAt, audio.currentTime, withSoundEvent, soundEventAnnotations, drawWaveformAnnotationsLegacy, annotate]);
+  }, [withSpectrogram, waveform, trackingAudio, drawTrackAudio, drawOnsetAt, audio.currentTime, withSoundEvent, soundEventAnnotations, drawWaveformAnnotationsLegacy, annotate]);
 
   useCanvas({ ref: spectrogramCanvasRef as React.RefObject<HTMLCanvasElement>, draw: drawSpectrogramCanvas });
   useCanvas({ ref: waveformCanvasRef as React.RefObject<HTMLCanvasElement>, draw: drawWaveformCanvas });

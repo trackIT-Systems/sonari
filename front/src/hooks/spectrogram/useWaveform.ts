@@ -7,17 +7,20 @@ export default function useWaveform({
   recording,
   parameters,
   window,
+  withSpectrogram,
   onSegmentsLoaded,
 }: {
   recording: Recording;
   parameters: SpectrogramParameters;
   window: SpectrogramWindow;
+  withSpectrogram: boolean;
   onSegmentsLoaded?: () => void;
 }) {
   const { chunks, isLoading, isError } = useWaveformImages({
     recording,
     window: { time: window.time },
     parameters,
+    withSpectrogram,
     onAllSegmentsLoaded: onSegmentsLoaded,
   });
 

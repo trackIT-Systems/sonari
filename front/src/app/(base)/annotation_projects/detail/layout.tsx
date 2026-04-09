@@ -51,11 +51,11 @@ export default function Layout({ children }: { children: ReactNode }) {
 
   return (
     <AnnotationProjectContext.Provider value={project.data}>
-      <div className="flex flex-col h-screen">
+      <div className="flex min-h-0 min-w-0 flex-col h-screen">
         <div className="flex-none">
           <ProjectHeader annotationProject={project.data} />
         </div>
-        <div className="flex-1 p-4 min-h-0 overflow-auto">
+        <div className="min-h-0 min-w-0 flex-1 overflow-auto p-4">
           {children}
         </div>
       </div>
