@@ -303,9 +303,10 @@ class SoundEventAnnotationAPI(
         """Add a tag to a sound event annotation."""
         user_id = user.id if user else None
         
-        # If tags are not loaded, fetch the annotation with tags to check for duplicates
+        # If tags are not loaded, fetch the annotation with tags (and features for callers
+        # that chain into mark_as_edited_by_user, which iterates features).
         if obj.tags is None:
-            obj = await self.get(session, obj.id, include_tags=True)
+            obj = await self.get(session, obj.id, include_tags=True, include_features=True)
         
         # Safety check: even after eager loading, tags might still be None in edge cases
         existing_tags = obj.tags if obj.tags is not None else []

@@ -180,6 +180,7 @@ def get_sound_event_annotations_router(settings: SonariSettings) -> APIRouter:
             session,
             sound_event_annotation_id,
             include_tags=True,
+            include_features=True,
         )
         tag = await api.tags.get(session, (key, value))
         sound_event_annotation = await api.sound_event_annotations.add_tag(
@@ -215,6 +216,7 @@ def get_sound_event_annotations_router(settings: SonariSettings) -> APIRouter:
             session,
             sound_event_annotation_id,
             include_tags=True,
+            include_features=True,
         )
         tag = await api.tags.get(session, (key, value))
         sound_event_annotation = await api.sound_event_annotations.remove_tag(
