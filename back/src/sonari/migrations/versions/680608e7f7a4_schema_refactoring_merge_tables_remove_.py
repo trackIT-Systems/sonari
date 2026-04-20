@@ -25,6 +25,7 @@ def get_or_create_admin_user(bind):
 
     Returns the UUID of the admin user.
     """
+    import datetime
     from uuid import uuid4
 
     import bcrypt
@@ -44,17 +45,19 @@ def get_or_create_admin_user(bind):
     print(f"  Creating admin user (id: {admin_id})", flush=True)
     bind.execute(
         sa.text("""
-            INSERT INTO \"user\" (id, email, username, hashed_password, is_active, is_superuser, is_verified)
-            VALUES (:id, :email, :username, :hashed_password, :is_active, :is_superuser, :is_verified)
+            INSERT INTO \"user\" (id, email, username, hashed_password, name, is_active, is_superuser, is_verified, created_on)
+            VALUES (:id, :email, :username, :hashed_password, :name, :is_active, :is_superuser, :is_verified, :created_on)
         """),
         {
             "id": admin_id,
             "email": "admin@sonari.local",
             "username": "admin",
             "hashed_password": hashed_password,
+            "name": "admin",
             "is_active": True,
             "is_superuser": True,
             "is_verified": True,
+            "created_on": datetime.datetime.now(datetime.timezone.utc),
         },
     )
 
