@@ -22,27 +22,25 @@ depends_on: Union[str, Sequence[str], None] = None
 
 def get_or_create_admin_user(bind):
     """Get or create an admin user for data migration purposes.
-    
+
     Returns the UUID of the admin user.
     """
     from uuid import uuid4
-    from passlib.context import CryptContext
-    
+
+    import bcrypt
+
     # Check if admin user exists
-    result = bind.execute(
-        sa.text("SELECT id FROM \"user\" WHERE username = 'admin'")
-    )
+    result = bind.execute(sa.text("SELECT id FROM \"user\" WHERE username = 'admin'"))
     admin_user = result.fetchone()
-    
+
     if admin_user:
         print(f"  Using existing admin user (id: {admin_user[0]})", flush=True)
         return admin_user[0]
-    
+
     # Create admin user if it doesn't exist
     admin_id = str(uuid4())
-    pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-    hashed_password = pwd_context.hash("admin")  # Default password
-    
+    hashed_password = bcrypt.hashpw(b"admin", bcrypt.gensalt()).decode("ascii")
+
     print(f"  Creating admin user (id: {admin_id})", flush=True)
     bind.execute(
         sa.text("""
@@ -57,9 +55,9 @@ def get_or_create_admin_user(bind):
             "is_active": True,
             "is_superuser": True,
             "is_verified": True,
-        }
+        },
     )
-    
+
     print("  ⚠️  WARNING: Created admin user with default password. Change it after migration!", flush=True)
     return admin_id
 
@@ -83,13 +81,13 @@ def upgrade() -> None:
     # Get database dialect for conditional logic
     bind = op.get_bind()
     dialect = bind.dialect.name
-    print(f"Running migration on {dialect} database...",flush=True)
+    print(f"Running migration on {dialect} database...", flush=True)
 
     # ==========================================================================
     # PHASE 1: ADD NEW COLUMNS TO EXISTING TABLES
     # ==========================================================================
 
-    print("Phase 1: Adding new columns to existing tables...",flush=True)
+    print("Phase 1: Adding new columns to existing tables...", flush=True)
 
     # Add new columns to annotation_task (will be populated from clip data)
     with op.batch_alter_table("annotation_task", schema=None) as batch_op:
@@ -169,8 +167,7 @@ def upgrade() -> None:
     if null_tags > 0:
         print(f"    Found {null_tags} tags without created_by_id", flush=True)
         bind.execute(
-            sa.text("UPDATE tag SET created_by_id = :admin_id WHERE created_by_id IS NULL"),
-            {"admin_id": admin_user_id}
+            sa.text("UPDATE tag SET created_by_id = :admin_id WHERE created_by_id IS NULL"), {"admin_id": admin_user_id}
         )
         print(f"    Updated {null_tags} tags to use admin user", flush=True)
 
@@ -182,7 +179,7 @@ def upgrade() -> None:
         print(f"    Found {null_recording_tags} recording_tags without created_by_id", flush=True)
         bind.execute(
             sa.text("UPDATE recording_tag SET created_by_id = :admin_id WHERE created_by_id IS NULL"),
-            {"admin_id": admin_user_id}
+            {"admin_id": admin_user_id},
         )
         print(f"    Updated {null_recording_tags} recording_tags to use admin user", flush=True)
 
@@ -190,7 +187,7 @@ def upgrade() -> None:
     # PHASE 1.5: CLEAN UP ORPHANED DATA
     # ==========================================================================
 
-    print("Phase 1.5: Cleaning up orphaned clip_annotations...",flush=True)
+    print("Phase 1.5: Cleaning up orphaned clip_annotations...", flush=True)
 
     # Count orphaned data before deletion
     bind = op.get_bind()
@@ -217,8 +214,8 @@ def upgrade() -> None:
     )
     orphaned_sound_events = result.scalar()
 
-    print(f"  Found {orphaned_clip_annotations} orphaned clip_annotations",flush=True)
-    print(f"  Found {orphaned_sound_events} sound_event_annotations that will be deleted",flush=True)
+    print(f"  Found {orphaned_clip_annotations} orphaned clip_annotations", flush=True)
+    print(f"  Found {orphaned_sound_events} sound_event_annotations that will be deleted", flush=True)
 
     # Delete clip_annotations that have no annotation_task
     # This will CASCADE delete their sound_event_annotations
@@ -236,20 +233,21 @@ def upgrade() -> None:
     result = bind.execute(sa.text("SELECT COUNT(*) FROM sound_event_annotation"))
     remaining_sound_events = result.scalar()
 
-    print(f"  Deleted {orphaned_clip_annotations} orphaned clip_annotations",flush=True)
-    print(f"  Deleted {orphaned_sound_events} orphaned sound_event_annotations",flush=True)
+    print(f"  Deleted {orphaned_clip_annotations} orphaned clip_annotations", flush=True)
+    print(f"  Deleted {orphaned_sound_events} orphaned sound_event_annotations", flush=True)
     print(
-        f"  Remaining: {remaining_clip_annotations} clip_annotations, {remaining_sound_events} sound_event_annotations",flush=True
+        f"  Remaining: {remaining_clip_annotations} clip_annotations, {remaining_sound_events} sound_event_annotations",
+        flush=True,
     )
 
     # ==========================================================================
     # PHASE 2: MIGRATE DATA FROM OLD STRUCTURE TO NEW
     # ==========================================================================
 
-    print("Phase 2: Migrating data to new structure...",flush=True)
+    print("Phase 2: Migrating data to new structure...", flush=True)
 
     # 2.1: Populate annotation_task fields from clip via clip_annotation
-    print("  - Migrating clip data into annotation_task...",flush=True)
+    print("  - Migrating clip data into annotation_task...", flush=True)
     if dialect == "sqlite":
         # SQLite: use subqueries (works in all versions)
         op.execute("""
@@ -286,7 +284,7 @@ def upgrade() -> None:
         """)
 
     # 2.2: Populate sound_event_annotation.annotation_task_id from clip_annotation
-    print("  - Linking sound_event_annotations to annotation_tasks...",flush=True)
+    print("  - Linking sound_event_annotations to annotation_tasks...", flush=True)
     if dialect == "sqlite":
         op.execute("""
             UPDATE sound_event_annotation
@@ -305,7 +303,7 @@ def upgrade() -> None:
         """)
 
     # 2.3: Populate sound_event_annotation geometry fields from sound_event
-    print("  - Migrating sound_event geometry into sound_event_annotation...",flush=True)
+    print("  - Migrating sound_event geometry into sound_event_annotation...", flush=True)
     if dialect == "sqlite":
         op.execute("""
             UPDATE sound_event_annotation
@@ -336,7 +334,7 @@ def upgrade() -> None:
         """)
 
     # 2.4: Migrate notes from clip_annotation_note to note.annotation_task_id
-    print("  - Migrating clip_annotation notes to annotation_tasks...",flush=True)
+    print("  - Migrating clip_annotation notes to annotation_tasks...", flush=True)
     if dialect == "sqlite":
         op.execute("""
             UPDATE note
@@ -360,7 +358,7 @@ def upgrade() -> None:
     # PHASE 3: CREATE NEW DENORMALIZED FEATURE TABLES
     # ==========================================================================
 
-    print("Phase 3: Creating denormalized feature tables...",flush=True)
+    print("Phase 3: Creating denormalized feature tables...", flush=True)
 
     # 3.1: Create new annotation_task_feature table (denormalized with name inline)
     op.create_table(
@@ -389,7 +387,7 @@ def upgrade() -> None:
         )
 
     # 3.2: Migrate clip_feature data to annotation_task_feature_new (denormalize feature names)
-    print("  - Migrating clip features to annotation_task features...",flush=True)
+    print("  - Migrating clip features to annotation_task features...", flush=True)
     op.execute("""
         INSERT INTO annotation_task_feature_new (annotation_task_id, name, value, created_on)
         SELECT 
@@ -437,7 +435,7 @@ def upgrade() -> None:
         )
 
     # 3.4: Migrate sound_event_feature data (denormalize feature names)
-    print("  - Migrating sound_event features to sound_event_annotation features...",flush=True)
+    print("  - Migrating sound_event features to sound_event_annotation features...", flush=True)
     op.execute("""
         INSERT INTO sound_event_annotation_feature_new (sound_event_annotation_id, name, value, created_on)
         SELECT 
@@ -475,7 +473,7 @@ def upgrade() -> None:
         )
 
     # 3.6: Migrate recording_feature data (denormalize feature names)
-    print("  - Migrating recording features...",flush=True)
+    print("  - Migrating recording features...", flush=True)
     op.execute("""
         INSERT INTO recording_feature_new (recording_id, name, value, created_on)
         SELECT 
@@ -491,7 +489,7 @@ def upgrade() -> None:
     # PHASE 4: DROP FOREIGN KEY CONSTRAINTS TO TABLES WE'RE ABOUT TO DROP
     # ==========================================================================
 
-    print("Phase 4: Dropping foreign key constraints to old tables...",flush=True)
+    print("Phase 4: Dropping foreign key constraints to old tables...", flush=True)
 
     # Drop FK constraints from annotation_task to clip/clip_annotation
     with op.batch_alter_table("annotation_task", schema=None) as batch_op:
@@ -516,7 +514,7 @@ def upgrade() -> None:
     # PHASE 5: DROP OLD TABLES AND ASSOCIATION TABLES
     # ==========================================================================
 
-    print("Phase 5: Dropping old tables...",flush=True)
+    print("Phase 5: Dropping old tables...", flush=True)
 
     # Drop note association tables (recording_note and sound_event_annotation_note data is LOST)
     op.drop_table("sound_event_annotation_note")
@@ -540,7 +538,7 @@ def upgrade() -> None:
     # PHASE 6: RENAME NEW FEATURE TABLES TO FINAL NAMES
     # ==========================================================================
 
-    print("Phase 6: Renaming tables...",flush=True)
+    print("Phase 6: Renaming tables...", flush=True)
 
     op.rename_table("annotation_task_feature_new", "annotation_task_feature")
     op.rename_table("sound_event_annotation_feature_new", "sound_event_annotation_feature")
@@ -553,7 +551,7 @@ def upgrade() -> None:
     # PHASE 6.5: UPDATE ANNOTATION_TASK_TAG TABLE (BEFORE dropping clip_annotation_id)
     # ==========================================================================
 
-    print("Phase 6.5: Updating annotation_task_tag structure...",flush=True)
+    print("Phase 6.5: Updating annotation_task_tag structure...", flush=True)
 
     # CRITICAL: This must happen BEFORE Phase 7 drops annotation_task.clip_annotation_id
     # After renaming clip_annotation_tag to annotation_task_tag,
@@ -562,7 +560,7 @@ def upgrade() -> None:
 
     # First, clean up any orphaned annotation_task_tag entries
     # (tags that reference clip_annotations with no corresponding annotation_task)
-    print("  - Cleaning up orphaned annotation_task_tag entries...",flush=True)
+    print("  - Cleaning up orphaned annotation_task_tag entries...", flush=True)
     bind = op.get_bind()
     result = bind.execute(
         sa.text("""
@@ -576,7 +574,7 @@ def upgrade() -> None:
     )
     orphaned_tags = result.scalar()
     if orphaned_tags > 0:
-        print(f"    Found {orphaned_tags} orphaned annotation_task_tag entries (will be deleted)",flush=True)
+        print(f"    Found {orphaned_tags} orphaned annotation_task_tag entries (will be deleted)", flush=True)
         op.execute("""
             DELETE FROM annotation_task_tag
             WHERE NOT EXISTS (
@@ -609,7 +607,10 @@ def upgrade() -> None:
 
         # Copy data with column rename and ID mapping
         # Map clip_annotation.id -> annotation_task.id using the annotation_task.clip_annotation_id
-        print("  - Updating annotation_task_tag IDs to reference annotation_task instead of clip_annotation...",flush=True)
+        print(
+            "  - Updating annotation_task_tag IDs to reference annotation_task instead of clip_annotation...",
+            flush=True,
+        )
         op.execute("""
             INSERT INTO annotation_task_tag_new (id, annotation_task_id, tag_id, created_by_id, created_on)
             SELECT 
@@ -630,7 +631,7 @@ def upgrade() -> None:
             print(f"    Found {null_count} annotation_task_tags without created_by_id", flush=True)
             bind.execute(
                 sa.text("UPDATE annotation_task_tag_new SET created_by_id = :admin_id WHERE created_by_id IS NULL"),
-                {"admin_id": admin_user_id}
+                {"admin_id": admin_user_id},
             )
             print(f"    Updated {null_count} annotation_task_tags to use admin user", flush=True)
 
@@ -653,7 +654,10 @@ def upgrade() -> None:
 
         # CRITICAL: Update clip_annotation_id values to be annotation_task.id values
         # Before renaming, we need to map clip_annotation.id -> annotation_task.id
-        print("  - Updating annotation_task_tag IDs to reference annotation_task instead of clip_annotation...",flush=True)
+        print(
+            "  - Updating annotation_task_tag IDs to reference annotation_task instead of clip_annotation...",
+            flush=True,
+        )
         op.execute("""
             UPDATE annotation_task_tag
             SET clip_annotation_id = annotation_task.id
@@ -669,7 +673,7 @@ def upgrade() -> None:
             print(f"    Found {null_count} annotation_task_tags without created_by_id", flush=True)
             bind.execute(
                 sa.text("UPDATE annotation_task_tag SET created_by_id = :admin_id WHERE created_by_id IS NULL"),
-                {"admin_id": admin_user_id}
+                {"admin_id": admin_user_id},
             )
             print(f"    Updated {null_count} annotation_task_tags to use admin user", flush=True)
 
@@ -701,7 +705,7 @@ def upgrade() -> None:
     # PHASE 7: UPDATE ANNOTATION_TASK TABLE STRUCTURE
     # ==========================================================================
 
-    print("Phase 7: Finalizing annotation_task structure...",flush=True)
+    print("Phase 7: Finalizing annotation_task structure...", flush=True)
 
     # Now that data is migrated and FKs dropped, finalize the table structure
     with op.batch_alter_table("annotation_task", schema=None) as batch_op:
@@ -736,7 +740,7 @@ def upgrade() -> None:
     # PHASE 8: UPDATE SOUND_EVENT_ANNOTATION TABLE STRUCTURE
     # ==========================================================================
 
-    print("Phase 8: Finalizing sound_event_annotation structure...",flush=True)
+    print("Phase 8: Finalizing sound_event_annotation structure...", flush=True)
 
     with op.batch_alter_table("sound_event_annotation", schema=None) as batch_op:
         # Make new columns NOT NULL
@@ -780,14 +784,14 @@ def upgrade() -> None:
     # PHASE 9: UPDATE NOTE TABLE STRUCTURE
     # ==========================================================================
 
-    print("Phase 9: Finalizing note structure...",flush=True)
+    print("Phase 9: Finalizing note structure...", flush=True)
 
     # Delete notes that couldn't be migrated (from recording_note and sound_event_annotation_note)
-    print("  - Cleaning up notes that couldn't be migrated...",flush=True)
+    print("  - Cleaning up notes that couldn't be migrated...", flush=True)
     bind = op.get_bind()
     result = bind.execute(sa.text("SELECT COUNT(*) FROM note WHERE annotation_task_id IS NULL"))
     orphaned_notes = result.scalar()
-    print(f"    Found {orphaned_notes} notes without annotation_task (will be deleted)",flush=True)
+    print(f"    Found {orphaned_notes} notes without annotation_task (will be deleted)", flush=True)
 
     op.execute("DELETE FROM note WHERE annotation_task_id IS NULL")
 
@@ -812,7 +816,7 @@ def upgrade() -> None:
     # PHASE 10: REMOVE UUID COLUMNS FROM OTHER TABLES
     # ==========================================================================
 
-    print("Phase 10: Removing UUID columns...",flush=True)
+    print("Phase 10: Removing UUID columns...", flush=True)
 
     # Remove uuid from recording
     with op.batch_alter_table("recording", schema=None) as batch_op:
@@ -829,7 +833,7 @@ def upgrade() -> None:
         batch_op.drop_constraint("uq_dataset_uuid", type_="unique")
         batch_op.drop_column("uuid")
 
-    print("Migration complete!",flush=True)
+    print("Migration complete!", flush=True)
     print("⚠️  WARNING: The following data has been lost:")
     print("   - Notes attached to recordings and sound_event_annotations")
     print("   - Orphaned clip_annotations (and their sound_event_annotations) that had no annotation_task")
