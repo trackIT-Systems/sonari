@@ -50,7 +50,7 @@ def get_or_create_admin_user(bind):
         """),
         {
             "id": admin_id,
-            "email": "admin@sonari.local",
+            "email": "admin@sonari.de",
             "username": "admin",
             "hashed_password": hashed_password,
             "name": "admin",

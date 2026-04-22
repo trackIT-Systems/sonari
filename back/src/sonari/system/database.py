@@ -1,6 +1,8 @@
 """Function to initialize the database."""
 
+import datetime
 import logging
+import sqlite3
 from contextlib import asynccontextmanager
 from enum import Enum
 from typing import AsyncGenerator
@@ -23,6 +25,23 @@ from sonari import models
 from sonari.system.settings import Settings
 
 logger = logging.getLogger("sonari.database")
+
+_sqlite3_datetime_adapters_registered = False
+
+
+def _register_sqlite3_datetime_adapters() -> None:
+    """Register ISO datetime adapters for sqlite3 (Python 3.12+ deprecates the defaults).
+
+    SQLAlchemy passes Python datetime values into sqlite3; without explicit adapters, each
+    execute emits DeprecationWarning. See: https://docs.python.org/3/library/sqlite3.html#sqlite3.register_adapter
+    """
+    global _sqlite3_datetime_adapters_registered
+    if _sqlite3_datetime_adapters_registered:
+        return
+    sqlite3.register_adapter(datetime.date, datetime.date.isoformat)  # type: ignore[arg-type]
+    sqlite3.register_adapter(datetime.datetime, datetime.datetime.isoformat)  # type: ignore[arg-type]
+    _sqlite3_datetime_adapters_registered = True
+
 
 # Global engine and sessionmaker instances (singleton pattern)
 _async_engine: AsyncEngine | None = None
@@ -151,6 +170,7 @@ def create_async_db_engine(database_url: str | URL) -> AsyncEngine:
 
     backend = database_url.get_backend_name()
     if backend == "sqlite":
+        _register_sqlite3_datetime_adapters()
         return create_async_engine(
             database_url,
             poolclass=NullPool,  # aiosqlite doesn't support connection pooling
@@ -191,6 +211,8 @@ def create_sync_db_engine(database_url: str | URL) -> Engine:
     if not isinstance(database_url, URL):
         database_url = make_url(database_url)
     database_url = validate_database_url(database_url, is_async=False)
+    if database_url.get_backend_name() == "sqlite":
+        _register_sqlite3_datetime_adapters()
     return create_engine(database_url)
 
 

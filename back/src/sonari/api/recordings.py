@@ -3,7 +3,7 @@
 import datetime
 import logging
 from functools import partial
-from multiprocessing import Pool
+from multiprocessing import get_context
 from pathlib import Path
 from typing import Sequence
 
@@ -295,7 +295,7 @@ class RecordingAPI(
             key=lambda x: x.path,
         )
 
-        with Pool() as pool:
+        with get_context("spawn").Pool() as pool:
             results = pool.map_async(
                 partial(_assemble_recording_data, audio_dir=audio_dir),
                 validated_data,
