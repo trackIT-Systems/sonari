@@ -18,6 +18,7 @@ spectrograms_router = create_authenticated_router()
 
 @spectrograms_router.get(
     "/",
+    response_model=None,
 )
 async def get_spectrogram(
     session: Session,
