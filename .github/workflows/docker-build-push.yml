@@ -9,7 +9,7 @@ env:
 
 jobs:
   build-and-push:
-    runs-on: self-hosteda
+    runs-on: self-hosted
     permissions:
       contents: read
       packages: write
