@@ -11,8 +11,8 @@ export default function SoundEventAnnotationDetails({
   const creatorUsername = soundEventAnnotation.created_by?.username;
   const useSpeciesConfidence = creatorUsername == "yolobat";
   const confidenceFeatureName = useSpeciesConfidence
-    ? "species_confidence"
-    : "detection_confidence";
+    ? "detection_confidence"
+    : "species_confidence";
   return (
     <div className="flex flex-col gap-2">
       <div className="flex justify-between items-center gap-2 mb-2">
