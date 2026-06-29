@@ -60,6 +60,13 @@ def verify_app_token_secret(secret: str, secret_hash: str) -> bool:
         return False
 
 
+def _as_utc_aware(value: datetime) -> datetime:
+    """Normalize DB datetimes for comparison (SQLite may return naive values)."""
+    if value.tzinfo is None:
+        return value.replace(tzinfo=timezone.utc)
+    return value
+
+
 async def authenticate_app_token(session: AsyncSession, raw_token: str) -> tuple[models.User, models.AppToken]:
     """Validate Bearer app token and return the owning user and token row, or raise 401."""
     parsed = parse_sonari_app_token(raw_token)
@@ -87,7 +94,7 @@ async def authenticate_app_token(session: AsyncSession, raw_token: str) -> tuple
             headers={"WWW-Authenticate": "Bearer"},
         )
     now = datetime.now(timezone.utc)
-    if row.expires_at is not None and row.expires_at <= now:
+    if row.expires_at is not None and _as_utc_aware(row.expires_at) <= now:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Token expired",
@@ -100,7 +107,17 @@ async def authenticate_app_token(session: AsyncSession, raw_token: str) -> tuple
             headers={"WWW-Authenticate": "Bearer"},
         )
 
-    return row.user, row
+    user = row.user
+    if user is None:
+        user = await session.get(models.User, row.user_id)
+    if user is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Authentication failed",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    return user, row
 
 
 async def insert_app_token(

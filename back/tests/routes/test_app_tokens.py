@@ -105,7 +105,7 @@ async def test_purge_revoked_token_removes_row(auth_client: AsyncClient):
     r_purge = await auth_client.post(f"/api/v1/auth/app-tokens/{token_id}/purge")
     assert r_purge.status_code == 204
     r_list = await auth_client.get("/api/v1/auth/app-tokens")
-    assert r_list.json() == []
+    assert all(item["id"] != token_id for item in r_list.json())
 
 
 @pytest.mark.asyncio

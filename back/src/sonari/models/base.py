@@ -7,10 +7,11 @@ import datetime
 import uuid
 from pathlib import Path
 
+import fastapi_users_db_sqlalchemy.generics
 import sqlalchemy.orm as orm
 import sqlalchemy.types as types
 from soundevent import data
-from sqlalchemy import DateTime, MetaData, Uuid
+from sqlalchemy import DateTime, MetaData
 from sqlalchemy.ext.asyncio import AsyncAttrs
 
 __all__ = [
@@ -70,7 +71,7 @@ class Base(AsyncAttrs, orm.MappedAsDataclass, orm.DeclarativeBase):
 
     # Add a type annotation map to allow for custom types.
     type_annotation_map = {
-        uuid.UUID: Uuid,
+        uuid.UUID: fastapi_users_db_sqlalchemy.generics.GUID,
         Path: PathType,
         data.Geometry: GeometryType,
     }
