@@ -9,6 +9,7 @@ import AnnotationTaskSpectrogram from "@/components/annotation_tasks/AnnotationT
 import Empty from "@/components/Empty";
 import Loading from "@/components/Loading";
 import useAnnotateTasks from "@/hooks/annotation/useAnnotateTasks";
+import useRecordingAnnotationTasks from "@/hooks/annotation/useRecordingAnnotationTasks";
 import AnnotationTaskTagBar from "@/components/annotation_tasks/AnnotationTaskTagBar";
 import useAnnotateTasksKeyShortcuts from "@/hooks/annotation/useTaskStatusKeyShortcuts";
 
@@ -57,6 +58,14 @@ export default function AnnotateTasks({
   onAddSoundEventAnnotation,
   onRemoveSoundEventAnnotation,
   onUpdateSoundEventAnnotation,
+  sourceTaskId = null,
+  onSourceTaskChange,
+  sourceAnnotationTask,
+  onSourceAddSoundEventAnnotation,
+  onSourceRemoveSoundEventAnnotation,
+  onSourceUpdateSoundEventAnnotation,
+  onSourceAddTagToSoundEventAnnotation,
+  onSourceRemoveTagFromSoundEventAnnotation,
 }: {
   /** Filter to select which tasks are to be annotated */
   taskFilter?: AnnotationTaskFilter;
@@ -87,6 +96,14 @@ export default function AnnotateTasks({
   onAddSoundEventAnnotation?: (params: { geometry: Geometry; tags: Tag[] }) => Promise<SoundEventAnnotation>;
   onRemoveSoundEventAnnotation?: (annotation: SoundEventAnnotation) => void;
   onUpdateSoundEventAnnotation?: (params: { soundEventAnnotation: SoundEventAnnotation; geometry: Geometry }) => void;
+  sourceTaskId?: number | null;
+  onSourceTaskChange?: (sourceTaskId: number | null) => void;
+  sourceAnnotationTask?: AnnotationTask;
+  onSourceAddSoundEventAnnotation?: (params: { geometry: Geometry; tags: Tag[] }) => Promise<SoundEventAnnotation>;
+  onSourceRemoveSoundEventAnnotation?: (annotation: SoundEventAnnotation) => void;
+  onSourceUpdateSoundEventAnnotation?: (params: { soundEventAnnotation: SoundEventAnnotation; geometry: Geometry }) => void;
+  onSourceAddTagToSoundEventAnnotation?: (params: { soundEventAnnotation: SoundEventAnnotation; tag: Tag }) => Promise<SoundEventAnnotation>;
+  onSourceRemoveTagFromSoundEventAnnotation?: (params: { soundEventAnnotation: SoundEventAnnotation; tag: Tag }) => Promise<SoundEventAnnotation>;
 }) {
   const [tagPalette, setTagPalette] = useState<Tag[]>([]);
   const [selectedTag, setSelectedTag] = useState<{ tag: Tag; count: number } | null>(null);
@@ -139,6 +156,82 @@ export default function AnnotateTasks({
     onVerifyTask,
     onDeselectSoundEventAnnotation,
   });
+
+  const { tasks: recordingTasks } =
+    useRecordingAnnotationTasks({
+      recordingId: annotationTask?.recording_id,
+      enabled: annotationTask != null,
+    });
+
+  const isUsingSource =
+    sourceTaskId != null && sourceAnnotationTask != null;
+
+  const displayedSoundEventAnnotations = useMemo(() => {
+    if (isUsingSource) {
+      return sourceAnnotationTask.sound_event_annotations ?? [];
+    }
+    return annotationTask?.sound_event_annotations ?? [];
+  }, [
+    isUsingSource,
+    sourceAnnotationTask,
+    annotationTask?.sound_event_annotations,
+  ]);
+
+  const displayAnnotationTask = useMemo(() => {
+    if (annotationTask == null) return null;
+    return {
+      ...annotationTask,
+      sound_event_annotations: displayedSoundEventAnnotations,
+    };
+  }, [annotationTask, displayedSoundEventAnnotations]);
+
+  const activeAddSoundEventAnnotation = isUsingSource
+    ? onSourceAddSoundEventAnnotation
+    : onAddSoundEventAnnotation;
+  const activeRemoveSoundEventAnnotation = isUsingSource
+    ? onSourceRemoveSoundEventAnnotation
+    : onRemoveSoundEventAnnotation;
+  const activeUpdateSoundEventAnnotation = isUsingSource
+    ? onSourceUpdateSoundEventAnnotation
+    : onUpdateSoundEventAnnotation;
+  const activeAddTagToSoundEventAnnotation = isUsingSource
+    ? onSourceAddTagToSoundEventAnnotation
+    : onAddTagToSoundEventAnnotation;
+  const activeRemoveTagFromSoundEventAnnotation = isUsingSource
+    ? onSourceRemoveTagFromSoundEventAnnotation
+    : onRemoveTagFromSoundEventAnnotation;
+
+  const selectedSoundEventAnnotationTask = isUsingSource
+    ? sourceAnnotationTask
+    : annotationTask;
+
+  const prevTaskIdRef = useRef(annotationTask?.id);
+  useEffect(() => {
+    if (
+      prevTaskIdRef.current !== annotationTask?.id &&
+      prevTaskIdRef.current != null
+    ) {
+      onSourceTaskChange?.(null);
+      setSelectedSoundEventAnnotation(null);
+    }
+    prevTaskIdRef.current = annotationTask?.id;
+  }, [annotationTask?.id, onSourceTaskChange]);
+
+  useEffect(() => {
+    setSelectedSoundEventAnnotation(null);
+  }, [sourceTaskId]);
+
+  useEffect(() => {
+    setSelectedSoundEventAnnotation((current) => {
+      if (current == null) {
+        return null;
+      }
+      const stillVisible = displayedSoundEventAnnotations.some(
+        (annotation) => annotation.id === current.id,
+      );
+      return stillVisible ? current : null;
+    });
+  }, [displayedSoundEventAnnotations]);
 
   // Wrapper functions that combine badge mutations with navigation
   const handleMarkCompleted = useCallback(async () => {
@@ -205,16 +298,15 @@ export default function AnnotateTasks({
 
   const handleRemoveTagFromSoundEventAnnotations = useCallback(
     async (tagToRemove: Tag) => {
-      if (!annotationTask?.sound_event_annotations || !onRemoveTagFromSoundEventAnnotation) return;
-      // For each sound event annotation that has this tag
-      const promises = annotationTask.sound_event_annotations
+      if (!displayedSoundEventAnnotations.length || !activeRemoveTagFromSoundEventAnnotation) return;
+      const promises = displayedSoundEventAnnotations
         .filter(soundEventAnnotation =>
           soundEventAnnotation.tags?.some(
             tag => tag.key === tagToRemove.key && tag.value === tagToRemove.value
           )
         )
         .map(soundEventAnnotation => {
-          return onRemoveTagFromSoundEventAnnotation({
+          return activeRemoveTagFromSoundEventAnnotation({
             soundEventAnnotation: soundEventAnnotation,
             tag: tagToRemove
           });
@@ -222,7 +314,7 @@ export default function AnnotateTasks({
 
       await Promise.all(promises);
     },
-    [annotationTask?.sound_event_annotations, onRemoveTagFromSoundEventAnnotation]
+    [displayedSoundEventAnnotations, activeRemoveTagFromSoundEventAnnotation]
   );
 
 
@@ -285,9 +377,9 @@ export default function AnnotateTasks({
   }, [isDeletePopoverOpen]);
 
   const tagsWithCount = useMemo(() => {
-    if (!annotationTask?.sound_event_annotations) return [];
+    if (!displayedSoundEventAnnotations.length) return [];
 
-    const allTags = annotationTask.sound_event_annotations.flatMap(soundEventAnnotation => soundEventAnnotation.tags || []);
+    const allTags = displayedSoundEventAnnotations.flatMap(soundEventAnnotation => soundEventAnnotation.tags || []);
     const tagCounts = new Map<string, { tag: Tag; count: number }>();
 
     allTags.forEach(tag => {
@@ -301,14 +393,13 @@ export default function AnnotateTasks({
     });
 
     return Array.from(tagCounts.values());
-  }, [annotationTask?.sound_event_annotations]);
+  }, [displayedSoundEventAnnotations]);
 
   const handleDeleteTagFromAll = useCallback(
     async (tagWithCount: { tag: Tag; count: number }, shouldDelete: boolean) => {
-      if (shouldDelete && onRemoveTagFromSoundEventAnnotation) {
+      if (shouldDelete && activeRemoveTagFromSoundEventAnnotation) {
         if (selectedSoundEventAnnotation) {
-          // If an annotation is selected, only remove tag from it
-          await onRemoveTagFromSoundEventAnnotation({
+          await activeRemoveTagFromSoundEventAnnotation({
             soundEventAnnotation: selectedSoundEventAnnotation,
             tag: tagWithCount.tag
           });
@@ -319,7 +410,7 @@ export default function AnnotateTasks({
       }
       setIsDeletePopoverOpen(false);
     },
-    [handleRemoveTagFromSoundEventAnnotations, onRemoveTagFromSoundEventAnnotation, selectedSoundEventAnnotation]
+    [handleRemoveTagFromSoundEventAnnotations, activeRemoveTagFromSoundEventAnnotation, selectedSoundEventAnnotation]
   );
 
   const handleAddTagToPalette = useCallback((tag: Tag) => {
@@ -333,52 +424,45 @@ export default function AnnotateTasks({
 
   const handleReplaceTagInSoundEventAnnotations = useCallback(
     async (oldTag: Tag | null, newTag: Tag | null, currentAnnotation?: SoundEventAnnotation | null) => {
-      if (!annotationTask?.sound_event_annotations || !onRemoveTagFromSoundEventAnnotation || !onAddTagToSoundEventAnnotation) return;
+      if (!displayedSoundEventAnnotations.length || !activeRemoveTagFromSoundEventAnnotation || !activeAddTagToSoundEventAnnotation) return;
 
       let soundEventAnnotationsToUpdate: SoundEventAnnotation[] = [];
       if (currentAnnotation) {
         soundEventAnnotationsToUpdate = [currentAnnotation];
       } else {
-        // If no specific annotation is selected, handle all sound event annotations
         if (oldTag?.key === "all") {
-          // If "all tags" is selected, get sound event annotations that have any tags
-          soundEventAnnotationsToUpdate = annotationTask.sound_event_annotations.filter(soundEventAnnotation =>
+          soundEventAnnotationsToUpdate = displayedSoundEventAnnotations.filter(soundEventAnnotation =>
             soundEventAnnotation.tags && soundEventAnnotation.tags.length > 0
           );
         } else if (oldTag) {
-          // If a specific tag is selected, get sound event annotations with that tag
-          soundEventAnnotationsToUpdate = annotationTask.sound_event_annotations.filter(soundEventAnnotation =>
+          soundEventAnnotationsToUpdate = displayedSoundEventAnnotations.filter(soundEventAnnotation =>
             soundEventAnnotation.tags?.some(
               tag => tag.key === oldTag.key && tag.value === oldTag.value
             )
           );
         } else {
-          // Otherwise, update all sound event annotations
-          soundEventAnnotationsToUpdate = annotationTask.sound_event_annotations;
+          soundEventAnnotationsToUpdate = displayedSoundEventAnnotations;
         }
       }
 
       const promises = soundEventAnnotationsToUpdate.map(async soundEventAnnotation => {
         try {
-          // If replacing all tags, remove all existing tags first
           if (oldTag?.key === "all" && soundEventAnnotation.tags) {
             for (const tag of soundEventAnnotation.tags) {
-              await onRemoveTagFromSoundEventAnnotation({
+              await activeRemoveTagFromSoundEventAnnotation({
                 soundEventAnnotation: soundEventAnnotation,
                 tag
               });
             }
           } else if (oldTag) {
-            // Remove specific old tag
-            await onRemoveTagFromSoundEventAnnotation({
+            await activeRemoveTagFromSoundEventAnnotation({
               soundEventAnnotation: soundEventAnnotation,
               tag: oldTag
             });
           }
 
-          // Add new tag
           if (newTag) {
-            await onAddTagToSoundEventAnnotation({
+            await activeAddTagToSoundEventAnnotation({
               soundEventAnnotation: soundEventAnnotation,
               tag: newTag
             });
@@ -390,7 +474,7 @@ export default function AnnotateTasks({
 
       await Promise.all(promises);
     },
-    [annotationTask?.sound_event_annotations, onRemoveTagFromSoundEventAnnotation, onAddTagToSoundEventAnnotation]
+    [displayedSoundEventAnnotations, activeRemoveTagFromSoundEventAnnotation, activeAddTagToSoundEventAnnotation]
   );
 
   const menuRef = useRef<HTMLDivElement>(null);
@@ -472,6 +556,10 @@ export default function AnnotateTasks({
                   recording={annotationTask.recording!}
                   currentTaskIndex={currentTaskIndex >= 0 ? currentTaskIndex + 1 : undefined}
                   totalTasks={sortedTasks.length}
+                  currentTaskId={annotationTask.id}
+                  annotationTaskSources={recordingTasks}
+                  sourceTaskId={sourceTaskId}
+                  onSourceTaskChange={onSourceTaskChange}
                 />
                 <div className="min-w-0 grow-0">
                   <AnnotationTaskSpectrogram
@@ -493,11 +581,12 @@ export default function AnnotateTasks({
                     fixedAspectRatio={fixedAspectRatio}
                     toggleFixedAspectRatio={toggleFixedAspectRatio}
                     onSegmentsLoaded={tasks.handleCurrentSegmentsLoaded}
-                    onAddTagToSoundEventAnnotation={onAddTagToSoundEventAnnotation}
-                    onRemoveTagFromSoundEventAnnotation={onRemoveTagFromSoundEventAnnotation}
-                    onAddSoundEventAnnotation={onAddSoundEventAnnotation}
-                    onRemoveSoundEventAnnotation={onRemoveSoundEventAnnotation}
-                    onUpdateSoundEventAnnotation={onUpdateSoundEventAnnotation}
+                    onAddTagToSoundEventAnnotation={activeAddTagToSoundEventAnnotation}
+                    onRemoveTagFromSoundEventAnnotation={activeRemoveTagFromSoundEventAnnotation}
+                    onAddSoundEventAnnotation={activeAddSoundEventAnnotation}
+                    onRemoveSoundEventAnnotation={activeRemoveSoundEventAnnotation}
+                    onUpdateSoundEventAnnotation={activeUpdateSoundEventAnnotation}
+                    soundEventAnnotationsOverride={displayedSoundEventAnnotations}
                   />
                 </div>
               </div>
@@ -525,7 +614,7 @@ export default function AnnotateTasks({
               <div className="mt-0 w-full min-w-0 2xl:mt-5">
                 <SelectedSoundEventAnnotation
                   key={selectedSoundEventAnnotation.id}
-                  annotationTask={annotationTask}
+                  annotationTask={selectedSoundEventAnnotationTask!}
                   samplerate={annotationTask.recording!.samplerate}
                   soundEventAnnotation={selectedSoundEventAnnotation}
                   parameters={parameters}
@@ -534,10 +623,10 @@ export default function AnnotateTasks({
                 />
               </div>
             )}
-            {annotationTask != null && (
+            {displayAnnotationTask != null && (
               <div className="block w-full min-w-0 2xl:hidden">
                 <AnnotationTaskTags
-                  annotationTask={annotationTask}
+                  annotationTask={displayAnnotationTask}
                   onReplaceTagInSoundEventAnnotations={handleReplaceTagInSoundEventAnnotations}
                   selectedSoundEventAnnotation={selectedSoundEventAnnotation}
                 />
@@ -567,7 +656,7 @@ export default function AnnotateTasks({
               </div>
               <div className="min-w-0 w-[35rem] max-w-full shrink-0">
                 <AnnotationTaskTags
-                  annotationTask={annotationTask}
+                  annotationTask={displayAnnotationTask!}
                   onReplaceTagInSoundEventAnnotations={handleReplaceTagInSoundEventAnnotations}
                   selectedSoundEventAnnotation={selectedSoundEventAnnotation}
                 />

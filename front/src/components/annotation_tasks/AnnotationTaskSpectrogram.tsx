@@ -63,6 +63,7 @@ export default function AnnotationTaskSpectrogram({
   onAddSoundEventAnnotation,
   onRemoveSoundEventAnnotation,
   onUpdateSoundEventAnnotation,
+  soundEventAnnotationsOverride,
 }: {
   annotationTask?: AnnotationTask;
   parameters?: SpectrogramParameters;
@@ -94,6 +95,7 @@ export default function AnnotationTaskSpectrogram({
   onAddSoundEventAnnotation?: (params: { geometry: Geometry; tags: Tag[] }) => Promise<SoundEventAnnotation>;
   onRemoveSoundEventAnnotation?: (annotation: SoundEventAnnotation) => void;
   onUpdateSoundEventAnnotation?: (params: { soundEventAnnotation: SoundEventAnnotation; geometry: Geometry }) => void;
+  soundEventAnnotationsOverride?: SoundEventAnnotation[];
 }) {
   
   const [isAnnotating, setIsAnnotating] = useState(false);
@@ -110,8 +112,8 @@ export default function AnnotationTaskSpectrogram({
   }, [parameters, recording]);
   
   const taskSoundEventAnnotations = useMemo(
-    () => annotationTask?.sound_event_annotations ?? [],
-    [annotationTask?.sound_event_annotations]
+    () => soundEventAnnotationsOverride ?? annotationTask?.sound_event_annotations ?? [],
+    [soundEventAnnotationsOverride, annotationTask?.sound_event_annotations]
   );
 
   /**
@@ -317,6 +319,7 @@ export default function AnnotationTaskSpectrogram({
     onUpdateSoundEventAnnotation,
     onAddTagToSoundEventAnnotation,
     onRemoveTagFromSoundEventAnnotation,
+    soundEventAnnotations: taskSoundEventAnnotations,
   });
 
   const {

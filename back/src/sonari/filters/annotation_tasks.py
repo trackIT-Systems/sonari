@@ -188,6 +188,21 @@ class AnnotationProjectFilter(base.Filter):
         )
 
 
+class RecordingFilter(base.Filter):
+    """Filter for tasks by recording."""
+
+    eq: int | None = None
+
+    def filter(self, query: Select) -> Select:
+        """Filter the query."""
+        if self.eq is None:
+            return query
+
+        return query.where(
+            models.AnnotationTask.recording_id == self.eq,
+        )
+
+
 class StationFilter(base.Filter):
     """Filter for tasks by stations, which is the external name for datasets."""
 
@@ -666,6 +681,7 @@ AnnotationTaskFilter = base.combine(
     completed=IsCompletedFilter,
     assigned=IsAssignedFilter,
     annotation_project=AnnotationProjectFilter,
+    recording=RecordingFilter,
     dataset=StationFilter,
     sound_event_annotation_tag=SoundEventAnnotationTagFilter,
     date=DateRangeFilter,

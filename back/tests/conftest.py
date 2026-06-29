@@ -226,7 +226,7 @@ async def test_user(test_settings, setup_test_db):
         if user is None:
             user = User(
                 username="admin",
-                email="admin@trackit.de",
+                email="admin@sonari.de",
                 hashed_password="",
                 name="Admin",
                 is_active=True,
@@ -234,11 +234,6 @@ async def test_user(test_settings, setup_test_db):
                 is_verified=True,
             )
             session.add(user)
-            await session.commit()
-            await session.refresh(user)
-        elif user.email != "admin@trackit.de":
-            # Migration may create admin@sonari.local; EmailStr rejects .local in responses.
-            user.email = "admin@trackit.de"
             await session.commit()
             await session.refresh(user)
 
@@ -259,9 +254,10 @@ async def admin_user(test_user, test_settings, setup_test_db) -> dict[str, str]:
     db_url = get_database_url(test_settings)
     engine = create_async_db_engine(db_url)
     async with get_async_session(engine) as session:
-        user = await session.get(User, test_user.id)
-        assert user is not None
-        user.hashed_password = hashed
+        await session.execute(
+            text("UPDATE user SET hashed_password = :hash WHERE username = 'admin'"),
+            {"hash": hashed},
+        )
         await session.commit()
     await engine.dispose()
 

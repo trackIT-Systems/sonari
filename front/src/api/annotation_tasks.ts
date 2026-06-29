@@ -130,6 +130,9 @@ const AnnotationTaskFilterSchema = z.object({
     timezone: z.string(),
   }).optional(),
   sample: FloatEqFilterSchema.optional(),
+  recording: z.object({
+    eq: z.number().optional(),
+  }).optional(),
   detection_confidence: z.object({
     gt: z.number().optional(),
     lt: z.number().optional(),
@@ -259,6 +262,7 @@ export function registerAnnotationTasksAPI(
         day__eq: params.day?.eq,
         day__tz: params.day?.timezone,
         sample__eq: params.sample?.eq,
+        recording__eq: params.recording?.eq,
         include_recording: params.include_recording,
         include_annotation_project: params.include_annotation_project,
         include_sound_event_annotations: params.include_sound_event_annotations,
@@ -345,6 +349,7 @@ export function registerAnnotationTasksAPI(
         day__eq: params.day?.eq,
         day__tz: params.day?.timezone,
         sample__eq: params.sample?.eq,
+        recording__eq: params.recording?.eq,
       },
     });
     return AnnotationTaskIndexPageSchema.parse(response.data);
@@ -416,6 +421,7 @@ export function registerAnnotationTasksAPI(
         day__eq: params.day?.eq,
         day__tz: params.day?.timezone,
         sample__eq: params.sample?.eq,
+        recording__eq: params.recording?.eq,
       },
     });
     return response.data as AnnotationTaskStats;

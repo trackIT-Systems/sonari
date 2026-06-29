@@ -104,6 +104,8 @@ export default function useAnnotateTask(props: {
   onUpdateSoundEventAnnotation?: (params: { soundEventAnnotation: SoundEventAnnotation; geometry: Geometry }) => void;
   onAddTagToSoundEventAnnotation?: (params: { soundEventAnnotation: SoundEventAnnotation; tag: Tag }) => Promise<SoundEventAnnotation>;
   onRemoveTagFromSoundEventAnnotation?: (params: { soundEventAnnotation: SoundEventAnnotation; tag: Tag }) => Promise<SoundEventAnnotation>;
+  /** When set, use this list instead of annotationTask.sound_event_annotations */
+  soundEventAnnotations?: SoundEventAnnotation[];
 }) {
   const {
     annotationTask,
@@ -124,6 +126,7 @@ export default function useAnnotateTask(props: {
     onUpdateSoundEventAnnotation,
     onAddTagToSoundEventAnnotation,
     onRemoveTagFromSoundEventAnnotation,
+    soundEventAnnotations: soundEventAnnotationsOverride,
   } = props;
 
   const {
@@ -143,20 +146,22 @@ export default function useAnnotateTask(props: {
   // Extract sound events with safe default - all hooks must be called before any conditional returns
   const soundEvents = useMemo(
     () => {
-      if (withSoundEvent && annotationTask) {
-        return annotationTask.sound_event_annotations || []
-      } else {
-        return []
+      if (!withSoundEvent) {
+        return [];
       }
+      if (soundEventAnnotationsOverride != null) {
+        return soundEventAnnotationsOverride;
+      }
+      if (annotationTask) {
+        return annotationTask.sound_event_annotations || [];
+      }
+      return [];
     },
-    [annotationTask, withSoundEvent],
+    [annotationTask, withSoundEvent, soundEventAnnotationsOverride],
   );
 
   useEffect(() => {
-    if (
-      !selectedSoundEventAnnotation ||
-      !soundEvents.length
-    ) {
+    if (!selectedSoundEventAnnotation) {
       return;
     }
 
@@ -165,6 +170,7 @@ export default function useAnnotateTask(props: {
     );
 
     if (!latest) {
+      setMode("idle");
       return;
     }
 
@@ -176,7 +182,7 @@ export default function useAnnotateTask(props: {
     if (geometryChanged || latest !== selectedSoundEventAnnotation) {
       setSelectedSoundEventAnnotation(latest);
     }
-  }, [soundEvents, selectedSoundEventAnnotation, setSelectedSoundEventAnnotation]);
+  }, [soundEvents, selectedSoundEventAnnotation, setSelectedSoundEventAnnotation, setMode]);
 
   const handleCreate = useCallback(
     async (geometry: Geometry) => {

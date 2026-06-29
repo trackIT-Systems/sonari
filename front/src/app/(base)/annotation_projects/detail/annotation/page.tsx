@@ -11,7 +11,6 @@ import Loading from "@/components/Loading";
 import { CompleteIcon, NeedsReviewIcon, HelpIcon, VerifiedIcon } from "@/components/icons";
 import useAnnotationTask from "@/hooks/api/useAnnotationTask";
 import useStore from "@/store";
-import { changeURLParam } from "@/utils/url";
 import { SpectrogramParametersSchema } from "@/schemas";
 
 import AnnotationProjectContext from "../context";
@@ -30,6 +29,7 @@ export default function Page() {
   const user = useContext(UserContext);
 
   const annotationTaskID = search.get("annotation_task_id");
+  const sourceAnnotationTaskID = search.get("source_annotation_task_id");
 
 
   // All hooks must be called before any conditional returns
@@ -67,6 +67,29 @@ export default function Page() {
     removeSoundEventAnnotation,
     updateSoundEventAnnotation,
   } = annotationTaskQuery;
+
+  const parsedSourceTaskId = sourceAnnotationTaskID
+    ? parseInt(sourceAnnotationTaskID, 10)
+    : 0;
+
+  const sourceAnnotationTaskQuery = useAnnotationTask({
+    id: parsedSourceTaskId,
+    enabled: !!sourceAnnotationTaskID && !Number.isNaN(parsedSourceTaskId),
+    onError: handleError,
+    include_recording: true,
+    include_sound_event_annotations: true,
+    include_tags: true,
+    include_sound_event_tags: true,
+  });
+
+  const {
+    data: sourceAnnotationTask,
+    addSoundEventAnnotation: sourceAddSoundEventAnnotation,
+    removeSoundEventAnnotation: sourceRemoveSoundEventAnnotation,
+    updateSoundEventAnnotation: sourceUpdateSoundEventAnnotation,
+    addTagToSoundEventAnnotation: sourceAddTagToSoundEventAnnotation,
+    removeTagFromSoundEventAnnotation: sourceRemoveTagFromSoundEventAnnotation,
+  } = sourceAnnotationTaskQuery;
 
   const parameters = useStore((state) => state.spectrogramSettings);
 
@@ -134,6 +157,34 @@ export default function Page() {
     [updateSoundEventAnnotation]
   );
 
+  const handleSourceAddSoundEventAnnotation = useCallback(
+    async (params: any) => {
+      const result = await sourceAddSoundEventAnnotation.mutateAsync(params);
+      return result;
+    },
+    [sourceAddSoundEventAnnotation]
+  );
+
+  const handleSourceRemoveSoundEventAnnotation = useCallback(
+    (annotation: any) => sourceRemoveSoundEventAnnotation.mutate(annotation),
+    [sourceRemoveSoundEventAnnotation]
+  );
+
+  const handleSourceUpdateSoundEventAnnotation = useCallback(
+    (params: any) => sourceUpdateSoundEventAnnotation.mutate(params),
+    [sourceUpdateSoundEventAnnotation]
+  );
+
+  const handleSourceAddTagToSoundEventAnnotation = useCallback(
+    (params: any) => sourceAddTagToSoundEventAnnotation.mutateAsync(params),
+    [sourceAddTagToSoundEventAnnotation]
+  );
+
+  const handleSourceRemoveTagFromSoundEventAnnotation = useCallback(
+    (params: any) => sourceRemoveTagFromSoundEventAnnotation.mutateAsync(params),
+    [sourceRemoveTagFromSoundEventAnnotation]
+  );
+
   const handleAddBadge = useCallback(
     async (task: AnnotationTask, state: AnnotationStatus) => {
       const result = await addBadge.mutateAsync(state);
@@ -152,13 +203,25 @@ export default function Page() {
 
   const onChangeTask = useCallback(
     (task: AnnotationTask) => {
-      const url = changeURLParam({
-        pathname,
-        search,
-        param: "annotation_task_id",
-        value: task.id.toString(),
-      });
-      router.push(url);
+      const url = new URL(pathname, window.location.origin);
+      const params = new URLSearchParams(search);
+      params.set("annotation_task_id", task.id.toString());
+      params.delete("source_annotation_task_id");
+      router.push(`${url.toString()}?${params.toString()}`);
+    },
+    [router, pathname, search],
+  );
+
+  const onSourceTaskChange = useCallback(
+    (sourceTaskId: number | null) => {
+      const url = new URL(pathname, window.location.origin);
+      const params = new URLSearchParams(search);
+      if (sourceTaskId == null) {
+        params.delete("source_annotation_task_id");
+      } else {
+        params.set("source_annotation_task_id", sourceTaskId.toString());
+      }
+      router.push(`${url.toString()}?${params.toString()}`);
     },
     [router, pathname, search],
   );
@@ -242,6 +305,18 @@ export default function Page() {
         onAddSoundEventAnnotation={handleAddSoundEventAnnotation}
         onRemoveSoundEventAnnotation={handleRemoveSoundEventAnnotation}
         onUpdateSoundEventAnnotation={handleUpdateSoundEventAnnotation}
+        sourceTaskId={
+          sourceAnnotationTaskID && !Number.isNaN(parsedSourceTaskId)
+            ? parsedSourceTaskId
+            : null
+        }
+        onSourceTaskChange={onSourceTaskChange}
+        sourceAnnotationTask={sourceAnnotationTask}
+        onSourceAddSoundEventAnnotation={handleSourceAddSoundEventAnnotation}
+        onSourceRemoveSoundEventAnnotation={handleSourceRemoveSoundEventAnnotation}
+        onSourceUpdateSoundEventAnnotation={handleSourceUpdateSoundEventAnnotation}
+        onSourceAddTagToSoundEventAnnotation={handleSourceAddTagToSoundEventAnnotation}
+        onSourceRemoveTagFromSoundEventAnnotation={handleSourceRemoveTagFromSoundEventAnnotation}
       />
     </div>
   );

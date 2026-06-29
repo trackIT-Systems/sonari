@@ -57,6 +57,14 @@ export default function Tooltip({
           top = rect.bottom + window.scrollY + offset;
           left = rect.left + window.scrollX + rect.width / 2;
           break;
+        case "bottom-start":
+          top = rect.bottom + window.scrollY + offset;
+          left = rect.left + window.scrollX;
+          break;
+        case "bottom-end":
+          top = rect.bottom + window.scrollY + offset;
+          left = rect.right + window.scrollX;
+          break;
         case "left":
           top = rect.top + window.scrollY + rect.height / 2;
           left = rect.left + window.scrollX - offset;
