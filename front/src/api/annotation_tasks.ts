@@ -133,11 +133,7 @@ const AnnotationTaskFilterSchema = z.object({
   recording: z.object({
     eq: z.number().optional(),
   }).optional(),
-  detection_confidence: z.object({
-    gt: z.number().optional(),
-    lt: z.number().optional(),
-  }).optional(),
-  species_confidence: z.object({
+  confidence: z.object({
     gt: z.number().optional(),
     lt: z.number().optional(),
   }).optional(),
@@ -249,10 +245,8 @@ export function registerAnnotationTasksAPI(
             ? params.date_range.map(d => formatDateForAPI(d.end_time)).join(',')
             : formatDateForAPI(params.date_range.end_time))
           : undefined,
-        detection_confidence__gt: params.detection_confidence?.gt,
-        detection_confidence__lt: params.detection_confidence?.lt,
-        species_confidence__gt: params.species_confidence?.gt,
-        species_confidence__lt: params.species_confidence?.lt,
+        confidence__gt: params.confidence?.gt,
+        confidence__lt: params.confidence?.lt,
         sound_event_annotation_min_frequency__gt: params.sound_event_annotation_min_frequency?.gt,
         sound_event_annotation_min_frequency__lt: params.sound_event_annotation_min_frequency?.lt,
         sound_event_annotation_max_frequency__gt: params.sound_event_annotation_max_frequency?.gt,
@@ -336,10 +330,8 @@ export function registerAnnotationTasksAPI(
             ? params.date_range.map(d => formatDateForAPI(d.end_time)).join(',')
             : formatDateForAPI(params.date_range.end_time))
           : undefined,
-        detection_confidence__gt: params.detection_confidence?.gt,
-        detection_confidence__lt: params.detection_confidence?.lt,
-        species_confidence__gt: params.species_confidence?.gt,
-        species_confidence__lt: params.species_confidence?.lt,
+        confidence__gt: params.confidence?.gt,
+        confidence__lt: params.confidence?.lt,
         sound_event_annotation_min_frequency__gt: params.sound_event_annotation_min_frequency?.gt,
         sound_event_annotation_min_frequency__lt: params.sound_event_annotation_min_frequency?.lt,
         sound_event_annotation_max_frequency__gt: params.sound_event_annotation_max_frequency?.gt,
@@ -408,10 +400,8 @@ export function registerAnnotationTasksAPI(
             ? params.date_range.map(d => formatDateForAPI(d.end_time)).join(',')
             : formatDateForAPI(params.date_range.end_time))
           : undefined,
-        detection_confidence__gt: params.detection_confidence?.gt,
-        detection_confidence__lt: params.detection_confidence?.lt,
-        species_confidence__gt: params.species_confidence?.gt,
-        species_confidence__lt: params.species_confidence?.lt,
+        confidence__gt: params.confidence?.gt,
+        confidence__lt: params.confidence?.lt,
         sound_event_annotation_min_frequency__gt: params.sound_event_annotation_min_frequency?.gt,
         sound_event_annotation_min_frequency__lt: params.sound_event_annotation_min_frequency?.lt,
         sound_event_annotation_max_frequency__gt: params.sound_event_annotation_max_frequency?.gt,

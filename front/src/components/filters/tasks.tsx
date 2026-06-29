@@ -346,8 +346,8 @@ const tasksFilterDefs: FilterDef<AnnotationTaskFilter>[] = [
     ),
   },
   {
-    name: "Detection Confidence",
-    field: "detection_confidence",
+    name: "Confidence",
+    field: "confidence",
     selector: ({ setFilter, filter }) => (
       <FloatFilter
         name="confidence"
@@ -356,19 +356,19 @@ const tasksFilterDefs: FilterDef<AnnotationTaskFilter>[] = [
         max={1}
         step={0.01}
         onChange={(val) => {
-          const currentValue = filter.get("detection_confidence") || {};
+          const currentValue = filter.get("confidence") || {};
           if ('gt' in val) {
             const newValue = {
               ...currentValue,
               gt: val.gt
             };
-            setFilter("detection_confidence", newValue);
+            setFilter("confidence", newValue);
           } else if ('lt' in val) {
             const newValue = {
               ...currentValue,
               lt: val.lt
             };
-            setFilter("detection_confidence", newValue);
+            setFilter("confidence", newValue);
           }
         }}
       />
@@ -377,23 +377,23 @@ const tasksFilterDefs: FilterDef<AnnotationTaskFilter>[] = [
       <>
         {value?.gt !== undefined && (
           <NumberFilterBadge
-            field="Detection Confidence"
+            field="Confidence"
             value={{ gt: value.gt }}
             onRemove={() => {
               const newValue = { ...value };
               delete newValue.gt;
-              Object.keys(newValue).length === 0 ? clear() : setFilter("detection_confidence", newValue);
+              Object.keys(newValue).length === 0 ? clear() : setFilter("confidence", newValue);
             }}
           />
         )}
         {value?.lt !== undefined && (
           <NumberFilterBadge
-            field="Detection Confidence"
+            field="Confidence"
             value={{ lt: value.lt }}
             onRemove={() => {
               const newValue = { ...value };
               delete newValue.lt;
-              Object.keys(newValue).length === 0 ? clear() : setFilter("detection_confidence", newValue);
+              Object.keys(newValue).length === 0 ? clear() : setFilter("confidence", newValue);
             }}
           />
         )}
@@ -404,65 +404,65 @@ const tasksFilterDefs: FilterDef<AnnotationTaskFilter>[] = [
       <SpectrogramIcon className="h-5 w-5 inline-block text-stone-500 mr-1 align-middle" />
     ),
   },
-  {
-    name: "Species Confidence",
-    field: "species_confidence",
-    selector: ({ setFilter, filter }) => (
-      <FloatFilter
-        name="confidence"
-        showDecimals={true}
-        min={0}
-        max={1}
-        step={0.01}
-        onChange={(val) => {
-          const currentValue = filter.get("species_confidence") || {};
-          if ('gt' in val) {
-            const newValue = {
-              ...currentValue,
-              gt: val.gt
-            };
-            setFilter("species_confidence", newValue);
-          } else if ('lt' in val) {
-            const newValue = {
-              ...currentValue,
-              lt: val.lt
-            };
-            setFilter("species_confidence", newValue);
-          }
-        }}
-      />
-    ),
-    render: ({ value, clear, setFilter }) => (
-      <>
-        {value?.gt !== undefined && (
-          <NumberFilterBadge
-            field="Species Confidence"
-            value={{ gt: value.gt }}
-            onRemove={() => {
-              const newValue = { ...value };
-              delete newValue.gt;
-              Object.keys(newValue).length === 0 ? clear() : setFilter("species_confidence", newValue);
-            }}
-          />
-        )}
-        {value?.lt !== undefined && (
-          <NumberFilterBadge
-            field="Species Confidence"
-            value={{ lt: value.lt }}
-            onRemove={() => {
-              const newValue = { ...value };
-              delete newValue.lt;
-              Object.keys(newValue).length === 0 ? clear() : setFilter("species_confidence", newValue);
-            }}
-          />
-        )}
-      </>
-    ),
-    description: "Filter by species confidence. You can set both a minimum and maximum confidence threshold.",
-    icon: (
-      <SpectrogramIcon className="h-5 w-5 inline-block text-stone-500 mr-1 align-middle" />
-    ),
-  },
+  // {
+  //   name: "Species Confidence",
+  //   field: "species_confidence",
+  //   selector: ({ setFilter, filter }) => (
+  //     <FloatFilter
+  //       name="confidence"
+  //       showDecimals={true}
+  //       min={0}
+  //       max={1}
+  //       step={0.01}
+  //       onChange={(val) => {
+  //         const currentValue = filter.get("species_confidence") || {};
+  //         if ('gt' in val) {
+  //           const newValue = {
+  //             ...currentValue,
+  //             gt: val.gt
+  //           };
+  //           setFilter("species_confidence", newValue);
+  //         } else if ('lt' in val) {
+  //           const newValue = {
+  //             ...currentValue,
+  //             lt: val.lt
+  //           };
+  //           setFilter("species_confidence", newValue);
+  //         }
+  //       }}
+  //     />
+  //   ),
+  //   render: ({ value, clear, setFilter }) => (
+  //     <>
+  //       {value?.gt !== undefined && (
+  //         <NumberFilterBadge
+  //           field="Species Confidence"
+  //           value={{ gt: value.gt }}
+  //           onRemove={() => {
+  //             const newValue = { ...value };
+  //             delete newValue.gt;
+  //             Object.keys(newValue).length === 0 ? clear() : setFilter("species_confidence", newValue);
+  //           }}
+  //         />
+  //       )}
+  //       {value?.lt !== undefined && (
+  //         <NumberFilterBadge
+  //           field="Species Confidence"
+  //           value={{ lt: value.lt }}
+  //           onRemove={() => {
+  //             const newValue = { ...value };
+  //             delete newValue.lt;
+  //             Object.keys(newValue).length === 0 ? clear() : setFilter("species_confidence", newValue);
+  //           }}
+  //         />
+  //       )}
+  //     </>
+  //   ),
+  //   description: "Filter by species confidence. You can set both a minimum and maximum confidence threshold.",
+  //   icon: (
+  //     <SpectrogramIcon className="h-5 w-5 inline-block text-stone-500 mr-1 align-middle" />
+  //   ),
+  // },
   {
     name: "Min Frequency",
     field: "sound_event_annotation_min_frequency",
