@@ -129,14 +129,7 @@ def compute_psd(
                 f"Error: {type(e2).__name__}: {e2}"
             ) from e2
 
-    # Select channel
-    available_channels = wav.sizes.get("channel", 1)
-    channel_to_use = (
-        spectrogram_parameters.channel
-        if spectrogram_parameters.channel < available_channels
-        else 0
-    )
-    wav = wav[dict(channel=[channel_to_use])]
+    wav = audio_api.select_audio_channel(wav, spectrogram_parameters)
 
     # Get samplerate from loaded audio
     samplerate = 1 / get_dim_step(wav, Dimensions.time.value)

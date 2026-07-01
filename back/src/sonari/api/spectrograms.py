@@ -55,11 +55,8 @@ def compute_spectrogram(
         audio_dir=audio_dir,
     )
 
-    # Select channel. Do this early to avoid unnecessary computation.
-    # Handle channel mismatch gracefully - if requested channel doesn't exist, fall back to channel 0
-    available_channels = wav.sizes.get("channel", 1)
-    channel_to_use = spectrogram_parameters.channel if spectrogram_parameters.channel < available_channels else 0
-    wav = wav[dict(channel=[channel_to_use])]
+    # Select channel or mix to mono. Do this early to avoid unnecessary computation.
+    wav = audio_api.select_audio_channel(wav, spectrogram_parameters)
 
     # if spectrogram_parameters.overlap_percent == 1:
     #     # Decimate to 8 kHz by skipping samples
@@ -168,8 +165,7 @@ def compute_waveform(
         audio_dir=audio_dir,
     )
 
-    # Select channel (always use channel 0 for waveform)
-    wav = wav[dict(channel=[0])]
+    wav = audio_api.select_audio_channel(wav, spectrogram_parameters)
     waveform = wav.data.squeeze()
 
     # Calculate dimensions based on STFT parameters

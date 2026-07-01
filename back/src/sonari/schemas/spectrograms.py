@@ -101,6 +101,9 @@ class SpectrogramParameters(STFTParameters, AmplitudeParameters):
     channel: int = 0
     """Channel to use for spectrogram computation."""
 
+    mix_channels: bool = False
+    """Mix all channels to mono by averaging."""
+
     pcen: bool = False
     """Whether to apply PCEN for de-noising."""
 

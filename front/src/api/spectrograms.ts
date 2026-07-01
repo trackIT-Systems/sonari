@@ -103,6 +103,7 @@ export const DEFAULT_SPECTROGRAM_PARAMETERS: SpectrogramParameters = {
   min_dB: -140,
   max_dB: 0,
   channel: 0,
+  mix_channels: false,
   gamma: 1.0,
   freqLines: [],
   time_zoom_automatic: true,

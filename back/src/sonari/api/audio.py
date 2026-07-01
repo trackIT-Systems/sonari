@@ -4,7 +4,9 @@ import struct
 from pathlib import Path
 
 import soundfile as sf
+import xarray as xr
 from soundevent import audio, data
+from soundevent.arrays import Dimensions
 from soundevent.audio.io import audio_to_bytes
 
 from sonari import schemas
@@ -12,6 +14,7 @@ from sonari import schemas
 __all__ = [
     "load_audio",
     "load_clip_bytes",
+    "select_audio_channel",
 ]
 
 CHUNK_SIZE = 512 * 1024
@@ -89,6 +92,26 @@ def load_audio(
         )
 
     return wave
+
+
+def select_audio_channel(
+    wav: xr.DataArray,
+    spectrogram_parameters: schemas.SpectrogramParameters,
+) -> xr.DataArray:
+    """Select a single channel or mix all channels to mono."""
+    channel_dim = Dimensions.channel.value
+    available_channels = wav.sizes.get(channel_dim, 1)
+
+    if spectrogram_parameters.mix_channels and available_channels > 1:
+        mixed = wav.mean(dim=channel_dim)
+        return mixed.expand_dims({channel_dim: [0]})
+
+    channel_to_use = (
+        spectrogram_parameters.channel
+        if spectrogram_parameters.channel < available_channels
+        else 0
+    )
+    return wav[dict(channel=[channel_to_use])]
 
 
 BIT_DEPTH_MAP: dict[str, int] = {
