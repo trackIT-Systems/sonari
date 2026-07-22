@@ -252,17 +252,17 @@ export const SPECTROGRAM_KEY_SHORTCUTS: KeyShortcut[] = [
     {
         label: "Zoom out time",
         shortcut: ZOOM_OUT_SHORTCUT,
-        description: "Zoom out on frequency axis",
+        description: "Zoom out on time axis",
     },
 
     {
         label: "Zoom in frequency",
-        shortcut: `${getSpecialKeyLabel("Shift")} ${ZOOM_IN_SHORTCUT}`,
-        description: "Zoom in on time axis",
+        shortcut: `Ctrl ${ZOOM_IN_SHORTCUT}`,
+        description: "Zoom in on frequency axis",
     },
     {
         label: "Zoom out frequency",
-        shortcut: `${getSpecialKeyLabel("Shift")} ${ZOOM_OUT_SHORTCUT}`,
+        shortcut: `Ctrl ${ZOOM_OUT_SHORTCUT}`,
         description: "Zoom out on frequency axis",
     },
     {
