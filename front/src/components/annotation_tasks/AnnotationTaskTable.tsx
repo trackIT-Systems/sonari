@@ -1,6 +1,8 @@
 import { useCallback, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useKeyPressEvent } from "react-use";
+import { useQuery } from "@tanstack/react-query";
+import api from "@/app/api";
 import useKeyFilter from "@/hooks/utils/useKeyFilter";
 import type { AnnotationTaskFilter } from "@/api/annotation_tasks";
 import type { AnnotationTask } from "@/types";
@@ -34,6 +36,20 @@ export default function AnnotationTaskTable({
   const router = useRouter();
   const popoverButtonRef = useRef<HTMLButtonElement>(null);
 
+  // Fetch all task indices matching the current filter (no pagination)
+  const { data: indexPage } = useQuery({
+    queryKey: ["annotation_tasks_index", annotationTasks.filter.filter],
+    queryFn: () => api.annotationTasks.getIndex({
+      limit: -1,
+      offset: 0,
+      ...annotationTasks.filter.filter,
+    }),
+    enabled: !annotationTasks.isLoading && annotationTasks.data != null,
+    refetchOnWindowFocus: false,
+  });
+
+  const allTasks = indexPage?.items;
+
   const getAnnotationTaskLink = useCallback((annotationProjectId: number, annotationTaskId: number): string => {
     const url = `detail/annotation/?annotation_task_id=${annotationTaskId}`;
     return `${url}&annotation_project_id=${annotationProjectId}`;
@@ -50,6 +66,7 @@ export default function AnnotationTaskTable({
     pagination: annotationTasks.pagination,
     sortBy: annotationTasks.filter.get("sort_by") as string | undefined,
     onSortChange: handleSortChange,
+    allTasks,
   });
 
   const handleSearchKeyDown = useCallback((e: React.KeyboardEvent) => {

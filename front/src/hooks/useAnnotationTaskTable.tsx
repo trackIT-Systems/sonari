@@ -1,4 +1,4 @@
-import type { AnnotationStatusBadge, AnnotationTask, Note, Recording, Tag } from "@/types";
+import type { AnnotationStatusBadge, AnnotationTask, AnnotationTaskIndex, Note, Recording, Tag } from "@/types";
 import { useMemo } from "react";
 import { ColumnDef, getCoreRowModel, useReactTable, createColumnHelper } from "@tanstack/react-table";
 import TableHeader, { SortableTableHeader, SortDirection } from "@/components/tables/TableHeader";
@@ -46,6 +46,7 @@ export default function useAnnotationTaskTable({
   pagination,
   sortBy,
   onSortChange,
+  allTasks,
 }: {
   data: AnnotationTask[];
   pathFormatter?: (path: string) => string;
@@ -53,6 +54,7 @@ export default function useAnnotationTaskTable({
   pagination?: { page: number; pageSize: number };
   sortBy?: string;
   onSortChange?: (sortBy: string | undefined) => void;
+  allTasks?: AnnotationTaskIndex[];
 }) {
 
   // Column definitions
@@ -118,7 +120,9 @@ export default function useAnnotationTaskTable({
           if (!currentTask) return <TableCell>-</TableCell>;
 
           const currentRecordingId = currentTask.recording_id;
-          const tasksFromSameRecording = data
+          const taskSource = allTasks && allTasks.length > 0 ? allTasks : data;
+
+          const tasksFromSameRecording = taskSource
             .filter(task => task.recording_id === currentRecordingId)
             .sort((a, b) => a.start_time - b.start_time);
 
@@ -262,7 +266,7 @@ export default function useAnnotationTaskTable({
         },
       },
     ],
-    [getAnnotationTaskLink, pathFormatter, pagination, data, sortBy, onSortChange],
+    [getAnnotationTaskLink, pathFormatter, pagination, data, sortBy, onSortChange, allTasks],
   );
   return useReactTable<AnnotationTask>({
     data,
