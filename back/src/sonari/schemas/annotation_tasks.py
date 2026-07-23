@@ -114,6 +114,33 @@ class AnnotationTask(BaseSchema):
     status_badges: Optional[list[AnnotationStatusBadge]] = None
     """Status badges for the task."""
 
+    @model_validator(mode="after")
+    def clip_sound_event_geometries(self):
+        """Clip nested annotation geometries to task bounds on read."""
+        if not self.sound_event_annotations or not self.recording:
+            return self
+
+        from sonari.geometry.bounds import clip_geometry
+
+        freq_max = self.recording.samplerate / 2
+        clipped_annotations = []
+        for annotation in self.sound_event_annotations:
+            clipped_geometry = clip_geometry(
+                annotation.geometry,
+                time_min=self.start_time,
+                time_max=self.end_time,
+                freq_max=freq_max,
+            )
+            if clipped_geometry is None:
+                continue
+            clipped_annotations.append(
+                annotation.model_copy(update={"geometry": clipped_geometry})
+            )
+
+        return self.model_copy(
+            update={"sound_event_annotations": clipped_annotations}
+        )
+
 
 class AnnotationTaskUpdate(BaseModel):
     """Schema for updating a task."""

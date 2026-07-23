@@ -113,6 +113,27 @@ class SoundEventAnnotation(BaseSchema):
     created_by: SimpleUser | None
     """User who created this annotation."""
 
+    @model_validator(mode="after")
+    def clip_geometry_to_task_bounds(self):
+        """Clip geometry to annotation task bounds on read."""
+        task = self.annotation_task
+        recording = self.recording or (task.recording if task else None)
+        if task is None or recording is None:
+            return self
+
+        from sonari.geometry.bounds import clip_geometry
+
+        clipped_geometry = clip_geometry(
+            self.geometry,
+            time_min=task.start_time,
+            time_max=task.end_time,
+            freq_max=recording.samplerate / 2,
+        )
+        if clipped_geometry is None:
+            return self
+
+        return self.model_copy(update={"geometry": clipped_geometry})
+
 
 class SoundEventAnnotationUpdate(BaseSchema):
     """Schema for data required to update a SoundEventAnnotation."""

@@ -224,7 +224,7 @@ export function adjustWindowToBounds(
     },
   };
 
-  return intersectWindows(adjustedWindow, bounds) as SpectrogramWindow;
+  return intersectWindows(adjustedWindow, bounds) ?? bounds;
 }
 
 export function shiftWindow(
