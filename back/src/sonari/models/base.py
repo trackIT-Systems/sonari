@@ -26,10 +26,14 @@ class PathType(types.TypeDecorator):
 
     cache_ok = True
 
-    def process_bind_param(self, value: Path, _) -> str:  # type: ignore
+    def process_bind_param(self, value: Path | None, _) -> str | None:  # type: ignore
+        if value is None:
+            return None
         return str(value)
 
-    def process_result_value(self, value: str, _) -> Path:  # type: ignore
+    def process_result_value(self, value: str | None, _) -> Path | None:  # type: ignore
+        if value is None:
+            return None
         return Path(value)
 
 

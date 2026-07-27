@@ -17,7 +17,7 @@ associated recordings from the app.
 from pathlib import Path
 
 import sqlalchemy.orm as orm
-from sqlalchemy import ForeignKey, UniqueConstraint, func, inspect, select
+from sqlalchemy import ForeignKey, func, inspect, select
 
 from sonari.models.base import Base
 from sonari.models.recording import Recording
@@ -95,13 +95,10 @@ class Dataset(Base):
 class DatasetRecording(Base):
     """Dataset Recording Model.
 
-    A dataset recording is a link between a dataset and a recording. It
-    contains the path to the recording within the dataset.
+    A dataset recording is a link between a dataset and a recording.
 
     Attributes
     ----------
-    path
-        The path to the recording within the dataset.
     recording
         The recording.
     created_on
@@ -122,11 +119,11 @@ class DatasetRecording(Base):
     multiple datasets. This is useful when a recording is used in multiple
     studies or deployments. However, as we do not want to duplicate recordings
     in the database, we use a many-to-many relationship to link recordings to
-    datasets.
+    datasets. File access uses ``recording.path`` resolved against the root
+    audio directory, so no per-link path is stored on this model.
     """
 
     __tablename__ = "dataset_recording"
-    __table_args__ = (UniqueConstraint("dataset_id", "recording_id", "path"),)
 
     dataset_id: orm.Mapped[int] = orm.mapped_column(
         ForeignKey("dataset.id", ondelete="CASCADE"),
@@ -140,7 +137,6 @@ class DatasetRecording(Base):
         primary_key=True,
         index=True,
     )
-    path: orm.Mapped[Path]
 
     # Relations
     dataset: orm.Mapped[Dataset] = orm.relationship(

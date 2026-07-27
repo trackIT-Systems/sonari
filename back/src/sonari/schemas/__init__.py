@@ -23,9 +23,9 @@ from sonari.schemas.annotation_tasks import (
     AnnotationStatusBadgeUpdate,
     AnnotationTask,
     AnnotationTaskCreate,
-    AnnotationTaskTag,
     AnnotationTaskIndex,
     AnnotationTaskStats,
+    AnnotationTaskTag,
     AnnotationTaskUpdate,
 )
 from sonari.schemas.audio import AudioParameters
@@ -33,11 +33,9 @@ from sonari.schemas.base import Page
 from sonari.schemas.datasets import (
     Dataset,
     DatasetCreate,
-    DatasetFile,
     DatasetRecording,
     DatasetRecordingCreate,
     DatasetUpdate,
-    FileState,
 )
 from sonari.schemas.features import Feature
 from sonari.schemas.notes import Note, NoteCreate, NoteUpdate
@@ -79,12 +77,10 @@ __all__ = [
     "AudioParameters",
     "Dataset",
     "DatasetCreate",
-    "DatasetFile",
     "DatasetRecording",
     "DatasetRecordingCreate",
     "DatasetUpdate",
     "Feature",
-    "FileState",
     "Note",
     "NoteCreate",
     "NoteUpdate",

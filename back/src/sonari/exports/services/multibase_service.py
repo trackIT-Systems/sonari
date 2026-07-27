@@ -8,6 +8,7 @@ from openpyxl import Workbook
 
 from ..constants import ExportConstants
 from ..data import get_filtered_annotation_tasks
+from ..data.extractors import recording_station
 from ..utils import DateFormatter, extract_tag_set, find_matching_tags
 from .base import BaseExportService
 
@@ -59,12 +60,7 @@ class MultiBaseService(BaseExportService):
                     longitude = task.recording.longitude
 
                     recording = task.recording
-                    if recording.recording_datasets:
-                        # Get the first dataset (or you could get all and choose)
-                        dataset_recording = recording.recording_datasets[0]
-                        station = dataset_recording.dataset.name
-                    else:
-                        station = str(recording.path)
+                    station = recording_station(recording)
 
                     # Extract detection and species probability from features
                     detection_prob = None

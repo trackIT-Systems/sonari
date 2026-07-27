@@ -9,6 +9,21 @@ from sonari import models
 from sonari.routes.dependencies import Session
 
 
+def recording_station(recording: models.Recording) -> str:
+    """Return a deterministic station label for a recording.
+
+    If the recording belongs to one or more datasets, the station is the
+    sorted, comma-separated join of all dataset names. Otherwise it falls back
+    to the recording's root-relative path. This is deterministic when a
+    recording is linked to multiple datasets, unlike picking the first link.
+    """
+    if recording.recording_datasets:
+        return ", ".join(
+            sorted({dr.dataset.name for dr in recording.recording_datasets})
+        )
+    return str(recording.path)
+
+
 async def extract_batch(
     session: Session, project_ids: List[int], offset: int, batch_size: int
 ) -> List[models.SoundEventAnnotation]:
@@ -67,12 +82,7 @@ async def extract_annotation_data(annotation: models.SoundEventAnnotation) -> Di
     """Extract data from a single sound event annotation."""
     recording = annotation.recording
 
-    if recording.recording_datasets:
-        # Get the first dataset (or you could get all and choose)
-        dataset_recording = recording.recording_datasets[0]
-        station = dataset_recording.dataset.name
-    else:
-        station = str(recording.path)
+    station = recording_station(recording)
 
     # Extract filename
     filename = str(recording.path)

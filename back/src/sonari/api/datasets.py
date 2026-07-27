@@ -1,11 +1,10 @@
 """API functions for interacting with datasets."""
 
 import datetime
-import warnings
 from pathlib import Path
 from typing import Sequence
 
-from sqlalchemy import select, tuple_
+from sqlalchemy import tuple_
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from sonari import exceptions, models, schemas
@@ -81,6 +80,63 @@ class DatasetAPI(
             data.audio_dir = data.audio_dir.relative_to(audio_dir)
 
         return await super().update(session, obj, data)
+
+    async def create_from_data(
+        self,
+        session: AsyncSession,
+        data: schemas.DatasetCreate | None = None,
+        audio_dir: Path | None = None,
+        **kwargs,
+    ) -> schemas.Dataset:
+        """Create a dataset from a ``DatasetCreate`` schema.
+
+        This override ensures that ``data.audio_dir`` is stored relative to the
+        root audio directory. If an absolute path is provided, it is validated
+        to live under the root audio directory and then relativized. Relative
+        paths are assumed to already be root-relative and are stored as-is.
+
+        Parameters
+        ----------
+        session
+            The database session to use.
+        data
+            The dataset creation data. ``audio_dir`` may be absolute (must be
+            under the root audio directory) or already root-relative.
+        audio_dir
+            The root audio directory, by default None. If None, the root audio
+            directory from the settings will be used.
+        **kwargs
+            Additional keyword arguments to pass to the creation function.
+
+        Returns
+        -------
+        dataset : schemas.Dataset
+
+        Raises
+        ------
+        ValueError
+            If ``data.audio_dir`` is absolute and not under the root audio
+            directory.
+        """
+        if data is None:
+            return await super().create_from_data(session, data, **kwargs)
+
+        if audio_dir is None:
+            audio_dir = get_settings().audio_dir
+
+        if data.audio_dir.is_absolute():
+            if not data.audio_dir.is_relative_to(audio_dir):
+                raise ValueError(
+                    "The audio directory must be relative to the root audio "
+                    "directory."
+                    f"\n\tRoot audio directory: {audio_dir}"
+                    f"\n\tAudio directory: {data.audio_dir}"
+                )
+            data = data.model_copy(
+                update=dict(audio_dir=data.audio_dir.relative_to(audio_dir))
+            )
+
+        return await super().create_from_data(session, data, **kwargs)
 
     async def get_by_audio_dir(
         self,
@@ -198,16 +254,14 @@ class DatasetAPI(
         sonari.exceptions.NotFoundError
             If the file does not exist.
         ValueError
-            If the file is not part of the dataset audio directory.
+            If the file is not part of the root audio directory.
         """
         if audio_dir is None:
             audio_dir = get_settings().audio_dir
 
-        dataset_audio_dir = audio_dir / obj.audio_dir
-
-        # Make sure the file is part of the dataset audio dir
-        if not path.is_relative_to(dataset_audio_dir):
-            raise ValueError("The file is not part of the dataset audio directory.")
+        # Make sure the file is part of the root audio dir
+        if not path.is_relative_to(audio_dir):
+            raise ValueError("The file is not part of the root audio directory.")
 
         try:
             recording = await recordings.get_by_path(
@@ -255,20 +309,17 @@ class DatasetAPI(
         dataset_recording : schemas.DatasetRecording
             The dataset recording that was created.
 
-        Raises
-        ------
-        ValueError
-            If the recording is not part of the dataset audio directory.
+        Notes
+        -----
+        The recording does not need to live under the dataset's audio
+        directory. File access always uses ``recording.path`` resolved against
+        the root audio directory; the ``DatasetRecording`` link itself carries
+        no path.
         """
-        if not recording.path.is_relative_to(obj.audio_dir):
-            raise ValueError("The recording is not part of the dataset audio directory.")
-
         dataset_recording = await common.create_object(
             session,
             models.DatasetRecording,
-            data=schemas.DatasetRecordingCreate(
-                path=recording.path.relative_to(obj.audio_dir),
-            ),
+            data=schemas.DatasetRecordingCreate(),
             dataset_id=obj.id,
             recording_id=recording.id,
         )
@@ -298,19 +349,10 @@ class DatasetAPI(
         """
         data = []
         for recording in recordings:
-            if not recording.path.is_relative_to(obj.audio_dir):
-                warnings.warn(
-                    "The recording is not part of the dataset audio "
-                    f"directory. \ndataset = {obj}\nrecording = {recording}",
-                    stacklevel=2,
-                )
-                continue
-
             data.append(
                 dict(
                     dataset_id=obj.id,
                     recording_id=recording.id,
-                    path=recording.path.relative_to(obj.audio_dir),
                 )
             )
 
@@ -376,86 +418,6 @@ class DatasetAPI(
         )
         return [schemas.Recording.model_validate(x) for x in database_recordings], count
 
-    async def get_state(
-        self,
-        session: AsyncSession,
-        obj: schemas.Dataset,
-        audio_dir: Path | None = None,
-    ) -> list[schemas.DatasetFile]:
-        """Compute the state of the dataset recordings.
-
-        The dataset directory is scanned for audio files and compared to the
-        registered dataset recordings in the database. The following states are
-        possible:
-
-        - ``missing``: A file is registered in the database and but is missing.
-
-        - ``registered``: A file is registered in the database and is present.
-
-        - ``unregistered``: A file is not registered in the database but is
-            present in the dataset directory.
-
-        Parameters
-        ----------
-        session
-            The database session to use.
-        obj
-            The dataset to get the state of.
-        audio_dir
-            The root audio directory, by default None. If None, the root audio
-            directory from the settings will be used.
-
-        Returns
-        -------
-        files : list[schemas.DatasetFile]
-        """
-        if audio_dir is None:
-            audio_dir = get_settings().audio_dir
-
-        # Get the files in the dataset directory.
-        file_list = files.get_audio_files_in_folder(
-            audio_dir / obj.audio_dir,
-            relative=True,
-        )
-
-        # NOTE: Better to use this query than reusing the get_recordings
-        # function because we don't need to retrieve all information about the
-        # recordings.
-        query = select(models.DatasetRecording.path).where(models.DatasetRecording.dataset_id == obj.id)
-        result = await session.execute(query)
-        db_files = [Path(path) for path in result.scalars().all()]
-
-        existing_files = set(file_list) & set(db_files)
-        missing_files = set(db_files) - set(file_list)
-        unregistered_files = set(file_list) - set(db_files)
-
-        ret = []
-        for path in existing_files:
-            ret.append(
-                schemas.DatasetFile(
-                    path=path,
-                    state=schemas.FileState.REGISTERED,
-                )
-            )
-
-        for path in missing_files:
-            ret.append(
-                schemas.DatasetFile(
-                    path=path,
-                    state=schemas.FileState.MISSING,
-                )
-            )
-
-        for path in unregistered_files:
-            ret.append(
-                schemas.DatasetFile(
-                    path=path,
-                    state=schemas.FileState.UNREGISTERED,
-                )
-            )
-
-        return ret
-
     async def create(
         self,
         session: AsyncSession,
@@ -510,7 +472,8 @@ class DatasetAPI(
                 f"\n\tAudio directory: {dataset_dir}"
             )
 
-        # Validate the creation data.
+        # Validate the creation data. ``create_from_data`` will relativize
+        # ``audio_dir`` against the root audio directory before storing.
         data = schemas.DatasetCreate(
             name=name,
             description=description,
@@ -519,7 +482,8 @@ class DatasetAPI(
 
         obj = await self.create_from_data(
             session,
-            data.model_copy(update=dict(audio_dir=data.audio_dir.relative_to(audio_dir))),
+            data,
+            audio_dir=audio_dir,
             **kwargs,
         )
 
