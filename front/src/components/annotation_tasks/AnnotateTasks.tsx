@@ -34,6 +34,8 @@ import type {
 import AnnotationTaskNotes from "./AnnotationTaskNotes";
 import AnnotationTaskTags from "@/components/annotation_tasks/AnnotationTaskTags";
 import { SPECTROGRAM_CONTAINER_WIDTH } from "@/constants";
+import { DEFAULT_TAG_VISIBILITY } from "@/utils/passes";
+import type { TagVisibilityFilter } from "@/utils/passes";
 
 export default function AnnotateTasks({
   taskFilter,
@@ -107,6 +109,7 @@ export default function AnnotateTasks({
 }) {
   const [tagPalette, setTagPalette] = useState<Tag[]>([]);
   const [selectedTag, setSelectedTag] = useState<{ tag: Tag; count: number } | null>(null);
+  const [tagVisibility, setTagVisibility] = useState<TagVisibilityFilter>(DEFAULT_TAG_VISIBILITY);
   
   const [selectedSoundEventAnnotation, setSelectedSoundEventAnnotation] = useState<SoundEventAnnotation | null>(null);
   const onDeselectSoundEventAnnotation = useCallback(() => {
@@ -587,6 +590,8 @@ export default function AnnotateTasks({
                     onRemoveSoundEventAnnotation={activeRemoveSoundEventAnnotation}
                     onUpdateSoundEventAnnotation={activeUpdateSoundEventAnnotation}
                     soundEventAnnotationsOverride={displayedSoundEventAnnotations}
+                    tagVisibility={tagVisibility}
+                    onTagVisibilityChange={setTagVisibility}
                   />
                 </div>
               </div>
@@ -620,6 +625,8 @@ export default function AnnotateTasks({
                   parameters={parameters}
                   withSpectrogram={withSpectrogram}
                   onUpdate={onUpdateSelectedSoundEventAnnotation}
+                  tagVisibility={tagVisibility}
+                  onSelectSoundEventAnnotation={setSelectedSoundEventAnnotation}
                 />
               </div>
             )}
@@ -629,6 +636,7 @@ export default function AnnotateTasks({
                   annotationTask={displayAnnotationTask}
                   onReplaceTagInSoundEventAnnotations={handleReplaceTagInSoundEventAnnotations}
                   selectedSoundEventAnnotation={selectedSoundEventAnnotation}
+                  tagVisibility={tagVisibility}
                 />
               </div>
             )}
@@ -659,6 +667,7 @@ export default function AnnotateTasks({
                   annotationTask={displayAnnotationTask!}
                   onReplaceTagInSoundEventAnnotations={handleReplaceTagInSoundEventAnnotations}
                   selectedSoundEventAnnotation={selectedSoundEventAnnotation}
+                  tagVisibility={tagVisibility}
                 />
               </div>
             </div>

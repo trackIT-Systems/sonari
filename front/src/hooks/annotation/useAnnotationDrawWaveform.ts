@@ -1,12 +1,11 @@
 import { useCallback } from "react";
 
-import { BLUE, GREEN } from "@/draw/styles";
+import { BLUE, GREEN, ORANGE } from "@/draw/styles";
 import { scaleTimeToWindow } from "@/utils/geometry";
 
 import type { SoundEventAnnotation, SpectrogramWindow } from "@/types";
 import { SPECTROGRAM_CANVAS_DIMENSIONS } from "@/constants";
 
-// Same styles as spectrogram but adapted for waveform
 const IDLE_STYLE = {
   borderColor: BLUE,
   fillColor: BLUE,
@@ -14,7 +13,7 @@ const IDLE_STYLE = {
   fillAlpha: 0.1,
 };
 
-const EDIT_STYLE = {
+const SELECTED_STYLE = {
   borderColor: GREEN,
   fillColor: GREEN,
   borderWidth: 2,
@@ -22,7 +21,22 @@ const EDIT_STYLE = {
   fillAlpha: 0.2,
 };
 
-// Extract time bounds from annotation geometry
+const PASS_SIBLING_STYLE = {
+  borderColor: ORANGE,
+  fillColor: ORANGE,
+  borderWidth: 2,
+  borderDash: [4, 4],
+  fillAlpha: 0.15,
+};
+
+type AnnotationDrawStyle = {
+  borderColor: string;
+  fillColor: string;
+  borderWidth: number;
+  fillAlpha: number;
+  borderDash?: number[];
+};
+
 function getAnnotationTimeBounds(annotation: SoundEventAnnotation): [number, number] {
   const { geometry, geometry_type } = annotation;
   
@@ -33,24 +47,22 @@ function getAnnotationTimeBounds(annotation: SoundEventAnnotation): [number, num
       
     case "BoundingBox":
       const bboxCoords = geometry.coordinates as [number, number, number, number];
-      return [bboxCoords[0], bboxCoords[2]]; // [startTime, endTime]
+      return [bboxCoords[0], bboxCoords[2]];
       
     case "TimeStamp":
       const time = geometry.coordinates as number;
-      return [time, time]; // Single point in time
+      return [time, time];
       
     case "Point":
       const pointCoords = geometry.coordinates as [number, number];
-      return [pointCoords[0], pointCoords[0]]; // Just the time component
+      return [pointCoords[0], pointCoords[0]];
       
     default:
-      // For other geometry types, try to extract time bounds
       if (Array.isArray(geometry.coordinates)) {
         if (typeof geometry.coordinates[0] === 'number') {
           return [geometry.coordinates[0], geometry.coordinates[0]];
         }
         if (Array.isArray(geometry.coordinates[0])) {
-          // For LineString, MultiPoint, etc., get min/max time
           const times = (geometry.coordinates as number[][]).map(coord => coord[0]);
           return [Math.min(...times), Math.max(...times)];
         }
@@ -59,13 +71,12 @@ function getAnnotationTimeBounds(annotation: SoundEventAnnotation): [number, num
   }
 }
 
-// Apply border and fill styles to canvas context
-function applyStyle(ctx: CanvasRenderingContext2D, style: any) {
+function applyStyle(ctx: CanvasRenderingContext2D, style: AnnotationDrawStyle) {
   ctx.strokeStyle = style.borderColor;
   ctx.lineWidth = style.borderWidth;
   ctx.fillStyle = style.fillColor;
   ctx.globalAlpha = style.fillAlpha;
-  
+
   if (style.borderDash) {
     ctx.setLineDash(style.borderDash);
   } else {
@@ -73,60 +84,83 @@ function applyStyle(ctx: CanvasRenderingContext2D, style: any) {
   }
 }
 
+function getAnnotationStyle(
+  annotation: SoundEventAnnotation,
+  selectedSoundEventAnnotation: SoundEventAnnotation | null | undefined,
+  passSiblingIds: Set<number>,
+): AnnotationDrawStyle {
+  if (
+    selectedSoundEventAnnotation &&
+    selectedSoundEventAnnotation.id === annotation.id
+  ) {
+    return SELECTED_STYLE;
+  }
+
+  if (passSiblingIds.has(annotation.id)) {
+    return PASS_SIBLING_STYLE;
+  }
+
+  return IDLE_STYLE;
+}
+
 export default function useAnnotationDrawWaveform({
   window,
   soundEventAnnotations,
   selectedSoundEventAnnotation,
+  passSiblingIds = new Set<number>(),
 }: {
   window: SpectrogramWindow;
   soundEventAnnotations: SoundEventAnnotation[];
   selectedSoundEventAnnotation?: SoundEventAnnotation | null;
+  passSiblingIds?: Set<number>;
 }) {
   const draw = useCallback(
     (ctx: CanvasRenderingContext2D) => {
-      for (const soundEventAnnotation of soundEventAnnotations) {
+      const drawOrder = [...soundEventAnnotations].sort((a, b) => {
+        const rank = (annotation: SoundEventAnnotation) => {
+          if (selectedSoundEventAnnotation?.id === annotation.id) {
+            return 2;
+          }
+          if (passSiblingIds.has(annotation.id)) {
+            return 1;
+          }
+          return 0;
+        };
+        return rank(a) - rank(b);
+      });
+
+      for (const soundEventAnnotation of drawOrder) {
         const [startTime, endTime] = getAnnotationTimeBounds(soundEventAnnotation);
         
-        // Convert time bounds to x coordinates
         const startX = scaleTimeToWindow(startTime, window);
         const endX = scaleTimeToWindow(endTime, window);
         
-        // Determine style based on annotation state and mode
-        let style = IDLE_STYLE;
+        const style = getAnnotationStyle(
+          soundEventAnnotation,
+          selectedSoundEventAnnotation,
+          passSiblingIds,
+        );
         
-        if (selectedSoundEventAnnotation && selectedSoundEventAnnotation.id === soundEventAnnotation.id) {
-          style = EDIT_STYLE;
-        }
-        
-        // Apply the style
         applyStyle(ctx, style);
         
-        // Draw the annotation bounds on waveform
         if (startTime === endTime) {
-          // Point in time - draw a vertical line
           ctx.beginPath();
           ctx.moveTo(startX, 0);
           ctx.lineTo(startX, SPECTROGRAM_CANVAS_DIMENSIONS.height);
           ctx.stroke();
         } else {
-          // Time interval - draw a rectangle spanning the full height
-          const rectWidth = Math.max(endX - startX, 1); // Minimum 1px width
-          
-          // Fill the rectangle
+          const rectWidth = Math.max(endX - startX, 1);
           ctx.fillRect(startX, 0, rectWidth, SPECTROGRAM_CANVAS_DIMENSIONS.height);
-          
-          // Draw border
-          ctx.globalAlpha = 1; // Full opacity for border
+          ctx.globalAlpha = 1;
           ctx.strokeRect(startX, 0, rectWidth, SPECTROGRAM_CANVAS_DIMENSIONS.height);
         }
       }
       
-      // Reset canvas state
       ctx.setLineDash([]);
       ctx.globalAlpha = 1;
     },
-    [window, soundEventAnnotations, selectedSoundEventAnnotation],
+    [window, soundEventAnnotations, selectedSoundEventAnnotation, passSiblingIds],
   );
 
   return draw;
-} 
+}

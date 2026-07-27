@@ -5,9 +5,11 @@ import { H4 } from "@/components/Headings";
 import { TagsIcon } from "@/components/icons";
 import AddTagButton from "@/components/tags/AddTagButton";
 import TagComponent, { getTagKey } from "@/components/tags/Tag";
+import { filterTagsByVisibility } from "@/utils/passes";
 
 import type { TagFilter } from "@/api/tags";
 import type { SoundEventAnnotation, Tag } from "@/types";
+import type { TagVisibilityFilter } from "@/utils/passes";
 
 function NoTags() {
   return <Empty padding="p-2">No tags</Empty>;
@@ -19,16 +21,23 @@ export default function SoundEventAnnotationTags({
   onClickTag,
   onAddTag,
   onRemoveTag,
+  tagVisibility,
 }: {
   soundEventAnnotation: SoundEventAnnotation;
   tagFilter?: TagFilter;
   onClickTag?: (tag: Tag) => void;
   onAddTag?: (tag: Tag) => void;
   onRemoveTag?: (tag: Tag) => void;
+  tagVisibility?: TagVisibilityFilter;
 }) {
   const tags = useMemo(
-    () => soundEventAnnotation.tags || [],
-    [soundEventAnnotation],
+    () => {
+      const annotationTags = soundEventAnnotation.tags || [];
+      return tagVisibility
+        ? filterTagsByVisibility(annotationTags, tagVisibility)
+        : annotationTags;
+    },
+    [soundEventAnnotation, tagVisibility],
   );
 
   return (

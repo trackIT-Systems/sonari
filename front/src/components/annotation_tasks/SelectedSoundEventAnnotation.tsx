@@ -1,4 +1,5 @@
 import Card from "@/components/Card";
+import PassContext from "@/components/annotation_tasks/PassContext";
 import SoundEventAnnotationDetails from "@/components/sound_event_annotations/SoundEventAnnotationDetails";
 import SoundEventAnnotationTags from "@/components/sound_event_annotations/SoundEventAnnotationTags";
 import useSoundEventAnnotation from "@/hooks/api/useSoundEventAnnotation";
@@ -8,6 +9,7 @@ import { useEffect, useMemo } from "react";
 
 import type { TagFilter } from "@/api/tags";
 import type { AnnotationTask, SoundEventAnnotation, Tag } from "@/types";
+import type { TagVisibilityFilter } from "@/utils/passes";
 
 export default function SelectedSoundEventAnnotation({
   soundEventAnnotation: data,
@@ -17,6 +19,8 @@ export default function SelectedSoundEventAnnotation({
   withSpectrogram,
   parameters,
   onUpdate,
+  tagVisibility,
+  onSelectSoundEventAnnotation,
 }: {
   //* The sound event annotation to display */
   soundEventAnnotation: SoundEventAnnotation;
@@ -28,6 +32,8 @@ export default function SelectedSoundEventAnnotation({
   withSpectrogram: boolean;
   parameters: SpectrogramParameters;
   onUpdate?: (annotation: SoundEventAnnotation) => void;
+  tagVisibility?: TagVisibilityFilter;
+  onSelectSoundEventAnnotation?: (annotation: SoundEventAnnotation) => void;
 }) {
   const soundEventAnnotation = useSoundEventAnnotation({
     id: data.id,
@@ -43,6 +49,11 @@ export default function SelectedSoundEventAnnotation({
   const currentAnnotation = useMemo(() => {
     return soundEventAnnotation.data || data;
   }, [soundEventAnnotation.data, data]);
+
+  const allSoundEventAnnotations = useMemo(
+    () => annotationTask.sound_event_annotations ?? [],
+    [annotationTask.sound_event_annotations],
+  );
 
   // Update parent component when annotation data changes
   useEffect(() => {
@@ -71,12 +82,18 @@ export default function SelectedSoundEventAnnotation({
           withSpectrogram={withSpectrogram}
         />
       </Card>
+      <PassContext
+        soundEventAnnotation={currentAnnotation}
+        allSoundEventAnnotations={allSoundEventAnnotations}
+        onSelectSoundEventAnnotation={onSelectSoundEventAnnotation}
+      />
       <Card className="min-w-0 max-w-full grow">
         <div className="flex min-w-0 max-w-full gap-4">
           <div className="min-w-0 flex-1">
             <SoundEventAnnotationTags
               tagFilter={tagFilter}
               soundEventAnnotation={currentAnnotation}
+              tagVisibility={tagVisibility}
               onAddTag={soundEventAnnotation.addTag.mutate}
               onRemoveTag={soundEventAnnotation.removeTag.mutate}
             />
