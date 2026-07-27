@@ -10,6 +10,7 @@ import useAnnotateTaskKeyShortcuts from "@/hooks/annotation/useSoundEventAnnotat
 import useCreateWaveformMeasurement from "@/hooks/draw/useCreateWaveformMeasurement";
 
 import { ABORT_SHORTCUT } from "@/utils/keyboard";
+import { clipGeometryToBounds } from "@/utils/geometry";
 
 import type {
   Geometry,
@@ -160,6 +161,33 @@ export default function useAnnotateTask(props: {
     [annotationTask, withSoundEvent, soundEventAnnotationsOverride],
   );
 
+  const geometryBounds = useMemo<SpectrogramWindow | null>(() => {
+    if (!annotationTask?.recording) return null;
+    return {
+      time: { min: annotationTask.start_time, max: annotationTask.end_time },
+      freq: { min: 0, max: annotationTask.recording.samplerate / 2 },
+    };
+  }, [annotationTask]);
+
+  const clipGeometryForTask = useCallback(
+    (geometry: Geometry): Geometry | null => {
+      if (geometryBounds == null) return geometry;
+      return clipGeometryToBounds(geometry, geometryBounds);
+    },
+    [geometryBounds],
+  );
+
+  const clampCenterTime = useCallback(
+    (time: number): number => {
+      if (geometryBounds == null) return time;
+      return Math.min(
+        geometryBounds.time.max,
+        Math.max(geometryBounds.time.min, time),
+      );
+    },
+    [geometryBounds],
+  );
+
   useEffect(() => {
     if (!selectedSoundEventAnnotation) {
       return;
@@ -187,9 +215,14 @@ export default function useAnnotateTask(props: {
   const handleCreate = useCallback(
     async (geometry: Geometry) => {
       if (disabled || !onAddSoundEventAnnotation) return;
+      const clippedGeometry = clipGeometryForTask(geometry);
+      if (clippedGeometry == null) {
+        toast.error("Annotation is outside the task bounds");
+        return;
+      }
       try {
         const data = await onAddSoundEventAnnotation({
-          geometry,
+          geometry: clippedGeometry,
           tags: defaultTags || [],
         });
         setSelectedSoundEventAnnotation(data);
@@ -197,7 +230,7 @@ export default function useAnnotateTask(props: {
         console.error('Error creating sound event annotation:', error);
       }
     },
-    [defaultTags, onAddSoundEventAnnotation, disabled, setSelectedSoundEventAnnotation],
+    [defaultTags, onAddSoundEventAnnotation, disabled, setSelectedSoundEventAnnotation, clipGeometryForTask],
   );
 
   // State to track measurements from different sources
@@ -312,12 +345,17 @@ export default function useAnnotateTask(props: {
   const handleEdit = useCallback(
     (geometry: Geometry) => {
       if (selectedSoundEventAnnotation == null || disabled || !onUpdateSoundEventAnnotation) return;
+      const clippedGeometry = clipGeometryForTask(geometry);
+      if (clippedGeometry == null) {
+        toast.error("Annotation is outside the task bounds");
+        return;
+      }
       onUpdateSoundEventAnnotation({
         soundEventAnnotation: selectedSoundEventAnnotation,
-        geometry,
+        geometry: clippedGeometry,
       });
     },
-    [selectedSoundEventAnnotation, onUpdateSoundEventAnnotation, disabled],
+    [selectedSoundEventAnnotation, onUpdateSoundEventAnnotation, disabled, clipGeometryForTask],
   );
 
   const handleCopy = useCallback(
@@ -369,12 +407,11 @@ export default function useAnnotateTask(props: {
   
       // Check if annotation is outside window:
       if (annotationStart < window.time.min || annotationEnd > window.time.max) {
-        // Calculate the new center position
-        const newCenterTime = (annotationStart + annotationEnd) / 2;
+        const newCenterTime = clampCenterTime((annotationStart + annotationEnd) / 2);
         onCenterOn(newCenterTime);
       }
     }
-  }, [filteredSoundEvents, selectedSoundEventAnnotation, onSelectSoundEventAnnotation, onCenterOn, window, setSelectedSoundEventAnnotation]);
+  }, [filteredSoundEvents, selectedSoundEventAnnotation, onSelectSoundEventAnnotation, onCenterOn, window, setSelectedSoundEventAnnotation, clampCenterTime]);
 
   const selectPrevAnnotation = useCallback(() => {
     if (!filteredSoundEvents.length) return;
@@ -400,12 +437,11 @@ export default function useAnnotateTask(props: {
   
       // Check if annotation is outside window:
       if (annotationStart < window.time.min || annotationEnd > window.time.max) {
-        // Calculate the new center position
-        const newCenterTime = (annotationStart + annotationEnd) / 2;
+        const newCenterTime = clampCenterTime((annotationStart + annotationEnd) / 2);
         onCenterOn(newCenterTime);
       }
     }
-  }, [filteredSoundEvents, selectedSoundEventAnnotation, onSelectSoundEventAnnotation, onCenterOn, window, setSelectedSoundEventAnnotation]);
+  }, [filteredSoundEvents, selectedSoundEventAnnotation, onSelectSoundEventAnnotation, onCenterOn, window, setSelectedSoundEventAnnotation, clampCenterTime]);
 
   const { props: editProps, draw: drawEdit } = useAnnotationEdit({
     window,

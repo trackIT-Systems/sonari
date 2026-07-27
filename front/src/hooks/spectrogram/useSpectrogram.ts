@@ -26,20 +26,14 @@ import { drawLineString, DEFAULT_LINESTRING_STYLE } from "@/draw/linestring";
 import { setFontStyle } from "@/draw/styles";
 
 const FREQ_LINE_COLORS = [
-  "rgb(248 113 113)", // red-400
-  "rgb(251 146 60)",  // orange-400
-  "rgb(250 204 21)",  // yellow-400
-  "rgb(251 191 36)",  // amber-400
-  "rgb(232 121 249)", // fuchsia-400
+  "rgb(34 211 238)",  // cyan-400
+  "rgb(56 189 248)",  // sky-400
+  "rgb(52 211 153)",  // emerald-400
+  "rgb(163 230 53)",  // lime-400
+  "rgb(96 165 250)",  // blue-400
+  "rgb(45 212 191)",  // teal-400
+  "rgb(167 139 250)", // violet-400
   "rgb(244 114 182)", // pink-400
-  "rgb(251 113 133)", // rose-400
-  "rgb(153 27 27)",   // red-800
-  "rgb(154 52 18)",   // orange-800
-  "rgb(133 77 14)",   // yellow-800
-  "rgb(146 64 14)",   // amber-800
-  "rgb(134 25 143)",  // fuchsia-800
-  "rgb(157 23 77)",   // pink-800
-  "rgb(159 18 57)",   // rose-800
 ];
 
 /**
@@ -97,19 +91,31 @@ function drawFrequencyLines(
 
     const y = height * (1 - (freq - freqMin) / (freqMax - freqMin));
 
-    // Draw the frequency line
-    drawLineString(ctx, {
-      type: "LineString",
+    const line = {
+      type: "LineString" as const,
       coordinates: [
         [0, y],
         [width, y],
       ],
-    }, style);
+    };
+
+    const lineWidth = style.borderWidth ?? DEFAULT_LINESTRING_STYLE.borderWidth ?? 2;
+
+    // Dark outline keeps lines readable on bright spectrogram regions (e.g. without de-noise)
+    drawLineString(ctx, line, {
+      borderColor: "rgb(0 0 0)",
+      borderWidth: lineWidth + 2,
+      borderAlpha: 0.75,
+    });
+    drawLineString(ctx, line, {
+      ...style,
+      borderWidth: lineWidth,
+    });
 
     // Draw the frequency label
     ctx.save();
 
-    setFontStyle(ctx, {fontSize: 10, fontColor: style.borderColor})
+    setFontStyle(ctx, { fontSize: 10, fontColor: style.borderColor });
     
     ctx.textAlign = "left";
     ctx.textBaseline = "bottom";
@@ -123,6 +129,9 @@ function drawFrequencyLines(
     
     // Only draw label if it's within visible bounds
     if (textY > 0 && textY < height) {
+      ctx.lineWidth = 3;
+      ctx.strokeStyle = "rgb(0 0 0)";
+      ctx.strokeText(freqLabel, textX, textY);
       ctx.fillText(freqLabel, textX, textY);
     }
     
@@ -461,7 +470,7 @@ export default function useSpectrogram({
           const color = FREQ_LINE_COLORS[index % FREQ_LINE_COLORS.length];
           drawFrequencyLines(ctx, [freq], window, {
             borderColor: color,
-            borderWidth: 1.5,
+            borderWidth: 2,
             borderAlpha: 1,
           });
         });

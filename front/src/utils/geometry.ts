@@ -847,3 +847,55 @@ export function computeGeometryBBox(geometry: Geometry): Box {
       );
   }
 }
+
+export function clipBoundingBox(
+  bbox: BoundingBox,
+  bounds: SpectrogramWindow,
+): BoundingBox | null {
+  const [start, low, end, high] = bbox.coordinates;
+  const clippedStart = Math.max(bounds.time.min, start);
+  const clippedEnd = Math.min(bounds.time.max, end);
+  const clippedLow = Math.max(bounds.freq.min, low);
+  const clippedHigh = Math.min(bounds.freq.max, high);
+
+  if (clippedStart >= clippedEnd || clippedLow >= clippedHigh) {
+    return null;
+  }
+
+  return {
+    ...bbox,
+    coordinates: [clippedStart, clippedLow, clippedEnd, clippedHigh],
+  };
+}
+
+export function clipTimeInterval(
+  interval: TimeInterval,
+  bounds: SpectrogramWindow,
+): TimeInterval | null {
+  const [start, end] = interval.coordinates;
+  const clippedStart = Math.max(bounds.time.min, start);
+  const clippedEnd = Math.min(bounds.time.max, end);
+
+  if (clippedStart >= clippedEnd) {
+    return null;
+  }
+
+  return {
+    ...interval,
+    coordinates: [clippedStart, clippedEnd],
+  };
+}
+
+export function clipGeometryToBounds(
+  geometry: Geometry,
+  bounds: SpectrogramWindow,
+): Geometry | null {
+  switch (geometry.type) {
+    case "BoundingBox":
+      return clipBoundingBox(geometry, bounds);
+    case "TimeInterval":
+      return clipTimeInterval(geometry, bounds);
+    default:
+      return geometry;
+  }
+}
