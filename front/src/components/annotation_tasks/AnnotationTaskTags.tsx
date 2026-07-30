@@ -11,6 +11,8 @@ import { Popover, PopoverButton, PopoverPanel } from "@headlessui/react";
 import KeyboardKey from "../KeyboardKey";
 import type { AnnotationTask, Tag, SoundEventAnnotation } from "@/types";
 import { ADD_TAG_SHORTCUT, REPLACE_TAG_SHORTCUT } from "@/utils/keyboard";
+import { isTagVisible } from "@/utils/passes";
+import type { TagVisibilityFilter } from "@/utils/passes";
 
 function NoTags() {
   return (
@@ -143,10 +145,12 @@ export default function AnnotationTaskTags({
   annotationTask,
   onReplaceTagInSoundEventAnnotations,
   selectedSoundEventAnnotation,
+  tagVisibility,
 }: {
   annotationTask: AnnotationTask;
   onReplaceTagInSoundEventAnnotations?: (oldTag: Tag | null, newTag: Tag | null, selectedSoundEventAnnotation?: SoundEventAnnotation | null) => void;
   selectedSoundEventAnnotation?: SoundEventAnnotation | null;
+  tagVisibility?: TagVisibilityFilter;
 }) {
 
   const replaceButtonRef = useRef<HTMLButtonElement>(null);
@@ -195,6 +199,9 @@ export default function AnnotationTaskTags({
     const tagCounts = new Map<string, TagCount>();
 
     allTags.forEach(tag => {
+      if (tagVisibility && !isTagVisible(tag, tagVisibility)) {
+        return;
+      }
       const key = `${tag.key}-${tag.value}`;
       const existing = tagCounts.get(key);
       if (existing) {
@@ -205,7 +212,7 @@ export default function AnnotationTaskTags({
     });
 
     return Array.from(tagCounts.values());
-  }, [annotationTask]);
+  }, [annotationTask, tagVisibility]);
 
   // This shows tags for the popover menus - either all tags or just selected annotation tags
   const popoverTagsWithCount = useMemo(() => {

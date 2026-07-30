@@ -11,6 +11,7 @@ import useCreateWaveformMeasurement from "@/hooks/draw/useCreateWaveformMeasurem
 
 import { ABORT_SHORTCUT } from "@/utils/keyboard";
 import { clipGeometryToBounds } from "@/utils/geometry";
+import { getPassSiblingIds } from "@/utils/passes";
 
 import type {
   Geometry,
@@ -21,6 +22,7 @@ import type {
   Tag,
   AnnotationTask,
 } from "@/types";
+import type { TagVisibilityFilter } from "@/utils/passes";
 import toast from "react-hot-toast";
 
 export type AnnotateMode = "select" | "measure" | "draw" | "edit" | "delete" | "idle";
@@ -107,6 +109,10 @@ export default function useAnnotateTask(props: {
   onRemoveTagFromSoundEventAnnotation?: (params: { soundEventAnnotation: SoundEventAnnotation; tag: Tag }) => Promise<SoundEventAnnotation>;
   /** When set, use this list instead of annotationTask.sound_event_annotations */
   soundEventAnnotations?: SoundEventAnnotation[];
+  /** Which tag categories to show on the spectrogram */
+  tagVisibility?: TagVisibilityFilter;
+  /** Selected annotation controlled by parent */
+  externalSelectedSoundEventAnnotation?: SoundEventAnnotation | null;
 }) {
   const {
     annotationTask,
@@ -128,6 +134,8 @@ export default function useAnnotateTask(props: {
     onAddTagToSoundEventAnnotation,
     onRemoveTagFromSoundEventAnnotation,
     soundEventAnnotations: soundEventAnnotationsOverride,
+    tagVisibility,
+    externalSelectedSoundEventAnnotation,
   } = props;
 
   const {
@@ -137,12 +145,34 @@ export default function useAnnotateTask(props: {
     setMode,
     setGeometryType,
     setSelectedSoundEventAnnotation,
+    syncSelectedSoundEventAnnotation,
   } = useAnnotateTaskState({
     mode: initialMode,
     geometryType: "BoundingBox",
     onSelectSoundEventAnnotation,
     onChangeMode: onModeChange,
   });
+
+  useEffect(() => {
+    if (externalSelectedSoundEventAnnotation === undefined) {
+      return;
+    }
+
+    if (externalSelectedSoundEventAnnotation == null) {
+      if (selectedSoundEventAnnotation != null) {
+        syncSelectedSoundEventAnnotation(null);
+      }
+      return;
+    }
+
+    if (selectedSoundEventAnnotation?.id !== externalSelectedSoundEventAnnotation.id) {
+      syncSelectedSoundEventAnnotation(externalSelectedSoundEventAnnotation);
+    }
+  }, [
+    externalSelectedSoundEventAnnotation,
+    selectedSoundEventAnnotation,
+    syncSelectedSoundEventAnnotation,
+  ]);
 
   // Extract sound events with safe default - all hooks must be called before any conditional returns
   const soundEvents = useMemo(
@@ -482,6 +512,11 @@ export default function useAnnotateTask(props: {
     [onAddTagToSoundEventAnnotation, disabled],
   );
 
+  const passSiblingIds = useMemo(
+    () => getPassSiblingIds(selectedSoundEventAnnotation, soundEvents),
+    [selectedSoundEventAnnotation, soundEvents],
+  );
+
   const tags = useSpectrogramTags({
     annotations: soundEvents,
     window,
@@ -490,11 +525,14 @@ export default function useAnnotateTask(props: {
     onAddTag: handleOnAddTag,
     active: mode !== "draw" && mode !== "delete",
     disabled,
+    tagVisibility,
   });
 
   const drawAnnotations = useAnnotationDraw({
     window,
     annotations: soundEvents,
+    selectedSoundEventAnnotation,
+    passSiblingIds,
   });
 
   // Create props objects for spectrogram and waveform
@@ -724,7 +762,14 @@ function useAnnotateTaskState({
       if (disabled) return;
       changeMode("edit");
     },
-    [onSelectSoundEventAnnotation, changeMode, setSelectedSoundEventAnnotation, disabled],
+    [onSelectSoundEventAnnotation, changeMode, disabled],
+  );
+
+  const syncSelectedSoundEventAnnotation = useCallback(
+    (annotation: SoundEventAnnotation | null) => {
+      setSelectedSoundEventAnnotation(annotation);
+    },
+    [],
   );
 
   return {
@@ -733,6 +778,7 @@ function useAnnotateTaskState({
     selectedSoundEventAnnotation,
     setMode: changeMode,
     setSelectedSoundEventAnnotation: selectSoundEventAnnotation,
+    syncSelectedSoundEventAnnotation,
     setGeometryType: changeGeometryType,
   };
 }

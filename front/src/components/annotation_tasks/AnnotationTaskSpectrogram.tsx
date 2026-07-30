@@ -11,12 +11,15 @@ import DisableSpectrogramButton from "../spectrograms/DisableSpectrogramButton";
 import SpectrogramSettings from "@/components/spectrograms/SpectrogramSettings";
 import SpectrogramTags from "@/components/spectrograms/SpectrogramTags";
 import TagComponent, { getTagKey } from "@/components/tags/Tag";
+import TagVisibilityControls from "@/components/annotation_tasks/TagVisibilityControls";
 import useAnnotateTask from "@/hooks/annotation/useAnnotateTask";
 import useAudio from "@/hooks/audio/useAudio";
 import useCanvas from "@/hooks/draw/useCanvas";
 import useSpectrogram, { clampSamplerate } from "@/hooks/spectrogram/useSpectrogram";
 import useSpectrogramTrackAudio from "@/hooks/spectrogram/useSpectrogramTrackAudio";
 import { getInitialViewingWindow } from "@/utils/windows";
+import { getPassSiblingIds } from "@/utils/passes";
+import type { TagVisibilityFilter } from "@/utils/passes";
 import type { AnnotateMode } from "@/hooks/annotation/useAnnotateTask";
 import type { MotionMode as SpectrogramMode } from "@/hooks/spectrogram/useSpectrogramMotions";
 import type {
@@ -64,6 +67,8 @@ export default function AnnotationTaskSpectrogram({
   onRemoveSoundEventAnnotation,
   onUpdateSoundEventAnnotation,
   soundEventAnnotationsOverride,
+  tagVisibility,
+  onTagVisibilityChange,
 }: {
   annotationTask?: AnnotationTask;
   parameters?: SpectrogramParameters;
@@ -96,6 +101,8 @@ export default function AnnotationTaskSpectrogram({
   onRemoveSoundEventAnnotation?: (annotation: SoundEventAnnotation) => void;
   onUpdateSoundEventAnnotation?: (params: { soundEventAnnotation: SoundEventAnnotation; geometry: Geometry }) => void;
   soundEventAnnotationsOverride?: SoundEventAnnotation[];
+  tagVisibility: TagVisibilityFilter;
+  onTagVisibilityChange: (visibility: TagVisibilityFilter) => void;
 }) {
   
   const [isAnnotating, setIsAnnotating] = useState(false);
@@ -320,7 +327,18 @@ export default function AnnotationTaskSpectrogram({
     onAddTagToSoundEventAnnotation,
     onRemoveTagFromSoundEventAnnotation,
     soundEventAnnotations: taskSoundEventAnnotations,
+    tagVisibility,
+    externalSelectedSoundEventAnnotation: selectedSoundEventAnnotation,
   });
+
+  const passSiblingIds = useMemo(
+    () =>
+      getPassSiblingIds(
+        selectedSoundEventAnnotation,
+        taskSoundEventAnnotations,
+      ),
+    [selectedSoundEventAnnotation, taskSoundEventAnnotations],
+  );
 
   const {
     props: spectrogramProps,
@@ -341,6 +359,7 @@ export default function AnnotationTaskSpectrogram({
     window: spectrogram.window,
     soundEventAnnotations: soundEventAnnotations,
     selectedSoundEventAnnotation: selectedSoundEventAnnotation,
+    passSiblingIds,
   });
 
   const drawSpectrogramCanvas = useMemo(() => {
@@ -480,6 +499,14 @@ export default function AnnotationTaskSpectrogram({
         )}
         {withPlayer && <Player {...audio} />}
       </div>
+      {withSoundEvent && (
+        <div className="mb-2">
+          <TagVisibilityControls
+            visibility={tagVisibility}
+            onChange={onTagVisibilityChange}
+          />
+        </div>
+      )}
       <div className="relative overflow-visible rounded-md" style={{ height: SPECTROGRAM_CANVAS_DIMENSIONS.height, width: SPECTROGRAM_CANVAS_DIMENSIONS.width }}>
         <SpectrogramTags
           disabled={disabled}

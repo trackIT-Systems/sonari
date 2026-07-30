@@ -2,6 +2,7 @@ import { useMemo } from "react";
 
 import { isGeometryInWindow } from "@/utils/geometry";
 import { getLabelPosition } from "@/utils/tags";
+import { filterTagsByVisibility } from "@/utils/passes";
 import { SPECTROGRAM_CANVAS_DIMENSIONS } from "@/constants";
 
 import type { TagElement, TagGroup } from "@/utils/tags";
@@ -10,6 +11,7 @@ import type {
   SpectrogramWindow,
   Tag,
 } from "@/types";
+import type { TagVisibilityFilter } from "@/utils/passes";
 
 export default function useSpectrogramTags({
   annotations,
@@ -19,6 +21,7 @@ export default function useSpectrogramTags({
   onAddTag,
   active = true,
   disabled = false,
+  tagVisibility,
 }: {
   annotations: SoundEventAnnotation[];
   window: SpectrogramWindow;
@@ -27,6 +30,7 @@ export default function useSpectrogramTags({
   onAddTag?: (annotation: SoundEventAnnotation, tag: Tag) => void;
   active?: boolean;
   disabled?: boolean;
+  tagVisibility?: TagVisibilityFilter;
 }) {
   const annotationsInWindow = useMemo(() => {
     return annotations.filter((annotation) => {
@@ -96,13 +100,17 @@ export default function useSpectrogramTags({
         y: scaledY,
       };
 
+      const visibleTags = tagVisibility
+        ? filterTagsByVisibility(annotation.tags ?? [], tagVisibility)
+        : annotation.tags ?? [];
+
       const group: TagElement[] =
-        annotation.tags?.map((tag) => {
+        visibleTags.map((tag) => {
           return {
             tag: tag,
             onClick: () => onClickTag?.(annotation, tag),
           };
-        }) || [];
+        });
 
       return {
         tags: group,
@@ -121,6 +129,7 @@ export default function useSpectrogramTags({
     onClickTag,
     onAddTag,
     disabled,
+    tagVisibility,
   ]);
 
   return groups;
