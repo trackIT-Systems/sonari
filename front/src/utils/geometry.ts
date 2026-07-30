@@ -252,17 +252,25 @@ export function scaleGeometryFromWindow<T extends Geometry>(
           scaleYToWindow(y, window, false),
         ],
       };
-    case "BoundingBox":
+    case "BoundingBox": {
       const [x1, y1, x2, y2] = geometry.coordinates as [number, number, number, number];
+      const t1 = scaleXToWindow(x1, window, false);
+      const t2 = scaleXToWindow(x2, window, false);
+      const f1 = scaleYToWindow(y1, window, false);
+      const f2 = scaleYToWindow(y2, window, false);
+      // Pixel space has y flipped (top = high freq, bottom = low freq) and the
+      // BoundingBox convention is [start_time, low_freq, end_time, high_freq],
+      // so normalize back to that ordering (mirrors scaleBBoxToWindow).
       return {
         ...geometry,
         coordinates: [
-          scaleXToWindow(x1, window, false),
-          scaleYToWindow(y1, window, false),
-          scaleXToWindow(x2, window, false),
-          scaleYToWindow(y2, window, false),
+          Math.min(t1, t2),
+          Math.min(f1, f2),
+          Math.max(t1, t2),
+          Math.max(f1, f2),
         ],
       };
+    }
     case "MultiPoint":
       return {
         ...geometry,
