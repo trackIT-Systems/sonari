@@ -7,7 +7,7 @@ from fastapi import APIRouter, Header, HTTPException, Query, Response
 from fastapi.responses import FileResponse
 
 from sonari import api
-from sonari.routes.dependencies import Session, SonariSettings
+from sonari.routes.dependencies import CurrentUser, Session, SonariSettings
 
 __all__ = ["audio_router"]
 
@@ -108,6 +108,7 @@ async def download_recording_audio(
     session: Session,
     settings: SonariSettings,
     recording_id: int,
+    _user: CurrentUser,
 ) -> FileResponse:
     """Download the original audio file for a recording.
 

@@ -17,7 +17,7 @@ from sonari.schemas.app_token import (
     AppTokenPublic,
     app_token_permission_flags,
 )
-from sonari.system.app_token_auth import insert_app_token
+from sonari.system.app_token_auth import _as_utc_aware, insert_app_token
 
 __all__ = [
     "get_auth_router",
@@ -81,7 +81,7 @@ def get_auth_router(settings: SonariSettings) -> APIRouter:
         body: AppTokenCreate,
     ) -> AppTokenCreated:
         now = datetime.now(timezone.utc)
-        if body.expires_at is not None and body.expires_at <= now:
+        if body.expires_at is not None and _as_utc_aware(body.expires_at) <= now:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="expires_at must be in the future",

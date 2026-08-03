@@ -137,13 +137,13 @@ class Settings(BaseSettings):
     @property
     def oidc_client_id(self) -> str:
         """OIDC client ID derived from the domain."""
-        return f"{self.domain}/sonari"
+        return f"{self.domain or 'localhost'}/sonari"
 
     @computed_field
     @property
     def oidc_application(self) -> str:
         """OIDC application name derived from the domain."""
-        return f"{self.domain.replace('.', '-')}-sonari"
+        return f"{(self.domain or 'localhost').replace('.', '-')}-sonari"
 
     @classmethod
     def settings_customise_sources(

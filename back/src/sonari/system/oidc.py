@@ -1,7 +1,7 @@
 """OIDC authentication module for Sonari."""
 
 import logging
-from typing import AsyncGenerator, Optional
+from typing import Optional
 from uuid import uuid4
 
 import jwt
@@ -13,7 +13,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from sonari import models
 from sonari.system.app_token_auth import authenticate_app_token, looks_like_sonari_app_token
-from sonari.system.database import get_async_session, get_database_url, get_or_create_async_engine
+from sonari.system.session import async_session
 from sonari.system.settings import Settings, get_settings
 
 logger = logging.getLogger(__name__)
@@ -25,15 +25,6 @@ security = HTTPBearer()
 # Note: With multiple uvicorn workers, each worker process will have its own cached instance.
 # This is fine because PyJWKClient has built-in caching (default 300 seconds) for JWKS keys.
 _jwks_client: Optional[PyJWKClient] = None
-
-
-async def get_session() -> AsyncGenerator[AsyncSession, None]:
-    """Get database session for OIDC operations."""
-    settings = get_settings()
-    url = get_database_url(settings)
-    engine = get_or_create_async_engine(url)
-    async with get_async_session(engine) as session:
-        yield session
 
 
 class OIDCUser(BaseModel):
@@ -128,16 +119,16 @@ async def verify_oidc_token_credentials(credentials: HTTPAuthorizationCredential
             credentials.credentials,
             signing_key.key,
             algorithms=["RS256"],
-            audience=["account", settings.oidc_client_id],
+            audience=[settings.oidc_client_id],
             issuer=expected_iss,
             options={"verify_exp": True},
         )
 
         # Additional validation: check if token is intended for our client
         azp = payload.get("azp")
-        if azp and azp != settings.oidc_client_id:
+        if azp != settings.oidc_client_id:
             logger.error(f"Token not intended for this client. Expected: {settings.oidc_client_id}, Got: {azp}")
-            raise jwt.exceptions.InvalidAudienceError("Token not intended for this client")
+            raise jwt.exceptions.InvalidTokenError("Token not intended for this client")
 
         return OIDCUser(**payload)
 
@@ -148,20 +139,13 @@ async def verify_oidc_token_credentials(credentials: HTTPAuthorizationCredential
             detail="Authentication failed",
             headers={"WWW-Authenticate": "Bearer"},
         ) from e
-    except Exception as e:
+    except (KeyError, ValueError, TypeError) as e:
         logger.error(f"Unexpected error during token verification: {e}")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Authentication failed",
             headers={"WWW-Authenticate": "Bearer"},
         ) from e
-
-
-async def verify_oidc_token(
-    credentials: HTTPAuthorizationCredentials = SecDep,
-) -> OIDCUser:
-    """Verify OIDC JWT token and return user information."""
-    return await verify_oidc_token_credentials(credentials)
 
 
 async def get_or_create_user(
@@ -202,8 +186,9 @@ async def get_or_create_user(
 
         return user
 
-    # If not found by username and email is provided, check by email
-    # This handles cases where a user exists with the same email but different username
+    # If not found by username and email is provided, check by email.
+    # Assumes IdP email is immutable and unique: this branch is for username
+    # migration only (same person, new preferred_username), not account takeover.
     if oidc_user.email:
         stmt = select(models.User).where(models.User.email == oidc_user.email)
         result = await session.execute(stmt)
@@ -311,8 +296,7 @@ def _check_tenant_authorization(oidc_user: OIDCUser, domain: str) -> None:
 
 
 # Dependencies at module level
-SessionDep = Depends(get_session)
-OIDCUserDep = Depends(verify_oidc_token)
+SessionDep = Depends(async_session)
 
 
 def _app_token_http_method_is_read(method: str) -> bool:

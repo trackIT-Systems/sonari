@@ -24,20 +24,48 @@ export interface UserInfo {
 }
 
 class AuthClient {
+  private static readonly SKEW_MS = 10_000;
+  private static readonly REFRESH_LOCK_NAME = 'sonari-oidc-refresh';
+  private static readonly DEFAULT_REFRESH_EXPIRES_MS = 30 * 24 * 60 * 60 * 1000;
+  private static readonly REFRESH_RETRY_DELAY_MS = 500;
+
   private config: oidcConfig | null = null;
   private tokenSet: TokenSet | null = null;
   private userInfo: UserInfo | null = null;
   private refreshTimer: NodeJS.Timeout | null = null;
-  private isRedirecting: boolean = false; // Prevent multiple simultaneous redirects
-  private isRefreshing: boolean = false; // Track active refresh operations
+  private isRedirecting: boolean = false;
+  private isRefreshing: boolean = false;
+  private refreshPromise: Promise<void> | null = null;
+  private crossTabListenersRegistered = false;
 
   constructor() {
     if (typeof window !== 'undefined') {
       this.loadFromStorage();
+      this.registerCrossTabListeners();
     }
   }
 
+  private registerCrossTabListeners(): void {
+    if (this.crossTabListenersRegistered || typeof window === 'undefined') {
+      return;
+    }
+    this.crossTabListenersRegistered = true;
+
+    window.addEventListener('storage', (e) => {
+      if (e.key !== 'oidc_tokens') {
+        return;
+      }
+      if (e.newValue === null) {
+        return;
+      }
+      this.loadFromStorage();
+      this.scheduleTokenRefresh();
+    });
+  }
+
   async initialize(config?: oidcConfig): Promise<void> {
+    this.registerCrossTabListeners();
+
     if (config) {
       this.config = config;
     } else {
@@ -53,7 +81,6 @@ class AuthClient {
       }
     }
 
-    // Check if we're returning from an OAuth callback
     if (typeof window !== 'undefined') {
       const urlParams = new URLSearchParams(window.location.search);
       const code = urlParams.get('code');
@@ -61,9 +88,14 @@ class AuthClient {
 
       if (code) {
         await this.handleAuthCallback(code, state);
-        // Clean up URL
         window.history.replaceState({}, document.title, window.location.pathname);
       }
+
+      document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'visible') {
+          this.ensureValidToken().catch(() => {});
+        }
+      });
     }
 
     this.scheduleTokenRefresh();
@@ -94,9 +126,6 @@ class AuthClient {
     return btoa(String.fromCharCode.apply(null, Array.from(array)));
   }
 
-  /**
-   * Get the fixed OIDC callback redirect URI
-   */
   private getCallbackUri(): string {
     if (typeof window === 'undefined') {
       return '';
@@ -105,30 +134,38 @@ class AuthClient {
     return `${window.location.origin}${basePath}/auth/callback`;
   }
 
+  private hasValidAccessToken(now: number = Date.now()): boolean {
+    return !!this.tokenSet && now < this.tokenSet.expires_at - AuthClient.SKEW_MS;
+  }
+
+  private adoptFresherTokenFromStorage(): boolean {
+    const previousExpiresAt = this.tokenSet?.expires_at ?? 0;
+    this.loadFromStorage();
+    if (!this.tokenSet) {
+      return false;
+    }
+    return this.tokenSet.expires_at > previousExpiresAt && this.hasValidAccessToken();
+  }
+
   async login(): Promise<void> {
     if (!this.config) {
       throw new Error('authClient not initialized');
     }
 
-    // Prevent multiple simultaneous redirects
     if (this.isRedirecting) {
       return;
     }
 
     this.isRedirecting = true;
 
-    // Store the current destination so we can redirect back after auth
-    // Remove base path prefix to avoid double base path issue with Next.js router
     if (typeof window !== 'undefined') {
       const basePath = process.env.NEXT_PUBLIC_SONARI_FOLDER || '';
       let currentPath = window.location.pathname + window.location.search;
-      
-      // Remove base path prefix if present (Next.js router will add it back)
+
       if (basePath && currentPath.startsWith(basePath)) {
         currentPath = currentPath.substring(basePath.length) || '/';
       }
-      
-      // Don't store callback route as destination
+
       if (!currentPath.includes('/auth/callback')) {
         sessionStorage.setItem('oidc_redirect_destination', currentPath);
       }
@@ -138,7 +175,6 @@ class AuthClient {
     const codeChallenge = await this.generateCodeChallenge(codeVerifier);
     const state = this.generateState();
 
-    // Store PKCE parameters in sessionStorage
     sessionStorage.setItem('oidc_code_verifier', codeVerifier);
     sessionStorage.setItem('oidc_state', state);
 
@@ -157,14 +193,14 @@ class AuthClient {
 
   async logout(): Promise<void> {
     const idToken = this.tokenSet?.id_token;
-    
+
     this.clearTokens();
-    
+
     if (this.config && idToken) {
       const logoutUrl = new URL(`${this.config.serverUrl}application/o/${this.config.application}/end-session/`);
       logoutUrl.searchParams.set('id_token_hint', idToken);
       logoutUrl.searchParams.set('post_logout_redirect_uri', window.location.origin);
-      
+
       window.location.href = logoutUrl.toString();
     } else {
       window.location.reload();
@@ -180,7 +216,6 @@ class AuthClient {
     const codeVerifier = sessionStorage.getItem('oidc_code_verifier');
 
     if (state !== storedState) {
-      // Clean up on error
       sessionStorage.removeItem('oidc_state');
       sessionStorage.removeItem('oidc_code_verifier');
       throw new Error('Invalid state parameter - possible CSRF attack or expired session');
@@ -192,7 +227,7 @@ class AuthClient {
 
     const callbackUri = this.getCallbackUri();
     const tokenUrl = `${this.config.serverUrl}application/o/token/`;
-    
+
     const response = await fetch(tokenUrl, {
       method: 'POST',
       headers: {
@@ -207,7 +242,6 @@ class AuthClient {
       }),
     });
 
-    // Clean up session storage regardless of success/failure
     sessionStorage.removeItem('oidc_state');
     sessionStorage.removeItem('oidc_code_verifier');
 
@@ -220,27 +254,28 @@ class AuthClient {
     const tokens = await response.json();
     this.setTokens(tokens);
     await this.loadUserInfo();
-    
-    // Reset redirect flag after successful callback
+
     this.isRedirecting = false;
   }
 
   private setTokens(tokens: any): void {
     const now = Date.now();
-    
-    // Preserve existing refresh_token if new response doesn't include one
-    // (Some OIDC providers only return refresh_token on initial exchange, not on refresh)
-    const refreshToken = tokens.refresh_token !== undefined 
-      ? tokens.refresh_token 
+
+    const refreshToken = tokens.refresh_token !== undefined
+      ? tokens.refresh_token
       : this.tokenSet?.refresh_token || null;
 
-    const refreshExpiresAt = now + (30 * 24 * 60 * 60 * 1000);
+    const refreshExpiresAt = typeof tokens.refresh_expires_in === 'number'
+      ? now + tokens.refresh_expires_in * 1000
+      : this.tokenSet?.refresh_expires_at ?? now + AuthClient.DEFAULT_REFRESH_EXPIRES_MS;
+
+    const expiresIn = typeof tokens.expires_in === 'number' ? tokens.expires_in : 0;
 
     this.tokenSet = {
       access_token: tokens.access_token,
       refresh_token: refreshToken,
       id_token: tokens.id_token !== undefined ? tokens.id_token : this.tokenSet?.id_token,
-      expires_at: now + (tokens.expires_in * 1000),
+      expires_at: now + expiresIn * 1000,
       refresh_expires_at: refreshExpiresAt,
     };
 
@@ -254,7 +289,6 @@ class AuthClient {
     }
 
     try {
-      // Decode JWT to get user info
       const decoded = jwtDecode<any>(this.tokenSet.access_token);
       this.userInfo = {
         sub: decoded.sub,
@@ -269,19 +303,36 @@ class AuthClient {
     }
   }
 
-  /**
-   * Refresh access token using refresh token.
-   * Does NOT redirect - throws error on failure so caller can handle appropriately.
-   * Only login() should trigger redirects to OIDC provider.
-   */
   async refreshTokens(): Promise<void> {
-    // Prevent multiple simultaneous refresh attempts
-    if (this.isRefreshing) {
-      // If already refreshing, wait for the existing refresh to complete
-      // This prevents race conditions
+    if (this.refreshPromise) {
+      return this.refreshPromise;
+    }
+
+    this.refreshPromise = this.runRefreshWithCoordination().finally(() => {
+      this.refreshPromise = null;
+    });
+
+    return this.refreshPromise;
+  }
+
+  private async runRefreshWithCoordination(): Promise<void> {
+    const runRefresh = async () => {
+      this.loadFromStorage();
+      if (this.hasValidAccessToken()) {
+        return;
+      }
+      await this.refreshTokensUnchecked();
+    };
+
+    if (typeof navigator !== 'undefined' && navigator.locks) {
+      await navigator.locks.request(AuthClient.REFRESH_LOCK_NAME, { mode: 'exclusive' }, runRefresh);
       return;
     }
 
+    await runRefresh();
+  }
+
+  private async refreshTokensUnchecked(): Promise<void> {
     if (!this.config || !this.tokenSet?.refresh_token) {
       this.clearTokens();
       throw new Error('Cannot refresh tokens: no refresh token available');
@@ -289,8 +340,6 @@ class AuthClient {
 
     const now = Date.now();
     if (now >= this.tokenSet.refresh_expires_at) {
-      // Refresh token expired - clear tokens and throw error
-      // Let the caller (AuthGuard or API interceptor) handle the redirect
       this.clearTokens();
       throw new Error('Refresh token expired');
     }
@@ -298,14 +347,24 @@ class AuthClient {
     this.isRefreshing = true;
 
     try {
-      const tokenUrl = `${this.config.serverUrl}application/o/token/`;
-      
-      // Ensure refresh_token is not null before making request
-      if (!this.tokenSet.refresh_token) {
-        throw new Error('Refresh token is null');
-      }
-      
-      const response = await fetch(tokenUrl, {
+      await this.performRefreshRequest(false);
+    } finally {
+      this.isRefreshing = false;
+    }
+  }
+
+  private async performRefreshRequest(isRetry: boolean): Promise<void> {
+    if (!this.config || !this.tokenSet?.refresh_token) {
+      this.clearTokens();
+      throw new Error('Cannot refresh tokens: no refresh token available');
+    }
+
+    const tokenUrl = `${this.config.serverUrl}application/o/token/`;
+    const refreshToken = this.tokenSet.refresh_token;
+
+    let response: Response;
+    try {
+      response = await fetch(tokenUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/x-www-form-urlencoded',
@@ -313,25 +372,48 @@ class AuthClient {
         body: new URLSearchParams({
           grant_type: 'refresh_token',
           client_id: this.config.clientId,
-          refresh_token: this.tokenSet.refresh_token,
+          refresh_token: refreshToken,
         }),
       });
+    } catch (error) {
+      if (!isRetry) {
+        await new Promise((resolve) => setTimeout(resolve, AuthClient.REFRESH_RETRY_DELAY_MS));
+        if (this.adoptFresherTokenFromStorage()) {
+          return;
+        }
+        return this.performRefreshRequest(true);
+      }
+      throw error;
+    }
 
-      if (!response.ok) {
-        // Refresh failed - clear tokens and throw error
-        // Do NOT redirect here - let the caller handle it
-        this.clearTokens();
-        const errorText = await response.text();
-        console.error('Token refresh failed:', errorText);
-        throw new Error(`Token refresh failed: ${response.status} ${response.statusText}`);
+    if (!response.ok) {
+      const errorText = await response.text();
+      const isInvalidGrant = errorText.includes('invalid_grant');
+
+      if (this.adoptFresherTokenFromStorage()) {
+        return;
       }
 
-      const tokens = await response.json();
-      this.setTokens(tokens);
-      await this.loadUserInfo();
-    } finally {
-      this.isRefreshing = false;
+      if (!isRetry && !isInvalidGrant && response.status >= 500) {
+        await new Promise((resolve) => setTimeout(resolve, AuthClient.REFRESH_RETRY_DELAY_MS));
+        if (this.adoptFresherTokenFromStorage()) {
+          return;
+        }
+        return this.performRefreshRequest(true);
+      }
+
+      const now = Date.now();
+      if (isInvalidGrant || (this.tokenSet && now >= this.tokenSet.refresh_expires_at)) {
+        this.clearTokens();
+      }
+
+      console.error('Token refresh failed:', errorText);
+      throw new Error(`Token refresh failed: ${response.status} ${response.statusText}`);
     }
+
+    const tokens = await response.json();
+    this.setTokens(tokens);
+    await this.loadUserInfo();
   }
 
   private scheduleTokenRefresh(): void {
@@ -345,32 +427,31 @@ class AuthClient {
     }
 
     const now = Date.now();
-    const expiresAt = this.tokenSet.expires_at;
-    const timeUntilExpiry = expiresAt - now;
+    const effectiveExpiry = this.tokenSet.expires_at - AuthClient.SKEW_MS;
+    const timeUntilExpiry = effectiveExpiry - now;
 
-    // Only schedule if token hasn't expired yet
     if (timeUntilExpiry <= 0) {
-      console.warn('Token already expired, cannot schedule refresh');
+      this.refreshTimer = setTimeout(() => {
+        this.refreshTokens().catch((error) => {
+          console.error('Scheduled token refresh failed:', error);
+        });
+      }, 1000);
       return;
     }
 
-    // Refresh when 80% of token lifetime has passed (i.e., refresh at 20% remaining)
-    // This works for tokens of any duration:
-    // - Long tokens (e.g., 1 hour): refresh at 12 minutes remaining
-    // - Short tokens (e.g., 2 minutes): refresh at 24 seconds remaining
-    // - Very short tokens (e.g., 30 seconds): refresh at 6 seconds remaining
-    const refreshDelay = Math.max(1000, timeUntilExpiry * 0.8); // At least 1 second delay
+    const refreshDelay = Math.max(1000, timeUntilExpiry * 0.8);
 
-    // Schedule the refresh
     this.refreshTimer = setTimeout(() => {
       this.refreshTokens().catch((error) => {
         console.error('Scheduled token refresh failed:', error);
       });
     }, refreshDelay);
-    
-    // Log for debugging (can be removed in production)
+
     if (process.env.NODE_ENV === 'development') {
-      console.log(`Token refresh scheduled in ${Math.round(refreshDelay / 1000)}s (token expires in ${Math.round(timeUntilExpiry / 1000)}s)`);
+      console.log(
+        `Token refresh scheduled in ${Math.round(refreshDelay / 1000)}s `
+        + `(token expires in ${Math.round((this.tokenSet.expires_at - now) / 1000)}s)`,
+      );
     }
   }
 
@@ -391,7 +472,6 @@ class AuthClient {
       if (storedTokens) {
         try {
           this.tokenSet = JSON.parse(storedTokens);
-          // Check if tokens are still valid
           const now = Date.now();
           if (this.tokenSet && now >= this.tokenSet.refresh_expires_at) {
             this.clearTokens();
@@ -412,14 +492,10 @@ class AuthClient {
     }
   }
 
-  /**
-   * Clear all tokens and reset auth state.
-   * Public method for use by API interceptors and other components.
-   */
   clearTokens(): void {
     this.tokenSet = null;
     this.userInfo = null;
-    
+
     if (this.refreshTimer) {
       clearTimeout(this.refreshTimer);
       this.refreshTimer = null;
@@ -429,10 +505,8 @@ class AuthClient {
       localStorage.removeItem('oidc_tokens');
       localStorage.removeItem('oidc_user');
     }
-    
-    // Reset redirect flag when tokens are cleared
+
     this.isRedirecting = false;
-    // Reset refresh flag when tokens are cleared
     this.isRefreshing = false;
   }
 
@@ -441,22 +515,15 @@ class AuthClient {
       return false;
     }
 
-    // If refresh is in progress, return true optimistically
-    // This prevents false negatives during background token refresh
     if (this.isRefreshing) {
       return true;
     }
 
-    const now = Date.now();
-    return now < this.tokenSet.expires_at;
+    return this.hasValidAccessToken();
   }
 
-  /**
-   * Check if a token refresh is currently in progress.
-   * Useful for preventing redundant auth checks during refresh.
-   */
   isRefreshInProgress(): boolean {
-    return this.isRefreshing;
+    return this.isRefreshing || this.refreshPromise !== null;
   }
 
   getAccessToken(): string | null {
@@ -470,43 +537,29 @@ class AuthClient {
     return this.userInfo;
   }
 
-  /**
-   * Ensure we have a valid access token, refreshing if needed.
-   * Does NOT redirect - throws error on failure so caller can handle appropriately.
-   */
   async ensureValidToken(): Promise<string | null> {
     if (!this.tokenSet) {
       return null;
     }
 
     const now = Date.now();
-    
-    // If access token is expired but refresh token is still valid, try to refresh
-    if (now >= this.tokenSet.expires_at && now < this.tokenSet.refresh_expires_at) {
-      // If refresh is already in progress, wait a bit for it to complete
-      if (this.isRefreshing) {
-        // Wait for refresh to complete (max 5 seconds)
-        const maxWait = 5000;
-        const startWait = Date.now();
-        while (this.isRefreshing && (Date.now() - startWait) < maxWait) {
-          await new Promise(resolve => setTimeout(resolve, 100));
-        }
-        // After waiting, check if we now have a valid token
-        if (this.tokenSet && Date.now() < this.tokenSet.expires_at) {
-          return this.getAccessToken();
-        }
-        // If still expired after waiting, return null
-        return null;
-      }
 
-      try {
-        await this.refreshTokens();
-      } catch (error) {
-        // Refresh failed - return null so caller knows auth is needed
-        // Don't redirect here - let AuthGuard or API interceptor handle it
-        console.warn('Token refresh failed in ensureValidToken:', error);
-        return null;
+    if (this.hasValidAccessToken(now)) {
+      return this.getAccessToken();
+    }
+
+    if (now >= this.tokenSet.refresh_expires_at) {
+      return null;
+    }
+
+    try {
+      await this.refreshTokens();
+    } catch (error) {
+      console.warn('Token refresh failed in ensureValidToken:', error);
+      if (this.hasValidAccessToken()) {
+        return this.getAccessToken();
       }
+      return null;
     }
 
     return this.getAccessToken();
@@ -514,4 +567,4 @@ class AuthClient {
 }
 
 const authClient = new AuthClient();
-export default authClient; 
+export default authClient;

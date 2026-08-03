@@ -1,7 +1,26 @@
 """Tests for audio streaming and download endpoints."""
 
 import pytest
-from httpx import AsyncClient
+from httpx import ASGITransport, AsyncClient
+
+from sonari.system import create_app
+from sonari.system.settings import get_settings
+
+
+@pytest.mark.asyncio
+async def test_download_audio_requires_auth(test_settings, setup_test_db):
+    """Download endpoint must reject unauthenticated requests."""
+    test_app = create_app(test_settings)
+    test_app.dependency_overrides[get_settings] = lambda: test_settings
+
+    transport = ASGITransport(app=test_app)
+    async with AsyncClient(transport=transport, base_url="http://localhost:5000") as client:
+        response = await client.get(
+            "/api/v1/audio/download/",
+            params={"recording_id": 1},
+        )
+
+    assert response.status_code in (401, 403)
 
 
 @pytest.mark.asyncio

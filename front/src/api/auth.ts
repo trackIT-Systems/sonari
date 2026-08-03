@@ -94,44 +94,47 @@ export function registerAuthAPI(
 export function setupAuthInterceptor(instance: AxiosInstance) {
   instance.interceptors.request.use(async (config) => {
     try {
-      // Get valid access token (will refresh if needed)
-      // ensureValidToken() will throw if refresh fails, which is fine
-      // We'll handle 401s in the response interceptor
       const token = await authClient.ensureValidToken();
-      
+
       if (token) {
         config.headers.set('Authorization', `Bearer ${token}`);
       }
     } catch (error) {
-      // Token refresh failed - let the request proceed without token
-      // The response interceptor will handle 401s appropriately
       console.warn('Failed to get auth token for request:', error);
     }
-    
+
     return config;
   });
 
   instance.interceptors.response.use(
     (response) => response,
     async (error) => {
-      if (error.response?.status === 401) {
+      const originalRequest = error.config as (typeof error.config & { _retry?: boolean }) | undefined;
+
+      if (error.response?.status === 401 && originalRequest && !originalRequest._retry) {
+        originalRequest._retry = true;
+        try {
+          await authClient.refreshTokens();
+          const token = await authClient.ensureValidToken();
+          if (token) {
+            originalRequest.headers.set('Authorization', `Bearer ${token}`);
+            return instance(originalRequest);
+          }
+        } catch (refreshError) {
+          console.warn('Token refresh failed on 401 retry:', refreshError);
+        }
+
         console.warn('Received 401 Unauthorized - clearing tokens');
-        // Clear tokens on 401 - AuthGuard will detect this and trigger login
-        // Do NOT redirect here - let AuthGuard handle it to prevent redirect loops
         authClient.clearTokens();
-        
-        // Don't call login() here - AuthGuard will handle the redirect
-        // This prevents redirects during API calls
       } else if (error.response?.status === 403) {
         console.warn('Received 403 Forbidden - user not authorized');
-        // Handle forbidden error - user is authenticated but not authorized
         if (forbiddenCallback) {
           const message = error.response?.data?.detail;
           forbiddenCallback(message);
         }
       }
-      
+
       return Promise.reject(error);
-    }
+    },
   );
 } 
