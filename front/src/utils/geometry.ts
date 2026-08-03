@@ -860,7 +860,15 @@ export function clipBoundingBox(
   bbox: BoundingBox,
   bounds: SpectrogramWindow,
 ): BoundingBox | null {
-  const [start, low, end, high] = bbox.coordinates;
+  // Coordinates are stored as [start_time, low_freq, end_time, high_freq],
+  // but editors may leave them inverted (e.g. [start, high, end, low]).
+  // Normalize with min/max so clipping is robust to either order.
+  const [a, b, c, d] = bbox.coordinates;
+  const start = Math.min(a, c);
+  const end = Math.max(a, c);
+  const low = Math.min(b, d);
+  const high = Math.max(b, d);
+
   const clippedStart = Math.max(bounds.time.min, start);
   const clippedEnd = Math.min(bounds.time.max, end);
   const clippedLow = Math.max(bounds.freq.min, low);
