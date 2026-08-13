@@ -447,6 +447,10 @@ def get_annotation_tasks_router(settings: SonariSettings):
             state,
             user,
         )
+        await api.annotation_projects.invalidate_species_counts_for_task(
+            session,
+            annotation_task_id,
+        )
         await session.commit()
         return updated
 
@@ -480,6 +484,10 @@ def get_annotation_tasks_router(settings: SonariSettings):
             annotation_task,
             state,
             user_id,
+        )
+        await api.annotation_projects.invalidate_species_counts_for_task(
+            session,
+            annotation_task_id,
         )
         await session.commit()
         return updated

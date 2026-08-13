@@ -189,3 +189,18 @@ async def get_annotation_project_progress(
         assigned=assigned,
         pending=pending,
     )
+
+
+@annotation_projects_router.get(
+    "/detail/species_counts/",
+    response_model=list[schemas.SpeciesTagCount],
+)
+async def get_annotation_project_species_counts(
+    session: Session,
+    annotation_project_id: int,
+):
+    """Get species tag counts for sound event annotations in a project."""
+    return await api.annotation_projects.get_species_counts(
+        session,
+        annotation_project_id,
+    )

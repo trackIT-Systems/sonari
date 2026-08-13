@@ -154,3 +154,44 @@ async def test_get_annotation_project_progress(auth_client: AsyncClient):
     assert "verified" in data
     assert "rejected" in data
 
+
+@pytest.mark.asyncio
+async def test_get_annotation_project_species_counts(auth_client: AsyncClient):
+    """Test getting species tag counts for an annotation project."""
+    project_name = f"Species Counts Test Project {uuid.uuid4().hex[:8]}"
+    create_response = await auth_client.post(
+        "/api/v1/annotation_projects/",
+        json={
+            "name": project_name,
+            "description": "Project for species counts test",
+        },
+    )
+    assert create_response.status_code in [200, 201]
+    project = create_response.json()
+    project_id = project["id"]
+
+    response = await auth_client.get(
+        "/api/v1/annotation_projects/detail/species_counts/",
+        params={"annotation_project_id": project_id},
+    )
+    assert response.status_code == 200
+    data = response.json()
+    assert isinstance(data, list)
+    for item in data:
+        assert "key" in item
+        assert "value" in item
+        assert "count" in item
+        assert "accepted" in item
+        assert "verified" in item
+        assert "unsure" in item
+        assert "rejected" in item
+        assert "no_status" in item
+        assert (
+            item["accepted"]
+            + item["verified"]
+            + item["unsure"]
+            + item["rejected"]
+            + item["no_status"]
+            == item["count"]
+        )
+

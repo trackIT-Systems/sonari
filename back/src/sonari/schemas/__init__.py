@@ -17,6 +17,7 @@ from sonari.schemas.annotation_projects import (
     AnnotationProjectCreate,
     AnnotationProjectProgress,
     AnnotationProjectUpdate,
+    SpeciesTagCount,
 )
 from sonari.schemas.annotation_tasks import (
     AnnotationStatusBadge,
@@ -66,6 +67,7 @@ __all__ = [
     "AnnotationProjectCreate",
     "AnnotationProjectProgress",
     "AnnotationProjectUpdate",
+    "SpeciesTagCount",
     "AnnotationStatusBadge",
     "AnnotationStatusBadgeUpdate",
     "AnnotationTask",

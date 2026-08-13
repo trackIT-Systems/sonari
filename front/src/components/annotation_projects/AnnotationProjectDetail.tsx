@@ -1,4 +1,5 @@
 import AnnotationProjectProgress from "./AnnotationProjectProgress";
+import AnnotationProjectSpeciesChart from "./AnnotationProjectSpeciesChart";
 
 import type { AnnotationProject } from "@/types";
 
@@ -10,6 +11,7 @@ export default function AnnotationProjectDetail({
   return (
     <div className="w-full space-y-4">
       <AnnotationProjectProgress annotationProject={annotationProject} />
+      <AnnotationProjectSpeciesChart annotationProject={annotationProject} />
     </div>
   );
 }

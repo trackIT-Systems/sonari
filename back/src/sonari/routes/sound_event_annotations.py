@@ -197,6 +197,11 @@ def get_sound_event_annotations_router(settings: SonariSettings) -> APIRouter:
             user,
         )
 
+        await api.annotation_projects.invalidate_species_counts_for_task(
+            session,
+            sound_event_annotation.annotation_task_id,
+        )
+
         await session.commit()
         return sound_event_annotation
 
@@ -230,6 +235,11 @@ def get_sound_event_annotations_router(settings: SonariSettings) -> APIRouter:
             session,
             sound_event_annotation,
             user,
+        )
+
+        await api.annotation_projects.invalidate_species_counts_for_task(
+            session,
+            sound_event_annotation.annotation_task_id,
         )
 
         await session.commit()

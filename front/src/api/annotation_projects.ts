@@ -17,10 +17,24 @@ const AnnotationProjectProgressSchema = z.object({
 
 type AnnotationProjectProgress = z.infer<typeof AnnotationProjectProgressSchema>;
 
+const SpeciesTagCountSchema = z.object({
+  key: z.string(),
+  value: z.string(),
+  count: z.number(),
+  accepted: z.number(),
+  verified: z.number(),
+  unsure: z.number(),
+  rejected: z.number(),
+  no_status: z.number(),
+});
+
+type SpeciesTagCount = z.infer<typeof SpeciesTagCountSchema>;
+
 const DEFAULT_ENDPOINTS = {
   getMany: "/api/v1/annotation_projects/",
   get: "/api/v1/annotation_projects/detail/",
   getProgress: "/api/v1/annotation_projects/detail/progress/",
+  getSpeciesCounts: "/api/v1/annotation_projects/detail/species_counts/",
 };
 
 const AnnotationProjectFilterSchema = z.object({
@@ -70,9 +84,17 @@ export function registerAnnotationProjectAPI(
     return AnnotationProjectProgressSchema.parse(data);
   }
 
+  async function getSpeciesCounts(id: number): Promise<SpeciesTagCount[]> {
+    const { data } = await instance.get(endpoints.getSpeciesCounts, {
+      params: { annotation_project_id: id },
+    });
+    return z.array(SpeciesTagCountSchema).parse(data);
+  }
+
   return {
     getMany,
     get,
     getProgress,
+    getSpeciesCounts,
   } as const;
 }

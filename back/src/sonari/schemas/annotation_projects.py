@@ -15,6 +15,7 @@ __all__ = [
     "AnnotationProjectCreate",
     "AnnotationProjectUpdate",
     "AnnotationProjectProgress",
+    "SpeciesTagCount",
 ]
 
 
@@ -86,3 +87,37 @@ class AnnotationProjectProgress(BaseModel):
 
     pending: int
     """Number of tasks with no done status (pending or only assigned)."""
+
+
+class SpeciesTagCount(BaseModel):
+    """Count of a species tag across sound event annotations in a project.
+
+    Status fields are mutually exclusive: each sound event annotation is
+    classified by its parent task's highest-priority badge
+    (verified > rejected > accepted/completed > unsure/assigned > no status).
+    Their sum equals ``count``.
+    """
+
+    key: str
+    """Tag key."""
+
+    value: str
+    """Tag value."""
+
+    count: int
+    """Number of sound event annotations with this tag."""
+
+    accepted: int = 0
+    """Annotations on tasks with completed (accepted) as primary status."""
+
+    verified: int = 0
+    """Annotations on tasks with verified as primary status."""
+
+    unsure: int = 0
+    """Annotations on tasks with assigned (unsure) as primary status."""
+
+    rejected: int = 0
+    """Annotations on tasks with rejected as primary status."""
+
+    no_status: int = 0
+    """Annotations on tasks with no status badges."""

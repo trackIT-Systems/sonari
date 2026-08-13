@@ -195,7 +195,8 @@ class SoundEventAnnotationTag(Base):
 
     id: orm.Mapped[int] = orm.mapped_column(primary_key=True, init=False)
     sound_event_annotation_id: orm.Mapped[int] = orm.mapped_column(
-        ForeignKey("sound_event_annotation.id", ondelete="CASCADE")
+        ForeignKey("sound_event_annotation.id", ondelete="CASCADE"),
+        index=True,
     )
     tag_id: orm.Mapped[int] = orm.mapped_column(
         ForeignKey("tag.id", ondelete="CASCADE"),
