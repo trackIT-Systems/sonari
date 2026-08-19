@@ -528,11 +528,14 @@ class ConfidenceFilter(base.Filter):
                 or_(
                     and_(
                         models.User.username == "birdedge",
-                        models.SoundEventAnnotationFeature.name == "species_confidence",
+                        or_(
+                            models.SoundEventAnnotationFeature.name.like("species_confidence%"),
+                            models.SoundEventAnnotationFeature.name.like("detection_confidence%"),
+                        ),
                     ),
                     and_(
                         models.User.username.is_distinct_from("birdedge"),
-                        models.SoundEventAnnotationFeature.name == "detection_confidence",
+                        models.SoundEventAnnotationFeature.name.like("detection_confidence%"),
                     ),
                 ),
             )

@@ -133,8 +133,11 @@ class AnnotationTask(BaseSchema):
             )
             if clipped_geometry is None:
                 continue
+            update = {"geometry": clipped_geometry}
+            if clipped_geometry.type != annotation.geometry_type:
+                update["geometry_type"] = clipped_geometry.type
             clipped_annotations.append(
-                annotation.model_copy(update={"geometry": clipped_geometry})
+                annotation.model_copy(update=update)
             )
 
         return self.model_copy(

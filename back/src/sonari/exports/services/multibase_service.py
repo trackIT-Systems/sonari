@@ -62,14 +62,15 @@ class MultiBaseService(BaseExportService):
                     recording = task.recording
                     station = recording_station(recording)
 
-                    # Extract detection and species probability from features
                     detection_prob = None
                     species_prob = None
                     for feature in sound_event_annotation.features:
-                        if feature.name == "detection_confidence":
-                            detection_prob = feature.value
-                        elif feature.name == "species_confidence":
-                            species_prob = feature.value
+                        if feature.name.startswith("detection_confidence"):
+                            if detection_prob is None or feature.value > detection_prob:
+                                detection_prob = feature.value
+                        elif feature.name.startswith("species_confidence"):
+                            if species_prob is None or feature.value > species_prob:
+                                species_prob = feature.value
 
                     # Build Bemerkung field with probabilities and notes
                     bemerkung_parts = []

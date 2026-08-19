@@ -132,7 +132,10 @@ class SoundEventAnnotation(BaseSchema):
         if clipped_geometry is None:
             return self
 
-        return self.model_copy(update={"geometry": clipped_geometry})
+        update = {"geometry": clipped_geometry}
+        if clipped_geometry.type != self.geometry_type:
+            update["geometry_type"] = clipped_geometry.type
+        return self.model_copy(update=update)
 
 
 class SoundEventAnnotationUpdate(BaseSchema):

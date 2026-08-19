@@ -16,9 +16,19 @@ def clip_geometry(
     """Clip geometry to the given time and frequency bounds.
 
     Returns None if the clipped geometry would be degenerate (zero area/length).
-  """
+    """
     if geometry.type == "BoundingBox":
         start, low, end, high = geometry.coordinates
+        if low >= high:
+            from soundevent import TimeInterval
+            interval = TimeInterval(coordinates=[start, end])
+            return clip_geometry(
+                interval,
+                time_min=time_min,
+                time_max=time_max,
+                freq_min=freq_min,
+                freq_max=freq_max,
+            )
         start = max(time_min, start)
         end = min(time_max, end)
         low = max(freq_min, low)

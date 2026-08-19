@@ -91,7 +91,6 @@ async def extract_annotation_data(annotation: models.SoundEventAnnotation) -> Di
     sound_event_tags = [tag.value for tag in annotation.tags]
     sound_event_tags_str = ", ".join(sound_event_tags)
 
-    # Extract individual features into separate fields
     features = {
         "media_duration": None,
         "detection_confidence": None,
@@ -102,13 +101,14 @@ async def extract_annotation_data(annotation: models.SoundEventAnnotation) -> Di
         feature_name = feature_rel.name
         feature_value = feature_rel.value
 
-        # Map feature names to our standardized column names
         if feature_name == "media_duration":
             features["media_duration"] = feature_value
-        elif feature_name == "detection_confidence":
-            features["detection_confidence"] = feature_value
-        elif feature_name == "species_confidence":
-            features["species_confidence"] = feature_value
+        elif feature_name.startswith("detection_confidence"):
+            if features["detection_confidence"] is None or feature_value > features["detection_confidence"]:
+                features["detection_confidence"] = feature_value
+        elif feature_name.startswith("species_confidence"):
+            if features["species_confidence"] is None or feature_value > features["species_confidence"]:
+                features["species_confidence"] = feature_value
 
     # Extract bounding box coordinates from geometry
     from .processors import extract_bounding_box_coordinates
