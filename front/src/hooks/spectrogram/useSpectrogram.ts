@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import drawFrequencyAxis from "@/draw/freqAxis";
 import drawTimeAxis from "@/draw/timeAxis";
@@ -12,6 +12,7 @@ import {
   scaleWindow,
   shiftWindow,
 } from "@/utils/windows";
+import { applyChannelCycleStep } from "@/utils/spectrogram_parameters";
 
 import useSpectrogramMotions, { MotionMode } from "@/hooks/spectrogram/useSpectrogramMotions";
 import type { RefObject } from "react";
@@ -190,6 +191,11 @@ export default function useSpectrogram({
     validateParameters(initialParameters, samplerate),
   );
 
+  const maxChannels = task.recording?.channels ?? 1;
+  const anchorChannelRef = useRef<number | null>(null);
+  const cycleIndexRef = useRef(0);
+  const isCyclingRef = useRef(false);
+
   // Update internal parameters when external parameters change
   useEffect(() => {
     setParameters(validateParameters(initialParameters, samplerate));
@@ -363,6 +369,12 @@ export default function useSpectrogram({
 
   const handleSetParameters = useCallback(
     (newParameters: SpectrogramParameters) => {
+      if (!isCyclingRef.current) {
+        anchorChannelRef.current = null;
+        cycleIndexRef.current = 0;
+      }
+      isCyclingRef.current = false;
+
       const validated = validateParameters(newParameters, samplerate);
       onParameterChange?.(validated);
       setParameters(validated);
@@ -370,7 +382,35 @@ export default function useSpectrogram({
     [samplerate, onParameterChange],
   );
 
+  const handleCycleChannel = useCallback(() => {
+    if (maxChannels <= 1) {
+      return;
+    }
+
+    if (anchorChannelRef.current === null) {
+      anchorChannelRef.current = parameters.channel;
+    }
+
+    cycleIndexRef.current = (cycleIndexRef.current + 1) % (maxChannels + 1);
+    const { channel, mix_channels } = applyChannelCycleStep(
+      anchorChannelRef.current,
+      cycleIndexRef.current,
+      maxChannels,
+    );
+
+    isCyclingRef.current = true;
+    handleSetParameters({
+      ...parameters,
+      channel,
+      mix_channels,
+    });
+  }, [maxChannels, parameters, handleSetParameters]);
+
   const handleResetParameters = useCallback(() => {
+    anchorChannelRef.current = null;
+    cycleIndexRef.current = 0;
+    isCyclingRef.current = false;
+
     const validated = validateParameters(initialParameters, samplerate);
     setParameters(validated);
     onParameterChange?.(validated);
@@ -550,7 +590,9 @@ export default function useSpectrogram({
     onMoveRight: handleMoveRight,
     onMoveDown: handleMoveDown,
     onMoveUp: handleMoveUp,
+    onCycleChannel: handleCycleChannel,
     enabled: withShortcuts,
+    channelCycleEnabled: withShortcuts && maxChannels > 1,
   });
 
   return {

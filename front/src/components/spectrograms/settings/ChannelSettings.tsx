@@ -38,8 +38,8 @@ export default function ChannelSettings({
         label="Mix channels"
         help={
           mixChannels.field.value
-            ? "All channels averaged to mono. Uncheck to select a single channel."
-            : "Check to mix stereo (or multi-channel) audio to mono."
+            ? "Maximum amplitude per sample across channels. Uncheck to select a single channel."
+            : "Check to mix stereo (or multi-channel) audio to mono using per-sample max."
         }
       >
         <Toggle

@@ -12,6 +12,7 @@ import {
   MOVE_DOWN_SHORTCUT,
   MOVE_UP_SHORTCUT,
   RESET_ZOOM_SHORTCUT,
+  CHANNEL_CYCLE_SHORTCUT,
 } from "@/utils/keyboard";
 
 export default function useSpectrogramKeyShortcuts(props: {
@@ -26,7 +27,9 @@ export default function useSpectrogramKeyShortcuts(props: {
   onMoveRight: () => void;
   onMoveUp: () => void;
   onMoveDown: () => void;
+  onCycleChannel?: () => void;
   enabled?: boolean;
+  channelCycleEnabled?: boolean;
 }) {
   const {
     onGoZoom,
@@ -40,7 +43,9 @@ export default function useSpectrogramKeyShortcuts(props: {
     onMoveRight,
     onMoveUp,
     onMoveDown,
-    enabled = true
+    onCycleChannel,
+    enabled = true,
+    channelCycleEnabled = false,
   } = props;
 
   useKeyPressEvent(useKeyFilter({ enabled, key: ZOOM_SHORTCUT }), onGoZoom);
@@ -93,5 +98,12 @@ export default function useSpectrogramKeyShortcuts(props: {
     event.preventDefault();
     event.stopPropagation();
     onMoveDown();
+  });
+
+  useKeyPressEvent(useKeyFilter({ enabled: channelCycleEnabled, key: CHANNEL_CYCLE_SHORTCUT }), (event: KeyboardEvent) => {
+    if (!event.shiftKey || event.ctrlKey || event.altKey || event.metaKey) return;
+    event.preventDefault();
+    event.stopPropagation();
+    onCycleChannel?.();
   });
 }

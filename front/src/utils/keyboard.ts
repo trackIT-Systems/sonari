@@ -107,6 +107,7 @@ export const PLAY_SHORTCUT = " ";
 export const FILTER_SHORTCUT = "f";
 export const DISABLE_SPECTROGRAM_SHORTCUT = "h";
 export const PSD_TOGGLE_SHORTCUT = "t";
+export const CHANNEL_CYCLE_SHORTCUT = "C";
 export const GEOMETRY_TYPE_SHORTCUT = "e";
 export const SETTINGS_SHORTCUT = "o";
 export const ANNOTATION_TASK_NOTE_SHORTCUT = "q";
@@ -228,6 +229,11 @@ export const SPECTROGRAM_KEY_SHORTCUTS: KeyShortcut[] = [
         label: "Toggle PSD",
         shortcut: PSD_TOGGLE_SHORTCUT,
         description: "Toggle between spectrogram and power spectral density view",
+    },
+    {
+        label: "Cycle audio channel",
+        shortcut: `${getSpecialKeyLabel("Shift")} ${CHANNEL_CYCLE_SHORTCUT}`,
+        description: "Cycle through each channel, then mix (max), then back to the starting channel",
     },
     {
         label: "Disable sound event annotations",

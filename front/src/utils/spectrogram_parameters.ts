@@ -79,3 +79,19 @@ export function validateParameters(
     channel: channel,
   };
 }
+
+/** Map a channel cycle step to spectrogram channel parameters. */
+export function applyChannelCycleStep(
+  anchor: number,
+  cycleIndex: number,
+  maxChannels: number,
+): Pick<SpectrogramParameters, "channel" | "mix_channels"> {
+  if (cycleIndex >= maxChannels) {
+    return { channel: anchor, mix_channels: true };
+  }
+
+  return {
+    channel: (anchor + cycleIndex) % maxChannels,
+    mix_channels: false,
+  };
+}

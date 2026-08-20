@@ -98,12 +98,12 @@ def select_audio_channel(
     wav: xr.DataArray,
     spectrogram_parameters: schemas.SpectrogramParameters,
 ) -> xr.DataArray:
-    """Select a single channel or mix all channels to mono."""
+    """Select a single channel or mix all channels to mono using per-sample max."""
     channel_dim = Dimensions.channel.value
     available_channels = wav.sizes.get(channel_dim, 1)
 
     if spectrogram_parameters.mix_channels and available_channels > 1:
-        mixed = wav.mean(dim=channel_dim)
+        mixed = wav.max(dim=channel_dim)
         return mixed.expand_dims({channel_dim: [0]})
 
     channel_to_use = (
