@@ -10,7 +10,7 @@ import Button from "../Button";
 import { Popover, PopoverButton, PopoverPanel } from "@headlessui/react";
 import KeyboardKey from "../KeyboardKey";
 import type { AnnotationTask, Tag, SoundEventAnnotation } from "@/types";
-import { ADD_TAG_SHORTCUT, REPLACE_TAG_SHORTCUT } from "@/utils/keyboard";
+import { ADD_TAG_SHORTCUT, ADD_UNTAGGED_TAG_SHORTCUT, REPLACE_TAG_SHORTCUT, getSpecialKeyLabel } from "@/utils/keyboard";
 import { isTagVisible } from "@/utils/passes";
 import type { TagVisibilityFilter } from "@/utils/passes";
 
@@ -114,20 +114,24 @@ function TagReplacePanel({
 
 function TagAddPanel({
   onReplaceTag,
+  title = "Select Tag to add",
+  placeholder = "Search tag to add...",
 }: {
   onReplaceTag: (oldTag: Tag | null, newTag: Tag) => void;
+  title?: string;
+  placeholder?: string;
 }) {
   return (
     <div className="p-4">
       <div className="mb-2 flex flex-row items-center justify-between">
         <div>
           <span className="mb-2 text-stone-700 dark:text-stone-300 underline underline-offset-2 decoration-amber-500 decoration-2">
-            Select Tag to add
+            {title}
           </span>
         </div>
       </div>
       <TagSearchBar
-        placeholder="Search tag to add..."
+        placeholder={placeholder}
         onSelect={(newTag) => {
           onReplaceTag(
             null,
@@ -144,42 +148,48 @@ function TagAddPanel({
 export default function AnnotationTaskTags({
   annotationTask,
   onReplaceTagInSoundEventAnnotations,
+  onAddTagToUntaggedSoundEventAnnotations,
   selectedSoundEventAnnotation,
   tagVisibility,
 }: {
   annotationTask: AnnotationTask;
   onReplaceTagInSoundEventAnnotations?: (oldTag: Tag | null, newTag: Tag | null, selectedSoundEventAnnotation?: SoundEventAnnotation | null) => void;
+  onAddTagToUntaggedSoundEventAnnotations?: (newTag: Tag) => void;
   selectedSoundEventAnnotation?: SoundEventAnnotation | null;
   tagVisibility?: TagVisibilityFilter;
 }) {
 
   const replaceButtonRef = useRef<HTMLButtonElement>(null);
   const addButtonRef = useRef<HTMLButtonElement>(null);
+  const addUntaggedButtonRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     const handleKeyPress = (event: KeyboardEvent) => {
-      if (!(event.key === REPLACE_TAG_SHORTCUT || event.key === ADD_TAG_SHORTCUT) ||
+      if (
         event.target instanceof HTMLInputElement ||
-        event.target instanceof HTMLTextAreaElement) {
+        event.target instanceof HTMLTextAreaElement
+      ) {
         return;
       }
 
-      if (event.key === REPLACE_TAG_SHORTCUT) {
-        if (!event.metaKey) {
-          event.preventDefault();
-          event.stopPropagation();
-          const button = replaceButtonRef.current;
-          if (button instanceof HTMLButtonElement) {
-            button.click();
-          }
-        }
+      const key = event.key.toLowerCase();
+
+      if (key === REPLACE_TAG_SHORTCUT && !event.metaKey) {
+        event.preventDefault();
+        event.stopPropagation();
+        replaceButtonRef.current?.click();
+        return;
       }
 
-      if (event.key === ADD_TAG_SHORTCUT && !event.metaKey && !event.shiftKey) {
-        const button = addButtonRef.current;
-        if (button instanceof HTMLButtonElement) {
-          button.click();
-        }
+      if (key === ADD_UNTAGGED_TAG_SHORTCUT && event.shiftKey && !event.metaKey) {
+        event.preventDefault();
+        event.stopPropagation();
+        addUntaggedButtonRef.current?.click();
+        return;
+      }
+
+      if (key === ADD_TAG_SHORTCUT && !event.metaKey && !event.shiftKey) {
+        addButtonRef.current?.click();
       }
     };
     // Add event listener to document
@@ -364,6 +374,67 @@ export default function AnnotationTaskTags({
                       onReplaceTag={async (_, newTag) => {
                         close();
                         await handleTagReplaceRemove(null, newTag);
+                      }}
+                    />
+                  </PopoverPanel>
+                </>
+              );
+            }}
+          </Popover>
+          <div className="h-4 w-px bg-stone-200 dark:bg-stone-600 mx-2" />
+          <Popover as="div" className="relative inline-block text-left">
+            {({ close }) => {
+              return (
+                <>
+                  <div className="group relative">
+                    <PopoverButton as="div"
+                      className={`
+              inline-flex items-center justify-center text-sm font-medium
+              text-info-600 hover:text-info-700
+            `}
+                    >
+                      <Button
+                        ref={addUntaggedButtonRef}
+                        mode="text"
+                        variant="info"
+                        type="button"
+                        autoFocus={false}
+                      >
+                        Add untagged
+                      </Button>
+                    </PopoverButton>
+                    <div
+                      className="
+              opacity-0 scale-95 group-hover:opacity-100 group-hover:scale-100
+              transition duration-100 ease-out
+              pointer-events-none
+              absolute top-full left-1/2 -translate-x-1/2 mt-2 
+              rounded p-2 shadow-lg 
+              bg-stone-50 dark:bg-stone-700 
+              text-stone-600 dark:text-stone-400 
+              text-sm
+              z-50 whitespace-nowrap
+            "
+                    >
+                      <div className="inline-flex gap-2 items-center">
+                        Add tag to untagged sound event annotations
+                        <div className="text-xs">
+                          <KeyboardKey code={`${getSpecialKeyLabel("Shift")} ${ADD_UNTAGGED_TAG_SHORTCUT}`} />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  <PopoverPanel
+                    unmount
+                    onMouseDown={(e) => e.preventDefault()}
+                    className="absolute right-0 mt-2 w-96 divide-y divide-stone-100 rounded-md bg-stone-50 dark:bg-stone-700 border border-stone-200 dark:border-stone-500 shadow-md dark:shadow-stone-800 ring-1 ring-stone-900 ring-opacity-5 z-50 origin-top-right transition transform data-[closed]:scale-95 data-[closed]:opacity-0 data-[enter]:duration-100 data-[leave]:duration-75 data-[enter]:ease-out data-[leave]:ease-in"
+                  >
+                    <TagAddPanel
+                      title="Select tag to add to untagged sound events"
+                      placeholder="Search tag to add..."
+                      onReplaceTag={async (_, newTag) => {
+                        close();
+                        await onAddTagToUntaggedSoundEventAnnotations?.(newTag);
                       }}
                     />
                   </PopoverPanel>

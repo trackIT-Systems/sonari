@@ -480,6 +480,28 @@ export default function AnnotateTasks({
     [displayedSoundEventAnnotations, activeRemoveTagFromSoundEventAnnotation, activeAddTagToSoundEventAnnotation]
   );
 
+  const handleAddTagToUntaggedSoundEventAnnotations = useCallback(
+    async (newTag: Tag) => {
+      if (!displayedSoundEventAnnotations.length || !activeAddTagToSoundEventAnnotation) {
+        return;
+      }
+
+      const untagged = displayedSoundEventAnnotations.filter(
+        (soundEventAnnotation) => !soundEventAnnotation.tags?.length,
+      );
+
+      await Promise.all(
+        untagged.map((soundEventAnnotation) =>
+          activeAddTagToSoundEventAnnotation({
+            soundEventAnnotation,
+            tag: newTag,
+          }),
+        ),
+      );
+    },
+    [displayedSoundEventAnnotations, activeAddTagToSoundEventAnnotation],
+  );
+
   const menuRef = useRef<HTMLDivElement>(null);
 
   if (tasks.isLoading) {
@@ -635,6 +657,7 @@ export default function AnnotateTasks({
                 <AnnotationTaskTags
                   annotationTask={displayAnnotationTask}
                   onReplaceTagInSoundEventAnnotations={handleReplaceTagInSoundEventAnnotations}
+                  onAddTagToUntaggedSoundEventAnnotations={handleAddTagToUntaggedSoundEventAnnotations}
                   selectedSoundEventAnnotation={selectedSoundEventAnnotation}
                   tagVisibility={tagVisibility}
                 />
@@ -666,6 +689,7 @@ export default function AnnotateTasks({
                 <AnnotationTaskTags
                   annotationTask={displayAnnotationTask!}
                   onReplaceTagInSoundEventAnnotations={handleReplaceTagInSoundEventAnnotations}
+                  onAddTagToUntaggedSoundEventAnnotations={handleAddTagToUntaggedSoundEventAnnotations}
                   selectedSoundEventAnnotation={selectedSoundEventAnnotation}
                   tagVisibility={tagVisibility}
                 />

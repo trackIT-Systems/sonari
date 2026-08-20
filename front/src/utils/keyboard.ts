@@ -79,6 +79,7 @@ export const SELECT_SOUND_EVENT_ANNOTATION_SHORTCUT = "s";
 export const DELETE_SOUND_EVENT_ANNOTATION_SHORTCUT = "x";
 
 export const ADD_TAG_SHORTCUT = "a";
+export const ADD_UNTAGGED_TAG_SHORTCUT = "a";
 export const REPLACE_TAG_SHORTCUT = "r";
 export const DELETE_TAG_SHORTCUT = "d";
 
@@ -377,6 +378,11 @@ export const TAG_HANDLING_SHORTCUTS: KeyShortcut[] = [
         label: "Add sound event tag(s)",
         shortcut: ADD_TAG_SHORTCUT,
         description: "Add a tag to all or the selected sound events",
+    },
+    {
+        label: "Add tag to untagged sound events",
+        shortcut: `${getSpecialKeyLabel("Shift")} ${ADD_UNTAGGED_TAG_SHORTCUT}`,
+        description: "Add a tag only to sound event annotations that currently have no tags",
     },
 ]
 
