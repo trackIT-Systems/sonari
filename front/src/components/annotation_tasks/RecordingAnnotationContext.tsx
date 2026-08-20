@@ -39,20 +39,21 @@ const RecordingAnnotationContext = memo(function RecordingAnnotationContext({
   const displayName = truncateFilename(baseName);
   const isTruncated = baseName !== displayName;
 
-  const { downloadURL } = useRecording({
+  const { download } = useRecording({
     id: recording.id,
     recording,
   });
 
   const filenameLink = (
-    <a
+    <button
+      type="button"
       className="focus:ring-4 focus:ring-emerald-500/50 focus:outline-none text-stone-500 stroke-stone-500 hover:stroke-stone-800 dark:hover:stroke-stone-300 disabled:stroke-stone-500 dark:disabled:stroke-stone-500 p-0 font-medium bg-transparent hover:underline hover:decoration-solid hover:decoration-2 hover:underline-offset-2 hover:font-extrabold disabled:no-underline disabled:font-medium stroke-2 hover:stroke-4 disabled:stroke-1 group flex min-w-0 max-w-[70ch] flex-row items-center truncate rounded-lg text-center text-sm"
-      href={downloadURL || ""}
-      target="_blank"
-      download
+      onClick={() => {
+        void download();
+      }}
     >
       {displayName}
-    </a>
+    </button>
   );
 
   return (

@@ -1,8 +1,9 @@
 import { type AxiosError } from "axios";
-import { useMemo } from "react";
+import { useCallback } from "react";
 
 import api from "@/app/api";
 import useObject from "@/hooks/utils/useObject";
+import { useExportDownload } from "@/hooks/useExportDownload";
 
 import type { Recording } from "@/types";
 
@@ -83,10 +84,23 @@ export default function useRecording({
     onSuccess: onDelete,
   });
 
-  const downloadURL = useMemo(() => {
-    if (query.data == null) return null;
-    return api.audio.getDownloadUrl({ recording: query.data });
-  }, [query.data]);
+  const { downloadFile } = useExportDownload();
+
+  const download = useCallback(async () => {
+    if (query.data == null) {
+      return;
+    }
+
+    try {
+      const { blob, filename } = await api.audio.downloadRecording({
+        recording: query.data,
+      });
+      downloadFile(blob, filename);
+    } catch (error) {
+      console.error("Recording download failed:", error);
+      onError?.(error as AxiosError);
+    }
+  }, [query.data, downloadFile, onError]);
 
   return {
     ...query,
@@ -98,6 +112,6 @@ export default function useRecording({
     updateFeature,
     delete: deleteRecording,
     set,
-    downloadURL,
+    download,
   } as const;
 }

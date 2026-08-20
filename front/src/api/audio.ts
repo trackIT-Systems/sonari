@@ -1,4 +1,4 @@
-import { AxiosInstance } from "axios";
+import { AxiosInstance, type AxiosResponse } from "axios";
 import { z } from "zod";
 
 import type { Recording } from "@/types";
@@ -114,8 +114,67 @@ export function registerAudioAPI(
     return `${instance.defaults.baseURL}${endpoints.download}?${params}`;
   }
 
+  function extractFilenameFromResponse(
+    response: AxiosResponse,
+    defaultFilename: string,
+  ): string {
+    const contentDisposition = response.headers["content-disposition"];
+    if (typeof contentDisposition === "string") {
+      const filenameMatch = contentDisposition.match(/filename="?(.+)"?/i);
+      if (filenameMatch) {
+        return filenameMatch[1];
+      }
+    }
+    return defaultFilename;
+  }
+
+  async function downloadRecording({
+    recording,
+    segment,
+    parameters = DEFAULT_AUDIO_PARAMETERS,
+  }: {
+    recording: Recording;
+    segment?: Interval;
+    parameters?: AudioParameters;
+  }): Promise<{ blob: Blob; filename: string }> {
+    const parsed_params = AudioParametersSchema.parse(parameters);
+
+    if (segment != null) {
+      segment = IntervalSchema.parse(segment);
+    }
+
+    const query = {
+      recording_id: recording.id,
+      start_time: segment?.min,
+      end_time: segment?.max,
+      ...parsed_params,
+    };
+
+    const params = new URLSearchParams(
+      Object.fromEntries(
+        Object.entries(query)
+          .filter(([_, value]) => value != null)
+          .map(([key, value]) => [key, value?.toString() || ""]),
+      ),
+    );
+
+    const response = await instance.get(`${endpoints.download}?${params}`, {
+      responseType: "blob",
+    });
+
+    const defaultFilename =
+      recording.path.split(/[/\\]/).pop() ?? `recording-${recording.id}.wav`;
+    const filename = extractFilenameFromResponse(response, defaultFilename);
+    const blob = new Blob([response.data], {
+      type: response.headers["content-type"] || "application/octet-stream",
+    });
+
+    return { blob, filename };
+  }
+
   return {
     getDownloadUrl,
     getStreamUrl,
+    downloadRecording,
   } as const;
 }
