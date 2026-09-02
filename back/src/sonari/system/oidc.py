@@ -271,27 +271,27 @@ async def get_or_create_user(
 
 
 def _check_tenant_authorization(oidc_user: OIDCUser, domain: str) -> None:
-    """Check if user is authorized for the tenant domain.
+    """Authorize against full-tenant, Sonari-scoped, or global staff/admin groups.
 
-    Raises HTTPException 403 if user is not in tenant_{domain} ts_admin or ts_staff group.
+    Raises HTTPException 403 if the user is not in tenant_{domain},
+    tenant_{domain}_sonari, ts_admin, or ts_staff.
     """
-    if not oidc_user.groups:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
+    allowed = {f"tenant_{domain}", f"tenant_{domain}_sonari", "ts_admin", "ts_staff"}
+    user_groups = oidc_user.groups or ()
+    if not allowed.intersection(user_groups):
+        logger.warning(
+            "Tenant denied for %s on DOMAIN=%r groups=%r (need one of %r)",
+            oidc_user.preferred_username,
+            domain,
+            user_groups,
+            sorted(allowed),
         )
-
-    required_group = f"tenant_{domain}"
-    admin_group = "ts_admin"
-    staff_group = "ts_staff"
-
-    if (
-        required_group not in oidc_user.groups
-        and admin_group not in oidc_user.groups
-        and staff_group not in oidc_user.groups
-    ):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail=f"User is not authorized for tenant '{domain}'",
+            detail=(
+                f"User is not authorized for tenant '{domain}'. "
+                f"Required one of: {', '.join(sorted(allowed))}"
+            ),
         )
 
 

@@ -6,7 +6,8 @@ import pytest
 from fastapi import HTTPException
 from fastapi.security import HTTPAuthorizationCredentials
 
-from sonari.system.oidc import verify_oidc_token_credentials
+from sonari.system.oidc import _check_tenant_authorization, verify_oidc_token_credentials
+from sonari.system.oidc import OIDCUser
 from sonari.system.settings import Settings
 
 
@@ -66,3 +67,32 @@ def test_settings_domain_none_oidc_fields():
     settings = Settings(domain=None, dev=False, db_name="test.db")
     assert settings.oidc_client_id == "localhost/sonari"
     assert settings.oidc_application == "localhost-sonari"
+
+
+@pytest.mark.parametrize(
+    "groups",
+    [
+        ["tenant_example.trackit-system.de"],
+        ["tenant_example.trackit-system.de_sonari"],
+        ["ts_admin"],
+        ["ts_staff"],
+    ],
+)
+def test_check_tenant_authorization_allows_expected_groups(groups):
+    domain = "example.trackit-system.de"
+    _check_tenant_authorization(OIDCUser(sub="u1", preferred_username="alice", groups=groups), domain)
+
+
+@pytest.mark.parametrize(
+    "groups",
+    [
+        [],
+        ["random_group"],
+        ["tenant_other.trackit-system.de_sonari"],
+    ],
+)
+def test_check_tenant_authorization_rejects_unauthorized_groups(groups):
+    domain = "example.trackit-system.de"
+    with pytest.raises(HTTPException) as exc_info:
+        _check_tenant_authorization(OIDCUser(sub="u1", preferred_username="alice", groups=groups), domain)
+    assert exc_info.value.status_code == 403
