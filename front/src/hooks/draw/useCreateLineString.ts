@@ -2,17 +2,43 @@ import { useCallback, useEffect, useState } from "react";
 
 import drawGeometry from "@/draw/geometry";
 import { DEFAULT_LINESTRING_STYLE } from "@/draw/linestring";
+import {
+  buildTwoPointLabelSpecs,
+  drawMeasurementLabels,
+  drawSinglePointLabel,
+} from "@/draw/measurementLabels";
 import useWindowMotions from "@/hooks/window/useWindowMotions";
 import { scaleGeometryToWindow } from "@/utils/geometry";
 
 import type { BorderStyle } from "@/draw/styles";
 import type {
   Coordinates,
-  Dimensions,
   LineString,
   Position,
   SpectrogramWindow,
 } from "@/types";
+
+function formatPoint(time: number, freq: number) {
+  return `${Math.round(time * 1000)}ms, ${Math.round(freq / 1000)}kHz`;
+}
+
+function formatDelta(time1: number, freq1: number, time2: number, freq2: number) {
+  const deltaTime = Math.round(Math.abs(time2 - time1) * 1000);
+  const deltaFreq = Math.round(Math.abs((freq2 - freq1) / 1000));
+  return `Δt: ${deltaTime}ms, Δf: ${deltaFreq}kHz`;
+}
+
+function drawCrosshair(ctx: CanvasRenderingContext2D, x: number, y: number) {
+  const markerSize = 5;
+  ctx.strokeStyle = "white";
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(x - markerSize, y - markerSize);
+  ctx.lineTo(x + markerSize, y + markerSize);
+  ctx.moveTo(x + markerSize, y - markerSize);
+  ctx.lineTo(x - markerSize, y + markerSize);
+  ctx.stroke();
+}
 
 export default function useCreateLineString({
   window,
@@ -117,164 +143,29 @@ export default function useCreateLineString({
     onMoveEnd: handleMoveEnd,
   });
 
-  // Create a drawing function for the bbox
   const draw = useCallback(
     (ctx: CanvasRenderingContext2D) => {
       if (!enabled) return;
 
+      let scaledCoords: Coordinates[] = [];
       if (coordinates != null) {
         const geometry: LineString = { type: "LineString", coordinates };
         const scaled = scaleGeometryToWindow(geometry, window);
         drawGeometry(ctx, scaled, style);
-        
-        // Helper function to draw text with semi-transparent background
-        const drawTextWithBackground = (
-          text: string, 
-          x: number, 
-          y: number, 
-          align: CanvasTextAlign = 'center',
-          baseline: CanvasTextBaseline = 'middle'
-        ) => {
-          ctx.font = '12px sans-serif';
-          ctx.textAlign = align;
-          ctx.textBaseline = baseline;
-          
-          // Measure text for background
-          const metrics = ctx.measureText(text);
-          const padding = 4;
-          let bgX: number;
-          
-          if (align === 'center') {
-            bgX = x - metrics.width / 2 - padding;
-          } else if (align === 'right') {
-            bgX = x - metrics.width - padding;
-          } else { // left
-            bgX = x - padding;
-          }
-          
-          let bgY: number;
-          if (baseline === 'middle') {
-            bgY = y - 8; // Approximate text height/2 + padding
-          } else if (baseline === 'bottom') {
-            bgY = y - 16;
-          } else { // top
-            bgY = y;
-          }
-          
-          const bgWidth = metrics.width + padding * 2;
-          const bgHeight = 16;
-          
-          // Draw semi-transparent background
-          ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
-          ctx.fillRect(bgX, bgY, bgWidth, bgHeight);
-          
-          // Draw border
-          ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
-          ctx.lineWidth = 1;
-          ctx.strokeRect(bgX, bgY, bgWidth, bgHeight);
-          
-          // Draw text
-          ctx.fillStyle = 'white';
-          ctx.fillText(text, x, y);
-        };
-
-        // Draw crosshair markers at measurement points
-        scaled.coordinates.forEach(([x, y]) => {
-          const markerSize = 5;
-          ctx.strokeStyle = 'white';
-          ctx.lineWidth = 2;
-          ctx.beginPath();
-          ctx.moveTo(x - markerSize, y - markerSize);
-          ctx.lineTo(x + markerSize, y + markerSize);
-          ctx.moveTo(x + markerSize, y - markerSize);
-          ctx.lineTo(x - markerSize, y + markerSize);
-          ctx.stroke();
+        scaledCoords = scaled.coordinates;
+        scaledCoords.forEach(([x, y]) => {
+          drawCrosshair(ctx, x, y);
         });
-
-        // For two-point measurements, show delta prominently
-        if (scaled.coordinates.length === 2) {
-          const [x1, y1] = scaled.coordinates[0];
-          const [x2, y2] = scaled.coordinates[1];
-          
-          // Calculate deltas
-          const originalCoord1 = coordinates[0];
-          const originalCoord2 = coordinates[1];
-          const deltaTime = Math.round(Math.abs(originalCoord2[0] - originalCoord1[0]) * 1000);
-          const deltaFreq = Math.round(Math.abs((originalCoord2[1] - originalCoord1[1]) / 1000));
-          
-          // Position delta label prominently, offset from the line
-          const midX = (x1 + x2) / 2;
-          const midY = (y1 + y2) / 2;
-          
-          // Offset perpendicular to the line direction
-          const lineAngle = Math.atan2(y2 - y1, x2 - x1);
-          const perpAngle = lineAngle + Math.PI / 2;
-          const offsetDistance = 25; // Offset away from line
-          
-          const labelX = midX + Math.cos(perpAngle) * offsetDistance;
-          const labelY = midY + Math.sin(perpAngle) * offsetDistance;
-          
-          // Draw delta label with background for better visibility
-          const deltaText = `Δt: ${deltaTime}ms, Δf: ${deltaFreq}kHz`;
-          ctx.font = '13px sans-serif';
-          drawTextWithBackground(deltaText, labelX, labelY, 'center', 'middle');
-          
-          // Draw coordinate values at the edges if there's room
-          const edgeDistance = Math.min(x1, ctx.canvas.width - x2, y1, ctx.canvas.height - y2);
-          if (edgeDistance > 60) {
-            const time1 = Math.round(originalCoord1[0] * 1000);
-            const freq1 = Math.round(originalCoord1[1] / 1000);
-            const time2 = Math.round(originalCoord2[0] * 1000);
-            const freq2 = Math.round(originalCoord2[1] / 1000);
-            
-            // Draw start coordinate
-            const text1 = `${time1}ms, ${freq1}kHz`;
-            ctx.font = '11px sans-serif';
-            drawTextWithBackground(text1, x1 - 60, y1 - 10, 'left', 'bottom');
-            
-            // Draw end coordinate
-            const text2 = `${time2}ms, ${freq2}kHz`;
-            drawTextWithBackground(text2, x2 + 10, y2 + 15, 'left', 'bottom');
-          }
-        }
       }
 
+      let vertexXY: Coordinates | null = null;
       if (vertex != null) {
         const scaledVertex = scaleGeometryToWindow(
           { type: "Point", coordinates: [vertex.time, vertex.freq] },
           window,
         );
         drawGeometry(ctx, scaledVertex, style);
-        
-        // Draw coordinates for the vertex being dragged
-        const [x, y] = scaledVertex.coordinates;
-        const timeValue = Math.round(vertex.time * 1000);
-        const freqValue = Math.round(vertex.freq / 1000);
-        const text = `${timeValue}ms, ${freqValue}kHz`;
-        
-        // Draw text with semi-transparent background
-        ctx.font = '12px sans-serif';
-        const metrics = ctx.measureText(text);
-        const padding = 4;
-        const bgX = x + 8 - padding;
-        const bgY = y - 3 - 16; // y - 3 is baseline bottom, subtract text height
-        const bgWidth = metrics.width + padding * 2;
-        const bgHeight = 16;
-        
-        // Draw semi-transparent background
-        ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
-        ctx.fillRect(bgX, bgY, bgWidth, bgHeight);
-        
-        // Draw border
-        ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
-        ctx.lineWidth = 1;
-        ctx.strokeRect(bgX, bgY, bgWidth, bgHeight);
-        
-        // Draw text
-        ctx.textAlign = 'left';
-        ctx.textBaseline = 'bottom';
-        ctx.fillStyle = 'white';
-        ctx.fillText(text, x + 8, y - 3);
+        vertexXY = scaledVertex.coordinates;
       }
 
       if (coordinates != null && vertex != null && coordinates.length > 0) {
@@ -285,6 +176,72 @@ export default function useCreateLineString({
         };
         const scaled = scaleGeometryToWindow(geometry, window);
         drawGeometry(ctx, scaled, style);
+      }
+
+      const drawTwoPointLabels = (
+        start: { x: number; y: number; time: number; freq: number },
+        end: { x: number; y: number; time: number; freq: number },
+      ) => {
+        const specs = buildTwoPointLabelSpecs(
+          ctx,
+          { x: start.x, y: start.y, text: formatPoint(start.time, start.freq) },
+          { x: end.x, y: end.y, text: formatPoint(end.time, end.freq) },
+          formatDelta(start.time, start.freq, end.time, end.freq),
+        );
+        drawMeasurementLabels(ctx, specs);
+      };
+
+      if (
+        vertex != null &&
+        vertexXY != null &&
+        coordinates != null &&
+        coordinates.length > 0 &&
+        scaledCoords.length > 0
+      ) {
+        const last = coordinates[coordinates.length - 1];
+        const lastScaled = scaledCoords[scaledCoords.length - 1];
+        drawTwoPointLabels(
+          { x: lastScaled[0], y: lastScaled[1], time: last[0], freq: last[1] },
+          { x: vertexXY[0], y: vertexXY[1], time: vertex.time, freq: vertex.freq },
+        );
+        return;
+      }
+
+      if (coordinates != null && coordinates.length >= 2 && scaledCoords.length >= 2) {
+        drawTwoPointLabels(
+          {
+            x: scaledCoords[0][0],
+            y: scaledCoords[0][1],
+            time: coordinates[0][0],
+            freq: coordinates[0][1],
+          },
+          {
+            x: scaledCoords[1][0],
+            y: scaledCoords[1][1],
+            time: coordinates[1][0],
+            freq: coordinates[1][1],
+          },
+        );
+        return;
+      }
+
+      if (coordinates != null && coordinates.length === 1 && scaledCoords.length === 1) {
+        drawSinglePointLabel(
+          ctx,
+          scaledCoords[0][0],
+          scaledCoords[0][1],
+          formatPoint(coordinates[0][0], coordinates[0][1]),
+        );
+        return;
+      }
+
+      if (vertex != null && vertexXY != null) {
+        drawSinglePointLabel(
+          ctx,
+          vertexXY[0],
+          vertexXY[1],
+          formatPoint(vertex.time, vertex.freq),
+        );
       }
     },
     [enabled, coordinates, style, window, vertex],

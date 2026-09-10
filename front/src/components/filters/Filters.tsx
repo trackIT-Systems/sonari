@@ -113,16 +113,17 @@ function FloatField({
 }
 
 function FloatEqField({
-  value,
   name,
   onChangeValue,
   onSubmit,
 }: {
   name: string;
-  value: number;
   onChangeValue: (value: number) => void;
   onSubmit: () => void;
 }) {
+  // Keep the typed string so values like "0." and "0.1" are not rounded back to 0.
+  const [inputValue, setInputValue] = useState("");
+
   return (
     <div>
       <label
@@ -133,20 +134,36 @@ function FloatEqField({
       </label>
       <div className="relative rounded-md">
         <input
-          type="number"
-          step={0.01}
-          min={0}
-          max={1.0}
+          type="text"
+          inputMode="decimal"
           id={name}
           name={name}
-          className="block py-1 pr-4 pl-4 w-full rounded-md border-0 ring-1 ring-inset outline-none sm:text-sm sm:leading-6 focus:ring-2 focus:ring-inset focus:ring-emerald-600 bg-stone-50 text-stone-900 ring-stone-300 placeholder:text-stone-400 dark:bg-stone-900 dark:text-stone-300 dark:ring-stone-800"
-          value={value}
+          placeholder="0.10"
+          className="block py-1 pr-14 pl-4 w-full rounded-md border-0 ring-1 ring-inset outline-none sm:text-sm sm:leading-6 focus:ring-2 focus:ring-inset focus:ring-emerald-600 bg-stone-50 text-stone-900 ring-stone-300 placeholder:text-stone-400 dark:bg-stone-900 dark:text-stone-300 dark:ring-stone-800"
+          value={inputValue}
           onKeyDown={(e) => {
             if (e.key === ACCEPT_SHORTCUT) {
               onSubmit();
             }
           }}
-          onChange={(e) => onChangeValue(parseFloat(e.target.value))}
+          onChange={(e) => {
+            const rawValue = e.target.value;
+            if (rawValue !== "" && !/^\d*\.?\d*$/.test(rawValue)) {
+              return;
+            }
+            setInputValue(rawValue);
+
+            const parsed = parseFloat(rawValue);
+            if (Number.isNaN(parsed)) {
+              return;
+            }
+
+            const clamped = Math.min(1, Math.max(0, parsed));
+            if (clamped !== parsed) {
+              setInputValue(String(clamped));
+            }
+            onChangeValue(clamped);
+          }}
         />
         <button
           onClick={onSubmit}
@@ -256,11 +273,14 @@ export function FloatEqFilterFn({
   name: string;
   onChange: (filter: FloatEqFilter) => void;
 }) {
-  const [value, setValue] = useState(0);
+  const [value, setValue] = useState<number | null>(null);
 
   const handleSubmit = useCallback(() => {
+    if (value == null || Number.isNaN(value)) {
+      return;
+    }
     onChange({
-      "eq": value,
+      eq: value,
     });
   }, [onChange, value]);
 
@@ -268,7 +288,6 @@ export function FloatEqFilterFn({
     <div className="flex flex-col gap-2 w-full">
       <FloatEqField
         name={name}
-        value={value}
         onChangeValue={setValue}
         onSubmit={handleSubmit}
       />

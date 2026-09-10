@@ -1,6 +1,11 @@
 import { useCallback, useEffect, useState } from "react";
 
 import { DEFAULT_LINESTRING_STYLE } from "@/draw/linestring";
+import {
+  drawMeasurementLabels,
+  measureMeasurementLabel,
+  type LabelSpec,
+} from "@/draw/measurementLabels";
 import useWindowMotions from "@/hooks/window/useWindowMotions";
 
 import type { BorderStyle } from "@/draw/styles";
@@ -147,21 +152,8 @@ export default function useCreateWaveformMeasurement({
         ctx.stroke();
         ctx.setLineDash([]);
 
-        // Helper function to draw text with outline for better visibility
-        const drawOutlinedText = (text: string, x: number, y: number) => {
-          ctx.font = '12px sans-serif';
-          ctx.textAlign = 'left';
-          ctx.textBaseline = 'bottom';
-          
-          // Draw black outline
-          ctx.strokeStyle = 'black';
-          ctx.lineWidth = 3;
-          ctx.strokeText(text, x, y);
-          
-          // Draw white text on top
-          ctx.fillStyle = 'white';
-          ctx.fillText(text, x, y);
-        };
+        const labelFont = "12px sans-serif";
+        const labelSpecs: LabelSpec[] = [];
 
         // Draw time markers and labels (no frequency)
         coordinates.forEach((coord, index) => {
@@ -176,25 +168,34 @@ export default function useCreateWaveformMeasurement({
           ctx.lineTo(x, height * 0.9);
           ctx.stroke();
           
-          // Draw time label (no frequency information)
-          const timeValue = Math.round(timeCoord * 1000);
-          const text = `${timeValue}ms`;
-          
-          let textY = 20; // Position at top
-          if (index > 0) {
-            textY = height - 10; // Alternate position for second marker
-          }
-          
-          drawOutlinedText(text, x + 5, textY);
+          const text = `${Math.round(timeCoord * 1000)}ms`;
+          const size = measureMeasurementLabel(ctx, text, labelFont);
+          labelSpecs.push({
+            text,
+            font: labelFont,
+            preferredLeft: x + 5,
+            preferredTop: index === 0 ? 6 : height - size.height - 6,
+          });
         });
 
-        // Draw delta time in the middle
+        // Draw delta time in the middle, offset when the span is too narrow
         if (coordinates.length > 1) {
           const deltaTime = Math.round(Math.abs(timeCoords[1] - timeCoords[0]) * 1000);
-          const midX = (minX + maxX) / 2;
           const deltaText = `Δt: ${deltaTime}ms`;
-          drawOutlinedText(deltaText, midX - 30, height / 2);
+          const size = measureMeasurementLabel(ctx, deltaText, labelFont);
+          const span = Math.abs(maxX - minX);
+          const midX = (minX + maxX) / 2;
+          const preferredLeft =
+            span < size.width + 16 ? Math.max(minX, maxX) + 8 : midX - size.width / 2;
+          labelSpecs.push({
+            text: deltaText,
+            font: labelFont,
+            preferredLeft,
+            preferredTop: height / 2 - size.height / 2,
+          });
         }
+
+        drawMeasurementLabels(ctx, labelSpecs);
       }
 
       // Draw current vertex being dragged
@@ -212,22 +213,18 @@ export default function useCreateWaveformMeasurement({
         ctx.stroke();
         ctx.setLineDash([]);
         
-        // Draw time label
-        const timeValue = Math.round(vertex.time * 1000);
-        const text = `${timeValue}ms`;
-        
-        ctx.font = '12px sans-serif';
-        ctx.textAlign = 'left';
-        ctx.textBaseline = 'bottom';
-        
-        // Draw black outline
-        ctx.strokeStyle = 'black';
-        ctx.lineWidth = 3;
-        ctx.strokeText(text, x + 5, 20);
-        
-        // Draw white text on top
-        ctx.fillStyle = 'white';
-        ctx.fillText(text, x + 5, 20);
+        const text = `${Math.round(vertex.time * 1000)}ms`;
+        const labelFont = "12px sans-serif";
+        const size = measureMeasurementLabel(ctx, text, labelFont);
+        // Keep the live cursor label at the bottom so it does not cover the first marker.
+        drawMeasurementLabels(ctx, [
+          {
+            text,
+            font: labelFont,
+            preferredLeft: x + 5,
+            preferredTop: height - size.height - 6,
+          },
+        ]);
       }
     },
     [enabled, coordinates, window, vertex],

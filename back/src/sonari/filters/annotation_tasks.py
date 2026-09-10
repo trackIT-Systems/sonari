@@ -488,13 +488,36 @@ class DayFilter(base.Filter):
 
 
 class SampleFilter(base.Filter):
-    """Subsample tasks."""
+    """Subsample tasks.
+
+    Keeps a stable fraction of matching tasks using a deterministic hash of
+    the task id, so pagination, the task index, and stats all see the same
+    subsample.
+    """
 
     eq: float | None = None
 
+    _SEED = 35039
+    _BUCKETS = 10_000
+
     def filter(self, query: Select) -> Select:
         """Filter the query."""
-        return query
+        if self.eq is None:
+            return query
+
+        fraction = float(self.eq)
+        if fraction <= 0:
+            return query.where(literal(False))
+        if fraction >= 1:
+            return query
+
+        threshold = min(self._BUCKETS, max(1, round(fraction * self._BUCKETS)))
+        # Reduce id first so (id * seed) cannot overflow 32-bit SQL integers.
+        bucket = (
+            (models.AnnotationTask.id % self._BUCKETS) * (self._SEED % self._BUCKETS)
+        ) % self._BUCKETS
+        return query.where(bucket < threshold)
+
 
 class ConfidenceFilter(base.Filter):
     """Filter by confidence.
