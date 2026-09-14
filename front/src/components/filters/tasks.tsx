@@ -145,22 +145,42 @@ const tasksFilterDefs: FilterDef<AnnotationTaskFilter>[] = [
         />
       ));
     },
-    selector: ({ setFilter, filter }) => (
-      <TagFilter 
-        onChange={(tag) => {
-          const currentValue = filter.get("sound_event_annotation_tag");
-          if (currentValue === undefined) {
-            setFilter("sound_event_annotation_tag", [tag]);
-          } else {
-            const newValue = Array.isArray(currentValue)
-              ? [...currentValue, tag]
-              : [currentValue, tag];
-            setFilter("sound_event_annotation_tag", newValue);
-          }
-        }} 
-      />
-    ),
-    description: "Only show tasks containing sound events with specific tags. You can filter for multiple tags. A task containing either of the tags will be shown.",
+    selector: ({ setFilter, filter }) => {
+      const confidence = filter.get("confidence");
+      const hasConfidence =
+        confidence?.gt !== undefined || confidence?.lt !== undefined;
+      return (
+        <div className="flex flex-col gap-2 w-full">
+          {hasConfidence ? (
+            <p className="text-xs text-stone-500 dark:text-stone-400">
+              Confidence is evaluated on the same sound event as each tag.
+            </p>
+          ) : null}
+          <TagFilter
+            onChange={(tag) => {
+              const currentValue = filter.get("sound_event_annotation_tag");
+              if (currentValue === undefined) {
+                setFilter("sound_event_annotation_tag", [tag]);
+              } else {
+                const newValue = Array.isArray(currentValue)
+                  ? [...currentValue, tag]
+                  : [currentValue, tag];
+                setFilter("sound_event_annotation_tag", newValue);
+              }
+            }}
+          />
+        </div>
+      );
+    },
+    description: (filter) => {
+      const confidence = filter.get("confidence");
+      const hasConfidence =
+        confidence?.gt !== undefined || confidence?.lt !== undefined;
+      if (hasConfidence) {
+        return "Only show tasks containing sound events with specific tags. When a confidence range is set, the task must have each selected tag on a sound event in that range.";
+      }
+      return "Only show tasks containing sound events with specific tags. You can filter for multiple tags. A task containing either of the tags will be shown.";
+    },
     icon: (
       <TagIcon className="h-5 w-5 inline-block text-stone-500 mr-1 align-middle" />
     ),
@@ -348,31 +368,44 @@ const tasksFilterDefs: FilterDef<AnnotationTaskFilter>[] = [
   {
     name: "Confidence",
     field: "confidence",
-    selector: ({ setFilter, filter }) => (
-      <FloatFilter
-        name="confidence"
-        showDecimals={true}
-        min={0}
-        max={1}
-        step={0.01}
-        onChange={(val) => {
-          const currentValue = filter.get("confidence") || {};
-          if ('gt' in val) {
-            const newValue = {
-              ...currentValue,
-              gt: val.gt
-            };
-            setFilter("confidence", newValue);
-          } else if ('lt' in val) {
-            const newValue = {
-              ...currentValue,
-              lt: val.lt
-            };
-            setFilter("confidence", newValue);
-          }
-        }}
-      />
-    ),
+    selector: ({ setFilter, filter }) => {
+      const tags = filter.get("sound_event_annotation_tag");
+      const hasTags =
+        tags !== undefined &&
+        (Array.isArray(tags) ? tags.length > 0 : true);
+      return (
+        <div className="flex flex-col gap-2 w-full">
+          {hasTags ? (
+            <p className="text-xs text-stone-500 dark:text-stone-400">
+              Applies to sound events with the selected tags only.
+            </p>
+          ) : null}
+          <FloatFilter
+            name="confidence"
+            showDecimals={true}
+            min={0}
+            max={1}
+            step={0.01}
+            onChange={(val) => {
+              const currentValue = filter.get("confidence") || {};
+              if ("gt" in val) {
+                const newValue = {
+                  ...currentValue,
+                  gt: val.gt,
+                };
+                setFilter("confidence", newValue);
+              } else if ("lt" in val) {
+                const newValue = {
+                  ...currentValue,
+                  lt: val.lt,
+                };
+                setFilter("confidence", newValue);
+              }
+            }}
+          />
+        </div>
+      );
+    },
     render: ({ value, clear, setFilter }) => (
       <>
         {value?.gt !== undefined && (
@@ -399,7 +432,16 @@ const tasksFilterDefs: FilterDef<AnnotationTaskFilter>[] = [
         )}
       </>
     ),
-    description: "Filter by detection confidence. You can set both a minimum and maximum confidence threshold.",
+    description: (filter) => {
+      const tags = filter.get("sound_event_annotation_tag");
+      const hasTags =
+        tags !== undefined &&
+        (Array.isArray(tags) ? tags.length > 0 : true);
+      if (hasTags) {
+        return "Filter by detection confidence on sound events with the selected tags. With multiple tags, every selected tag must have an event in this range.";
+      }
+      return "Filter by detection confidence on any sound event in the task. You can set both a minimum and maximum confidence threshold.";
+    },
     icon: (
       <SpectrogramIcon className="h-5 w-5 inline-block text-stone-500 mr-1 align-middle" />
     ),

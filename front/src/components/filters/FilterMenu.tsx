@@ -14,7 +14,7 @@ import useKeyFilter from "@/hooks/utils/useKeyFilter";
 export type FilterDef<T extends Object> = {
   field: keyof T;
   name: string;
-  description?: string;
+  description?: string | ((filter: Filter<T>) => string);
   icon?: ReactNode;
   selector: ({
     setFilter,
@@ -117,7 +117,9 @@ function FilterPanel<T extends Object>({
       {selectedFilter.description != null ? (
         <div className="mb-4">
           <span className="text-sm dark:text-stone-400 text-stone-600">
-            {selectedFilter.description}
+            {typeof selectedFilter.description === "function"
+              ? selectedFilter.description(filter)
+              : selectedFilter.description}
           </span>
         </div>
       ) : null}

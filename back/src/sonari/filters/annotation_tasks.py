@@ -519,11 +519,71 @@ class SampleFilter(base.Filter):
         return query.where(bucket < threshold)
 
 
+def _confidence_feature_name_clause_for_tag_creator(tag_creator_username):
+    """Pick confidence feature from the user who created the tag (birdedge → species)."""
+    return or_(
+        and_(
+            tag_creator_username == "birdedge",
+            models.SoundEventAnnotationFeature.name.like("species_confidence%"),
+        ),
+        and_(
+            tag_creator_username.is_distinct_from("birdedge"),
+            models.SoundEventAnnotationFeature.name.like("detection_confidence%"),
+        ),
+    )
+
+
+def _sound_event_confidence_exists(
+    gt: float | None,
+    lt: float | None,
+    tag_key: str | None = None,
+    tag_value: str | None = None,
+):
+    """EXISTS: a sound event on this task with confidence in range (optional tag)."""
+    tag_creator_user = models.User.__table__.alias("tag_creator_user")
+
+    subquery = (
+        select(1)
+        .select_from(models.SoundEventAnnotation)
+        .join(
+            models.SoundEventAnnotationFeature,
+            models.SoundEventAnnotation.id == models.SoundEventAnnotationFeature.sound_event_annotation_id,
+        )
+        .join(
+            models.SoundEventAnnotationTag,
+            models.SoundEventAnnotationTag.sound_event_annotation_id == models.SoundEventAnnotation.id,
+        )
+        .join(models.Tag, models.Tag.id == models.SoundEventAnnotationTag.tag_id)
+        .outerjoin(
+            tag_creator_user,
+            tag_creator_user.c.id == models.Tag.created_by_id,
+        )
+        .where(
+            models.SoundEventAnnotation.annotation_task_id == models.AnnotationTask.id,
+            _confidence_feature_name_clause_for_tag_creator(tag_creator_user.c.username),
+        )
+    )
+
+    if tag_key is not None and tag_value is not None:
+        subquery = subquery.where(
+            models.Tag.key == tag_key,
+            models.Tag.value == tag_value,
+        )
+
+    if gt is not None:
+        subquery = subquery.where(models.SoundEventAnnotationFeature.value > gt)
+    if lt is not None:
+        subquery = subquery.where(models.SoundEventAnnotationFeature.value < lt)
+
+    return exists(subquery)
+
+
 class ConfidenceFilter(base.Filter):
-    """Filter by confidence.
-    
-    species_confidence for annotations created by
-    the 'birdedge' user, detection_confidence for all other annotations.
+    """Filter by confidence on tagged sound events.
+
+    species_confidence when the sound event tag was created by birdedge,
+    detection_confidence otherwise. Tag filters optionally restrict which tags
+    must satisfy the range.
     """
 
     gt: float | None = None
@@ -533,48 +593,30 @@ class ConfidenceFilter(base.Filter):
         if self.gt is None and self.lt is None:
             return query
 
-        Recording = models.Recording.__table__.alias("confidence_recording")
+        return query.where(_sound_event_confidence_exists(self.gt, self.lt))
 
-        subquery = (
-            select(1)
-            .select_from(models.SoundEventAnnotation)
-            .join(
-                models.SoundEventAnnotationFeature,
-                models.SoundEventAnnotation.id == models.SoundEventAnnotationFeature.sound_event_annotation_id,
-            )
-            .outerjoin(
-                models.User,
-                models.User.id == models.SoundEventAnnotation.created_by_id,
-            )
-            .where(
-                models.SoundEventAnnotation.recording_id == Recording.c.id,
-                or_(
-                    and_(
-                        models.User.username == "birdedge",
-                        or_(
-                            models.SoundEventAnnotationFeature.name.like("species_confidence%"),
-                            models.SoundEventAnnotationFeature.name.like("detection_confidence%"),
-                        ),
-                    ),
-                    and_(
-                        models.User.username.is_distinct_from("birdedge"),
-                        models.SoundEventAnnotationFeature.name.like("detection_confidence%"),
-                    ),
-                ),
+
+def _apply_tag_and_confidence_filters(
+    query: Select,
+    tag_filter: SoundEventAnnotationTagFilter,
+    confidence_filter: ConfidenceFilter,
+) -> Select:
+    """Require each selected tag on a sound event with confidence in range (AND across tags)."""
+    assert tag_filter.keys is not None and tag_filter.values is not None
+    keys = tag_filter.keys.split(",")
+    values = tag_filter.values.split(",")
+
+    for key, value in zip(keys, values, strict=True):
+        query = query.where(
+            _sound_event_confidence_exists(
+                confidence_filter.gt,
+                confidence_filter.lt,
+                tag_key=key,
+                tag_value=value,
             )
         )
 
-        if self.gt is not None:
-            subquery = subquery.where(models.SoundEventAnnotationFeature.value > self.gt)
-        if self.lt is not None:
-            subquery = subquery.where(models.SoundEventAnnotationFeature.value < self.lt)
-
-        query = query.join(
-            Recording,
-            Recording.c.id == models.AnnotationTask.recording_id,
-        ).where(exists(subquery))
-
-        return query
+    return query
 
 
 class SoundEventAnnotationMinFreqFilter(base.Filter):
@@ -657,7 +699,7 @@ class SoundEventAnnotationMaxFreqFilter(base.Filter):
         return query.where(exists(subquery))
 
 
-AnnotationTaskFilter = base.combine(
+_AnnotationTaskFilterCombined = base.combine(
     SearchRecordingsFilter,
     assigned_to=AssignedToFilter,
     pending=PendingFilter,
@@ -678,3 +720,44 @@ AnnotationTaskFilter = base.combine(
     sound_event_annotation_min_frequency=SoundEventAnnotationMinFreqFilter,
     sound_event_annotation_max_frequency=SoundEventAnnotationMaxFreqFilter,
 )
+
+
+class AnnotationTaskFilter(_AnnotationTaskFilterCombined):
+    """Annotation task filter with correlated tag + confidence when both are set."""
+
+    def filter(self, query: Select) -> Select:
+        filters = self.build_filter_list()
+        tag_filter: SoundEventAnnotationTagFilter | None = None
+        confidence_filter: ConfidenceFilter | None = None
+        other_filters: list[base.Filter] = []
+
+        for filter_ in filters:
+            if isinstance(filter_, SoundEventAnnotationTagFilter):
+                tag_filter = filter_
+            elif isinstance(filter_, ConfidenceFilter):
+                confidence_filter = filter_
+            else:
+                other_filters.append(filter_)
+
+        for filter_ in other_filters:
+            query = filter_.filter(query)
+
+        tag_active = (
+            tag_filter is not None
+            and tag_filter.keys is not None
+            and tag_filter.values is not None
+        )
+        confidence_active = (
+            confidence_filter is not None
+            and (confidence_filter.gt is not None or confidence_filter.lt is not None)
+        )
+
+        if tag_active and confidence_active:
+            query = _apply_tag_and_confidence_filters(query, tag_filter, confidence_filter)
+        else:
+            if tag_filter is not None:
+                query = tag_filter.filter(query)
+            if confidence_filter is not None:
+                query = confidence_filter.filter(query)
+
+        return query
