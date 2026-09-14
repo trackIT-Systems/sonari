@@ -255,71 +255,66 @@ class SearchRecordingsFilter(base.Filter):
         return query.where(Recording.c.path.ilike(term))
 
 
+def _task_has_tag_key_value(key: str, value: str):
+    """Task has this tag on a sound event or as an annotation-task tag."""
+    sound_event_subquery = (
+        select(models.SoundEventAnnotationTag.sound_event_annotation_id)
+        .join(models.Tag, models.Tag.id == models.SoundEventAnnotationTag.tag_id)
+        .where(
+            models.Tag.key == key,
+            models.Tag.value == value,
+        )
+    )
+    sound_event_exists = exists(
+        select(1).where(
+            models.SoundEventAnnotation.annotation_task_id == models.AnnotationTask.id,
+            models.SoundEventAnnotation.id.in_(sound_event_subquery),
+        )
+    )
+    task_tag_exists = exists(
+        select(1)
+        .select_from(models.AnnotationTaskTag)
+        .join(
+            models.Tag,
+            models.Tag.id == models.AnnotationTaskTag.tag_id,
+        )
+        .where(
+            models.Tag.key == key,
+            models.Tag.value == value,
+            models.AnnotationTaskTag.annotation_task_id == models.AnnotationTask.id,
+        )
+    )
+    return or_(sound_event_exists, task_tag_exists)
+
+
 class SoundEventAnnotationTagFilter(base.Filter):
     """Filter for tasks by sound event annotation tag or annotation task tag."""
 
     keys: str | None = None
     values: str | None = None
+    exclude_keys: str | None = None
+    exclude_values: str | None = None
 
     def filter(self, query: Select) -> Select:
         """Filter the query."""
-        if self.keys is None or self.values is None:
-            return query
+        if self.keys is not None and self.values is not None:
+            keys = self.keys.split(",")
+            values = self.values.split(",")
+            include_conditions = [
+                _task_has_tag_key_value(k, v) for k, v in zip(keys, values, strict=True)
+            ]
+            query = query.where(or_(*include_conditions))
 
-        # Split the comma-separated strings into lists
-        keys = self.keys.split(",")
-        values = self.values.split(",")
+        if self.exclude_keys is not None and self.exclude_values is not None:
+            exclude_keys = self.exclude_keys.split(",")
+            exclude_values = self.exclude_values.split(",")
+            exclude_conditions = [
+                _task_has_tag_key_value(k, v)
+                for k, v in zip(exclude_keys, exclude_values, strict=True)
+            ]
+            query = query.where(not_(or_(*exclude_conditions)))
 
-        # Create subqueries for each key-value pair
-        sound_event_subqueries = []
-        task_tag_subqueries = []
-
-        for k, v in zip(keys, values, strict=True):
-            # Sound event annotation subquery
-            sound_event_subquery = (
-                select(models.SoundEventAnnotationTag.sound_event_annotation_id)
-                .join(models.Tag, models.Tag.id == models.SoundEventAnnotationTag.tag_id)
-                .where(
-                    models.Tag.key == k,
-                    models.Tag.value == v,
-                )
-            )
-            sound_event_subqueries.append(sound_event_subquery)
-
-            # Annotation task tag subquery
-            task_tag_subquery = (
-                select(1)
-                .select_from(models.AnnotationTaskTag)
-                .join(
-                    models.Tag,
-                    models.Tag.id == models.AnnotationTaskTag.tag_id,
-                )
-                .where(
-                    models.Tag.key == k,
-                    models.Tag.value == v,
-                    models.AnnotationTaskTag.annotation_task_id == models.AnnotationTask.id,
-                )
-            )
-            task_tag_subqueries.append(task_tag_subquery)
-
-        # Combine sound event conditions with OR
-        sound_event_condition = or_(
-            *(
-                exists(
-                    select(1).where(
-                        models.SoundEventAnnotation.annotation_task_id == models.AnnotationTask.id,
-                        models.SoundEventAnnotation.id.in_(subquery),
-                    )
-                )
-                for subquery in sound_event_subqueries
-            )
-        )
-
-        # Combine annotation task tag conditions with OR
-        task_tag_condition = or_(*(exists(subquery) for subquery in task_tag_subqueries))
-
-        # Return query with combined conditions using OR
-        return query.where(or_(sound_event_condition, task_tag_condition))
+        return query
 
 
 class EmptyFilter(base.Filter):
@@ -619,6 +614,31 @@ def _apply_tag_and_confidence_filters(
     return query
 
 
+def _apply_tag_exclude_and_confidence_filters(
+    query: Select,
+    tag_filter: SoundEventAnnotationTagFilter,
+    confidence_filter: ConfidenceFilter,
+) -> Select:
+    """Exclude tasks with a tagged sound event whose confidence is in range (per excluded tag)."""
+    assert tag_filter.exclude_keys is not None and tag_filter.exclude_values is not None
+    keys = tag_filter.exclude_keys.split(",")
+    values = tag_filter.exclude_values.split(",")
+
+    for key, value in zip(keys, values, strict=True):
+        query = query.where(
+            not_(
+                _sound_event_confidence_exists(
+                    confidence_filter.gt,
+                    confidence_filter.lt,
+                    tag_key=key,
+                    tag_value=value,
+                )
+            )
+        )
+
+    return query
+
+
 class SoundEventAnnotationMinFreqFilter(base.Filter):
     """Filter by lower frequency.
 
@@ -742,22 +762,33 @@ class AnnotationTaskFilter(_AnnotationTaskFilterCombined):
         for filter_ in other_filters:
             query = filter_.filter(query)
 
-        tag_active = (
+        include_tags_active = (
             tag_filter is not None
             and tag_filter.keys is not None
             and tag_filter.values is not None
+        )
+        exclude_tags_active = (
+            tag_filter is not None
+            and tag_filter.exclude_keys is not None
+            and tag_filter.exclude_values is not None
         )
         confidence_active = (
             confidence_filter is not None
             and (confidence_filter.gt is not None or confidence_filter.lt is not None)
         )
 
-        if tag_active and confidence_active:
-            query = _apply_tag_and_confidence_filters(query, tag_filter, confidence_filter)
-        else:
-            if tag_filter is not None:
-                query = tag_filter.filter(query)
-            if confidence_filter is not None:
+        if confidence_active:
+            if include_tags_active:
+                query = _apply_tag_and_confidence_filters(
+                    query, tag_filter, confidence_filter
+                )
+            elif not exclude_tags_active:
                 query = confidence_filter.filter(query)
+            if exclude_tags_active:
+                query = _apply_tag_exclude_and_confidence_filters(
+                    query, tag_filter, confidence_filter
+                )
+        elif tag_filter is not None:
+            query = tag_filter.filter(query)
 
         return query

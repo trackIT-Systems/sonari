@@ -26,14 +26,11 @@ export default function ExportTaskFilterSelection({
       <div>
         <H3 className="text-lg">Task filters</H3>
         <p className="text-stone-500">
-          Same filters as the annotation task list. All sound events on matching tasks are included in the dump.
+          All sound events on matching tasks are included in the dump.
         </p>
       </div>
       <div className="space-y-4">
         <div>
-          <div className="mb-2 text-stone-700 dark:text-stone-300 underline underline-offset-2 decoration-amber-500 decoration-2">
-            Apply filter
-          </div>
           <div className="relative z-20 flex flex-wrap items-center gap-2">
             <FilterPopover
               filter={filter}

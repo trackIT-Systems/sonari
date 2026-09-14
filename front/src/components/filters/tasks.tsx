@@ -1,3 +1,5 @@
+import { useState } from "react";
+
 import FilterBadge, { NumberEqFilterBadge, NumberFilterBadge } from "@/components/filters/FilterBadge";
 import Button from "@/components/Button";
 import { type FilterDef } from "@/components/filters/FilterMenu";
@@ -26,7 +28,68 @@ import {
 } from "@/components/icons";
 
 import type { AnnotationTaskFilter } from "@/api/annotation_tasks";
+import type { Filter } from "@/hooks/utils/useFilter";
+import type { Tag } from "@/types";
 import { DateRangeFilter, formatDate, formatTime } from "./DateRangeFilter";
+
+type TaskFilterTag = Tag & { exclude?: boolean };
+
+function soundEventTagEntryKey(tag: TaskFilterTag) {
+  return `${tag.key}:${tag.value}:${tag.exclude ? "exclude" : "include"}`;
+}
+
+function SoundEventAnnotationTagSelector({
+  filter,
+  setFilter,
+}: {
+  filter: Filter<AnnotationTaskFilter>;
+  setFilter: Filter<AnnotationTaskFilter>["set"];
+}) {
+  const [includeMode, setIncludeMode] = useState(true);
+  const confidence = filter.get("confidence");
+  const hasConfidence =
+    confidence?.gt !== undefined || confidence?.lt !== undefined;
+
+  return (
+    <div className="flex flex-col gap-2 w-full">
+      <BooleanFilter
+        value={includeMode}
+        onChange={(include) => setIncludeMode(include)}
+      />
+      {hasConfidence ? (
+        <p className="text-xs text-stone-500 dark:text-stone-400">
+          Confidence is evaluated on the same sound event as each included or
+          excluded tag.
+        </p>
+      ) : null}
+      <TagFilter
+        onChange={(tag) => {
+          const entry: TaskFilterTag = {
+            ...tag,
+            exclude: includeMode ? undefined : true,
+          };
+          const currentValue = filter.get("sound_event_annotation_tag");
+          const list: TaskFilterTag[] =
+            currentValue === undefined
+              ? []
+              : Array.isArray(currentValue)
+                ? [...currentValue]
+                : [currentValue];
+          const duplicate = list.some(
+            (t) =>
+              t.key === entry.key &&
+              t.value === entry.value &&
+              !!t.exclude === !!entry.exclude,
+          );
+          if (duplicate) {
+            return;
+          }
+          setFilter("sound_event_annotation_tag", [...list, entry]);
+        }}
+      />
+    </div>
+  );
+}
 
 const tasksFilterDefs: FilterDef<AnnotationTaskFilter>[] = [
   {
@@ -122,16 +185,22 @@ const tasksFilterDefs: FilterDef<AnnotationTaskFilter>[] = [
     field: "sound_event_annotation_tag",
     name: "Tag",
     render: ({ value, clear, setFilter }) => {
-      const tags = Array.isArray(value) ? value : [value];
-      return tags.map(tag => (
+      const tags = (Array.isArray(value) ? value : [value]) as TaskFilterTag[];
+      return tags.map((tag) => (
         <FilterBadge
-          key={`${tag.key}:${tag.value}`}
+          key={soundEventTagEntryKey(tag)}
           field="Tag"
+          operation={tag.exclude ? "Exclude" : "Include"}
           value={`${tag.key}: ${tag.value}`}
           onRemove={() => {
             if (Array.isArray(value)) {
-              const newValue = value.filter(t => 
-                !(t.key === tag.key && t.value === tag.value)
+              const newValue = value.filter(
+                (t) =>
+                  !(
+                    t.key === tag.key &&
+                    t.value === tag.value &&
+                    !!t.exclude === !!tag.exclude
+                  ),
               );
               if (newValue.length === 0) {
                 clear();
@@ -145,41 +214,17 @@ const tasksFilterDefs: FilterDef<AnnotationTaskFilter>[] = [
         />
       ));
     },
-    selector: ({ setFilter, filter }) => {
-      const confidence = filter.get("confidence");
-      const hasConfidence =
-        confidence?.gt !== undefined || confidence?.lt !== undefined;
-      return (
-        <div className="flex flex-col gap-2 w-full">
-          {hasConfidence ? (
-            <p className="text-xs text-stone-500 dark:text-stone-400">
-              Confidence is evaluated on the same sound event as each tag.
-            </p>
-          ) : null}
-          <TagFilter
-            onChange={(tag) => {
-              const currentValue = filter.get("sound_event_annotation_tag");
-              if (currentValue === undefined) {
-                setFilter("sound_event_annotation_tag", [tag]);
-              } else {
-                const newValue = Array.isArray(currentValue)
-                  ? [...currentValue, tag]
-                  : [currentValue, tag];
-                setFilter("sound_event_annotation_tag", newValue);
-              }
-            }}
-          />
-        </div>
-      );
-    },
+    selector: ({ setFilter, filter }) => (
+      <SoundEventAnnotationTagSelector filter={filter} setFilter={setFilter} />
+    ),
     description: (filter) => {
       const confidence = filter.get("confidence");
       const hasConfidence =
         confidence?.gt !== undefined || confidence?.lt !== undefined;
-      if (hasConfidence) {
-        return "Only show tasks containing sound events with specific tags. When a confidence range is set, the task must have each selected tag on a sound event in that range.";
-      }
-      return "Only show tasks containing sound events with specific tags. You can filter for multiple tags. A task containing either of the tags will be shown.";
+      const confidenceNote = hasConfidence
+        ? " With a confidence range, each included tag must appear on a sound event in that range; excluded tags use the same correlation."
+        : "";
+      return `Include tags: show tasks with any listed tag. Exclude tags: hide tasks that have any listed tag.${confidenceNote}`;
     },
     icon: (
       <TagIcon className="h-5 w-5 inline-block text-stone-500 mr-1 align-middle" />

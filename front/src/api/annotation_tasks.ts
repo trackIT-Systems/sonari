@@ -59,6 +59,11 @@ const AnnotationTaskIndexPageSchema = Page(AnnotationTaskIndexSchema);
 
 export type AnnotationTaskIndexPage = z.infer<typeof AnnotationTaskIndexPageSchema>;
 
+/** Tag entry in task filters; `exclude` hides tasks with that tag. */
+const SoundEventAnnotationTaskFilterTagSchema = TagSchema.extend({
+  exclude: z.boolean().optional(),
+});
+
 const AnnotationTaskFilterSchema = z.object({
   dataset: z.union([
     DatasetSchema,
@@ -67,8 +72,8 @@ const AnnotationTaskFilterSchema = z.object({
   annotation_project: AnnotationProjectSchema.optional(),
   annotation_task_tag: TagSchema.optional(),
   sound_event_annotation_tag: z.union([
-    TagSchema,
-    z.array(TagSchema)
+    SoundEventAnnotationTaskFilterTagSchema,
+    z.array(SoundEventAnnotationTaskFilterTagSchema),
   ]).optional(),
   empty: z.boolean().optional(),
   pending: z.boolean().optional(),
@@ -163,10 +168,39 @@ export type AnnotationTaskFilter = z.input<typeof AnnotationTaskFilterSchema>;
 
 type ParsedAnnotationTaskFilter = z.infer<typeof AnnotationTaskFilterSchema>;
 
+function soundEventAnnotationTagsForApi(
+  tags: ParsedAnnotationTaskFilter["sound_event_annotation_tag"],
+) {
+  if (tags == null) {
+    return {
+      includeKeys: undefined as string | undefined,
+      includeValues: undefined as string | undefined,
+      excludeKeys: undefined as string | undefined,
+      excludeValues: undefined as string | undefined,
+    };
+  }
+  const list = Array.isArray(tags) ? tags : [tags];
+  const include = list.filter((t) => !t.exclude);
+  const exclude = list.filter((t) => t.exclude);
+  return {
+    includeKeys:
+      include.length > 0 ? include.map((t) => t.key).join(",") : undefined,
+    includeValues:
+      include.length > 0 ? include.map((t) => t.value).join(",") : undefined,
+    excludeKeys:
+      exclude.length > 0 ? exclude.map((t) => t.key).join(",") : undefined,
+    excludeValues:
+      exclude.length > 0 ? exclude.map((t) => t.value).join(",") : undefined,
+  };
+}
+
 export function buildAnnotationTaskFilterQueryParams(
   filter: AnnotationTaskFilter,
 ): Record<string, string | number | boolean | undefined> {
   const params = AnnotationTaskFilterSchema.parse(filter) as ParsedAnnotationTaskFilter;
+  const soundEventTags = soundEventAnnotationTagsForApi(
+    params.sound_event_annotation_tag,
+  );
 
   return {
     dataset__lst: params.dataset
@@ -177,16 +211,10 @@ export function buildAnnotationTaskFilterQueryParams(
     annotation_project__eq: params.annotation_project?.id,
     annotation_task_tag__key: params.annotation_task_tag?.key,
     annotation_task_tag__value: params.annotation_task_tag?.value,
-    sound_event_annotation_tag__keys: params.sound_event_annotation_tag
-      ? (Array.isArray(params.sound_event_annotation_tag)
-        ? params.sound_event_annotation_tag.map((t) => t.key).join(",")
-        : params.sound_event_annotation_tag.key)
-      : undefined,
-    sound_event_annotation_tag__values: params.sound_event_annotation_tag
-      ? (Array.isArray(params.sound_event_annotation_tag)
-        ? params.sound_event_annotation_tag.map((t) => t.value).join(",")
-        : params.sound_event_annotation_tag.value)
-      : undefined,
+    sound_event_annotation_tag__keys: soundEventTags.includeKeys,
+    sound_event_annotation_tag__values: soundEventTags.includeValues,
+    sound_event_annotation_tag__exclude_keys: soundEventTags.excludeKeys,
+    sound_event_annotation_tag__exclude_values: soundEventTags.excludeValues,
     pending__eq: params.pending,
     empty__eq: params.empty,
     assigned__eq: params.assigned,

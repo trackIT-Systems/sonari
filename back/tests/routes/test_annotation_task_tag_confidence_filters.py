@@ -417,3 +417,183 @@ async def test_non_birdedge_tag_ignores_species_confidence(
         confidence__gt=0.8,
     )
     assert task.id not in ids
+
+
+@pytest.mark.asyncio
+async def test_exclude_tag_hides_matching_task(
+    auth_client: AsyncClient,
+    db_session: AsyncSession,
+    test_recording_id: int,
+    test_user,
+):
+    """Excluded tag removes tasks that have that tag on a sound event."""
+    user = schemas.SimpleUser.model_validate(test_user)
+    project = await api.annotation_projects.create(
+        db_session,
+        name=f"tag_excl_{uuid.uuid4().hex[:8]}",
+        description="filter test",
+    )
+    await db_session.commit()
+
+    tagged_task = await _create_task(db_session, project, test_recording_id, 70.0, 75.0)
+    clean_task = await _create_task(db_session, project, test_recording_id, 76.0, 80.0)
+    event = await _create_sound_event(db_session, tagged_task, user, 70.5, 71.0)
+    tag = await _create_species_tag(db_session, user, "pip")
+    await _add_tag(db_session, event, tag, user)
+
+    ids = await _fetch_task_ids(
+        auth_client,
+        project.id,
+        sound_event_annotation_tag__exclude_keys="species",
+        sound_event_annotation_tag__exclude_values=tag.value,
+    )
+    assert tagged_task.id not in ids
+    assert clean_task.id in ids
+
+
+@pytest.mark.asyncio
+async def test_exclude_any_of_multiple_tags(
+    auth_client: AsyncClient,
+    db_session: AsyncSession,
+    test_recording_id: int,
+    test_user,
+):
+    """Exclude list hides tasks that have any excluded tag."""
+    user = schemas.SimpleUser.model_validate(test_user)
+    project = await api.annotation_projects.create(
+        db_session,
+        name=f"tag_excl_{uuid.uuid4().hex[:8]}",
+        description="filter test",
+    )
+    await db_session.commit()
+
+    pip_task = await _create_task(db_session, project, test_recording_id, 80.0, 85.0)
+    nyct_task = await _create_task(db_session, project, test_recording_id, 86.0, 90.0)
+    clean_task = await _create_task(db_session, project, test_recording_id, 91.0, 95.0)
+    pip_tag = await _create_species_tag(db_session, user, "pip")
+    nyct_tag = await _create_species_tag(db_session, user, "nyct")
+    pip_event = await _create_sound_event(db_session, pip_task, user, 80.5, 81.0)
+    nyct_event = await _create_sound_event(db_session, nyct_task, user, 86.5, 87.0)
+    await _add_tag(db_session, pip_event, pip_tag, user)
+    await _add_tag(db_session, nyct_event, nyct_tag, user)
+
+    ids = await _fetch_task_ids(
+        auth_client,
+        project.id,
+        sound_event_annotation_tag__exclude_keys="species,species",
+        sound_event_annotation_tag__exclude_values=f"{pip_tag.value},{nyct_tag.value}",
+    )
+    assert pip_task.id not in ids
+    assert nyct_task.id not in ids
+    assert clean_task.id in ids
+
+
+@pytest.mark.asyncio
+async def test_include_and_exclude_tags_combined(
+    auth_client: AsyncClient,
+    db_session: AsyncSession,
+    test_recording_id: int,
+    test_user,
+):
+    """Include pip and exclude crow: only pip without crow matches."""
+    user = schemas.SimpleUser.model_validate(test_user)
+    project = await api.annotation_projects.create(
+        db_session,
+        name=f"tag_excl_{uuid.uuid4().hex[:8]}",
+        description="filter test",
+    )
+    await db_session.commit()
+
+    pip_only = await _create_task(db_session, project, test_recording_id, 100.0, 105.0)
+    pip_and_crow = await _create_task(db_session, project, test_recording_id, 106.0, 110.0)
+    crow_only = await _create_task(db_session, project, test_recording_id, 111.0, 115.0)
+    pip_tag = await _create_species_tag(db_session, user, "pip")
+    crow_tag = await _create_species_tag(db_session, user, "crow")
+
+    pip_only_event = await _create_sound_event(db_session, pip_only, user, 100.5, 101.0)
+    await _add_tag(db_session, pip_only_event, pip_tag, user)
+
+    both_event = await _create_sound_event(db_session, pip_and_crow, user, 106.5, 107.0)
+    await _add_tag(db_session, both_event, pip_tag, user)
+    both_event2 = await _create_sound_event(db_session, pip_and_crow, user, 107.5, 108.0)
+    await _add_tag(db_session, both_event2, crow_tag, user)
+
+    crow_event = await _create_sound_event(db_session, crow_only, user, 111.5, 112.0)
+    await _add_tag(db_session, crow_event, crow_tag, user)
+
+    ids = await _fetch_task_ids(
+        auth_client,
+        project.id,
+        sound_event_annotation_tag__keys="species",
+        sound_event_annotation_tag__values=pip_tag.value,
+        sound_event_annotation_tag__exclude_keys="species",
+        sound_event_annotation_tag__exclude_values=crow_tag.value,
+    )
+    assert pip_only.id in ids
+    assert pip_and_crow.id not in ids
+    assert crow_only.id not in ids
+
+
+@pytest.mark.asyncio
+async def test_exclude_tag_and_confidence_on_same_sound_event(
+    auth_client: AsyncClient,
+    db_session: AsyncSession,
+    test_recording_id: int,
+    test_user,
+):
+    """Exclude removes task when tag and confidence are on the same sound event."""
+    user = schemas.SimpleUser.model_validate(test_user)
+    project = await api.annotation_projects.create(
+        db_session,
+        name=f"tag_excl_{uuid.uuid4().hex[:8]}",
+        description="filter test",
+    )
+    await db_session.commit()
+
+    task = await _create_task(db_session, project, test_recording_id, 120.0, 125.0)
+    event = await _create_sound_event(db_session, task, user, 120.5, 121.0)
+    tag = await _create_species_tag(db_session, user, "pip")
+    await _add_tag(db_session, event, tag, user)
+    await _set_confidence(db_session, event, 0.9)
+
+    ids = await _fetch_task_ids(
+        auth_client,
+        project.id,
+        sound_event_annotation_tag__exclude_keys="species",
+        sound_event_annotation_tag__exclude_values=tag.value,
+        confidence__gt=0.8,
+    )
+    assert task.id not in ids
+
+
+@pytest.mark.asyncio
+async def test_exclude_tag_and_confidence_on_different_events_keeps_task(
+    auth_client: AsyncClient,
+    db_session: AsyncSession,
+    test_recording_id: int,
+    test_user,
+):
+    """Exclude+confidence does not remove task when tag and confidence differ by event."""
+    user = schemas.SimpleUser.model_validate(test_user)
+    project = await api.annotation_projects.create(
+        db_session,
+        name=f"tag_excl_{uuid.uuid4().hex[:8]}",
+        description="filter test",
+    )
+    await db_session.commit()
+
+    task = await _create_task(db_session, project, test_recording_id, 130.0, 135.0)
+    tagged_event = await _create_sound_event(db_session, task, user, 130.5, 131.0)
+    other_event = await _create_sound_event(db_session, task, user, 132.0, 133.0)
+    tag = await _create_species_tag(db_session, user, "pip")
+    await _add_tag(db_session, tagged_event, tag, user)
+    await _set_confidence(db_session, other_event, 0.95)
+
+    ids = await _fetch_task_ids(
+        auth_client,
+        project.id,
+        sound_event_annotation_tag__exclude_keys="species",
+        sound_event_annotation_tag__exclude_values=tag.value,
+        confidence__gt=0.8,
+    )
+    assert task.id in ids

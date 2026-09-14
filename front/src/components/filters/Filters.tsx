@@ -297,16 +297,29 @@ export function FloatEqFilterFn({
 
 export function BooleanFilter({
   onChange,
+  value,
 }: {
   onChange: (value: boolean) => void;
+  /** When set, the active choice uses an outline (Include = true, Exclude = false). */
+  value?: boolean;
 }) {
   return (
     <div className="flex flex-row gap-2 justify-center w-full">
-      <Button mode="text" variant="primary" onClick={() => onChange(true)}>
+      <Button
+        mode={value === true ? "outline" : "text"}
+        variant="primary"
+        onClick={() => onChange(true)}
+        className="flex-1 justify-center"
+      >
         <CheckIcon className="mr-1 w-5 h-5 group-hover:stroke-3" />
         Include
       </Button>
-      <Button mode="text" variant="danger" onClick={() => onChange(false)}>
+      <Button
+        mode={value === false ? "outline" : "text"}
+        variant="danger"
+        onClick={() => onChange(false)}
+        className="flex-1 justify-center"
+      >
         <CloseIcon className="mr-1 w-5 h-5 group-hover:stroke-3" />
         Exclude
       </Button>
