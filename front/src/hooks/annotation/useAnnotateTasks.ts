@@ -9,6 +9,7 @@ import {
 } from "@/api/annotation_tasks";
 import useAnnotationTaskIndex from "@/hooks/api/useAnnotationTaskIndex";
 import useAnnotationTaskStats from "@/hooks/api/useAnnotationTaskStats";
+import { annotationTaskFilterPersistKey } from "@/hooks/utils/annotationTaskFilterPersistKey";
 import { type Filter } from "@/hooks/utils/useFilter";
 
 import type { AnnotationTask, AnnotationTaskIndex, AnnotationTaskStats } from "@/types";
@@ -82,6 +83,11 @@ export default function useAnnotateTasks({
   );
   const client = useQueryClient();
 
+  const filterPersistKey = useMemo(
+    () => annotationTaskFilterPersistKey(initialFilter.annotation_project?.id),
+    [initialFilter.annotation_project?.id],
+  );
+
   // Fetch minimal task index for navigation
   const {
     items: indexItems,
@@ -93,6 +99,7 @@ export default function useAnnotateTasks({
     pageSize: -1,
     filter: initialFilter,
     fixed: Object.keys(initialFilter) as (keyof AnnotationTaskFilter)[],
+    persistKey: filterPersistKey,
   });
 
   // Fetch aggregate statistics using the current filter state

@@ -12,15 +12,18 @@ export default function useAnnotationTaskIndex({
   fixed = _fixed,
   pageSize = -1,
   enabled = true,
+  persistKey,
 }: {
   filter?: AnnotationTaskFilter;
   fixed?: (keyof AnnotationTaskFilter)[];
   pageSize?: number;
   enabled?: boolean;
+  persistKey?: string;
 } = {}) {
   const filter = useFilter<AnnotationTaskFilter>({
     defaults: initialFilter,
-    fixed
+    fixed,
+    persistKey,
   });
 
   const { query, pagination, items, total, queryKey } = usePagedQuery({

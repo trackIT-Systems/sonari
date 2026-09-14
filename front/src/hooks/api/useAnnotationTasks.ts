@@ -12,15 +12,19 @@ export default function useAnnotationTasks({
   fixed = _fixed,
   pageSize = 100,
   enabled = true,
+  persistKey,
 }: {
   filter?: AnnotationTaskFilter;
   fixed?: (keyof AnnotationTaskFilter)[];
   pageSize?: number;
   enabled?: boolean;
+  /** When set, filter state is restored across navigations (e.g. task list ↔ annotate). */
+  persistKey?: string;
 } = {}) {
   const filter = useFilter<AnnotationTaskFilter>({
     defaults: initialFilter,
-    fixed
+    fixed,
+    persistKey,
   });
 
   // Apply defaults only if not explicitly set in the filter

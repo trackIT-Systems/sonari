@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useKeyPressEvent } from "react-use";
 import { useQuery } from "@tanstack/react-query";
@@ -7,6 +7,7 @@ import useKeyFilter from "@/hooks/utils/useKeyFilter";
 import type { AnnotationTaskFilter } from "@/api/annotation_tasks";
 import type { AnnotationTask } from "@/types";
 import useAnnotationTasks from "@/hooks/api/useAnnotationTasks";
+import { annotationTaskFilterPersistKey } from "@/hooks/utils/annotationTaskFilterPersistKey";
 import useAnnotationTaskTable from "@/hooks/useAnnotationTaskTable";
 import Loading from "@/app/loading";
 import Search from "@/components/inputs/Search";
@@ -30,7 +31,15 @@ export default function AnnotationTaskTable({
   fixed?: (keyof AnnotationTaskFilter)[];
   pathFormatter?: (path: string) => string;
 }) {
-  const annotationTasks = useAnnotationTasks({ filter, fixed });
+  const filterPersistKey = useMemo(
+    () => annotationTaskFilterPersistKey(filter.annotation_project?.id),
+    [filter.annotation_project?.id],
+  );
+  const annotationTasks = useAnnotationTasks({
+    filter,
+    fixed,
+    persistKey: filterPersistKey,
+  });
   const searchInputRef = useRef<HTMLInputElement>(null);
   const [focusedElement, setFocusedElement] = useState<'search' | 'filter' | number>(-1);
   const router = useRouter();

@@ -92,6 +92,8 @@ export default function useFilter<T extends Object>({
 
   const [state, setState] = useState<T>(initialState);
   const [debouncedState, setDebouncedState] = useState<T>(initialState);
+  const stateRef = useRef(state);
+  stateRef.current = state;
 
   // Reset the state when the fixed filter changes
   const prevDefaultsRef = useRef<T>(defaults);
@@ -152,6 +154,22 @@ export default function useFilter<T extends Object>({
   const submit = useCallback(() => {
     setDebouncedState(state);
   }, [state]);
+
+  // Flush latest edits on unmount (debounce may not have fired before navigation).
+  useEffect(() => {
+    if (!persistKey) return;
+    if (typeof window === "undefined") return;
+    return () => {
+      try {
+        window.localStorage.setItem(
+          persistKey,
+          JSON.stringify(stateRef.current),
+        );
+      } catch {
+        // ignore quota errors
+      }
+    };
+  }, [persistKey]);
 
   // Persist debounced state to localStorage
   useEffect(() => {
