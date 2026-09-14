@@ -1,6 +1,7 @@
 """Filters for Annotation Tasks."""
 
 from datetime import datetime, timedelta, time
+from typing import Literal
 
 from soundevent import data
 from sqlalchemy import Float, Select, and_, exists, func, literal, not_, or_, select
@@ -287,6 +288,22 @@ def _task_has_tag_key_value(key: str, value: str):
     return or_(sound_event_exists, task_tag_exists)
 
 
+def _resolved_include_match(
+    include_match: Literal["and", "or"] | None,
+) -> Literal["and", "or"]:
+    return "or" if include_match is None else include_match
+
+
+def _combine_include_tag_conditions(
+    conditions: list,
+    include_match: Literal["and", "or"] | None,
+):
+    match = _resolved_include_match(include_match)
+    if match == "and":
+        return and_(*conditions)
+    return or_(*conditions)
+
+
 class SoundEventAnnotationTagFilter(base.Filter):
     """Filter for tasks by sound event annotation tag or annotation task tag."""
 
@@ -294,6 +311,7 @@ class SoundEventAnnotationTagFilter(base.Filter):
     values: str | None = None
     exclude_keys: str | None = None
     exclude_values: str | None = None
+    include_match: Literal["and", "or"] | None = None
 
     def filter(self, query: Select) -> Select:
         """Filter the query."""
@@ -303,7 +321,9 @@ class SoundEventAnnotationTagFilter(base.Filter):
             include_conditions = [
                 _task_has_tag_key_value(k, v) for k, v in zip(keys, values, strict=True)
             ]
-            query = query.where(or_(*include_conditions))
+            query = query.where(
+                _combine_include_tag_conditions(include_conditions, self.include_match)
+            )
 
         if self.exclude_keys is not None and self.exclude_values is not None:
             exclude_keys = self.exclude_keys.split(",")
@@ -596,12 +616,26 @@ def _apply_tag_and_confidence_filters(
     tag_filter: SoundEventAnnotationTagFilter,
     confidence_filter: ConfidenceFilter,
 ) -> Select:
-    """Require each selected tag on a sound event with confidence in range (AND across tags)."""
+    """Included tags with confidence on the same sound event as each tag (AND or OR)."""
     assert tag_filter.keys is not None and tag_filter.values is not None
     keys = tag_filter.keys.split(",")
     values = tag_filter.values.split(",")
+    pairs = list(zip(keys, values, strict=True))
 
-    for key, value in zip(keys, values, strict=True):
+    match = _resolved_include_match(tag_filter.include_match)
+    if match == "or":
+        conditions = [
+            _sound_event_confidence_exists(
+                confidence_filter.gt,
+                confidence_filter.lt,
+                tag_key=key,
+                tag_value=value,
+            )
+            for key, value in pairs
+        ]
+        return query.where(or_(*conditions))
+
+    for key, value in pairs:
         query = query.where(
             _sound_event_confidence_exists(
                 confidence_filter.gt,

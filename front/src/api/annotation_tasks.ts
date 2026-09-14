@@ -75,6 +75,8 @@ const AnnotationTaskFilterSchema = z.object({
     SoundEventAnnotationTaskFilterTagSchema,
     z.array(SoundEventAnnotationTaskFilterTagSchema),
   ]).optional(),
+  /** How multiple included tags combine (default OR when omitted). */
+  sound_event_annotation_tag_include_match: z.enum(["and", "or"]).optional(),
   empty: z.boolean().optional(),
   pending: z.boolean().optional(),
   assigned: z.boolean().optional(),
@@ -215,6 +217,8 @@ export function buildAnnotationTaskFilterQueryParams(
     sound_event_annotation_tag__values: soundEventTags.includeValues,
     sound_event_annotation_tag__exclude_keys: soundEventTags.excludeKeys,
     sound_event_annotation_tag__exclude_values: soundEventTags.excludeValues,
+    sound_event_annotation_tag__include_match:
+      params.sound_event_annotation_tag_include_match,
     pending__eq: params.pending,
     empty__eq: params.empty,
     assigned__eq: params.assigned,

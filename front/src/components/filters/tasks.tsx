@@ -5,6 +5,7 @@ import Button from "@/components/Button";
 import { type FilterDef } from "@/components/filters/FilterMenu";
 import {
   BooleanFilter,
+  IncludeTagMatchFilter,
   DatasetFilter,
   TagFilter,
   FloatFilter,
@@ -46,6 +47,8 @@ function SoundEventAnnotationTagSelector({
   setFilter: Filter<AnnotationTaskFilter>["set"];
 }) {
   const [includeMode, setIncludeMode] = useState(true);
+  const includeMatch =
+    filter.get("sound_event_annotation_tag_include_match") ?? "or";
   const confidence = filter.get("confidence");
   const hasConfidence =
     confidence?.gt !== undefined || confidence?.lt !== undefined;
@@ -56,6 +59,19 @@ function SoundEventAnnotationTagSelector({
         value={includeMode}
         onChange={(include) => setIncludeMode(include)}
       />
+      {includeMode ? (
+        <div className="flex flex-col gap-1">
+          <span className="text-xs text-stone-500 dark:text-stone-400 text-center">
+            Combine included tags with
+          </span>
+          <IncludeTagMatchFilter
+            value={includeMatch}
+            onChange={(match) =>
+              filter.set("sound_event_annotation_tag_include_match", match)
+            }
+          />
+        </div>
+      ) : null}
       {hasConfidence ? (
         <p className="text-xs text-stone-500 dark:text-stone-400">
           Confidence is evaluated on the same sound event as each included or
@@ -224,7 +240,13 @@ const tasksFilterDefs: FilterDef<AnnotationTaskFilter>[] = [
       const confidenceNote = hasConfidence
         ? " With a confidence range, each included tag must appear on a sound event in that range; excluded tags use the same correlation."
         : "";
-      return `Include tags: show tasks with any listed tag. Exclude tags: hide tasks that have any listed tag.${confidenceNote}`;
+      const match =
+        filter.get("sound_event_annotation_tag_include_match") ?? "or";
+      const includeCombine =
+        match === "and"
+          ? "Included tags: task must have all listed tags."
+          : "Included tags: task must have any listed tag.";
+      return `${includeCombine} Exclude tags: hide tasks that have any listed tag.${confidenceNote}`;
     },
     icon: (
       <TagIcon className="h-5 w-5 inline-block text-stone-500 mr-1 align-middle" />

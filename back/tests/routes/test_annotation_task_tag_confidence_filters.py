@@ -244,6 +244,7 @@ async def test_multiple_tags_require_confidence_for_each_tag(
     both_params = {
         "sound_event_annotation_tag__keys": "species,species",
         "sound_event_annotation_tag__values": f"{pip_tag.value},{nyct_tag.value}",
+        "sound_event_annotation_tag__include_match": "and",
         "confidence__gt": 0.8,
     }
     ids_both = await _fetch_task_ids(auth_client, project.id, **both_params)
@@ -597,3 +598,80 @@ async def test_exclude_tag_and_confidence_on_different_events_keeps_task(
         confidence__gt=0.8,
     )
     assert task.id in ids
+
+
+@pytest.mark.asyncio
+async def test_include_match_and_requires_all_tags(
+    auth_client: AsyncClient,
+    db_session: AsyncSession,
+    test_recording_id: int,
+    test_user,
+):
+    """include_match=and requires every listed include tag on the task."""
+    user = schemas.SimpleUser.model_validate(test_user)
+    project = await api.annotation_projects.create(
+        db_session,
+        name=f"tag_match_{uuid.uuid4().hex[:8]}",
+        description="filter test",
+    )
+    await db_session.commit()
+
+    both_task = await _create_task(db_session, project, test_recording_id, 140.0, 145.0)
+    one_tag_task = await _create_task(db_session, project, test_recording_id, 146.0, 150.0)
+    pip_tag = await _create_species_tag(db_session, user, "pip")
+    nyct_tag = await _create_species_tag(db_session, user, "nyct")
+    pip_event = await _create_sound_event(db_session, both_task, user, 140.5, 141.0)
+    nyct_event = await _create_sound_event(db_session, both_task, user, 141.5, 142.0)
+    await _add_tag(db_session, pip_event, pip_tag, user)
+    await _add_tag(db_session, nyct_event, nyct_tag, user)
+    only_pip_event = await _create_sound_event(db_session, one_tag_task, user, 146.5, 147.0)
+    await _add_tag(db_session, only_pip_event, pip_tag, user)
+
+    params = {
+        "sound_event_annotation_tag__keys": "species,species",
+        "sound_event_annotation_tag__values": f"{pip_tag.value},{nyct_tag.value}",
+        "sound_event_annotation_tag__include_match": "and",
+    }
+    ids = await _fetch_task_ids(auth_client, project.id, **params)
+    assert both_task.id in ids
+    assert one_tag_task.id not in ids
+
+
+@pytest.mark.asyncio
+async def test_include_match_or_with_confidence_one_tag_sufficient(
+    auth_client: AsyncClient,
+    db_session: AsyncSession,
+    test_recording_id: int,
+    test_user,
+):
+    """include_match=or with confidence matches if any tag is in range on its event."""
+    user = schemas.SimpleUser.model_validate(test_user)
+    project = await api.annotation_projects.create(
+        db_session,
+        name=f"tag_match_{uuid.uuid4().hex[:8]}",
+        description="filter test",
+    )
+    await db_session.commit()
+
+    task = await _create_task(db_session, project, test_recording_id, 150.0, 155.0)
+    pip_event = await _create_sound_event(db_session, task, user, 150.5, 151.0)
+    nyct_event = await _create_sound_event(db_session, task, user, 152.0, 153.0)
+    pip_tag = await _create_species_tag(db_session, user, "pip")
+    nyct_tag = await _create_species_tag(db_session, user, "nyct")
+    await _add_tag(db_session, pip_event, pip_tag, user)
+    await _add_tag(db_session, nyct_event, nyct_tag, user)
+    await _set_confidence(db_session, pip_event, 0.9)
+    await _set_confidence(db_session, nyct_event, 0.5)
+
+    or_params = {
+        "sound_event_annotation_tag__keys": "species,species",
+        "sound_event_annotation_tag__values": f"{pip_tag.value},{nyct_tag.value}",
+        "sound_event_annotation_tag__include_match": "or",
+        "confidence__gt": 0.8,
+    }
+    ids_or = await _fetch_task_ids(auth_client, project.id, **or_params)
+    assert task.id in ids_or
+
+    and_params = {**or_params, "sound_event_annotation_tag__include_match": "and"}
+    ids_and = await _fetch_task_ids(auth_client, project.id, **and_params)
+    assert task.id not in ids_and

@@ -295,6 +295,35 @@ export function FloatEqFilterFn({
   );
 }
 
+export function IncludeTagMatchFilter({
+  value,
+  onChange,
+}: {
+  value: "and" | "or";
+  onChange: (value: "and" | "or") => void;
+}) {
+  return (
+    <div className="flex flex-row gap-2 justify-center w-full">
+      <Button
+        mode={value === "or" ? "outline" : "text"}
+        variant="secondary"
+        onClick={() => onChange("or")}
+        className="flex-1 justify-center"
+      >
+        OR
+      </Button>
+      <Button
+        mode={value === "and" ? "outline" : "text"}
+        variant="secondary"
+        onClick={() => onChange("and")}
+        className="flex-1 justify-center"
+      >
+        AND
+      </Button>
+    </div>
+  );
+}
+
 export function BooleanFilter({
   onChange,
   value,
