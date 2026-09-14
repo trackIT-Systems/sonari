@@ -2,10 +2,11 @@
 
 from typing import Annotated
 
-from fastapi import Query
+from fastapi import Depends, Query
 
 from .constants import ExportConstants
 from .services import DumpService, MultiBaseService, PassesService, StatsService, TimeService, YearlyActivityService
+from sonari.filters.annotation_tasks import AnnotationTaskFilter
 from sonari.routes.dependencies import Session
 from sonari.routes.dependencies.auth import create_authenticated_router
 
@@ -28,10 +29,11 @@ async def export_multibase(
 async def export_dump(
     session: Session,
     annotation_project_ids: Annotated[list[int], Query()],
+    task_filter: Annotated[AnnotationTaskFilter, Depends(AnnotationTaskFilter)],  # type: ignore
 ):
     """Export sound event annotation data in CSV format with streaming."""
     service = DumpService(session)
-    return await service.export_dump(annotation_project_ids)
+    return await service.export_dump(annotation_project_ids, task_filter)
 
 
 @export_router.get("/passes/")

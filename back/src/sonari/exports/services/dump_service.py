@@ -7,6 +7,8 @@ from typing import List
 
 from fastapi.responses import StreamingResponse
 
+from sonari.filters.annotation_tasks import AnnotationTaskFilter
+
 from ..constants import ExportConstants
 from ..data import extract_annotation_data, extract_batch, load_status_badges_for_batch
 from ..utils import create_csv_streaming_response
@@ -16,7 +18,11 @@ from .base import BaseExportService
 class DumpService(BaseExportService):
     """Service for dump format exports."""
 
-    async def export_dump(self, annotation_project_ids: List[int]) -> StreamingResponse:
+    async def export_dump(
+        self,
+        annotation_project_ids: List[int],
+        task_filter: AnnotationTaskFilter,
+    ) -> StreamingResponse:
         """Export sound event annotation data in CSV format with streaming."""
         logger = logging.getLogger(__name__)
 
@@ -42,7 +48,13 @@ class DumpService(BaseExportService):
                 offset = 0
 
                 while True:
-                    batch_annotations = await extract_batch(self.session, project_ids, offset, batch_size)
+                    batch_annotations = await extract_batch(
+                        self.session,
+                        project_ids,
+                        offset,
+                        batch_size,
+                        task_filter=task_filter,
+                    )
 
                     if not batch_annotations:
                         break

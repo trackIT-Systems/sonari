@@ -54,11 +54,11 @@ export default function FilterBar<T extends Object>({
   }
 
   return (
-    <div className="flex flex-row items-center">
+    <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:flex-wrap">
       {total != null && (
         <span className="mr-3 text-stone-500">{total} results</span>
       )}
-      <div className="flex flex-row items-center space-x-2">
+      <div className="flex flex-row flex-wrap items-center gap-2">
         {withLabel && (
           <span className="mr-2 text-blue-200">
             <FilterIcon className="inline-block h-5 w-5 mr-1" />

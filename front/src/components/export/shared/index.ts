@@ -1,4 +1,5 @@
 export { default as ExportProjectSelection } from './ExportProjectSelection';
+export { default as ExportTaskFilterSelection } from './ExportTaskFilterSelection';
 export { default as ExportTagSelection } from './ExportTagSelection';
 export { default as ExportStatusSelection } from './ExportStatusSelection';
 export { default as ExportDateRangeFilter } from './ExportDateRangeFilter';

@@ -6,6 +6,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import joinedload, selectinload
 
 from sonari import models
+from sonari.filters.annotation_tasks import AnnotationTaskFilter
 from sonari.routes.dependencies import Session
 
 
@@ -25,14 +26,17 @@ def recording_station(recording: models.Recording) -> str:
 
 
 async def extract_batch(
-    session: Session, project_ids: List[int], offset: int, batch_size: int
+    session: Session,
+    project_ids: List[int],
+    offset: int,
+    batch_size: int,
+    task_filter: AnnotationTaskFilter | None = None,
 ) -> List[models.SoundEventAnnotation]:
-    """Extract a batch of sound event annotations filtered by project IDs."""
-    # Query sound event annotations that belong to the specified projects
+    """Extract a batch of sound event annotations filtered by project IDs and task filters."""
     stmt = (
         select(models.SoundEventAnnotation)
         .join(models.AnnotationTask)
-        .filter(models.AnnotationTask.annotation_project_id.in_(project_ids))
+        .where(models.AnnotationTask.annotation_project_id.in_(project_ids))
         .options(
             # Essential relationships with optimized eager loading
             selectinload(models.SoundEventAnnotation.features),
@@ -50,6 +54,9 @@ async def extract_batch(
         .offset(offset)
         .limit(batch_size)
     )
+
+    if task_filter is not None:
+        stmt = task_filter.filter(stmt)
 
     result = await session.execute(stmt)
     batch_annotations = result.unique().scalars().all()

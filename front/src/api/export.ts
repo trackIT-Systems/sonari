@@ -1,5 +1,9 @@
 import { AxiosInstance } from "axios";
 
+import {
+  type AnnotationTaskFilter,
+  buildAnnotationTaskFilterQueryParams,
+} from "@/api/annotation_tasks";
 import type { AnnotationProject } from "@/types";
 
 const DEFAULT_ENDPOINTS = {
@@ -97,12 +101,34 @@ export function registerExportAPI(
     return { blob, filename };
   }
 
+  function appendAnnotationTaskFilterParams(
+    urlParams: URLSearchParams,
+    filter?: AnnotationTaskFilter,
+  ) {
+    if (filter == null) {
+      return;
+    }
+    const filterParams = buildAnnotationTaskFilterQueryParams(filter);
+    for (const [key, value] of Object.entries(filterParams)) {
+      if (value === undefined || value === null || value === "") {
+        continue;
+      }
+      if (typeof value === "boolean") {
+        urlParams.append(key, value ? "true" : "false");
+      } else {
+        urlParams.append(key, String(value));
+      }
+    }
+  }
+
   async function exportDump(
     annotationProjects: AnnotationProject[],
+    filter?: AnnotationTaskFilter,
   ): Promise<{ blob: Blob; filename: string }> {
     const params = buildCommonParams({
       annotationProjects,
     });
+    appendAnnotationTaskFilterParams(params, filter);
 
     const response = await instance.get(`${endpoints.dump}?${params.toString()}`, {
       responseType: 'blob',

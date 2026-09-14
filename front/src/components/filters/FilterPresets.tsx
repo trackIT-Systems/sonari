@@ -82,6 +82,7 @@ export default function FilterPresets<T extends Object>({
   className,
   recentLimit = 1,
   normalizeForPreset,
+  panelAlign = "end",
 }: {
   storageKey: string;
   filter: Filter<T>;
@@ -89,6 +90,8 @@ export default function FilterPresets<T extends Object>({
   recentLimit?: number;
   /** Normalize filter before saving to presets (e.g. time-only as "HH:mm" when date is blank) */
   normalizeForPreset?: (filter: T) => T;
+  /** Panel horizontal alignment relative to the trigger (use start in narrow left columns). */
+  panelAlign?: "start" | "end";
 }) {
   const { recentList, savedList, savePreset, deletePreset, applyPreset } = useFilterPresets<T>({
     storageKey,
@@ -99,6 +102,11 @@ export default function FilterPresets<T extends Object>({
   const [name, setName] = useState("");
   const recent = useMemo(() => recentList.slice(0, recentLimit), [recentList, recentLimit]);
 
+  const panelPositionClass =
+    panelAlign === "start"
+      ? "left-0 origin-top-left"
+      : "right-0 origin-top-right";
+
   return (
     <div className={classNames("inline-flex items-center gap-2", className)}>
       <div className="relative">
@@ -108,7 +116,7 @@ export default function FilterPresets<T extends Object>({
             <ExpandIcon className="w-4 h-4 ml-1" />
           </ListboxButton>
           <Transition as={Fragment} enter="transition ease-out duration-100" enterFrom="transform opacity-0 scale-95" enterTo="transform opacity-100 scale-100" leave="transition ease-in duration-75" leaveFrom="transform opacity-100 scale-100" leaveTo="transform opacity-0 scale-95">
-            <ListboxOptions className="absolute right-0 mt-1 w-96 divide-y divide-stone-100 rounded-md bg-stone-50 dark:bg-stone-700 border border-stone-200 dark:border-stone-500 shadow-md dark:shadow-stone-800 ring-1 ring-stone-900 ring-opacity-5 focus:outline-none z-50">
+            <ListboxOptions className={`absolute ${panelPositionClass} mt-1 w-96 max-w-[min(24rem,calc(100vw-2rem))] divide-y divide-stone-100 rounded-md bg-stone-50 dark:bg-stone-700 border border-stone-200 dark:border-stone-500 shadow-md dark:shadow-stone-800 ring-1 ring-stone-900 ring-opacity-5 focus:outline-none z-50`}>
               <div className="p-3">
                 <div className="text-xs uppercase text-stone-500 mb-2">Recent</div>
                 {recent.length === 0 ? (

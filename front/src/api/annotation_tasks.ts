@@ -161,6 +161,75 @@ const AnnotationTaskFilterSchema = z.object({
 
 export type AnnotationTaskFilter = z.input<typeof AnnotationTaskFilterSchema>;
 
+type ParsedAnnotationTaskFilter = z.infer<typeof AnnotationTaskFilterSchema>;
+
+export function buildAnnotationTaskFilterQueryParams(
+  filter: AnnotationTaskFilter,
+): Record<string, string | number | boolean | undefined> {
+  const params = AnnotationTaskFilterSchema.parse(filter) as ParsedAnnotationTaskFilter;
+
+  return {
+    dataset__lst: params.dataset
+      ? (Array.isArray(params.dataset)
+        ? params.dataset.map((d) => d.id).join(",")
+        : params.dataset.id)
+      : undefined,
+    annotation_project__eq: params.annotation_project?.id,
+    annotation_task_tag__key: params.annotation_task_tag?.key,
+    annotation_task_tag__value: params.annotation_task_tag?.value,
+    sound_event_annotation_tag__keys: params.sound_event_annotation_tag
+      ? (Array.isArray(params.sound_event_annotation_tag)
+        ? params.sound_event_annotation_tag.map((t) => t.key).join(",")
+        : params.sound_event_annotation_tag.key)
+      : undefined,
+    sound_event_annotation_tag__values: params.sound_event_annotation_tag
+      ? (Array.isArray(params.sound_event_annotation_tag)
+        ? params.sound_event_annotation_tag.map((t) => t.value).join(",")
+        : params.sound_event_annotation_tag.value)
+      : undefined,
+    pending__eq: params.pending,
+    empty__eq: params.empty,
+    assigned__eq: params.assigned,
+    verified__eq: params.verified,
+    rejected__eq: params.rejected,
+    completed__eq: params.completed,
+    assigned_to__eq: params.assigned_to?.id,
+    search_recordings: params.search_recordings,
+    date__start_dates: params.date_range
+      ? (Array.isArray(params.date_range)
+        ? params.date_range.map((d) => formatDateForAPI(d.start_date)).join(",")
+        : formatDateForAPI(params.date_range.start_date))
+      : undefined,
+    date__end_dates: params.date_range
+      ? (Array.isArray(params.date_range)
+        ? params.date_range.map((d) => formatDateForAPI(d.end_date)).join(",")
+        : formatDateForAPI(params.date_range.end_date))
+      : undefined,
+    date__start_times: params.date_range
+      ? (Array.isArray(params.date_range)
+        ? params.date_range.map((d) => formatDateForAPI(d.start_time)).join(",")
+        : formatDateForAPI(params.date_range.start_time))
+      : undefined,
+    date__end_times: params.date_range
+      ? (Array.isArray(params.date_range)
+        ? params.date_range.map((d) => formatDateForAPI(d.end_time)).join(",")
+        : formatDateForAPI(params.date_range.end_time))
+      : undefined,
+    confidence__gt: params.confidence?.gt,
+    confidence__lt: params.confidence?.lt,
+    sound_event_annotation_min_frequency__gt: params.sound_event_annotation_min_frequency?.gt,
+    sound_event_annotation_min_frequency__lt: params.sound_event_annotation_min_frequency?.lt,
+    sound_event_annotation_max_frequency__gt: params.sound_event_annotation_max_frequency?.gt,
+    sound_event_annotation_max_frequency__lt: params.sound_event_annotation_max_frequency?.lt,
+    night__eq: params.night?.eq,
+    night__tz: params.night?.timezone,
+    day__eq: params.day?.eq,
+    day__tz: params.day?.timezone,
+    sample__eq: params.sample?.eq,
+    recording__eq: params.recording?.eq,
+  };
+}
+
 const GetAnnotationTasksQuerySchema = z.intersection(
   GetManySchema,
   AnnotationTaskFilterSchema,
@@ -199,64 +268,7 @@ export function registerAnnotationTasksAPI(
         limit: params.limit,
         offset: params.offset,
         sort_by: params.sort_by,
-        dataset__lst: params.dataset
-          ? (Array.isArray(params.dataset)
-            ? params.dataset.map(d => d.id).join(',')
-            : params.dataset.id)
-          : undefined,
-        annotation_project__eq: params.annotation_project?.id,
-        annotation_task_tag__key: params.annotation_task_tag?.key,
-        annotation_task_tag__value: params.annotation_task_tag?.value,
-        sound_event_annotation_tag__keys: params.sound_event_annotation_tag
-          ? (Array.isArray(params.sound_event_annotation_tag)
-            ? params.sound_event_annotation_tag.map(t => t.key).join(',')
-            : params.sound_event_annotation_tag.key)
-          : undefined,
-        sound_event_annotation_tag__values: params.sound_event_annotation_tag
-          ? (Array.isArray(params.sound_event_annotation_tag)
-            ? params.sound_event_annotation_tag.map(t => t.value).join(',')
-            : params.sound_event_annotation_tag.value)
-          : undefined,
-        pending__eq: params.pending,
-        empty__eq: params.empty,
-        assigned__eq: params.assigned,
-        verified__eq: params.verified,
-        rejected__eq: params.rejected,
-        completed__eq: params.completed,
-        assigned_to__eq: params.assigned_to?.id,
-        search_recordings: params.search_recordings,
-        date__start_dates: params.date_range
-          ? (Array.isArray(params.date_range)
-            ? params.date_range.map(d => formatDateForAPI(d.start_date)).join(',')
-            : formatDateForAPI(params.date_range.start_date))
-          : undefined,
-        date__end_dates: params.date_range
-          ? (Array.isArray(params.date_range)
-            ? params.date_range.map(d => formatDateForAPI(d.end_date)).join(',')
-            : formatDateForAPI(params.date_range.end_date))
-          : undefined,
-        date__start_times: params.date_range
-          ? (Array.isArray(params.date_range)
-            ? params.date_range.map(d => formatDateForAPI(d.start_time)).join(',')
-            : formatDateForAPI(params.date_range.start_time))
-          : undefined,
-        date__end_times: params.date_range
-          ? (Array.isArray(params.date_range)
-            ? params.date_range.map(d => formatDateForAPI(d.end_time)).join(',')
-            : formatDateForAPI(params.date_range.end_time))
-          : undefined,
-        confidence__gt: params.confidence?.gt,
-        confidence__lt: params.confidence?.lt,
-        sound_event_annotation_min_frequency__gt: params.sound_event_annotation_min_frequency?.gt,
-        sound_event_annotation_min_frequency__lt: params.sound_event_annotation_min_frequency?.lt,
-        sound_event_annotation_max_frequency__gt: params.sound_event_annotation_max_frequency?.gt,
-        sound_event_annotation_max_frequency__lt: params.sound_event_annotation_max_frequency?.lt,
-        night__eq: params.night?.eq,
-        night__tz: params.night?.timezone,
-        day__eq: params.day?.eq,
-        day__tz: params.day?.timezone,
-        sample__eq: params.sample?.eq,
-        recording__eq: params.recording?.eq,
+        ...buildAnnotationTaskFilterQueryParams(params),
         include_recording: params.include_recording,
         include_annotation_project: params.include_annotation_project,
         include_sound_event_annotations: params.include_sound_event_annotations,
@@ -284,64 +296,7 @@ export function registerAnnotationTasksAPI(
         limit: params.limit,
         offset: params.offset,
         sort_by: params.sort_by,
-        dataset__lst: params.dataset
-          ? (Array.isArray(params.dataset)
-            ? params.dataset.map(d => d.id).join(',')
-            : params.dataset.id)
-          : undefined,
-        annotation_project__eq: params.annotation_project?.id,
-        annotation_task_tag__key: params.annotation_task_tag?.key,
-        annotation_task_tag__value: params.annotation_task_tag?.value,
-        sound_event_annotation_tag__keys: params.sound_event_annotation_tag
-          ? (Array.isArray(params.sound_event_annotation_tag)
-            ? params.sound_event_annotation_tag.map(t => t.key).join(',')
-            : params.sound_event_annotation_tag.key)
-          : undefined,
-        sound_event_annotation_tag__values: params.sound_event_annotation_tag
-          ? (Array.isArray(params.sound_event_annotation_tag)
-            ? params.sound_event_annotation_tag.map(t => t.value).join(',')
-            : params.sound_event_annotation_tag.value)
-          : undefined,
-        pending__eq: params.pending,
-        empty__eq: params.empty,
-        assigned__eq: params.assigned,
-        verified__eq: params.verified,
-        rejected__eq: params.rejected,
-        completed__eq: params.completed,
-        assigned_to__eq: params.assigned_to?.id,
-        search_recordings: params.search_recordings,
-        date__start_dates: params.date_range
-          ? (Array.isArray(params.date_range)
-            ? params.date_range.map(d => formatDateForAPI(d.start_date)).join(',')
-            : formatDateForAPI(params.date_range.start_date))
-          : undefined,
-        date__end_dates: params.date_range
-          ? (Array.isArray(params.date_range)
-            ? params.date_range.map(d => formatDateForAPI(d.end_date)).join(',')
-            : formatDateForAPI(params.date_range.end_date))
-          : undefined,
-        date__start_times: params.date_range
-          ? (Array.isArray(params.date_range)
-            ? params.date_range.map(d => formatDateForAPI(d.start_time)).join(',')
-            : formatDateForAPI(params.date_range.start_time))
-          : undefined,
-        date__end_times: params.date_range
-          ? (Array.isArray(params.date_range)
-            ? params.date_range.map(d => formatDateForAPI(d.end_time)).join(',')
-            : formatDateForAPI(params.date_range.end_time))
-          : undefined,
-        confidence__gt: params.confidence?.gt,
-        confidence__lt: params.confidence?.lt,
-        sound_event_annotation_min_frequency__gt: params.sound_event_annotation_min_frequency?.gt,
-        sound_event_annotation_min_frequency__lt: params.sound_event_annotation_min_frequency?.lt,
-        sound_event_annotation_max_frequency__gt: params.sound_event_annotation_max_frequency?.gt,
-        sound_event_annotation_max_frequency__lt: params.sound_event_annotation_max_frequency?.lt,
-        night__eq: params.night?.eq,
-        night__tz: params.night?.timezone,
-        day__eq: params.day?.eq,
-        day__tz: params.day?.timezone,
-        sample__eq: params.sample?.eq,
-        recording__eq: params.recording?.eq,
+        ...buildAnnotationTaskFilterQueryParams(params),
       },
     });
     return AnnotationTaskIndexPageSchema.parse(response.data);
@@ -353,66 +308,7 @@ export function registerAnnotationTasksAPI(
     const params = AnnotationTaskFilterSchema.parse(filter);
 
     const response = await instance.get(endpoints.getStats, {
-      params: {
-        dataset__lst: params.dataset
-          ? (Array.isArray(params.dataset)
-            ? params.dataset.map(d => d.id).join(',')
-            : params.dataset.id)
-          : undefined,
-        annotation_project__eq: params.annotation_project?.id,
-        annotation_task_tag__key: params.annotation_task_tag?.key,
-        annotation_task_tag__value: params.annotation_task_tag?.value,
-        sound_event_annotation_tag__keys: params.sound_event_annotation_tag
-          ? (Array.isArray(params.sound_event_annotation_tag)
-            ? params.sound_event_annotation_tag.map(t => t.key).join(',')
-            : params.sound_event_annotation_tag.key)
-          : undefined,
-        sound_event_annotation_tag__values: params.sound_event_annotation_tag
-          ? (Array.isArray(params.sound_event_annotation_tag)
-            ? params.sound_event_annotation_tag.map(t => t.value).join(',')
-            : params.sound_event_annotation_tag.value)
-          : undefined,
-        pending__eq: params.pending,
-        empty__eq: params.empty,
-        assigned__eq: params.assigned,
-        verified__eq: params.verified,
-        rejected__eq: params.rejected,
-        completed__eq: params.completed,
-        assigned_to__eq: params.assigned_to?.id,
-        search_recordings: params.search_recordings,
-        date__start_dates: params.date_range
-          ? (Array.isArray(params.date_range)
-            ? params.date_range.map(d => formatDateForAPI(d.start_date)).join(',')
-            : formatDateForAPI(params.date_range.start_date))
-          : undefined,
-        date__end_dates: params.date_range
-          ? (Array.isArray(params.date_range)
-            ? params.date_range.map(d => formatDateForAPI(d.end_date)).join(',')
-            : formatDateForAPI(params.date_range.end_date))
-          : undefined,
-        date__start_times: params.date_range
-          ? (Array.isArray(params.date_range)
-            ? params.date_range.map(d => formatDateForAPI(d.start_time)).join(',')
-            : formatDateForAPI(params.date_range.start_time))
-          : undefined,
-        date__end_times: params.date_range
-          ? (Array.isArray(params.date_range)
-            ? params.date_range.map(d => formatDateForAPI(d.end_time)).join(',')
-            : formatDateForAPI(params.date_range.end_time))
-          : undefined,
-        confidence__gt: params.confidence?.gt,
-        confidence__lt: params.confidence?.lt,
-        sound_event_annotation_min_frequency__gt: params.sound_event_annotation_min_frequency?.gt,
-        sound_event_annotation_min_frequency__lt: params.sound_event_annotation_min_frequency?.lt,
-        sound_event_annotation_max_frequency__gt: params.sound_event_annotation_max_frequency?.gt,
-        sound_event_annotation_max_frequency__lt: params.sound_event_annotation_max_frequency?.lt,
-        night__eq: params.night?.eq,
-        night__tz: params.night?.timezone,
-        day__eq: params.day?.eq,
-        day__tz: params.day?.timezone,
-        sample__eq: params.sample?.eq,
-        recording__eq: params.recording?.eq,
-      },
+      params: buildAnnotationTaskFilterQueryParams(params),
     });
     return response.data as AnnotationTaskStats;
   }

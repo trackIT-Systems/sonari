@@ -143,6 +143,7 @@ export default function FilterPopover<T extends Object>({
   mode = "filled",
   variant = "primary",
   className,
+  panelAlign = "end",
 }: {
   filter: Filter<T>;
   filterDef: FilterDef<T>[];
@@ -150,10 +151,17 @@ export default function FilterPopover<T extends Object>({
   mode?: "filled" | "outline" | "text";
   variant?: "primary" | "secondary" | "danger" | "success" | "warning" | "info";
   className?: string;
+  /** Panel horizontal alignment relative to the trigger (use start in narrow left columns). */
+  panelAlign?: "start" | "end";
 }) {
   if (className == null) {
     className = getButtonClassName({ mode, variant });
   }
+
+  const panelPositionClass =
+    panelAlign === "start"
+      ? "left-0 origin-top-left"
+      : "right-0 origin-top-right";
 
   return (
     <Popover as="div" className="relative inline-block text-left">
@@ -168,7 +176,7 @@ export default function FilterPopover<T extends Object>({
       )}
       <PopoverPanel
         unmount
-        className="absolute right-0 mt-1 w-96 divide-y divide-stone-100 rounded-md bg-stone-50 dark:bg-stone-700 border border-stone-200 dark:border-stone-500 shadow-md dark:shadow-stone-800 ring-1 ring-stone-900 ring-opacity-5 focus:outline-none z-50 origin-top-right transition transform data-[closed]:scale-95 data-[closed]:opacity-0 data-[enter]:duration-100 data-[leave]:duration-75 data-[enter]:ease-out data-[leave]:ease-in"
+        className={`absolute ${panelPositionClass} mt-1 w-96 max-w-[min(24rem,calc(100vw-2rem))] divide-y divide-stone-100 rounded-md bg-stone-50 dark:bg-stone-700 border border-stone-200 dark:border-stone-500 shadow-md dark:shadow-stone-800 ring-1 ring-stone-900 ring-opacity-5 focus:outline-none z-50 transition transform data-[closed]:scale-95 data-[closed]:opacity-0 data-[enter]:duration-100 data-[leave]:duration-75 data-[enter]:ease-out data-[leave]:ease-in`}
       >
         <div className="p-4">
           <FilterPanel filter={filter} filterDefs={filterDef} />
