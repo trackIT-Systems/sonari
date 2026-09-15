@@ -675,3 +675,56 @@ async def test_include_match_or_with_confidence_one_tag_sufficient(
     and_params = {**or_params, "sound_event_annotation_tag__include_match": "and"}
     ids_and = await _fetch_task_ids(auth_client, project.id, **and_params)
     assert task.id not in ids_and
+
+
+@pytest.mark.asyncio
+async def test_distinct_tag_count_with_single_include_tag(
+    auth_client: AsyncClient,
+    db_session: AsyncSession,
+    test_recording_id: int,
+    test_user,
+):
+    """Distinct tag amount with one included tag (not occurrence count)."""
+    user = schemas.SimpleUser.model_validate(test_user)
+    project = await api.annotation_projects.create(
+        db_session,
+        name=f"tag_count_{uuid.uuid4().hex[:8]}",
+        description="filter test",
+    )
+    await db_session.commit()
+
+    one_distinct_task = await _create_task(
+        db_session, project, test_recording_id, 160.0, 165.0
+    )
+    two_distinct_task = await _create_task(
+        db_session, project, test_recording_id, 166.0, 170.0
+    )
+    pip_tag = await _create_species_tag(db_session, user, "pip")
+    nyct_tag = await _create_species_tag(db_session, user, "nyct")
+
+    pip_event_a = await _create_sound_event(db_session, one_distinct_task, user, 160.5, 161.0)
+    pip_event_b = await _create_sound_event(db_session, one_distinct_task, user, 161.5, 162.0)
+    await _add_tag(db_session, pip_event_a, pip_tag, user)
+    await _add_tag(db_session, pip_event_b, pip_tag, user)
+
+    pip_event_c = await _create_sound_event(db_session, two_distinct_task, user, 166.5, 167.0)
+    nyct_event = await _create_sound_event(db_session, two_distinct_task, user, 167.5, 168.0)
+    await _add_tag(db_session, pip_event_c, pip_tag, user)
+    await _add_tag(db_session, nyct_event, nyct_tag, user)
+
+    one_distinct_params = {
+        "sound_event_annotation_tag__keys": "species",
+        "sound_event_annotation_tag__values": pip_tag.value,
+        "sound_event_annotation_tag_count__eq": 1,
+    }
+    ids_one = await _fetch_task_ids(auth_client, project.id, **one_distinct_params)
+    assert one_distinct_task.id in ids_one
+    assert two_distinct_task.id not in ids_one
+
+    two_distinct_params = {
+        **one_distinct_params,
+        "sound_event_annotation_tag_count__eq": 2,
+    }
+    ids_two = await _fetch_task_ids(auth_client, project.id, **two_distinct_params)
+    assert two_distinct_task.id in ids_two
+    assert one_distinct_task.id not in ids_two

@@ -224,6 +224,87 @@ function IsNullField({
   );
 }
 
+export type IntegerCountFilter = {
+  eq?: number;
+  gt?: number;
+  lt?: number;
+  ge?: number;
+  le?: number;
+};
+
+export function IntegerFilter({
+  name = "Tag count",
+  onChange,
+  min = 0,
+}: {
+  name?: string;
+  onChange: (filter: IntegerCountFilter) => void;
+  min?: number;
+}) {
+  const [value, setValue] = useState("1");
+  const [operation, setOperation] = useState<
+    "eq" | "gt" | "lt" | "ge" | "le"
+  >("eq");
+
+  const handleSubmit = useCallback(() => {
+    const parsed = parseInt(value, 10);
+    if (Number.isNaN(parsed)) {
+      return;
+    }
+    const intValue = Math.max(min, parsed);
+    onChange({
+      [operation]: intValue,
+    });
+  }, [onChange, operation, value, min]);
+
+  return (
+    <div className="flex flex-col gap-2 w-full">
+      <label
+        className="block text-sm font-medium text-stone-700 dark:text-stone-300"
+        htmlFor="integer-filter-value"
+      >
+        {name}
+      </label>
+      <div className="flex flex-row gap-2">
+        <select
+          className="rounded-md border border-stone-300 bg-stone-50 px-2 py-1 text-sm dark:border-stone-600 dark:bg-stone-900"
+          value={operation}
+          onChange={(e) =>
+            setOperation(e.target.value as "eq" | "gt" | "lt" | "ge" | "le")
+          }
+        >
+          <option value="eq">=</option>
+          <option value="gt">&gt;</option>
+          <option value="ge">&gt;=</option>
+          <option value="lt">&lt;</option>
+          <option value="le">&lt;=</option>
+        </select>
+        <input
+          id="integer-filter-value"
+          type="number"
+          min={min}
+          step={1}
+          className="flex-1 rounded-md border border-stone-300 bg-stone-50 px-2 py-1 text-sm dark:border-stone-600 dark:bg-stone-900"
+          value={value}
+          onKeyDown={(e) => {
+            if (e.key === ACCEPT_SHORTCUT) {
+              handleSubmit();
+            }
+          }}
+          onChange={(e) => setValue(e.target.value)}
+        />
+        <button
+          type="button"
+          onClick={handleSubmit}
+          className="rounded-md bg-emerald-300 px-3 py-1 text-sm text-emerald-800 dark:bg-emerald-700 dark:text-emerald-200"
+        >
+          set
+        </button>
+      </div>
+    </div>
+  );
+}
+
 export function FloatFilter({
   name = "field",
   onChange,

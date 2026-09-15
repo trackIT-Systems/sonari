@@ -14,6 +14,8 @@ import useKeyFilter from "@/hooks/utils/useKeyFilter";
 export type FilterDef<T extends Object> = {
   field: keyof T;
   name: string;
+  /** If true, only used for active-filter badges (not in the add-filter menu). */
+  hideInMenu?: boolean;
   description?: string | ((filter: Filter<T>) => string);
   icon?: ReactNode;
   selector: ({
@@ -43,7 +45,7 @@ function FilterCombobox<T extends Object>({
         Apply Filter
       </div>
       <SearchMenu
-        options={filterDefs}
+        options={filterDefs.filter((def) => !def.hideInMenu)}
         static={true}
         renderOption={(filter) => (
           <>

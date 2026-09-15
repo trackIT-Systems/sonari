@@ -10,6 +10,7 @@ import {
   TagFilter,
   FloatFilter,
   FloatEqFilterFn,
+  IntegerFilter,
   TextFilter,
 } from "@/components/filters/Filters";
 import {
@@ -78,6 +79,22 @@ function SoundEventAnnotationTagSelector({
           excluded tag.
         </p>
       ) : null}
+      <div className="flex flex-col gap-1">
+        <span className="text-xs text-stone-500 dark:text-stone-400 text-center">
+          Distinct tags on task (optional)
+        </span>
+        <IntegerFilter
+          name="Amount"
+          onChange={(val) => {
+            setFilter("sound_event_annotation_tag_count", val);
+          }}
+        />
+        <p className="text-xs text-stone-500 dark:text-stone-400">
+          Number of different tags on the task. With one included tag, amount
+          2 means that tag is present and the task has exactly two distinct
+          tags in total.
+        </p>
+      </div>
       <TagFilter
         onChange={(tag) => {
           const entry: TaskFilterTag = {
@@ -246,8 +263,77 @@ const tasksFilterDefs: FilterDef<AnnotationTaskFilter>[] = [
         match === "and"
           ? "Included tags: task must have all listed tags."
           : "Included tags: task must have any listed tag.";
-      return `${includeCombine} Exclude tags: hide tasks that have any listed tag.${confidenceNote}`;
+      const amount = filter.get("sound_event_annotation_tag_count");
+      const amountNote =
+        amount?.eq !== undefined
+          ? ` Distinct tag amount = ${amount.eq}.`
+          : "";
+      return `${includeCombine} Exclude tags: hide tasks that have any listed tag.${amountNote}${confidenceNote}`;
     },
+    icon: (
+      <TagIcon className="h-5 w-5 inline-block text-stone-500 mr-1 align-middle" />
+    ),
+  },
+  {
+    field: "sound_event_annotation_tag_count",
+    name: "Distinct tag amount",
+    hideInMenu: true,
+    selector: () => null,
+    render: ({ value, clear, setFilter }) => {
+      const removeKey = (key: keyof NonNullable<typeof value>) => {
+        const newValue = { ...value };
+        delete newValue[key];
+        if (Object.keys(newValue).length === 0) {
+          clear();
+        } else {
+          setFilter("sound_event_annotation_tag_count", newValue);
+        }
+      };
+      return (
+        <>
+          {value?.eq !== undefined && (
+            <FilterBadge
+              field="Distinct tags"
+              operation="="
+              value={value.eq}
+              onRemove={() => removeKey("eq")}
+            />
+          )}
+          {value?.gt !== undefined && (
+            <NumberFilterBadge
+              field="Distinct tags"
+              value={{ gt: value.gt }}
+              onRemove={() => removeKey("gt")}
+            />
+          )}
+          {value?.ge !== undefined && (
+            <FilterBadge
+              field="Distinct tags"
+              operation=">="
+              value={value.ge}
+              onRemove={() => removeKey("ge")}
+            />
+          )}
+          {value?.lt !== undefined && (
+            <NumberFilterBadge
+              field="Distinct tags"
+              value={{ lt: value.lt }}
+              onRemove={() => removeKey("lt")}
+            />
+          )}
+          {value?.le !== undefined && (
+            <FilterBadge
+              field="Distinct tags"
+              operation="<="
+              value={value.le}
+              onRemove={() => removeKey("le")}
+            />
+          )}
+        </>
+      );
+    },
+    description:
+      "Number of different tags on the task (set in the Tag filter panel).",
     icon: (
       <TagIcon className="h-5 w-5 inline-block text-stone-500 mr-1 align-middle" />
     ),

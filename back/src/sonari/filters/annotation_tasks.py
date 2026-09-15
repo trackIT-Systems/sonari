@@ -288,6 +288,69 @@ def _task_has_tag_key_value(key: str, value: str):
     return or_(sound_event_exists, task_tag_exists)
 
 
+def _task_distinct_tag_count_expression():
+    """Distinct tag ids on a task (sound-event tags and task-level tags)."""
+    sound_events_for_task = (
+        select(models.SoundEventAnnotation.id)
+        .where(
+            models.SoundEventAnnotation.annotation_task_id == models.AnnotationTask.id,
+        )
+        .correlate(models.AnnotationTask)
+    )
+    sound_event_tag_ids = select(models.SoundEventAnnotationTag.tag_id).where(
+        models.SoundEventAnnotationTag.sound_event_annotation_id.in_(
+            sound_events_for_task,
+        ),
+    )
+    task_level_tag_ids = (
+        select(models.AnnotationTaskTag.tag_id)
+        .where(models.AnnotationTaskTag.annotation_task_id == models.AnnotationTask.id)
+        .correlate(models.AnnotationTask)
+    )
+    distinct_tag_ids = sound_event_tag_ids.union(task_level_tag_ids).subquery()
+    return select(func.count()).select_from(distinct_tag_ids).scalar_subquery()
+
+
+def _apply_tag_count_bounds(query: Select, count_filter: "SoundEventAnnotationTagCountFilter", count_expr):
+    if count_filter.eq is not None:
+        query = query.where(count_expr == count_filter.eq)
+    if count_filter.gt is not None:
+        query = query.where(count_expr > count_filter.gt)
+    if count_filter.lt is not None:
+        query = query.where(count_expr < count_filter.lt)
+    if count_filter.ge is not None:
+        query = query.where(count_expr >= count_filter.ge)
+    if count_filter.le is not None:
+        query = query.where(count_expr <= count_filter.le)
+    return query
+
+
+def _tag_count_filter_active(count_filter: "SoundEventAnnotationTagCountFilter") -> bool:
+    return any(
+        getattr(count_filter, field) is not None
+        for field in ("eq", "gt", "lt", "ge", "le")
+    )
+
+
+class SoundEventAnnotationTagCountFilter(base.Filter):
+    """Filter tasks by how many distinct tags appear on the task."""
+
+    eq: int | None = None
+    gt: int | None = None
+    lt: int | None = None
+    ge: int | None = None
+    le: int | None = None
+
+    def filter(self, query: Select) -> Select:
+        if not _tag_count_filter_active(self):
+            return query
+        return _apply_tag_count_bounds(
+            query,
+            self,
+            _task_distinct_tag_count_expression(),
+        )
+
+
 def _resolved_include_match(
     include_match: Literal["and", "or"] | None,
 ) -> Literal["and", "or"]:
@@ -766,6 +829,7 @@ _AnnotationTaskFilterCombined = base.combine(
     recording=RecordingFilter,
     dataset=StationFilter,
     sound_event_annotation_tag=SoundEventAnnotationTagFilter,
+    sound_event_annotation_tag_count=SoundEventAnnotationTagCountFilter,
     date=DateRangeFilter,
     night=NightFilter,
     day=DayFilter,
@@ -782,12 +846,15 @@ class AnnotationTaskFilter(_AnnotationTaskFilterCombined):
     def filter(self, query: Select) -> Select:
         filters = self.build_filter_list()
         tag_filter: SoundEventAnnotationTagFilter | None = None
+        tag_count_filter: SoundEventAnnotationTagCountFilter | None = None
         confidence_filter: ConfidenceFilter | None = None
         other_filters: list[base.Filter] = []
 
         for filter_ in filters:
             if isinstance(filter_, SoundEventAnnotationTagFilter):
                 tag_filter = filter_
+            elif isinstance(filter_, SoundEventAnnotationTagCountFilter):
+                tag_count_filter = filter_
             elif isinstance(filter_, ConfidenceFilter):
                 confidence_filter = filter_
             else:
@@ -824,5 +891,8 @@ class AnnotationTaskFilter(_AnnotationTaskFilterCombined):
                 )
         elif tag_filter is not None:
             query = tag_filter.filter(query)
+
+        if tag_count_filter is not None and _tag_count_filter_active(tag_count_filter):
+            query = tag_count_filter.filter(query)
 
         return query

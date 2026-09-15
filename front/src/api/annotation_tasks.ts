@@ -9,6 +9,7 @@ import {
   TagSchema,
   UserSchema,
   FloatEqFilterSchema,
+  IntegerFilterSchema,
 } from "@/schemas";
 
 import type { NoteCreate } from "@/api/notes";
@@ -77,6 +78,8 @@ const AnnotationTaskFilterSchema = z.object({
   ]).optional(),
   /** How multiple included tags combine (default OR when omitted). */
   sound_event_annotation_tag_include_match: z.enum(["and", "or"]).optional(),
+  /** Number of distinct tags on the task (set from the Tag filter UI). */
+  sound_event_annotation_tag_count: IntegerFilterSchema.optional(),
   empty: z.boolean().optional(),
   pending: z.boolean().optional(),
   assigned: z.boolean().optional(),
@@ -219,6 +222,16 @@ export function buildAnnotationTaskFilterQueryParams(
     sound_event_annotation_tag__exclude_values: soundEventTags.excludeValues,
     sound_event_annotation_tag__include_match:
       params.sound_event_annotation_tag_include_match,
+    sound_event_annotation_tag_count__eq:
+      params.sound_event_annotation_tag_count?.eq,
+    sound_event_annotation_tag_count__gt:
+      params.sound_event_annotation_tag_count?.gt,
+    sound_event_annotation_tag_count__lt:
+      params.sound_event_annotation_tag_count?.lt,
+    sound_event_annotation_tag_count__ge:
+      params.sound_event_annotation_tag_count?.ge,
+    sound_event_annotation_tag_count__le:
+      params.sound_event_annotation_tag_count?.le,
     pending__eq: params.pending,
     empty__eq: params.empty,
     assigned__eq: params.assigned,
