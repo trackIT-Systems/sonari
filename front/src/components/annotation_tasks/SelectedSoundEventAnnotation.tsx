@@ -21,6 +21,8 @@ export default function SelectedSoundEventAnnotation({
   onUpdate,
   tagVisibility,
   onSelectSoundEventAnnotation,
+  onAddTag,
+  onRemoveTag,
 }: {
   //* The sound event annotation to display */
   soundEventAnnotation: SoundEventAnnotation;
@@ -34,6 +36,8 @@ export default function SelectedSoundEventAnnotation({
   onUpdate?: (annotation: SoundEventAnnotation) => void;
   tagVisibility?: TagVisibilityFilter;
   onSelectSoundEventAnnotation?: (annotation: SoundEventAnnotation) => void;
+  onAddTag?: (tag: Tag) => void | Promise<unknown>;
+  onRemoveTag?: (tag: Tag) => void | Promise<unknown>;
 }) {
   const soundEventAnnotation = useSoundEventAnnotation({
     id: data.id,
@@ -94,8 +98,18 @@ export default function SelectedSoundEventAnnotation({
               tagFilter={tagFilter}
               soundEventAnnotation={currentAnnotation}
               tagVisibility={tagVisibility}
-              onAddTag={soundEventAnnotation.addTag.mutate}
-              onRemoveTag={soundEventAnnotation.removeTag.mutate}
+              onAddTag={
+                onAddTag ??
+                ((tag) => {
+                  void soundEventAnnotation.addTag.mutateAsync(tag);
+                })
+              }
+              onRemoveTag={
+                onRemoveTag ??
+                ((tag) => {
+                  void soundEventAnnotation.removeTag.mutateAsync(tag);
+                })
+              }
             />
           </div>
           <div className="min-w-0 flex-1">

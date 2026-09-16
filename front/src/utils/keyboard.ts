@@ -73,6 +73,9 @@ export const UNSURE_TASK_SHORTCUT = "2";
 export const REJECT_TASK_SHORTCUT = "3";
 export const VERIFY_TASK_SHORTCUT = "4";
 
+export const UNDO_SHORTCUT = "z";
+export const REDO_SHORTCUT = "y";
+
 export const MEASURE_SHORTCUT = "M";
 export const CREATE_SOUND_EVENT_ANNOTATION_SHORTCUT = "c";
 export const SELECT_SOUND_EVENT_ANNOTATION_SHORTCUT = "s";
@@ -342,6 +345,16 @@ export const ANNOTATION_KEY_SHORTCUTS: KeyShortcut[] = [
         label: "Select Geometry",
         shortcut: GEOMETRY_TYPE_SHORTCUT,
         description: "Open geometry type selection",
+    },
+    {
+        label: "Undo",
+        shortcut: `${getMetaKeyLabel()} ${UNDO_SHORTCUT.toUpperCase()}`,
+        description: "Undo the last annotation change on this task",
+    },
+    {
+        label: "Redo",
+        shortcut: `${getMetaKeyLabel()} ${getSpecialKeyLabel("Shift")} ${UNDO_SHORTCUT.toUpperCase()}`,
+        description: "Redo the last undone annotation change",
     },
 ]
 

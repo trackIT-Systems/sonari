@@ -12,6 +12,9 @@ import useAnnotateTasks from "@/hooks/annotation/useAnnotateTasks";
 import useRecordingAnnotationTasks from "@/hooks/annotation/useRecordingAnnotationTasks";
 import AnnotationTaskTagBar from "@/components/annotation_tasks/AnnotationTaskTagBar";
 import useAnnotateTasksKeyShortcuts from "@/hooks/annotation/useTaskStatusKeyShortcuts";
+import useAnnotationUndoKeyShortcuts from "@/hooks/annotation/useAnnotationUndoKeyShortcuts";
+import type { AnnotationHistoryControls } from "@/hooks/annotation/useAnnotationUndoKeyShortcuts";
+import type { HistoryReplayEvent } from "@/hooks/annotation/annotationHistoryTypes";
 
 import { Popover, PopoverButton, PopoverPanel } from "@headlessui/react";
 import SearchMenu from "@/components/search/SearchMenu";
@@ -68,6 +71,8 @@ export default function AnnotateTasks({
   onSourceUpdateSoundEventAnnotation,
   onSourceAddTagToSoundEventAnnotation,
   onSourceRemoveTagFromSoundEventAnnotation,
+  annotationHistory,
+  sourceAnnotationHistory,
 }: {
   /** Filter to select which tasks are to be annotated */
   taskFilter?: AnnotationTaskFilter;
@@ -106,6 +111,8 @@ export default function AnnotateTasks({
   onSourceUpdateSoundEventAnnotation?: (params: { soundEventAnnotation: SoundEventAnnotation; geometry: Geometry }) => void;
   onSourceAddTagToSoundEventAnnotation?: (params: { soundEventAnnotation: SoundEventAnnotation; tag: Tag }) => Promise<SoundEventAnnotation>;
   onSourceRemoveTagFromSoundEventAnnotation?: (params: { soundEventAnnotation: SoundEventAnnotation; tag: Tag }) => Promise<SoundEventAnnotation>;
+  annotationHistory?: AnnotationHistoryControls;
+  sourceAnnotationHistory?: AnnotationHistoryControls;
 }) {
   const [tagPalette, setTagPalette] = useState<Tag[]>([]);
   const [selectedTag, setSelectedTag] = useState<{ tag: Tag; count: number } | null>(null);
@@ -203,6 +210,48 @@ export default function AnnotateTasks({
   const activeRemoveTagFromSoundEventAnnotation = isUsingSource
     ? onSourceRemoveTagFromSoundEventAnnotation
     : onRemoveTagFromSoundEventAnnotation;
+
+  const activeHistory = isUsingSource ? sourceAnnotationHistory : annotationHistory;
+
+  const applyHistoryReplayEvents = useCallback((events: HistoryReplayEvent[]) => {
+    for (const event of events) {
+      if (event.type === "removed") {
+        setSelectedSoundEventAnnotation((current) =>
+          current?.id === event.serverId ? null : current,
+        );
+      } else if (event.type === "restored") {
+        setSelectedSoundEventAnnotation(event.soundEvent);
+      }
+    }
+  }, []);
+
+  const handleUndo = useCallback(async () => {
+    if (!activeHistory?.canUndo) {
+      return;
+    }
+    const events = await activeHistory.undo();
+    applyHistoryReplayEvents(events);
+  }, [activeHistory, applyHistoryReplayEvents]);
+
+  const handleRedo = useCallback(async () => {
+    if (!activeHistory?.canRedo) {
+      return;
+    }
+    const events = await activeHistory.redo();
+    applyHistoryReplayEvents(events);
+  }, [activeHistory, applyHistoryReplayEvents]);
+
+  useAnnotationUndoKeyShortcuts({
+    enabled: activeHistory != null,
+    canUndo: activeHistory?.canUndo ?? false,
+    canRedo: activeHistory?.canRedo ?? false,
+    onUndo: () => {
+      void handleUndo();
+    },
+    onRedo: () => {
+      void handleRedo();
+    },
+  });
 
   const selectedSoundEventAnnotationTask = isUsingSource
     ? sourceAnnotationTask
@@ -302,22 +351,25 @@ export default function AnnotateTasks({
   const handleRemoveTagFromSoundEventAnnotations = useCallback(
     async (tagToRemove: Tag) => {
       if (!displayedSoundEventAnnotations.length || !activeRemoveTagFromSoundEventAnnotation) return;
-      const promises = displayedSoundEventAnnotations
-        .filter(soundEventAnnotation =>
-          soundEventAnnotation.tags?.some(
-            tag => tag.key === tagToRemove.key && tag.value === tagToRemove.value
+      const run = activeHistory?.runBatch ?? (async (_label, fn) => fn());
+      await run("Remove tags", async () => {
+        const promises = displayedSoundEventAnnotations
+          .filter(soundEventAnnotation =>
+            soundEventAnnotation.tags?.some(
+              tag => tag.key === tagToRemove.key && tag.value === tagToRemove.value
+            )
           )
-        )
-        .map(soundEventAnnotation => {
-          return activeRemoveTagFromSoundEventAnnotation({
-            soundEventAnnotation: soundEventAnnotation,
-            tag: tagToRemove
+          .map(soundEventAnnotation => {
+            return activeRemoveTagFromSoundEventAnnotation({
+              soundEventAnnotation: soundEventAnnotation,
+              tag: tagToRemove
+            });
           });
-        });
 
-      await Promise.all(promises);
+        await Promise.all(promises);
+      });
     },
-    [displayedSoundEventAnnotations, activeRemoveTagFromSoundEventAnnotation]
+    [displayedSoundEventAnnotations, activeRemoveTagFromSoundEventAnnotation, activeHistory],
   );
 
 
@@ -429,55 +481,58 @@ export default function AnnotateTasks({
     async (oldTag: Tag | null, newTag: Tag | null, currentAnnotation?: SoundEventAnnotation | null) => {
       if (!displayedSoundEventAnnotations.length || !activeRemoveTagFromSoundEventAnnotation || !activeAddTagToSoundEventAnnotation) return;
 
-      let soundEventAnnotationsToUpdate: SoundEventAnnotation[] = [];
-      if (currentAnnotation) {
-        soundEventAnnotationsToUpdate = [currentAnnotation];
-      } else {
-        if (oldTag?.key === "all") {
-          soundEventAnnotationsToUpdate = displayedSoundEventAnnotations.filter(soundEventAnnotation =>
-            soundEventAnnotation.tags && soundEventAnnotation.tags.length > 0
-          );
-        } else if (oldTag) {
-          soundEventAnnotationsToUpdate = displayedSoundEventAnnotations.filter(soundEventAnnotation =>
-            soundEventAnnotation.tags?.some(
-              tag => tag.key === oldTag.key && tag.value === oldTag.value
-            )
-          );
+      const run = activeHistory?.runBatch ?? (async (_label, fn) => fn());
+      await run("Replace tags", async () => {
+        let soundEventAnnotationsToUpdate: SoundEventAnnotation[] = [];
+        if (currentAnnotation) {
+          soundEventAnnotationsToUpdate = [currentAnnotation];
         } else {
-          soundEventAnnotationsToUpdate = displayedSoundEventAnnotations;
+          if (oldTag?.key === "all") {
+            soundEventAnnotationsToUpdate = displayedSoundEventAnnotations.filter(soundEventAnnotation =>
+              soundEventAnnotation.tags && soundEventAnnotation.tags.length > 0
+            );
+          } else if (oldTag) {
+            soundEventAnnotationsToUpdate = displayedSoundEventAnnotations.filter(soundEventAnnotation =>
+              soundEventAnnotation.tags?.some(
+                tag => tag.key === oldTag.key && tag.value === oldTag.value
+              )
+            );
+          } else {
+            soundEventAnnotationsToUpdate = displayedSoundEventAnnotations;
+          }
         }
-      }
 
-      const promises = soundEventAnnotationsToUpdate.map(async soundEventAnnotation => {
-        try {
-          if (oldTag?.key === "all" && soundEventAnnotation.tags) {
-            for (const tag of soundEventAnnotation.tags) {
+        const promises = soundEventAnnotationsToUpdate.map(async soundEventAnnotation => {
+          try {
+            if (oldTag?.key === "all" && soundEventAnnotation.tags) {
+              for (const tag of soundEventAnnotation.tags) {
+                await activeRemoveTagFromSoundEventAnnotation({
+                  soundEventAnnotation: soundEventAnnotation,
+                  tag
+                });
+              }
+            } else if (oldTag) {
               await activeRemoveTagFromSoundEventAnnotation({
                 soundEventAnnotation: soundEventAnnotation,
-                tag
+                tag: oldTag
               });
             }
-          } else if (oldTag) {
-            await activeRemoveTagFromSoundEventAnnotation({
-              soundEventAnnotation: soundEventAnnotation,
-              tag: oldTag
-            });
-          }
 
-          if (newTag) {
-            await activeAddTagToSoundEventAnnotation({
-              soundEventAnnotation: soundEventAnnotation,
-              tag: newTag
-            });
+            if (newTag) {
+              await activeAddTagToSoundEventAnnotation({
+                soundEventAnnotation: soundEventAnnotation,
+                tag: newTag
+              });
+            }
+          } catch (error) {
+            console.error('Error replacing tag:', error);
           }
-        } catch (error) {
-          console.error('Error replacing tag:', error);
-        }
+        });
+
+        await Promise.all(promises);
       });
-
-      await Promise.all(promises);
     },
-    [displayedSoundEventAnnotations, activeRemoveTagFromSoundEventAnnotation, activeAddTagToSoundEventAnnotation]
+    [displayedSoundEventAnnotations, activeRemoveTagFromSoundEventAnnotation, activeAddTagToSoundEventAnnotation, activeHistory],
   );
 
   const handleAddTagToUntaggedSoundEventAnnotations = useCallback(
@@ -486,20 +541,23 @@ export default function AnnotateTasks({
         return;
       }
 
-      const untagged = displayedSoundEventAnnotations.filter(
-        (soundEventAnnotation) => !soundEventAnnotation.tags?.length,
-      );
+      const run = activeHistory?.runBatch ?? (async (_label, fn) => fn());
+      await run("Add tag to untagged sound events", async () => {
+        const untagged = displayedSoundEventAnnotations.filter(
+          (soundEventAnnotation) => !soundEventAnnotation.tags?.length,
+        );
 
-      await Promise.all(
-        untagged.map((soundEventAnnotation) =>
-          activeAddTagToSoundEventAnnotation({
-            soundEventAnnotation,
-            tag: newTag,
-          }),
-        ),
-      );
+        await Promise.all(
+          untagged.map((soundEventAnnotation) =>
+            activeAddTagToSoundEventAnnotation({
+              soundEventAnnotation,
+              tag: newTag,
+            }),
+          ),
+        );
+      });
     },
-    [displayedSoundEventAnnotations, activeAddTagToSoundEventAnnotation],
+    [displayedSoundEventAnnotations, activeAddTagToSoundEventAnnotation, activeHistory],
   );
 
   const menuRef = useRef<HTMLDivElement>(null);
@@ -649,6 +707,18 @@ export default function AnnotateTasks({
                   onUpdate={onUpdateSelectedSoundEventAnnotation}
                   tagVisibility={tagVisibility}
                   onSelectSoundEventAnnotation={setSelectedSoundEventAnnotation}
+                  onAddTag={(tag) =>
+                    activeAddTagToSoundEventAnnotation?.({
+                      soundEventAnnotation: selectedSoundEventAnnotation,
+                      tag,
+                    })
+                  }
+                  onRemoveTag={(tag) =>
+                    activeRemoveTagFromSoundEventAnnotation?.({
+                      soundEventAnnotation: selectedSoundEventAnnotation,
+                      tag,
+                    })
+                  }
                 />
               </div>
             )}

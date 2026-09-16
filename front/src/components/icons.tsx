@@ -309,6 +309,8 @@ export {
   PointIcon,
   PolygonIcon,
   PresentationChartLineIcon as PlotIcon,
+  ArrowUturnLeftIcon as UndoIcon,
+  ArrowPathRoundedSquareIcon as RedoIcon,
   RectangleStackIcon as DatasetsIcon,
   RectangleStackIcon as MissingTaskIcon,
   ShieldCheckIcon as VerifiedIcon,

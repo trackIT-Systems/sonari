@@ -10,12 +10,13 @@ import AnnotateTasks from "@/components/annotation_tasks/AnnotateTasks";
 import Loading from "@/components/Loading";
 import { CompleteIcon, NeedsReviewIcon, HelpIcon, VerifiedIcon } from "@/components/icons";
 import useAnnotationTask from "@/hooks/api/useAnnotationTask";
+import useAnnotationHistory from "@/hooks/annotation/useAnnotationHistory";
 import useStore from "@/store";
 import { SpectrogramParametersSchema } from "@/schemas";
 
 import AnnotationProjectContext from "../context";
 
-import type { AnnotationTask, AnnotationStatus, SpectrogramParameters, Tag } from "@/types";
+import type { AnnotationTask, AnnotationStatus, Geometry, SpectrogramParameters, SoundEventAnnotation, Tag } from "@/types";
 import type { NoteCreate } from "@/api/notes";
 
 export default function Page() {
@@ -91,6 +92,80 @@ export default function Page() {
     removeTagFromSoundEventAnnotation: sourceRemoveTagFromSoundEventAnnotation,
   } = sourceAnnotationTaskQuery;
 
+  const currentHistoryMutations = useMemo(
+    () => ({
+      addSoundEventAnnotation: (params: { geometry: Geometry; tags: Tag[] }) =>
+        addSoundEventAnnotation.mutateAsync(params),
+      removeSoundEventAnnotation: (annotation: SoundEventAnnotation) =>
+        removeSoundEventAnnotation.mutateAsync(annotation),
+      updateSoundEventAnnotation: (params: {
+        soundEventAnnotation: SoundEventAnnotation;
+        geometry: Geometry;
+      }) => updateSoundEventAnnotation.mutateAsync(params),
+      addTagToSoundEventAnnotation: (params: {
+        soundEventAnnotation: SoundEventAnnotation;
+        tag: Tag;
+      }) => addTagToSoundEventAnnotation.mutateAsync(params),
+      removeTagFromSoundEventAnnotation: (params: {
+        soundEventAnnotation: SoundEventAnnotation;
+        tag: Tag;
+      }) => removeTagFromSoundEventAnnotation.mutateAsync(params),
+      addTaskTag: (tag: Tag) => addTag.mutateAsync(tag),
+      removeTaskTag: (tag: Tag) => removeTag.mutateAsync(tag),
+    }),
+    [
+      addSoundEventAnnotation,
+      removeSoundEventAnnotation,
+      updateSoundEventAnnotation,
+      addTagToSoundEventAnnotation,
+      removeTagFromSoundEventAnnotation,
+      addTag,
+      removeTag,
+    ],
+  );
+
+  const sourceHistoryMutations = useMemo(
+    () => ({
+      addSoundEventAnnotation: (params: { geometry: Geometry; tags: Tag[] }) =>
+        sourceAddSoundEventAnnotation.mutateAsync(params),
+      removeSoundEventAnnotation: (annotation: SoundEventAnnotation) =>
+        sourceRemoveSoundEventAnnotation.mutateAsync(annotation),
+      updateSoundEventAnnotation: (params: {
+        soundEventAnnotation: SoundEventAnnotation;
+        geometry: Geometry;
+      }) => sourceUpdateSoundEventAnnotation.mutateAsync(params),
+      addTagToSoundEventAnnotation: (params: {
+        soundEventAnnotation: SoundEventAnnotation;
+        tag: Tag;
+      }) => sourceAddTagToSoundEventAnnotation.mutateAsync(params),
+      removeTagFromSoundEventAnnotation: (params: {
+        soundEventAnnotation: SoundEventAnnotation;
+        tag: Tag;
+      }) => sourceRemoveTagFromSoundEventAnnotation.mutateAsync(params),
+      addTaskTag: async () => undefined,
+      removeTaskTag: async () => undefined,
+    }),
+    [
+      sourceAddSoundEventAnnotation,
+      sourceRemoveSoundEventAnnotation,
+      sourceUpdateSoundEventAnnotation,
+      sourceAddTagToSoundEventAnnotation,
+      sourceRemoveTagFromSoundEventAnnotation,
+    ],
+  );
+
+  const annotationHistory = useAnnotationHistory({
+    taskId: annotationTask?.id,
+    soundEventAnnotations: annotationTask?.sound_event_annotations ?? undefined,
+    mutations: currentHistoryMutations,
+  });
+
+  const sourceAnnotationHistory = useAnnotationHistory({
+    taskId: sourceAnnotationTask?.id,
+    soundEventAnnotations: sourceAnnotationTask?.sound_event_annotations ?? undefined,
+    mutations: sourceHistoryMutations,
+  });
+
   const parameters = useStore((state) => state.spectrogramSettings);
 
   const setParameters = useStore((state) => state.setSpectrogramSettings);
@@ -120,69 +195,85 @@ export default function Page() {
   );
 
   const handleAddTag = useCallback(
-    (tag: Tag) => addTag.mutate(tag),
-    [addTag]
+    (tag: Tag) => annotationHistory.wrapAddTaskTag(tag),
+    [annotationHistory],
   );
 
   const handleRemoveTag = useCallback(
-    (tag: Tag) => removeTag.mutate(tag),
-    [removeTag]
+    (tag: Tag) => annotationHistory.wrapRemoveTaskTag(tag),
+    [annotationHistory],
   );
 
   const handleAddTagToSoundEventAnnotation = useCallback(
-    (params: any) => addTagToSoundEventAnnotation.mutateAsync(params),
-    [addTagToSoundEventAnnotation]
+    (params: {
+      soundEventAnnotation: SoundEventAnnotation;
+      tag: Tag;
+    }) => annotationHistory.wrapAddTagToSoundEventAnnotation(params),
+    [annotationHistory],
   );
 
   const handleRemoveTagFromSoundEventAnnotation = useCallback(
-    (params: any) => removeTagFromSoundEventAnnotation.mutateAsync(params),
-    [removeTagFromSoundEventAnnotation]
+    (params: {
+      soundEventAnnotation: SoundEventAnnotation;
+      tag: Tag;
+    }) => annotationHistory.wrapRemoveTagFromSoundEventAnnotation(params),
+    [annotationHistory],
   );
 
   const handleAddSoundEventAnnotation = useCallback(
-    async (params: any) => {
-      const result = await addSoundEventAnnotation.mutateAsync(params);
-      return result;
-    },
-    [addSoundEventAnnotation]
+    (params: { geometry: Geometry; tags: Tag[] }) =>
+      annotationHistory.wrapAddSoundEventAnnotation(params),
+    [annotationHistory],
   );
 
   const handleRemoveSoundEventAnnotation = useCallback(
-    (annotation: any) => removeSoundEventAnnotation.mutate(annotation),
-    [removeSoundEventAnnotation]
+    (annotation: SoundEventAnnotation) =>
+      annotationHistory.wrapRemoveSoundEventAnnotation(annotation),
+    [annotationHistory],
   );
 
   const handleUpdateSoundEventAnnotation = useCallback(
-    (params: any) => updateSoundEventAnnotation.mutate(params),
-    [updateSoundEventAnnotation]
+    (params: {
+      soundEventAnnotation: SoundEventAnnotation;
+      geometry: Geometry;
+    }) => annotationHistory.wrapUpdateSoundEventAnnotation(params),
+    [annotationHistory],
   );
 
   const handleSourceAddSoundEventAnnotation = useCallback(
-    async (params: any) => {
-      const result = await sourceAddSoundEventAnnotation.mutateAsync(params);
-      return result;
-    },
-    [sourceAddSoundEventAnnotation]
+    (params: { geometry: Geometry; tags: Tag[] }) =>
+      sourceAnnotationHistory.wrapAddSoundEventAnnotation(params),
+    [sourceAnnotationHistory],
   );
 
   const handleSourceRemoveSoundEventAnnotation = useCallback(
-    (annotation: any) => sourceRemoveSoundEventAnnotation.mutate(annotation),
-    [sourceRemoveSoundEventAnnotation]
+    (annotation: SoundEventAnnotation) =>
+      sourceAnnotationHistory.wrapRemoveSoundEventAnnotation(annotation),
+    [sourceAnnotationHistory],
   );
 
   const handleSourceUpdateSoundEventAnnotation = useCallback(
-    (params: any) => sourceUpdateSoundEventAnnotation.mutate(params),
-    [sourceUpdateSoundEventAnnotation]
+    (params: {
+      soundEventAnnotation: SoundEventAnnotation;
+      geometry: Geometry;
+    }) => sourceAnnotationHistory.wrapUpdateSoundEventAnnotation(params),
+    [sourceAnnotationHistory],
   );
 
   const handleSourceAddTagToSoundEventAnnotation = useCallback(
-    (params: any) => sourceAddTagToSoundEventAnnotation.mutateAsync(params),
-    [sourceAddTagToSoundEventAnnotation]
+    (params: {
+      soundEventAnnotation: SoundEventAnnotation;
+      tag: Tag;
+    }) => sourceAnnotationHistory.wrapAddTagToSoundEventAnnotation(params),
+    [sourceAnnotationHistory],
   );
 
   const handleSourceRemoveTagFromSoundEventAnnotation = useCallback(
-    (params: any) => sourceRemoveTagFromSoundEventAnnotation.mutateAsync(params),
-    [sourceRemoveTagFromSoundEventAnnotation]
+    (params: {
+      soundEventAnnotation: SoundEventAnnotation;
+      tag: Tag;
+    }) => sourceAnnotationHistory.wrapRemoveTagFromSoundEventAnnotation(params),
+    [sourceAnnotationHistory],
   );
 
   const handleAddBadge = useCallback(
@@ -317,6 +408,24 @@ export default function Page() {
         onSourceUpdateSoundEventAnnotation={handleSourceUpdateSoundEventAnnotation}
         onSourceAddTagToSoundEventAnnotation={handleSourceAddTagToSoundEventAnnotation}
         onSourceRemoveTagFromSoundEventAnnotation={handleSourceRemoveTagFromSoundEventAnnotation}
+        annotationHistory={{
+          canUndo: annotationHistory.canUndo,
+          canRedo: annotationHistory.canRedo,
+          undoLabel: annotationHistory.undoLabel,
+          redoLabel: annotationHistory.redoLabel,
+          undo: annotationHistory.undo,
+          redo: annotationHistory.redo,
+          runBatch: annotationHistory.runBatch,
+        }}
+        sourceAnnotationHistory={{
+          canUndo: sourceAnnotationHistory.canUndo,
+          canRedo: sourceAnnotationHistory.canRedo,
+          undoLabel: sourceAnnotationHistory.undoLabel,
+          redoLabel: sourceAnnotationHistory.redoLabel,
+          undo: sourceAnnotationHistory.undo,
+          redo: sourceAnnotationHistory.redo,
+          runBatch: sourceAnnotationHistory.runBatch,
+        }}
       />
     </div>
   );
