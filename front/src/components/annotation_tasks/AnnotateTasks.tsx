@@ -20,6 +20,7 @@ import { Popover, PopoverButton, PopoverPanel } from "@headlessui/react";
 import SearchMenu from "@/components/search/SearchMenu";
 import TagComponent, { getTagKey } from "@/components/tags/Tag";
 
+import { blurActiveElement } from "@/utils/focus";
 import { SOUND_EVENT_CYCLE_FILTER_SHORTCUT, DELETE_TAG_SHORTCUT, ABORT_SHORTCUT } from "@/utils/keyboard";
 
 import type { AnnotationTaskFilter } from "@/api/annotation_tasks";
@@ -122,6 +123,10 @@ export default function AnnotateTasks({
   useEffect(() => {
     setLiveParameters(parameters);
   }, [parameters]);
+
+  useEffect(() => {
+    blurActiveElement();
+  }, []);
 
   const handleParameterChange = useCallback((next: SpectrogramParameters) => {
     setLiveParameters(next);

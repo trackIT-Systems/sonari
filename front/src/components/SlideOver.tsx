@@ -1,6 +1,8 @@
 import { Dialog, Transition, TransitionChild, DialogPanel, DialogTitle } from "@headlessui/react";
 import { CloseIcon } from "@/components/icons";
-import { Fragment } from "react";
+import { Fragment, useCallback } from "react";
+
+import { blurActiveElement } from "@/utils/focus";
 
 export default function SlideOver({
   title,
@@ -13,9 +15,14 @@ export default function SlideOver({
   isOpen?: boolean;
   onClose?: () => void;
 }) {
+  const handleClose = useCallback(() => {
+    blurActiveElement();
+    onClose?.();
+  }, [onClose]);
+
   return (
     <Transition show={isOpen} as={Fragment}>
-      <Dialog as="div" className="relative z-50" onClose={() => onClose?.()}>
+      <Dialog as="div" className="relative z-50" onClose={handleClose}>
         <TransitionChild
           as={Fragment}
           enter="ease-in-out duration-500"
@@ -54,7 +61,7 @@ export default function SlideOver({
                       <button
                         type="button"
                         className="relative rounded-md text-red-400 hover:text-white focus:outline-none focus:ring-4 focus:ring-red-500/50"
-                        onClick={() => onClose?.()}
+                        onClick={handleClose}
                       >
                         <span className="absolute -inset-2.5" />
                         <span className="sr-only">Close panel</span>

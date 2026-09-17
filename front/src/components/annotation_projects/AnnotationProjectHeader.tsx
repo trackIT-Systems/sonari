@@ -11,6 +11,7 @@ import { H1 } from "@/components/Headings";
 import { DatasetIcon, EditIcon, TasksIcon } from "@/components/icons";
 import Tabs from "@/components/Tabs";
 import api from "@/app/api";
+import { blurActiveElement } from "@/utils/focus";
 
 import type { AnnotationProject } from "@/types";
 
@@ -41,6 +42,7 @@ export default function AnnotationProjectHeader({
 
       const firstTask = response.items[0];
       const projectId = params.get("annotation_project_id");
+      blurActiveElement();
       router.push(
         `/annotation_projects/detail/annotation/?annotation_project_id=${projectId}&annotation_task_id=${firstTask.id}`,
       );
