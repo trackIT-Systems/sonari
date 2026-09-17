@@ -400,6 +400,81 @@ class SoundEventAnnotationTagFilter(base.Filter):
         return query
 
 
+def _task_sound_event_count_expression():
+    """Number of sound event annotations on the task."""
+    return (
+        select(func.count(models.SoundEventAnnotation.id))
+        .where(
+            models.SoundEventAnnotation.annotation_task_id == models.AnnotationTask.id,
+        )
+        .correlate(models.AnnotationTask)
+        .scalar_subquery()
+    )
+
+
+def _sound_event_annotation_has_tag(key: str, value: str):
+    """This sound event annotation carries the given tag."""
+    return exists(
+        select(1)
+        .select_from(models.SoundEventAnnotationTag)
+        .join(models.Tag, models.Tag.id == models.SoundEventAnnotationTag.tag_id)
+        .where(
+            models.SoundEventAnnotationTag.sound_event_annotation_id
+            == models.SoundEventAnnotation.id,
+            models.Tag.key == key,
+            models.Tag.value == value,
+        )
+    )
+
+
+def _sound_events_matching_include_tags_count_expression(
+    tag_filter: SoundEventAnnotationTagFilter,
+):
+    """Count sound events on the task that match included tags (at event level)."""
+    assert tag_filter.keys is not None and tag_filter.values is not None
+    keys = tag_filter.keys.split(",")
+    values = tag_filter.values.split(",")
+    pairs = list(zip(keys, values, strict=True))
+    match = _resolved_include_match(tag_filter.include_match)
+
+    conditions = [
+        models.SoundEventAnnotation.annotation_task_id == models.AnnotationTask.id,
+    ]
+    tag_conditions = [
+        _sound_event_annotation_has_tag(key, value) for key, value in pairs
+    ]
+    if match == "and":
+        conditions.extend(tag_conditions)
+    else:
+        conditions.append(or_(*tag_conditions))
+
+    return (
+        select(func.count(models.SoundEventAnnotation.id))
+        .where(and_(*conditions))
+        .correlate(models.AnnotationTask)
+        .scalar_subquery()
+    )
+
+
+class SoundEventAnnotationCountFilter(base.Filter):
+    """Filter tasks by how many sound event annotations appear on the task."""
+
+    eq: int | None = None
+    gt: int | None = None
+    lt: int | None = None
+    ge: int | None = None
+    le: int | None = None
+
+    def filter(self, query: Select) -> Select:
+        if not _tag_count_filter_active(self):
+            return query
+        return _apply_tag_count_bounds(
+            query,
+            self,
+            _task_sound_event_count_expression(),
+        )
+
+
 class EmptyFilter(base.Filter):
     """Filter for annotation tasks with no sound event annotations."""
 
@@ -830,6 +905,7 @@ _AnnotationTaskFilterCombined = base.combine(
     dataset=StationFilter,
     sound_event_annotation_tag=SoundEventAnnotationTagFilter,
     sound_event_annotation_tag_count=SoundEventAnnotationTagCountFilter,
+    sound_event_annotation_count=SoundEventAnnotationCountFilter,
     date=DateRangeFilter,
     night=NightFilter,
     day=DayFilter,
@@ -847,6 +923,7 @@ class AnnotationTaskFilter(_AnnotationTaskFilterCombined):
         filters = self.build_filter_list()
         tag_filter: SoundEventAnnotationTagFilter | None = None
         tag_count_filter: SoundEventAnnotationTagCountFilter | None = None
+        sound_event_count_filter: SoundEventAnnotationCountFilter | None = None
         confidence_filter: ConfidenceFilter | None = None
         other_filters: list[base.Filter] = []
 
@@ -855,6 +932,8 @@ class AnnotationTaskFilter(_AnnotationTaskFilterCombined):
                 tag_filter = filter_
             elif isinstance(filter_, SoundEventAnnotationTagCountFilter):
                 tag_count_filter = filter_
+            elif isinstance(filter_, SoundEventAnnotationCountFilter):
+                sound_event_count_filter = filter_
             elif isinstance(filter_, ConfidenceFilter):
                 confidence_filter = filter_
             else:
@@ -894,5 +973,18 @@ class AnnotationTaskFilter(_AnnotationTaskFilterCombined):
 
         if tag_count_filter is not None and _tag_count_filter_active(tag_count_filter):
             query = tag_count_filter.filter(query)
+
+        if sound_event_count_filter is not None and _tag_count_filter_active(
+            sound_event_count_filter
+        ):
+            if include_tags_active and tag_filter is not None:
+                count_expr = _sound_events_matching_include_tags_count_expression(
+                    tag_filter
+                )
+            else:
+                count_expr = _task_sound_event_count_expression()
+            query = _apply_tag_count_bounds(
+                query, sound_event_count_filter, count_expr
+            )
 
         return query

@@ -80,6 +80,8 @@ const AnnotationTaskFilterSchema = z.object({
   sound_event_annotation_tag_include_match: z.enum(["and", "or"]).optional(),
   /** Number of distinct tags on the task (set from the Tag filter UI). */
   sound_event_annotation_tag_count: IntegerFilterSchema.optional(),
+  /** Number of sound event annotations on the task (set from the Tag filter UI). */
+  sound_event_annotation_count: IntegerFilterSchema.optional(),
   empty: z.boolean().optional(),
   pending: z.boolean().optional(),
   assigned: z.boolean().optional(),
@@ -232,6 +234,16 @@ export function buildAnnotationTaskFilterQueryParams(
       params.sound_event_annotation_tag_count?.ge,
     sound_event_annotation_tag_count__le:
       params.sound_event_annotation_tag_count?.le,
+    sound_event_annotation_count__eq:
+      params.sound_event_annotation_count?.eq,
+    sound_event_annotation_count__gt:
+      params.sound_event_annotation_count?.gt,
+    sound_event_annotation_count__lt:
+      params.sound_event_annotation_count?.lt,
+    sound_event_annotation_count__ge:
+      params.sound_event_annotation_count?.ge,
+    sound_event_annotation_count__le:
+      params.sound_event_annotation_count?.le,
     pending__eq: params.pending,
     empty__eq: params.empty,
     assigned__eq: params.assigned,

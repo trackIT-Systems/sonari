@@ -95,6 +95,21 @@ function SoundEventAnnotationTagSelector({
           tags in total.
         </p>
       </div>
+      <div className="flex flex-col gap-1">
+        <span className="text-xs text-stone-500 dark:text-stone-400 text-center">
+          Sound events on task (optional)
+        </span>
+        <IntegerFilter
+          name="Amount"
+          onChange={(val) => {
+            setFilter("sound_event_annotation_count", val);
+          }}
+        />
+        <p className="text-xs text-stone-500 dark:text-stone-400">
+          Number of sound event annotations. With included tags, only events
+          carrying those tags are counted (OR/AND applies per event).
+        </p>
+      </div>
       <TagFilter
         onChange={(tag) => {
           const entry: TaskFilterTag = {
@@ -263,12 +278,17 @@ const tasksFilterDefs: FilterDef<AnnotationTaskFilter>[] = [
         match === "and"
           ? "Included tags: task must have all listed tags."
           : "Included tags: task must have any listed tag.";
-      const amount = filter.get("sound_event_annotation_tag_count");
-      const amountNote =
-        amount?.eq !== undefined
-          ? ` Distinct tag amount = ${amount.eq}.`
+      const distinctTagAmount = filter.get("sound_event_annotation_tag_count");
+      const distinctTagNote =
+        distinctTagAmount?.eq !== undefined
+          ? ` Distinct tag amount = ${distinctTagAmount.eq}.`
           : "";
-      return `${includeCombine} Exclude tags: hide tasks that have any listed tag.${amountNote}${confidenceNote}`;
+      const soundEventAmount = filter.get("sound_event_annotation_count");
+      const soundEventNote =
+        soundEventAmount?.eq !== undefined
+          ? ` Sound event amount = ${soundEventAmount.eq}.`
+          : "";
+      return `${includeCombine} Exclude tags: hide tasks that have any listed tag.${distinctTagNote}${soundEventNote}${confidenceNote}`;
     },
     icon: (
       <TagIcon className="h-5 w-5 inline-block text-stone-500 mr-1 align-middle" />
@@ -334,6 +354,70 @@ const tasksFilterDefs: FilterDef<AnnotationTaskFilter>[] = [
     },
     description:
       "Number of different tags on the task (set in the Tag filter panel).",
+    icon: (
+      <TagIcon className="h-5 w-5 inline-block text-stone-500 mr-1 align-middle" />
+    ),
+  },
+  {
+    field: "sound_event_annotation_count",
+    name: "Sound event amount",
+    hideInMenu: true,
+    selector: () => null,
+    render: ({ value, clear, setFilter }) => {
+      const removeKey = (key: keyof NonNullable<typeof value>) => {
+        const newValue = { ...value };
+        delete newValue[key];
+        if (Object.keys(newValue).length === 0) {
+          clear();
+        } else {
+          setFilter("sound_event_annotation_count", newValue);
+        }
+      };
+      return (
+        <>
+          {value?.eq !== undefined && (
+            <FilterBadge
+              field="Sound events"
+              operation="="
+              value={value.eq}
+              onRemove={() => removeKey("eq")}
+            />
+          )}
+          {value?.gt !== undefined && (
+            <NumberFilterBadge
+              field="Sound events"
+              value={{ gt: value.gt }}
+              onRemove={() => removeKey("gt")}
+            />
+          )}
+          {value?.ge !== undefined && (
+            <FilterBadge
+              field="Sound events"
+              operation=">="
+              value={value.ge}
+              onRemove={() => removeKey("ge")}
+            />
+          )}
+          {value?.lt !== undefined && (
+            <NumberFilterBadge
+              field="Sound events"
+              value={{ lt: value.lt }}
+              onRemove={() => removeKey("lt")}
+            />
+          )}
+          {value?.le !== undefined && (
+            <FilterBadge
+              field="Sound events"
+              operation="<="
+              value={value.le}
+              onRemove={() => removeKey("le")}
+            />
+          )}
+        </>
+      );
+    },
+    description:
+      "Number of sound event annotations on the task (set in the Tag filter panel).",
     icon: (
       <TagIcon className="h-5 w-5 inline-block text-stone-500 mr-1 align-middle" />
     ),

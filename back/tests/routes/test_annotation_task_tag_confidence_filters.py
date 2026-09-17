@@ -728,3 +728,72 @@ async def test_distinct_tag_count_with_single_include_tag(
     ids_two = await _fetch_task_ids(auth_client, project.id, **two_distinct_params)
     assert two_distinct_task.id in ids_two
     assert one_distinct_task.id not in ids_two
+
+
+@pytest.mark.asyncio
+async def test_sound_event_count_with_single_include_tag(
+    auth_client: AsyncClient,
+    db_session: AsyncSession,
+    test_recording_id: int,
+    test_user,
+):
+    """Sound event amount counts annotations, not distinct tags."""
+    user = schemas.SimpleUser.model_validate(test_user)
+    project = await api.annotation_projects.create(
+        db_session,
+        name=f"se_count_{uuid.uuid4().hex[:8]}",
+        description="filter test",
+    )
+    await db_session.commit()
+
+    two_pip_events_task = await _create_task(
+        db_session, project, test_recording_id, 170.0, 175.0
+    )
+    one_pip_one_nyct_task = await _create_task(
+        db_session, project, test_recording_id, 176.0, 180.0
+    )
+    pip_tag = await _create_species_tag(db_session, user, "pip")
+    nyct_tag = await _create_species_tag(db_session, user, "nyct")
+
+    pip_a = await _create_sound_event(
+        db_session, two_pip_events_task, user, 170.5, 171.0
+    )
+    pip_b = await _create_sound_event(
+        db_session, two_pip_events_task, user, 171.5, 172.0
+    )
+    await _add_tag(db_session, pip_a, pip_tag, user)
+    await _add_tag(db_session, pip_b, pip_tag, user)
+
+    pip_c = await _create_sound_event(
+        db_session, one_pip_one_nyct_task, user, 176.5, 177.0
+    )
+    nyct_event = await _create_sound_event(
+        db_session, one_pip_one_nyct_task, user, 177.5, 178.0
+    )
+    await _add_tag(db_session, pip_c, pip_tag, user)
+    await _add_tag(db_session, nyct_event, nyct_tag, user)
+
+    two_pip_params = {
+        "sound_event_annotation_tag__keys": "species",
+        "sound_event_annotation_tag__values": pip_tag.value,
+        "sound_event_annotation_count__eq": 2,
+    }
+    ids_two_pip = await _fetch_task_ids(
+        auth_client, project.id, **two_pip_params
+    )
+    assert two_pip_events_task.id in ids_two_pip
+    assert one_pip_one_nyct_task.id not in ids_two_pip
+
+    one_pip_params = {**two_pip_params, "sound_event_annotation_count__eq": 1}
+    ids_one_pip = await _fetch_task_ids(
+        auth_client, project.id, **one_pip_params
+    )
+    assert one_pip_one_nyct_task.id in ids_one_pip
+    assert two_pip_events_task.id not in ids_one_pip
+
+    total_two_params = {"sound_event_annotation_count__eq": 2}
+    ids_total_two = await _fetch_task_ids(
+        auth_client, project.id, **total_two_params
+    )
+    assert two_pip_events_task.id in ids_total_two
+    assert one_pip_one_nyct_task.id in ids_total_two
