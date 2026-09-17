@@ -117,6 +117,15 @@ export default function AnnotateTasks({
   const [tagPalette, setTagPalette] = useState<Tag[]>([]);
   const [selectedTag, setSelectedTag] = useState<{ tag: Tag; count: number } | null>(null);
   const [tagVisibility, setTagVisibility] = useState<TagVisibilityFilter>(DEFAULT_TAG_VISIBILITY);
+  const [liveParameters, setLiveParameters] = useState<SpectrogramParameters>(parameters);
+
+  useEffect(() => {
+    setLiveParameters(parameters);
+  }, [parameters]);
+
+  const handleParameterChange = useCallback((next: SpectrogramParameters) => {
+    setLiveParameters(next);
+  }, []);
   
   const [selectedSoundEventAnnotation, setSelectedSoundEventAnnotation] = useState<SoundEventAnnotation | null>(null);
   const onDeselectSoundEventAnnotation = useCallback(() => {
@@ -653,6 +662,7 @@ export default function AnnotateTasks({
                     selectedTag={selectedTag}
                     onClearSelectedTag={setSelectedTag}
                     onParameterSave={onParameterSave}
+                    onParameterChange={handleParameterChange}
                     selectedSoundEventAnnotation={selectedSoundEventAnnotation}
                     onSelectSoundEventAnnotation={setSelectedSoundEventAnnotation}
                     withSpectrogram={withSpectrogram}
@@ -702,7 +712,7 @@ export default function AnnotateTasks({
                   annotationTask={selectedSoundEventAnnotationTask!}
                   samplerate={annotationTask.recording!.samplerate}
                   soundEventAnnotation={selectedSoundEventAnnotation}
-                  parameters={parameters}
+                  parameters={liveParameters}
                   withSpectrogram={withSpectrogram}
                   onUpdate={onUpdateSelectedSoundEventAnnotation}
                   tagVisibility={tagVisibility}

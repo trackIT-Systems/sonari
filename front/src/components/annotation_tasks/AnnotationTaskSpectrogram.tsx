@@ -59,6 +59,7 @@ export default function AnnotationTaskSpectrogram({
   onWithSoundEventChange,
   onWithAutoplayChange,
   onParameterSave,
+  onParameterChange,
   onSelectSoundEventAnnotation,
   onSegmentsLoaded,
   onAddTagToSoundEventAnnotation,
@@ -93,6 +94,7 @@ export default function AnnotationTaskSpectrogram({
   onWithSoundEventChange: () => void;
   onWithAutoplayChange: () => void;
   onParameterSave?: (params: SpectrogramParameters) => void;
+  onParameterChange?: (params: SpectrogramParameters) => void;
   onSelectSoundEventAnnotation?: (soundEventAnnotation: SoundEventAnnotation | null) => void;
   onSegmentsLoaded: () => void;
   onAddTagToSoundEventAnnotation?: (params: { soundEventAnnotation: SoundEventAnnotation; tag: Tag }) => Promise<SoundEventAnnotation>;
@@ -244,6 +246,7 @@ export default function AnnotationTaskSpectrogram({
     initial,
     parameters: effectiveParameters,
     canvasRef: spectrogramCanvasRef,
+    onParameterChange,
     onDoubleClick: handleDoubleClick,
     onModeChange: handleSpectrogramModeChange,
     enabled: !isAnnotating && !audio.isPlaying,
