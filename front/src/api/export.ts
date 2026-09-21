@@ -8,6 +8,7 @@ import type { AnnotationProject } from "@/types";
 
 const DEFAULT_ENDPOINTS = {
   multibase: "/api/v1/export/multibase/",
+  probat: "/api/v1/export/probat/",
   dump: "/api/v1/export/dump/",
   passes: "/api/v1/export/passes/",
   stats: "/api/v1/export/stats/",
@@ -97,6 +98,37 @@ export function registerExportAPI(
 
     const filename = extractFilenameFromResponse(response, 'multibase_export.xlsx');
     const blob = createBlobFromResponse(response, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+
+    return { blob, filename };
+  }
+
+  async function exportProBat(
+    annotationProjects: AnnotationProject[],
+    tags?: string[],
+    statuses?: string[],
+    startDate?: string,
+    endDate?: string,
+    groupSpecies?: boolean,
+  ): Promise<{ blob: Blob; filename: string }> {
+    const params = buildCommonParams({
+      annotationProjects,
+      tags,
+      statuses,
+      startDate,
+      endDate,
+    });
+
+    if (groupSpecies !== undefined) {
+      params.append("group_species", groupSpecies.toString());
+    }
+
+    const response = await instance.get(`${endpoints.probat}?${params.toString()}`, {
+      responseType: "blob",
+      withCredentials: true,
+    });
+
+    const filename = extractFilenameFromResponse(response, "probat_export.csv");
+    const blob = createBlobFromResponse(response, "text/csv");
 
     return { blob, filename };
   }
@@ -287,6 +319,7 @@ export function registerExportAPI(
 
   return {
     multibase: exportMultiBase,
+    probat: exportProBat,
     dump: exportDump,
     passes: exportPasses,
     stat: exportStats,

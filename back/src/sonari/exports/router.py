@@ -5,7 +5,15 @@ from typing import Annotated
 from fastapi import Depends, Query
 
 from .constants import ExportConstants
-from .services import DumpService, MultiBaseService, PassesService, StatsService, TimeService, YearlyActivityService
+from .services import (
+    DumpService,
+    MultiBaseService,
+    PassesService,
+    ProBatService,
+    StatsService,
+    TimeService,
+    YearlyActivityService,
+)
 from sonari.filters.annotation_tasks import AnnotationTaskFilter
 from sonari.routes.dependencies import Session
 from sonari.routes.dependencies.auth import create_authenticated_router
@@ -23,6 +31,28 @@ async def export_multibase(
     """Export annotation projects in MultiBase format."""
     service = MultiBaseService(session)
     return await service.export_multibase(annotation_project_ids, tags, statuses)
+
+
+@export_router.get("/probat/")
+async def export_probat(
+    session: Session,
+    annotation_project_ids: Annotated[list[int], Query()],
+    tags: Annotated[list[str] | None, Query()] = None,
+    statuses: Annotated[list[str] | None, Query()] = None,
+    start_date: Annotated[str | None, Query()] = None,
+    end_date: Annotated[str | None, Query()] = None,
+    group_species: bool = False,
+):
+    """Export annotation projects in ProBat CSV format."""
+    service = ProBatService(session)
+    return await service.export_probat(
+        annotation_project_ids,
+        tags,
+        statuses,
+        start_date,
+        end_date,
+        group_species,
+    )
 
 
 @export_router.get("/dump/")

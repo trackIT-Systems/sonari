@@ -26,6 +26,15 @@ class ExportConstants:
         "Bemerkung_1",
     ]
 
+    PROBAT_HEADERS = [
+        "Species",
+        "Prob",
+        "Aufnahmezeit",
+        "Dateiname",
+        "Kommentar",
+        "Rufzahl",
+    ]
+
     DUMP_HEADERS = [
         "filename",
         "station",
@@ -73,3 +82,52 @@ BAT_GROUPS: dict[str, str] = {
     "Plecotus austriacus": "Plecotus",
     "Plecotus auritus/austriacus": "Plecotus",
 }
+
+# Latin name (or group label) → ProBat short code for CSV export
+PROBAT_SPECIES_CODES: dict[str, str] = {
+    # Group labels (identity)
+    "Nyctaloid": "Nyctaloid",
+    "Pipistrelloid": "Pipistrelloid",
+    "Myotis": "Myotis",
+    "Rhinolophus": "Rhinolophus",
+    "Plecotus": "Plecotus",
+    # Pipistrellus
+    "Pipistrellus pipistrellus": "Ppip",
+    "Pipistrellus pygmaeus": "Ppyg",
+    "Pipistrellus nathusii": "Pnat",
+    # Nyctalus / Vespertilio / Eptesicus
+    "Nyctalus noctula": "Nnoc",
+    "Nyctalus leisleri": "Nlei",
+    "Vespertilio murinus": "Vmur",
+    "Eptesicus serotinus": "Eser",
+    "Eptesicus nilsonii": "Enil",
+    # Myotis
+    "Myotis alcathoe": "Malc",
+    "Myotis mystacinus/brandtii": "Mbart",
+    "Myotis brandtii": "Mbart",
+    "Myotis mystacinus": "Mbart",
+    "Myotis bechsteinii": "Mbec",
+    "Myotis daubentonii": "Mdau",
+    "Myotis myotis": "Mmyo",
+    "Myotis nattereri": "Mnat",
+    "Myotis emarginatus": "Mema",
+    "Myotis dasycneme": "Mdas",
+    # Rhinolophus
+    "Rhinolophus ferrumequinum": "Rfer",
+    "Rhinolophus hipposideros": "Rhip",
+    # Plecotus
+    "Plecotus auritus": "Plecotus",
+    "Plecotus austriacus": "Plecotus",
+    "Plecotus auritus/austriacus": "Plecotus",
+    # Other / placeholder
+    "Barbastella barbastellus": "Bbar",
+    "Spec.": "Spec.",
+}
+
+
+def resolve_probat_species(tag_value: str, group_species: bool = False) -> str:
+    """Map a tag value to a ProBat species code."""
+    value = tag_value
+    if group_species:
+        value = BAT_GROUPS.get(value, value)
+    return PROBAT_SPECIES_CODES.get(value, value)

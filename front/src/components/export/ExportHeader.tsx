@@ -62,6 +62,14 @@ export default function ExportHeader() {
                             },
                         },
                         {
+                            id: "probat",
+                            title: "ProBat",
+                            isActive: selectedLayoutSegment === "probat",
+                            onClick: () => {
+                                router.push(`/export/probat/?${params.toString()}`);
+                            },
+                        },
+                        {
                             id: "dump",
                             title: "Dump",
                             isActive: selectedLayoutSegment === "dump",

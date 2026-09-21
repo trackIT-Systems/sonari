@@ -39,6 +39,25 @@ async def test_export_multibase_with_project(
 
 
 @pytest.mark.asyncio
+async def test_export_probat_with_project(
+    auth_client: AsyncClient,
+    test_annotation_project: schemas.AnnotationProject,
+    test_tag: schemas.Tag,
+):
+    """Test ProBat export with a valid project."""
+    response = await auth_client.get(
+        "/api/v1/export/probat/",
+        params={
+            "annotation_project_ids": [test_annotation_project.id],
+            "tags": [f"{test_tag.key}:{test_tag.value}"],
+        },
+    )
+    assert response.status_code == 200
+    text = response.text
+    assert "Species;Prob;Aufnahmezeit" in text.splitlines()[0]
+
+
+@pytest.mark.asyncio
 async def test_export_dump_with_project(
     auth_client: AsyncClient,
     test_annotation_project: schemas.AnnotationProject,

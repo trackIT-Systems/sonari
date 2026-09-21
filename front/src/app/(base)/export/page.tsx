@@ -82,6 +82,22 @@ export default function ExportPage() {
           </Card>
           <Card className="p-6 justify-between">
             <h2 className="text-2xl font-bold mb-4">
+              ProBat
+            </h2>
+            <p className="text-sm mb-4">
+              Export recording-level species summaries as a ProBat-compatible CSV
+              (confidence, call counts, and task notes).
+            </p>
+            <Link
+              mode="text"
+              href="/export/probat/"
+              className="text-sm underline font-bold"
+            >
+              Export ProBat
+            </Link>
+          </Card>
+          <Card className="p-6 justify-between">
+            <h2 className="text-2xl font-bold mb-4">
               MultiBase
             </h2>
             <p className="text-sm mb-4">
