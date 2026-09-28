@@ -1,8 +1,15 @@
 import type { AnnotationStatusBadge, AnnotationTask, AnnotationTaskIndex, Note, Recording, Tag } from "@/types";
 import { useMemo } from "react";
-import { ColumnDef, getCoreRowModel, useReactTable, createColumnHelper } from "@tanstack/react-table";
+import {
+  ColumnDef,
+  getCoreRowModel,
+  useReactTable,
+  type OnChangeFn,
+  type RowSelectionState,
+} from "@tanstack/react-table";
 import TableHeader, { SortableTableHeader, SortDirection } from "@/components/tables/TableHeader";
 import TableCell from "@/components/tables/TableCell";
+import Checkbox from "@/components/tables/TableCheckbox";
 import StatusBadge from "@/components/StatusBadge";
 import TagComponent, { TagCount, getTagKey } from "@/components/tags/Tag";
 import Link from "next/link";
@@ -47,6 +54,11 @@ export default function useAnnotationTaskTable({
   sortBy,
   onSortChange,
   allTasks,
+  rowSelection,
+  onRowSelectionChange,
+  filterTotal,
+  onSelectAllMatchingFilter,
+  targetMode,
 }: {
   data: AnnotationTask[];
   pathFormatter?: (path: string) => string;
@@ -55,16 +67,87 @@ export default function useAnnotationTaskTable({
   sortBy?: string;
   onSortChange?: (sortBy: string | undefined) => void;
   allTasks?: AnnotationTaskIndex[];
+  rowSelection?: RowSelectionState;
+  onRowSelectionChange?: OnChangeFn<RowSelectionState>;
+  filterTotal?: number;
+  onSelectAllMatchingFilter?: () => void;
+  targetMode?: "selected" | "filter_all";
 }) {
+
+  const allPageSelected =
+    data.length > 0 && data.every((task) => rowSelection?.[String(task.id)]);
+  const somePageSelected = data.some((task) => rowSelection?.[String(task.id)]);
 
   // Column definitions
   const columns = useMemo<ColumnDef<AnnotationTask>[]>(
     () => [
       {
+        id: "select",
+        header: () => (
+          <TableHeader>
+            <div className="flex flex-col items-start gap-1">
+              <Checkbox
+                checked={allPageSelected}
+                indeterminate={somePageSelected && !allPageSelected}
+                onChange={(event) => {
+                  const checked = event.target.checked;
+                  onRowSelectionChange?.((prev) => {
+                    const next = { ...prev };
+                    for (const task of data) {
+                      const id = String(task.id);
+                      if (checked) {
+                        next[id] = true;
+                      } else {
+                        delete next[id];
+                      }
+                    }
+                    return next;
+                  });
+                }}
+                onClick={(event) => event.stopPropagation()}
+              />
+              {filterTotal != null && onSelectAllMatchingFilter && (
+                <button
+                  type="button"
+                  className={`text-left text-xs leading-tight wrap-break-word max-w-[4.5rem] ${targetMode === "filter_all" ? "font-semibold text-emerald-600" : "text-emerald-600 hover:underline"}`}
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    onSelectAllMatchingFilter();
+                  }}
+                >
+                  All {filterTotal} filtered
+                </button>
+              )}
+            </div>
+          </TableHeader>
+        ),
+        enableResizing: false,
+        size: 3,
+        meta: {
+          width: "3rem",
+          minWidth: "2.75rem",
+          maxWidth: "5rem",
+        },
+        cell: ({ row }) => (
+          <TableCell>
+            <Checkbox
+              checked={row.getIsSelected()}
+              onChange={row.getToggleSelectedHandler()}
+              onClick={(event) => event.stopPropagation()}
+            />
+          </TableCell>
+        ),
+      },
+      {
         id: "index",
         header: () => { },
         enableResizing: false,
-        size: 1,
+        size: 2,
+        meta: {
+          width: "2.25rem",
+          minWidth: "2.25rem",
+          maxWidth: "2.75rem",
+        },
         accessorFn: () => {},
         cell: ({ row }) => {
           // Calculate the global index across all pages
@@ -90,8 +173,9 @@ export default function useAnnotationTaskTable({
             Recording
           </SortableTableHeader>
         ),
-        enableResizing: true,
-        size: 100,
+        enableResizing: false,
+        size: 16,
+        meta: { width: "16%", minWidth: "6rem" },
         accessorFn: (row) => row.recording,
         cell: ({ row }) => {
           const recording = row.getValue("recording") as Recording;
@@ -113,8 +197,13 @@ export default function useAnnotationTaskTable({
       {
         id: "task",
         header: () => <TableHeader>Task</TableHeader>,
-        enableResizing: true,
-        size: 30,
+        enableResizing: false,
+        size: 3,
+        meta: {
+          width: "3.25rem",
+          minWidth: "3rem",
+          maxWidth: "3.5rem",
+        },
         cell: ({ row }) => {
           const currentTask = row.original;
           if (!currentTask) return <TableCell>-</TableCell>;
@@ -148,16 +237,28 @@ export default function useAnnotationTaskTable({
             Duration
           </SortableTableHeader>
         ),
-        enableResizing: true,
-        size: 40,
+        enableResizing: false,
+        size: 4,
+        meta: {
+          width: "4.5rem",
+          minWidth: "4.25rem",
+          maxWidth: "5rem",
+        },
         cell: ({ row }) => {
           const duration = ((row.original.end_time - row.original.start_time) as number).toFixed(2);
-          return <TableCell>{duration}</TableCell>;
+          return (
+            <TableCell>
+              <span className="tabular-nums whitespace-nowrap">{duration}</span>
+            </TableCell>
+          );
         },
       },
       {
         id: "task_tags",
         header: () => <TableHeader>Task Tags</TableHeader>,
+        enableResizing: false,
+        size: 12,
+        meta: { width: "12%", minWidth: "5rem" },
         accessorFn: (row) => {
           const tags = row.tags || [];
           const tagCounts = new Map<string, TagCount>();
@@ -192,6 +293,9 @@ export default function useAnnotationTaskTable({
       {
         id: "sound_event_tags",
         header: () => <TableHeader>Sound Event Tags</TableHeader>,
+        enableResizing: false,
+        size: 34,
+        meta: { width: "34%", minWidth: "16rem" },
         accessorFn: (row) => {
           const tags = (row.sound_event_annotations || []).flatMap(event => event.tags || []);
           const tagCounts = new Map<string, TagCount>();
@@ -211,7 +315,7 @@ export default function useAnnotationTaskTable({
         cell: (props) => {
           const tagCounts = props.getValue() as Array<{ tag: Tag; count: number }>;
           return (
-            <div className="flex flex-wrap gap-1 p-1">
+            <div className="flex min-w-0 flex-wrap gap-1 p-1">
               {tagCounts.map(({ tag, count }) => (
                 <TagComponent
                   key={getTagKey(tag)}
@@ -226,7 +330,9 @@ export default function useAnnotationTaskTable({
       {
         id: "task_notes",
         header: () => <TableHeader>Notes</TableHeader>,
-        enableResizing: true,
+        enableResizing: false,
+        size: 10,
+        meta: { width: "10%", minWidth: "4rem" },
         accessorFn: (row) => row.notes,
         cell: ({ row }) => {
           const taskNotes = row.getValue("task_notes") as Note[];
@@ -247,8 +353,9 @@ export default function useAnnotationTaskTable({
       {
         id: "status",
         header: () => <TableHeader>Status</TableHeader>,
-        enableResizing: true,
-        size: 70,
+        enableResizing: false,
+        size: 9,
+        meta: { width: "9%", minWidth: "4.5rem" },
         accessorFn: (row) => row.status_badges,
         cell: ({ row }) => {
           const status = row.getValue("status") as AnnotationStatusBadge[];
@@ -266,12 +373,30 @@ export default function useAnnotationTaskTable({
         },
       },
     ],
-    [getAnnotationTaskLink, pathFormatter, pagination, data, sortBy, onSortChange, allTasks],
+    [
+      getAnnotationTaskLink,
+      pathFormatter,
+      pagination,
+      data,
+      sortBy,
+      onSortChange,
+      allTasks,
+      allPageSelected,
+      somePageSelected,
+      onRowSelectionChange,
+      filterTotal,
+      onSelectAllMatchingFilter,
+      targetMode,
+    ],
   );
   return useReactTable<AnnotationTask>({
     data,
     columns,
-    columnResizeMode: "onChange",
+    enableColumnResizing: false,
     getCoreRowModel: getCoreRowModel(),
+    getRowId: (row) => String(row.id),
+    enableRowSelection: true,
+    onRowSelectionChange,
+    state: rowSelection != null ? { rowSelection } : undefined,
   });
 }

@@ -7,7 +7,7 @@ from soundevent.data import AnnotationState
 
 from sonari.schemas.base import BaseSchema
 from sonari.schemas.features import Feature
-from sonari.schemas.tags import Tag
+from sonari.schemas.tags import Tag, TagCreate
 from sonari.schemas.users import SimpleUser
 
 if TYPE_CHECKING:
@@ -20,6 +20,12 @@ __all__ = [
     "AnnotationStatusBadge",
     "AnnotationStatusBadgeUpdate",
     "AnnotationTask",
+    "AnnotationTaskBulkAddBadge",
+    "AnnotationTaskBulkFailure",
+    "AnnotationTaskBulkReplaceSoundEventTags",
+    "AnnotationTaskBulkResult",
+    "AnnotationTaskBulkTagSummary",
+    "SoundEventTagBulkCount",
     "AnnotationTaskCreate",
     "AnnotationTaskUpdate",
     "AnnotationTaskTag",
@@ -191,3 +197,52 @@ class AnnotationTaskStats(BaseModel):
 
     assigned_count: int
     """Number of tasks with assigned status."""
+
+
+class AnnotationTaskBulkFailure(BaseModel):
+    """A single task failure during a bulk operation."""
+
+    annotation_task_id: int
+    message: str
+
+
+class AnnotationTaskBulkResult(BaseModel):
+    """Result summary for bulk annotation task operations."""
+
+    tasks_targeted: int
+    tasks_updated: int
+    tasks_skipped: int
+    sound_events_updated: int
+    failures: list[AnnotationTaskBulkFailure]
+
+
+class _AnnotationTaskBulkTarget(BaseModel):
+    """Optional explicit task IDs; omit to target all tasks matching the request filter."""
+
+    annotation_task_ids: list[int] | None = None
+
+
+class AnnotationTaskBulkAddBadge(_AnnotationTaskBulkTarget):
+    """Bulk-add a status badge to annotation tasks."""
+
+    state: AnnotationState
+
+
+class AnnotationTaskBulkReplaceSoundEventTags(_AnnotationTaskBulkTarget):
+    """Bulk replace sound event annotation tags within annotation tasks."""
+
+    old_tag: TagCreate | None = None
+    new_tag: TagCreate | None = None
+    replace_all: bool = False
+
+
+class SoundEventTagBulkCount(BaseModel):
+    """Distinct sound event tag with occurrence count across targeted tasks."""
+
+    key: str
+    value: str
+    count: int
+
+
+class AnnotationTaskBulkTagSummary(_AnnotationTaskBulkTarget):
+    """Request body for aggregating sound event tags on bulk targets."""

@@ -82,12 +82,14 @@ export default function Tag({
   tag,
   className,
   count,
+  compact = false,
   onClick,
   onClose,
   ...props
 }: {
   tag: Tag;
   count: number | null,
+  compact?: boolean;
   onClick?: () => void;
   onClose?: () => void;
 } & HTMLProps<HTMLDivElement>) {
@@ -98,7 +100,8 @@ export default function Tag({
   return (
     <div
       className={classnames(
-        "border rounded-md px-1 tracking-tighter inline-flex w-fit flex-nowrap",
+        "border rounded-md tracking-tighter inline-flex min-w-0 max-w-full flex-nowrap",
+        compact ? "px-0.5 text-xs" : "px-1",
         classNames.background,
         classNames.text,
         classNames.border,
@@ -113,17 +116,30 @@ export default function Tag({
       )}
       <button
         type="button"
-        className="group flex flex-row items-center max-w-full"
+        className="group flex min-w-0 max-w-full flex-row items-center overflow-hidden"
         onClick={onClick}
+        title={compact ? `${tag.key}: ${tag.value}${count != null ? ` (${count})` : ""}` : undefined}
       >
-        <span className="font-thin min-w-fit shrink">{tag.key}</span>
-        <span className="ml-1 grow flex-1 font-bold italic group-hover:underline group-hover:decoration-2 group-hover:underline-offset-2">
+        <span
+          className={classnames(
+            "font-thin shrink-0",
+            compact && "max-w-[3.5rem] truncate",
+          )}
+        >
+          {tag.key}
+        </span>
+        <span
+          className={classnames(
+            "ml-0.5 min-w-0 font-bold italic group-hover:underline group-hover:decoration-2 group-hover:underline-offset-2",
+            compact ? "max-w-[5.5rem] truncate sm:max-w-[7rem] lg:max-w-[9rem]" : "grow flex-1",
+          )}
+        >
           {tag.value}
         </span>
         {count == null ? (
             <span/>
           ) : (
-            <span className="min-w-fit shrink ml-1">({count})</span>
+            <span className="min-w-fit shrink-0 ml-0.5 tabular-nums">({count})</span>
           )
         }
       </button>

@@ -21,6 +21,10 @@ import SearchMenu from "@/components/search/SearchMenu";
 import TagComponent, { getTagKey } from "@/components/tags/Tag";
 
 import { blurActiveElement } from "@/utils/focus";
+import {
+  isReplaceAllTag,
+  soundEventAnnotationsForTagReplace,
+} from "@/utils/soundEventTagReplace";
 import { SOUND_EVENT_CYCLE_FILTER_SHORTCUT, DELETE_TAG_SHORTCUT, ABORT_SHORTCUT } from "@/utils/keyboard";
 
 import type { AnnotationTaskFilter } from "@/api/annotation_tasks";
@@ -497,28 +501,17 @@ export default function AnnotateTasks({
 
       const run = activeHistory?.runBatch ?? (async (_label, fn) => fn());
       await run("Replace tags", async () => {
-        let soundEventAnnotationsToUpdate: SoundEventAnnotation[] = [];
-        if (currentAnnotation) {
-          soundEventAnnotationsToUpdate = [currentAnnotation];
-        } else {
-          if (oldTag?.key === "all") {
-            soundEventAnnotationsToUpdate = displayedSoundEventAnnotations.filter(soundEventAnnotation =>
-              soundEventAnnotation.tags && soundEventAnnotation.tags.length > 0
-            );
-          } else if (oldTag) {
-            soundEventAnnotationsToUpdate = displayedSoundEventAnnotations.filter(soundEventAnnotation =>
-              soundEventAnnotation.tags?.some(
-                tag => tag.key === oldTag.key && tag.value === oldTag.value
-              )
-            );
-          } else {
-            soundEventAnnotationsToUpdate = displayedSoundEventAnnotations;
-          }
-        }
+        const soundEventAnnotationsToUpdate = soundEventAnnotationsForTagReplace(
+          displayedSoundEventAnnotations,
+          {
+            oldTag,
+            scopeSoundEventAnnotation: currentAnnotation ?? undefined,
+          },
+        );
 
         const promises = soundEventAnnotationsToUpdate.map(async soundEventAnnotation => {
           try {
-            if (oldTag?.key === "all" && soundEventAnnotation.tags) {
+            if (isReplaceAllTag(oldTag) && soundEventAnnotation.tags) {
               for (const tag of soundEventAnnotation.tags) {
                 await activeRemoveTagFromSoundEventAnnotation({
                   soundEventAnnotation: soundEventAnnotation,

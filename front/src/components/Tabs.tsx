@@ -143,7 +143,7 @@ export default function Tabs({ tabs }: { tabs: TabType[] }) {
   useKeyPressEvent(useKeyFilter({ key: NAVIGATE_STH_ELEMENT_SHORTCUT }), handleNumberKey);
 
   return (
-    <ul className="flex space-x-4">
+    <ul className="flex flex-wrap gap-x-4 gap-y-2">
       {tabs.map((tab, index) => {
         const shortcutNumber = index < 6 ? (index + 5) % 10 : undefined;
 

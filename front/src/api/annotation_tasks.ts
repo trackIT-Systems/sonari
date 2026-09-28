@@ -296,6 +296,29 @@ type GetAnnotationTasksQuery = z.input<
   typeof GetAnnotationTasksQuerySchema
 >;
 
+const AnnotationTaskBulkFailureSchema = z.object({
+  annotation_task_id: z.number(),
+  message: z.string(),
+});
+
+export const AnnotationTaskBulkResultSchema = z.object({
+  tasks_targeted: z.number(),
+  tasks_updated: z.number(),
+  tasks_skipped: z.number(),
+  sound_events_updated: z.number(),
+  failures: z.array(AnnotationTaskBulkFailureSchema),
+});
+
+export type AnnotationTaskBulkResult = z.infer<typeof AnnotationTaskBulkResultSchema>;
+
+const SoundEventTagBulkCountSchema = z.object({
+  key: z.string(),
+  value: z.string(),
+  count: z.number(),
+});
+
+export type SoundEventTagBulkCount = z.infer<typeof SoundEventTagBulkCountSchema>;
+
 const DEFAULT_ENDPOINTS = {
   getMany: "/api/v1/annotation_tasks/",
   getIndex: "/api/v1/annotation_tasks/index",
@@ -308,6 +331,9 @@ const DEFAULT_ENDPOINTS = {
   removeNote:  "/api/v1/annotation_tasks/detail/notes/",
   addTag:  "/api/v1/annotation_tasks/detail/tags/",
   removeTag:  "/api/v1/annotation_tasks/detail/tags/",
+  bulkAddBadge: "/api/v1/annotation_tasks/bulk/badges/",
+  bulkReplaceSoundEventTags: "/api/v1/annotation_tasks/bulk/sound_event_tags/replace/",
+  bulkSoundEventTagSummary: "/api/v1/annotation_tasks/bulk/sound_event_tags/summary/",
 };
 
 export function registerAnnotationTasksAPI(
@@ -505,7 +531,73 @@ export function registerAnnotationTasksAPI(
     });
     return AnnotationTaskSchema.parse(response.data);
   }
-  
+
+  async function bulkAddBadge({
+    filter,
+    annotation_task_ids,
+    state,
+  }: {
+    filter: AnnotationTaskFilter;
+    annotation_task_ids?: number[];
+    state: AnnotationStatus;
+  }): Promise<AnnotationTaskBulkResult> {
+    const response = await instance.post(
+      endpoints.bulkAddBadge,
+      {
+        annotation_task_ids,
+        state,
+      },
+      {
+        params: buildAnnotationTaskFilterQueryParams(filter),
+      },
+    );
+    return AnnotationTaskBulkResultSchema.parse(response.data);
+  }
+
+  async function bulkSoundEventTagSummary({
+    filter,
+    annotation_task_ids,
+  }: {
+    filter: AnnotationTaskFilter;
+    annotation_task_ids?: number[];
+  }): Promise<SoundEventTagBulkCount[]> {
+    const response = await instance.post(
+      endpoints.bulkSoundEventTagSummary,
+      { annotation_task_ids },
+      {
+        params: buildAnnotationTaskFilterQueryParams(filter),
+      },
+    );
+    return z.array(SoundEventTagBulkCountSchema).parse(response.data);
+  }
+
+  async function bulkReplaceSoundEventTags({
+    filter,
+    annotation_task_ids,
+    old_tag,
+    new_tag,
+    replace_all,
+  }: {
+    filter: AnnotationTaskFilter;
+    annotation_task_ids?: number[];
+    old_tag?: Pick<Tag, "key" | "value"> | null;
+    new_tag?: Pick<Tag, "key" | "value"> | null;
+    replace_all?: boolean;
+  }): Promise<AnnotationTaskBulkResult> {
+    const response = await instance.post(
+      endpoints.bulkReplaceSoundEventTags,
+      {
+        annotation_task_ids,
+        old_tag: old_tag ?? undefined,
+        new_tag: new_tag ?? undefined,
+        replace_all: replace_all ?? false,
+      },
+      {
+        params: buildAnnotationTaskFilterQueryParams(filter),
+      },
+    );
+    return AnnotationTaskBulkResultSchema.parse(response.data);
+  }
 
   return {
     getMany,
@@ -519,5 +611,8 @@ export function registerAnnotationTasksAPI(
     removeNote,
     addTag,
     removeTag,
+    bulkAddBadge,
+    bulkReplaceSoundEventTags,
+    bulkSoundEventTagSummary,
   } as const;
 }

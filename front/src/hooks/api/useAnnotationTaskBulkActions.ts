@@ -1,0 +1,97 @@
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import type { AxiosError } from "axios";
+import toast from "react-hot-toast";
+
+import api from "@/app/api";
+import type { AnnotationTaskBulkResult } from "@/api/annotation_tasks";
+import type { AnnotationTaskFilter } from "@/api/annotation_tasks";
+import type { AnnotationStatus, Tag } from "@/types";
+
+function formatBulkResultSummary(result: AnnotationTaskBulkResult): string {
+  const parts = [
+    `${result.tasks_updated} task(s) updated`,
+  ];
+  if (result.tasks_skipped > 0) {
+    parts.push(`${result.tasks_skipped} skipped`);
+  }
+  if (result.sound_events_updated > 0) {
+    parts.push(`${result.sound_events_updated} sound event(s) updated`);
+  }
+  if (result.failures.length > 0) {
+    parts.push(`${result.failures.length} failed`);
+  }
+  return parts.join(", ");
+}
+
+function invalidateTaskListQueries(client: ReturnType<typeof useQueryClient>) {
+  client.invalidateQueries({ queryKey: ["annotation_tasks"] });
+  client.invalidateQueries({ queryKey: ["annotation_tasks_index"] });
+  client.invalidateQueries({ queryKey: ["annotation_tasks_stats"] });
+}
+
+export default function useAnnotationTaskBulkActions({
+  filter,
+  onError,
+}: {
+  filter: AnnotationTaskFilter;
+  onError?: (error: AxiosError) => void;
+}) {
+  const client = useQueryClient();
+
+  const bulkAddBadge = useMutation({
+    mutationFn: ({
+      annotation_task_ids,
+      state,
+    }: {
+      annotation_task_ids?: number[];
+      state: AnnotationStatus;
+    }) =>
+      api.annotationTasks.bulkAddBadge({
+        filter,
+        annotation_task_ids,
+        state,
+      }),
+    onSuccess: (result) => {
+      invalidateTaskListQueries(client);
+      toast.success(formatBulkResultSummary(result));
+      if (result.failures.length > 0) {
+        toast.error(result.failures.map((f) => `Task ${f.annotation_task_id}: ${f.message}`).join("\n"));
+      }
+    },
+    onError,
+  });
+
+  const bulkReplaceSoundEventTags = useMutation({
+    mutationFn: ({
+      annotation_task_ids,
+      old_tag,
+      new_tag,
+      replace_all,
+    }: {
+      annotation_task_ids?: number[];
+      old_tag?: Pick<Tag, "key" | "value"> | null;
+      new_tag?: Pick<Tag, "key" | "value"> | null;
+      replace_all?: boolean;
+    }) =>
+      api.annotationTasks.bulkReplaceSoundEventTags({
+        filter,
+        annotation_task_ids,
+        old_tag,
+        new_tag,
+        replace_all,
+      }),
+    onSuccess: (result) => {
+      invalidateTaskListQueries(client);
+      toast.success(formatBulkResultSummary(result));
+      if (result.failures.length > 0) {
+        toast.error(result.failures.map((f) => `Task ${f.annotation_task_id}: ${f.message}`).join("\n"));
+      }
+    },
+    onError,
+  });
+
+  return {
+    bulkAddBadge,
+    bulkReplaceSoundEventTags,
+  };
+}

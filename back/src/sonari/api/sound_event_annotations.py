@@ -9,9 +9,15 @@ from sonari.api import common
 from sonari.api.common import BaseAPI
 
 __all__ = [
+    "CONFIDENCE_FEATURE_NAMES",
+    "ML_CONFIDENCE_USERNAMES",
     "SoundEventAnnotationAPI",
     "sound_event_annotations",
 ]
+
+# Only these service users may keep ML confidence features after tag edits.
+ML_CONFIDENCE_USERNAMES = frozenset({"birdedge", "yolobat"})
+CONFIDENCE_FEATURE_NAMES = ("detection_confidence", "species_confidence")
 
 
 class SoundEventAnnotationAPI(
@@ -182,10 +188,10 @@ class SoundEventAnnotationAPI(
         sound_event_annotation: schemas.SoundEventAnnotation,
         user: schemas.SimpleUser,
     ) -> schemas.SoundEventAnnotation:
-        """Mark a sound event annotation as edited by removing detection_confidence and updating user.
+        """Mark a sound event annotation as edited and update ownership.
 
-        This method should be called whenever a sound event annotation is edited (geometry, tags, etc.)
-        to remove any machine-generated confidence scores and transfer ownership to the editing user.
+        Human edits remove machine-generated confidence features; ``birdedge`` and ``yolobat``
+        may retain them. Call after geometry or tag changes.
 
         Parameters
         ----------
@@ -201,22 +207,33 @@ class SoundEventAnnotationAPI(
         schemas.SoundEventAnnotation
             The updated annotation.
         """
-        # Remove detection_confidence feature if it exists
-        updated_features = [
-            f for f in sound_event_annotation.features if f.name not in ("detection_confidence", "species_confidence")
-        ]
+        retain_confidence = user.username in ML_CONFIDENCE_USERNAMES
 
-        # If any features were removed, update the database
-        if len(updated_features) < len(sound_event_annotation.features):
-            # Delete the confidence features from database
+        if sound_event_annotation.features is None:
+            sound_event_annotation = await self.get(
+                session,
+                sound_event_annotation.id,
+                include_tags=True,
+                include_features=True,
+            )
+
+        if not retain_confidence:
             await session.execute(
                 delete(models.SoundEventAnnotationFeature).where(
                     and_(
-                        models.SoundEventAnnotationFeature.sound_event_annotation_id == sound_event_annotation.id,
-                        models.SoundEventAnnotationFeature.name.in_(["detection_confidence", "species_confidence"]),
+                        models.SoundEventAnnotationFeature.sound_event_annotation_id
+                        == sound_event_annotation.id,
+                        models.SoundEventAnnotationFeature.name.in_(CONFIDENCE_FEATURE_NAMES),
                     )
                 )
             )
+            updated_features = [
+                f
+                for f in (sound_event_annotation.features or [])
+                if f.name not in CONFIDENCE_FEATURE_NAMES
+            ]
+        else:
+            updated_features = list(sound_event_annotation.features or [])
 
         # Update created_by to current user
         await common.update_object(
@@ -303,9 +320,8 @@ class SoundEventAnnotationAPI(
         """Add a tag to a sound event annotation."""
         user_id = user.id if user else None
         
-        # If tags are not loaded, fetch the annotation with tags (and features for callers
-        # that chain into mark_as_edited_by_user, which iterates features).
-        if obj.tags is None:
+        # Load relationships needed for mark_as_edited_by_user after tag changes.
+        if obj.tags is None or obj.features is None:
             obj = await self.get(session, obj.id, include_tags=True, include_features=True)
         
         # Safety check: even after eager loading, tags might still be None in edge cases
@@ -341,6 +357,9 @@ class SoundEventAnnotationAPI(
         tag: schemas.Tag,
     ) -> schemas.SoundEventAnnotation:
         """Remove a tag from a sound event annotation."""
+        if obj.tags is None or obj.features is None:
+            obj = await self.get(session, obj.id, include_tags=True, include_features=True)
+
         for t in obj.tags:
             if t.key == tag.key and t.value == tag.value:
                 break

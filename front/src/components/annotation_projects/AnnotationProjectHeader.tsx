@@ -56,10 +56,11 @@ export default function AnnotationProjectHeader({
 
   return (
     <Header>
-      <div className="flex overflow-x-auto flex-row space-x-4 w-full">
-        <H1 className="overflow-auto max-w-xl whitespace-nowrap">
+      <div className="flex w-full min-w-0 flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+        <H1 className="min-w-0 shrink break-words text-balance sm:max-w-[min(100%,42rem)]">
           {annotationProject.name}
         </H1>
+        <div className="min-w-0 shrink-0">
         <Tabs
           tabs={[
             {
@@ -93,6 +94,7 @@ export default function AnnotationProjectHeader({
             },
           ]}
         />
+        </div>
       </div>
     </Header>
   );

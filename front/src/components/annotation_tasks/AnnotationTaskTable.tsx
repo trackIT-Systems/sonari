@@ -1,4 +1,5 @@
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import type { RowSelectionState, OnChangeFn } from "@tanstack/react-table";
 import { useRouter } from "next/navigation";
 import { useKeyPressEvent } from "react-use";
 import { useQuery } from "@tanstack/react-query";
@@ -9,6 +10,8 @@ import type { AnnotationTask } from "@/types";
 import useAnnotationTasks from "@/hooks/api/useAnnotationTasks";
 import { annotationTaskFilterPersistKey } from "@/hooks/utils/annotationTaskFilterPersistKey";
 import useAnnotationTaskTable from "@/hooks/useAnnotationTaskTable";
+import useAnnotationTaskBulkActions from "@/hooks/api/useAnnotationTaskBulkActions";
+import AnnotationTaskBulkActionBar from "@/components/annotation_tasks/AnnotationTaskBulkActionBar";
 import Loading from "@/app/loading";
 import Search from "@/components/inputs/Search";
 import FilterPopover from "@/components/filters/FilterMenu";
@@ -42,8 +45,70 @@ export default function AnnotationTaskTable({
   });
   const searchInputRef = useRef<HTMLInputElement>(null);
   const [focusedElement, setFocusedElement] = useState<'search' | 'filter' | number>(-1);
+  const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
+  const [targetMode, setTargetMode] = useState<"selected" | "filter_all">("selected");
   const router = useRouter();
   const popoverButtonRef = useRef<HTMLButtonElement>(null);
+
+  const activeFilter = annotationTasks.filter.filter;
+
+  const bulkActions = useAnnotationTaskBulkActions({
+    filter: activeFilter,
+  });
+
+  const selectedTaskIds = useMemo(() => {
+    const ids = Object.entries(rowSelection)
+      .filter(([, selected]) => selected)
+      .map(([id]) => parseInt(id, 10));
+    return ids;
+  }, [rowSelection]);
+
+  const handleRowSelectionChange: OnChangeFn<RowSelectionState> = useCallback((updater) => {
+    setTargetMode("selected");
+    setRowSelection((prev) =>
+      typeof updater === "function" ? updater(prev) : updater,
+    );
+  }, []);
+
+  const handleSelectAllMatchingFilter = useCallback(() => {
+    setTargetMode("filter_all");
+    setRowSelection({});
+  }, []);
+
+  const handleClearBulkSelection = useCallback(() => {
+    setTargetMode("selected");
+    setRowSelection({});
+  }, []);
+
+  const showBulkBar =
+    targetMode === "filter_all" || selectedTaskIds.length > 0;
+
+  const filterKey = useMemo(
+    () => JSON.stringify(annotationTasks.filter.filter),
+    [annotationTasks.filter.filter],
+  );
+
+  useEffect(() => {
+    setRowSelection({});
+    setTargetMode("selected");
+  }, [filterKey]);
+
+  const bulkTagSummaryQuery = useQuery({
+    queryKey: [
+      "annotation_tasks_bulk_tag_summary",
+      filterKey,
+      targetMode,
+      selectedTaskIds,
+    ],
+    queryFn: () =>
+      api.annotationTasks.bulkSoundEventTagSummary({
+        filter: activeFilter,
+        annotation_task_ids:
+          targetMode === "selected" ? selectedTaskIds : undefined,
+      }),
+    enabled: showBulkBar,
+    refetchOnWindowFocus: false,
+  });
 
   // Fetch all task indices matching the current filter (no pagination)
   const { data: indexPage } = useQuery({
@@ -76,6 +141,11 @@ export default function AnnotationTaskTable({
     sortBy: annotationTasks.filter.get("sort_by") as string | undefined,
     onSortChange: handleSortChange,
     allTasks,
+    rowSelection,
+    onRowSelectionChange: handleRowSelectionChange,
+    filterTotal: annotationTasks.total,
+    onSelectAllMatchingFilter: handleSelectAllMatchingFilter,
+    targetMode,
   });
 
   const handleSearchKeyDown = useCallback((e: React.KeyboardEvent) => {
@@ -169,14 +239,31 @@ export default function AnnotationTaskTable({
         total={annotationTasks.total}
         filterDef={tasksFilterDefs}
       />
+      {showBulkBar && (
+        <AnnotationTaskBulkActionBar
+          targetMode={targetMode}
+          selectedTaskIds={selectedTaskIds}
+          filterTotal={annotationTasks.total}
+          soundEventTagCounts={bulkTagSummaryQuery.data ?? []}
+          isTagSummaryLoading={bulkTagSummaryQuery.isLoading}
+          bulkAddBadge={bulkActions.bulkAddBadge}
+          bulkReplaceSoundEventTags={bulkActions.bulkReplaceSoundEventTags}
+          onClearSelection={handleClearBulkSelection}
+        />
+      )}
       <div className="w-full">
-        <div className="overflow-x-auto overflow-y-auto w-full max-h-screen rounded-md outline outline-1 outline-stone-200 dark:outline-stone-800">
+        <div className="w-full min-w-0 overflow-x-auto rounded-md outline outline-1 outline-stone-200 dark:outline-stone-800">
           <Table
             table={table}
             selectedIndex={typeof focusedElement === 'number' ? focusedElement : -1}
             onFocusChange={handleTableFocus}
             onSelect={handleSelect}
-            handleNumberKeys={focusedElement !== 'search' && focusedElement !== 'filter'}
+            handleNumberKeys={
+              focusedElement !== 'search'
+              && focusedElement !== 'filter'
+              && selectedTaskIds.length === 0
+              && targetMode !== 'filter_all'
+            }
           />
         </div>
       </div>

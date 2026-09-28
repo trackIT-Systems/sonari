@@ -1,4 +1,4 @@
-import { useCallback } from "react";
+import { useCallback, type CSSProperties } from "react";
 import { flexRender } from "@tanstack/react-table";
 import { useKeyPressEvent } from "react-use";
 import useKeyFilter from "@/hooks/utils/useKeyFilter";
@@ -12,7 +12,25 @@ import {
   SELECT_FRT_ELEMENT_SHORTCUT,
 } from "@/utils/keyboard";
 
-import type { Table } from "@tanstack/react-table";
+import type { Column, Table } from "@tanstack/react-table";
+
+type TableColumnLayoutMeta = {
+  width?: string;
+  minWidth?: string;
+  maxWidth?: string;
+};
+
+function columnLayoutStyle<S>(column: Column<S, unknown>): CSSProperties {
+  const meta = column.columnDef.meta as TableColumnLayoutMeta | undefined;
+  if (meta?.width || meta?.minWidth || meta?.maxWidth) {
+    return {
+      width: meta.width,
+      minWidth: meta.minWidth,
+      maxWidth: meta.maxWidth,
+    };
+  }
+  return { width: `${column.getSize()}%` };
+}
 
 /** A Table component.
  * Will display a table.
@@ -96,14 +114,9 @@ export default function Table<S>({
 
   return (
     <table
-      className="relative min-w-full rounded-lg border border-collapse table-fixed border-stone-300 text-stone-700 dark:border-stone-700 dark:text-stone-300"
-      {...{
-        style: {
-          width: table.getCenterTotalSize(),
-        },
-      }}
+      className="relative w-full min-w-[52rem] rounded-lg border border-collapse table-fixed border-stone-300 text-stone-700 dark:border-stone-700 dark:text-stone-300"
     >
-      <thead className="z-10 sticky top-0">
+      <thead className="z-10 sticky top-0 overflow-hidden">
         {table.getHeaderGroups().map((headerGroup) => (
           <tr
             key={headerGroup.id}
@@ -111,12 +124,10 @@ export default function Table<S>({
           >
             {headerGroup.headers.map((header) => (
               <th
-                className="overflow-x-auto relative py-1 px-2 whitespace-nowrap border border-stone-400 dark:border-stone-500"
+                className="relative overflow-hidden py-1 px-1.5 border border-stone-400 dark:border-stone-500"
                 key={header.id}
                 colSpan={header.colSpan}
-                style={{
-                  width: header.getSize(),
-                }}
+                style={columnLayoutStyle(header.column)}
               >
                 {header.isPlaceholder
                   ? null
@@ -124,12 +135,14 @@ export default function Table<S>({
                     header.column.columnDef.header,
                     header.getContext(),
                   )}
-                <div
-                  onMouseDown={header.getResizeHandler()}
-                  onTouchStart={header.getResizeHandler()}
-                  className={`resizer ${header.column.getIsResizing() ? "isResizing" : ""
-                    }`}
-                />
+                {header.column.getCanResize() ? (
+                  <div
+                    onMouseDown={header.getResizeHandler()}
+                    onTouchStart={header.getResizeHandler()}
+                    className={`resizer ${header.column.getIsResizing() ? "isResizing" : ""
+                      }`}
+                  />
+                ) : null}
               </th>
             ))}
           </tr>
@@ -150,9 +163,7 @@ export default function Table<S>({
                     className="border outline-none focus:ring-1 focus:ring-emerald-500 focus:ring-offset-1 focus:ring-offset-transparent border-stone-300 dark:border-stone-600 max-h-40"
                     tabIndex={-1}
                     key={cell.id}
-                    style={{
-                      width: cell.column.getSize(),
-                    }}
+                    style={columnLayoutStyle(cell.column)}
                   >
                     {flexRender(cell.column.columnDef.cell, cell.getContext())}
                   </td>

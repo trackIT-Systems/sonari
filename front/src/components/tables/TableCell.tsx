@@ -21,7 +21,7 @@ export default function TableCell({
         className,
       )}
     >
-      <span className="grow overflow-x-auto">{children}</span>
+      <span className="min-w-0 grow break-words">{children}</span>
       {!editable ? null : (
         <EditIcon className="inline-block h-5 w-5 text-stone-500" />
       )}

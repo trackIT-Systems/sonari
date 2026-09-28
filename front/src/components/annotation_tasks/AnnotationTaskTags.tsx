@@ -22,7 +22,7 @@ function NoTags() {
 
 const allTag: Tag = { key: "all", value: "tags" }
 
-function TagReplacePanel({
+export function TagReplacePanel({
   taskTags,
   onReplaceTag,
 }: {
