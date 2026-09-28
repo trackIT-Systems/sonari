@@ -10,7 +10,13 @@ import Button from "../Button";
 import { Popover, PopoverButton, PopoverPanel } from "@headlessui/react";
 import KeyboardKey from "../KeyboardKey";
 import type { AnnotationTask, Tag, SoundEventAnnotation } from "@/types";
-import { ADD_TAG_SHORTCUT, ADD_UNTAGGED_TAG_SHORTCUT, REPLACE_TAG_SHORTCUT, getSpecialKeyLabel } from "@/utils/keyboard";
+import {
+  ADD_TAG_SHORTCUT,
+  ADD_TO_TAGGED_TAG_SHORTCUT,
+  ADD_UNTAGGED_TAG_SHORTCUT,
+  REPLACE_TAG_SHORTCUT,
+  getSpecialKeyLabel,
+} from "@/utils/keyboard";
 import { isTagVisible } from "@/utils/passes";
 import type { TagVisibilityFilter } from "@/utils/passes";
 
@@ -112,6 +118,79 @@ export function TagReplacePanel({
 }
 
 
+function TagAddToTaggedPanel({
+  taskTags,
+  onAddTag,
+}: {
+  taskTags: { tag: Tag; count: number }[];
+  onAddTag: (filterTag: Tag, newTag: Tag) => void;
+}) {
+  const [selectedTagWithCount, setSelectedTagWithCount] = useState<{ tag: Tag; count: number } | null>(null);
+
+  if (selectedTagWithCount === null) {
+    return (
+      <div className="p-4">
+        <div className="mb-2 text-stone-700 dark:text-stone-300 underline underline-offset-2 decoration-amber-500 decoration-2">
+          Add tag to sound events with ...
+        </div>
+        <SearchMenu
+          limit={100}
+          key="add-to-tagged-first"
+          options={taskTags}
+          fields={["type", "tag.key", "tag.value"]}
+          renderOption={(option) =>
+            <TagComponent
+              key={getTagKey(option.tag)}
+              tag={option.tag}
+              onClose={() => { }}
+              count={option.count}
+            />
+          }
+          getOptionKey={(option) => `${option.tag.key}-${option.tag.value}`}
+          onSelect={(option) => setSelectedTagWithCount(option)}
+          empty={<div className="text-stone-500 text-center w-full">No tags found</div>}
+          autoFocus
+        />
+      </div>
+    );
+  }
+
+  return (
+    <div className="p-4">
+      <div className="mb-2 flex flex-row items-center justify-between">
+        <div>
+          <span className="mb-2 text-stone-700 dark:text-stone-300 underline underline-offset-2 decoration-amber-500 decoration-2">
+            Add tag to events with{" "}
+          </span>
+          <TagComponent
+            key={getTagKey(selectedTagWithCount.tag)}
+            tag={selectedTagWithCount.tag}
+            onClose={() => { }}
+            count={selectedTagWithCount.count}
+          />
+        </div>
+        <Button
+          mode="text"
+          variant="warning"
+          onClick={() => {
+            setSelectedTagWithCount(null);
+          }}
+        >
+          <BackIcon className="w-5 h-5" />
+        </Button>
+      </div>
+      <TagSearchBar
+        placeholder="Search tag to add..."
+        onSelect={(newTag) => {
+          onAddTag(selectedTagWithCount.tag, newTag);
+          setSelectedTagWithCount(null);
+        }}
+        autoFocus
+      />
+    </div>
+  );
+}
+
 function TagAddPanel({
   onReplaceTag,
   title = "Select Tag to add",
@@ -149,18 +228,21 @@ export default function AnnotationTaskTags({
   annotationTask,
   onReplaceTagInSoundEventAnnotations,
   onAddTagToUntaggedSoundEventAnnotations,
+  onAddTagToSoundEventAnnotationsWithTag,
   selectedSoundEventAnnotation,
   tagVisibility,
 }: {
   annotationTask: AnnotationTask;
   onReplaceTagInSoundEventAnnotations?: (oldTag: Tag | null, newTag: Tag | null, selectedSoundEventAnnotation?: SoundEventAnnotation | null) => void;
   onAddTagToUntaggedSoundEventAnnotations?: (newTag: Tag) => void;
+  onAddTagToSoundEventAnnotationsWithTag?: (filterTag: Tag, newTag: Tag, selectedSoundEventAnnotation?: SoundEventAnnotation | null) => void;
   selectedSoundEventAnnotation?: SoundEventAnnotation | null;
   tagVisibility?: TagVisibilityFilter;
 }) {
 
   const replaceButtonRef = useRef<HTMLButtonElement>(null);
   const addButtonRef = useRef<HTMLButtonElement>(null);
+  const addToTaggedButtonRef = useRef<HTMLButtonElement>(null);
   const addUntaggedButtonRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
@@ -188,7 +270,16 @@ export default function AnnotationTaskTags({
         return;
       }
 
+      if (key === ADD_TO_TAGGED_TAG_SHORTCUT && !event.metaKey && !event.shiftKey) {
+        event.preventDefault();
+        event.stopPropagation();
+        addToTaggedButtonRef.current?.click();
+        return;
+      }
+
       if (key === ADD_TAG_SHORTCUT && !event.metaKey && !event.shiftKey) {
+        event.preventDefault();
+        event.stopPropagation();
         addButtonRef.current?.click();
       }
     };
@@ -374,6 +465,70 @@ export default function AnnotationTaskTags({
                       onReplaceTag={async (_, newTag) => {
                         close();
                         await handleTagReplaceRemove(null, newTag);
+                      }}
+                    />
+                  </PopoverPanel>
+                </>
+              );
+            }}
+          </Popover>
+          <div className="h-4 w-px bg-stone-200 dark:bg-stone-600 mx-2" />
+          <Popover as="div" className="relative inline-block text-left">
+            {({ close }) => {
+              return (
+                <>
+                  <div className="group relative">
+                    <PopoverButton as="div"
+                      className={`
+              inline-flex items-center justify-center text-sm font-medium
+              text-info-600 hover:text-info-700
+            `}
+                    >
+                      <Button
+                        ref={addToTaggedButtonRef}
+                        mode="text"
+                        variant="info"
+                        type="button"
+                        autoFocus={false}
+                      >
+                        Add to tagged
+                      </Button>
+                    </PopoverButton>
+                    <div
+                      className="
+              opacity-0 scale-95 group-hover:opacity-100 group-hover:scale-100
+              transition duration-100 ease-out
+              pointer-events-none
+              absolute top-full left-1/2 -translate-x-1/2 mt-2 
+              rounded p-2 shadow-lg 
+              bg-stone-50 dark:bg-stone-700 
+              text-stone-600 dark:text-stone-400 
+              text-sm
+              z-50 whitespace-nowrap
+            "
+                    >
+                      <div className="inline-flex gap-2 items-center">
+                        Add tag to sound events that already have a specific tag
+                        <div className="text-xs">
+                          <KeyboardKey code={ADD_TO_TAGGED_TAG_SHORTCUT} />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  <PopoverPanel
+                    unmount
+                    onMouseDown={(e) => e.preventDefault()}
+                    className="absolute right-0 mt-2 w-96 divide-y divide-stone-100 rounded-md bg-stone-50 dark:bg-stone-700 border border-stone-200 dark:border-stone-500 shadow-md dark:shadow-stone-800 ring-1 ring-stone-900 ring-opacity-5 z-50 origin-top-right transition transform data-[closed]:scale-95 data-[closed]:opacity-0 data-[enter]:duration-100 data-[leave]:duration-75 data-[enter]:ease-out data-[leave]:ease-in"
+                  >
+                    <TagAddToTaggedPanel
+                      taskTags={popoverTagsWithCount}
+                      onAddTag={async (filterTag, newTag) => {
+                        close();
+                        await onAddTagToSoundEventAnnotationsWithTag?.(
+                          filterTag,
+                          newTag,
+                          selectedSoundEventAnnotation,
+                        );
                       }}
                     />
                   </PopoverPanel>

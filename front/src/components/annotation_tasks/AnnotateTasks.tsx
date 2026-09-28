@@ -567,6 +567,46 @@ export default function AnnotateTasks({
     [displayedSoundEventAnnotations, activeAddTagToSoundEventAnnotation, activeHistory],
   );
 
+  const handleAddTagToSoundEventAnnotationsWithTag = useCallback(
+    async (
+      filterTag: Tag,
+      newTag: Tag,
+      currentAnnotation?: SoundEventAnnotation | null,
+    ) => {
+      if (!displayedSoundEventAnnotations.length || !activeAddTagToSoundEventAnnotation) {
+        return;
+      }
+
+      const run = activeHistory?.runBatch ?? (async (_label, fn) => fn());
+      await run("Add tag to sound events with tag", async () => {
+        const soundEventAnnotationsToUpdate = soundEventAnnotationsForTagReplace(
+          displayedSoundEventAnnotations,
+          {
+            oldTag: filterTag,
+            scopeSoundEventAnnotation: currentAnnotation ?? undefined,
+          },
+        );
+
+        const promises = soundEventAnnotationsToUpdate
+          .filter(
+            (soundEventAnnotation) =>
+              !soundEventAnnotation.tags?.some(
+                (tag) => tag.key === newTag.key && tag.value === newTag.value,
+              ),
+          )
+          .map((soundEventAnnotation) =>
+            activeAddTagToSoundEventAnnotation({
+              soundEventAnnotation,
+              tag: newTag,
+            }),
+          );
+
+        await Promise.all(promises);
+      });
+    },
+    [displayedSoundEventAnnotations, activeAddTagToSoundEventAnnotation, activeHistory],
+  );
+
   const menuRef = useRef<HTMLDivElement>(null);
 
   if (tasks.isLoading) {
@@ -768,6 +808,7 @@ export default function AnnotateTasks({
                   annotationTask={displayAnnotationTask!}
                   onReplaceTagInSoundEventAnnotations={handleReplaceTagInSoundEventAnnotations}
                   onAddTagToUntaggedSoundEventAnnotations={handleAddTagToUntaggedSoundEventAnnotations}
+                  onAddTagToSoundEventAnnotationsWithTag={handleAddTagToSoundEventAnnotationsWithTag}
                   selectedSoundEventAnnotation={selectedSoundEventAnnotation}
                   tagVisibility={tagVisibility}
                 />

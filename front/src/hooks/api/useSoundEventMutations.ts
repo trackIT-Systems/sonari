@@ -57,6 +57,9 @@ export default function useSoundEventMutations({
           sound_event_annotations: [...(prev.sound_event_annotations || []), data],
         };
       });
+      client.invalidateQueries({ queryKey: ["annotation_tasks"] });
+      client.invalidateQueries({ queryKey: ["annotation_tasks_index"] });
+      client.invalidateQueries({ queryKey: ["annotation_tasks_stats"] });
     },
     onError,
   });
@@ -111,6 +114,9 @@ export default function useSoundEventMutations({
           }),
         };
       });
+      client.invalidateQueries({ queryKey: ["annotation_tasks"] });
+      client.invalidateQueries({ queryKey: ["annotation_tasks_index"] });
+      client.invalidateQueries({ queryKey: ["annotation_tasks_stats"] });
     },
     onError,
   });
@@ -135,6 +141,9 @@ export default function useSoundEventMutations({
           ),
         };
       });
+      client.invalidateQueries({ queryKey: ["annotation_tasks"] });
+      client.invalidateQueries({ queryKey: ["annotation_tasks_index"] });
+      client.invalidateQueries({ queryKey: ["annotation_tasks_stats"] });
     },
     onError,
   });
@@ -186,6 +195,9 @@ export default function useSoundEventMutations({
           ),
         };
       });
+      client.invalidateQueries({ queryKey: ["annotation_tasks"] });
+      client.invalidateQueries({ queryKey: ["annotation_tasks_index"] });
+      client.invalidateQueries({ queryKey: ["annotation_tasks_stats"] });
     },
     onError: (error) => {
       // Don't call onError for duplicate tag errors (client-side check)
@@ -242,6 +254,9 @@ export default function useSoundEventMutations({
           ),
         };
       });
+      client.invalidateQueries({ queryKey: ["annotation_tasks"] });
+      client.invalidateQueries({ queryKey: ["annotation_tasks_index"] });
+      client.invalidateQueries({ queryKey: ["annotation_tasks_stats"] });
     },
     onError: (error) => {
       // Don't call onError for non-existent tag errors (client-side check)
