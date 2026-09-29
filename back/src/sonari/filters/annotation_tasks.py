@@ -256,51 +256,56 @@ class SearchRecordingsFilter(base.Filter):
         return query.where(Recording.c.path.ilike(term))
 
 
+def _tag_id_subquery(key: str, value: str):
+    """Scalar subquery resolving a tag id (uses the unique (key, value) index)."""
+    return (
+        select(models.Tag.id)
+        .where(models.Tag.key == key, models.Tag.value == value)
+        .scalar_subquery()
+    )
+
+
 def _task_has_tag_key_value(key: str, value: str):
     """Task has this tag on a sound event or as an annotation-task tag."""
-    sound_event_subquery = (
-        select(models.SoundEventAnnotationTag.sound_event_annotation_id)
-        .join(models.Tag, models.Tag.id == models.SoundEventAnnotationTag.tag_id)
-        .where(
-            models.Tag.key == key,
-            models.Tag.value == value,
-        )
-    )
+    tag_id = _tag_id_subquery(key, value)
     sound_event_exists = exists(
-        select(1).where(
-            models.SoundEventAnnotation.annotation_task_id == models.AnnotationTask.id,
-            models.SoundEventAnnotation.id.in_(sound_event_subquery),
+        select(1)
+        .select_from(models.SoundEventAnnotation)
+        .join(
+            models.SoundEventAnnotationTag,
+            models.SoundEventAnnotationTag.sound_event_annotation_id
+            == models.SoundEventAnnotation.id,
         )
+        .where(
+            models.SoundEventAnnotation.annotation_task_id == models.AnnotationTask.id,
+            models.SoundEventAnnotationTag.tag_id == tag_id,
+        )
+        .correlate(models.AnnotationTask)
     )
     task_tag_exists = exists(
         select(1)
         .select_from(models.AnnotationTaskTag)
-        .join(
-            models.Tag,
-            models.Tag.id == models.AnnotationTaskTag.tag_id,
-        )
         .where(
-            models.Tag.key == key,
-            models.Tag.value == value,
             models.AnnotationTaskTag.annotation_task_id == models.AnnotationTask.id,
+            models.AnnotationTaskTag.tag_id == tag_id,
         )
+        .correlate(models.AnnotationTask)
     )
     return or_(sound_event_exists, task_tag_exists)
 
 
 def _task_distinct_tag_count_expression():
     """Distinct tag ids on a task (sound-event tags and task-level tags)."""
-    sound_events_for_task = (
-        select(models.SoundEventAnnotation.id)
-        .where(
-            models.SoundEventAnnotation.annotation_task_id == models.AnnotationTask.id,
+    sound_event_tag_ids = (
+        select(models.SoundEventAnnotationTag.tag_id)
+        .select_from(models.SoundEventAnnotation)
+        .join(
+            models.SoundEventAnnotationTag,
+            models.SoundEventAnnotationTag.sound_event_annotation_id
+            == models.SoundEventAnnotation.id,
         )
+        .where(models.SoundEventAnnotation.annotation_task_id == models.AnnotationTask.id)
         .correlate(models.AnnotationTask)
-    )
-    sound_event_tag_ids = select(models.SoundEventAnnotationTag.tag_id).where(
-        models.SoundEventAnnotationTag.sound_event_annotation_id.in_(
-            sound_events_for_task,
-        ),
     )
     task_level_tag_ids = (
         select(models.AnnotationTaskTag.tag_id)
@@ -417,12 +422,10 @@ def _sound_event_annotation_has_tag(key: str, value: str):
     return exists(
         select(1)
         .select_from(models.SoundEventAnnotationTag)
-        .join(models.Tag, models.Tag.id == models.SoundEventAnnotationTag.tag_id)
         .where(
             models.SoundEventAnnotationTag.sound_event_annotation_id
             == models.SoundEventAnnotation.id,
-            models.Tag.key == key,
-            models.Tag.value == value,
+            models.SoundEventAnnotationTag.tag_id == _tag_id_subquery(key, value),
         )
     )
 
@@ -484,28 +487,12 @@ class EmptyFilter(base.Filter):
         if self.eq is None:
             return query
 
-        sound_event_count = (
-            select(
-                models.SoundEventAnnotation.annotation_task_id,
-                func.count(models.SoundEventAnnotation.id).label("count"),
-            )
-            .group_by(models.SoundEventAnnotation.annotation_task_id)
-            .subquery()
+        has_sound_events = exists(
+            select(1)
+            .where(models.SoundEventAnnotation.annotation_task_id == models.AnnotationTask.id)
+            .correlate(models.AnnotationTask)
         )
-
-        # Join with our query
-        query = query.outerjoin(
-            sound_event_count,
-            models.AnnotationTask.id == sound_event_count.c.annotation_task_id,
-        )
-
-        # Filter based on eq parameter
-        if self.eq:
-            # When eq=True, return tasks where count is NULL or 0
-            return query.where(or_(sound_event_count.c.count.is_(None), sound_event_count.c.count == 0))
-        else:
-            # When eq=False, return tasks where count is greater than 0
-            return query.where(sound_event_count.c.count > 0)
+        return query.where(not_(has_sound_events) if self.eq else has_sound_events)
 
 
 class DateRangeFilter(base.Filter):

@@ -13,7 +13,7 @@ from uuid import UUID
 
 import sqlalchemy.orm as orm
 from soundevent import Geometry
-from sqlalchemy import ForeignKey, UniqueConstraint
+from sqlalchemy import ForeignKey, Index, UniqueConstraint
 
 from sonari.models.base import Base
 from sonari.models.tag import Tag
@@ -191,7 +191,10 @@ class SoundEventAnnotationTag(Base):
     """
 
     __tablename__ = "sound_event_annotation_tag"
-    __table_args__ = (UniqueConstraint("sound_event_annotation_id", "tag_id", "created_by_id"),)
+    __table_args__ = (
+        UniqueConstraint("sound_event_annotation_id", "tag_id", "created_by_id"),
+        Index("ix_sound_event_annotation_tag_tag_id_sea_id", "tag_id", "sound_event_annotation_id"),
+    )
 
     id: orm.Mapped[int] = orm.mapped_column(primary_key=True, init=False)
     sound_event_annotation_id: orm.Mapped[int] = orm.mapped_column(

@@ -1025,17 +1025,19 @@ class AnnotationTaskAPI(
                 models.SoundEventAnnotation.id == models.SoundEventAnnotationTag.sound_event_annotation_id,
             )
             .join(models.Tag, models.SoundEventAnnotationTag.tag_id == models.Tag.id)
-            .where(models.SoundEventAnnotation.annotation_task_id.in_(task_ids))
         )
 
-        result = await session.execute(query)
-        rows = result.all()
-
+        # Chunk the IN list to stay under the database's bound-parameter limit.
         tags_by_task: dict[int, list[schemas.Tag]] = {}
-        for task_id, tag_id, tag_key, tag_value in rows:
-            tags_by_task.setdefault(task_id, []).append(
-                schemas.Tag(id=tag_id, key=tag_key, value=tag_value),
+        for start in range(0, len(task_ids), 500):
+            chunk = task_ids[start : start + 500]
+            result = await session.execute(
+                query.where(models.SoundEventAnnotation.annotation_task_id.in_(chunk))
             )
+            for task_id, tag_id, tag_key, tag_value in result.all():
+                tags_by_task.setdefault(task_id, []).append(
+                    schemas.Tag(id=tag_id, key=tag_key, value=tag_value),
+                )
 
         return tags_by_task
 
