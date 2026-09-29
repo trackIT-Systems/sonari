@@ -122,6 +122,47 @@ async def test_bulk_replace_sound_event_tags(
 
 
 @pytest.mark.asyncio
+async def test_bulk_add_to_tagged_keeps_filter_tag(
+    auth_client: AsyncClient,
+    db_session,
+    test_annotation_project: schemas.AnnotationProject,
+    test_recording_id: int,
+    test_annotation_task: schemas.AnnotationTask,
+    test_tag: schemas.Tag,
+):
+    """add_to_tagged adds new_tag on SEAs with old_tag without removing old_tag."""
+    await _create_sea_with_tag(auth_client, test_annotation_task, test_tag)
+    added_key = f"extra_{uuid.uuid4().hex[:8]}"
+
+    response = await auth_client.post(
+        "/api/v1/annotation_tasks/bulk/sound_event_tags/replace/",
+        params={"annotation_project__eq": test_annotation_project.id},
+        json={
+            "annotation_task_ids": [test_annotation_task.id],
+            "old_tag": {"key": test_tag.key, "value": test_tag.value},
+            "new_tag": {"key": added_key, "value": "bat"},
+            "add_to_tagged": True,
+        },
+    )
+    assert response.status_code == 200, response.text
+    data = schemas.AnnotationTaskBulkResult.model_validate(response.json())
+    assert data.sound_events_updated == 1
+
+    detail = await auth_client.get(
+        "/api/v1/annotation_tasks/detail/",
+        params={
+            "annotation_task_id": test_annotation_task.id,
+            "include_sound_event_annotations": True,
+            "include_sound_event_tags": True,
+        },
+    )
+    tags = (detail.json().get("sound_event_annotations") or [])[0].get("tags") or []
+    keys = {t["key"] for t in tags}
+    assert test_tag.key in keys
+    assert added_key in keys
+
+
+@pytest.mark.asyncio
 async def test_bulk_replace_multiple_tasks_same_chunk(
     auth_client: AsyncClient,
     db_session,
@@ -166,6 +207,57 @@ async def test_bulk_replace_multiple_tasks_same_chunk(
         assert detail.status_code == 200
         tags = (detail.json().get("sound_event_annotations") or [])[0].get("tags") or []
         assert any(t["key"] == new_key for t in tags)
+
+
+@pytest.mark.asyncio
+async def test_bulk_replace_when_new_tag_already_present_does_not_fail_chunk(
+    auth_client: AsyncClient,
+    db_session,
+    test_annotation_project: schemas.AnnotationProject,
+    test_recording_id: int,
+    test_tag: schemas.Tag,
+    test_user,
+):
+    """Replacing old with new must not break the chunk when new tag already exists on a SEA."""
+    task1 = await _create_task(db_session, test_annotation_project, test_recording_id, 0.0, 1.0)
+    task2 = await _create_task(db_session, test_annotation_project, test_recording_id, 2.0, 3.0)
+    new_key = f"dup_target_{uuid.uuid4().hex[:8]}"
+    await api.tags.get_or_create(
+        db_session,
+        new_key,
+        "bat",
+        schemas.SimpleUser.model_validate(test_user),
+    )
+    await db_session.commit()
+
+    both_tags = await auth_client.post(
+        "/api/v1/sound_event_annotations/",
+        params={"annotation_task_id": task1.id},
+        json={
+            "geometry": {"type": "TimeInterval", "coordinates": [0.1, 0.2]},
+            "tags": [
+                {"key": test_tag.key, "value": test_tag.value},
+                {"key": new_key, "value": "bat"},
+            ],
+        },
+    )
+    assert both_tags.status_code in [200, 201], both_tags.text
+    await _create_sea_with_tag(auth_client, task2, test_tag)
+
+    response = await auth_client.post(
+        "/api/v1/annotation_tasks/bulk/sound_event_tags/replace/",
+        params={"annotation_project__eq": test_annotation_project.id},
+        json={
+            "annotation_task_ids": [task1.id, task2.id],
+            "old_tag": {"key": test_tag.key, "value": test_tag.value},
+            "new_tag": {"key": new_key, "value": "bat"},
+        },
+    )
+    assert response.status_code == 200, response.text
+    data = schemas.AnnotationTaskBulkResult.model_validate(response.json())
+    assert data.failures == []
+    assert data.tasks_updated == 2
+    assert data.sound_events_updated == 2
 
 
 @pytest.mark.asyncio

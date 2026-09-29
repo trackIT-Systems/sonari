@@ -50,7 +50,12 @@ export default function AnnotationTaskTable({
   const [focusedElement, setFocusedElement] = useState<'search' | 'filter' | number>(-1);
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
   const [targetMode, setTargetMode] = useState<"selected" | "filter_all">("selected");
-  const [tagReplacePanelOpen, setTagReplacePanelOpen] = useState(false);
+  const [tagBulkPanelsOpen, setTagBulkPanelsOpen] = useState({
+    replace: false,
+    addToTagged: false,
+  });
+  const anyTagBulkPanelOpen =
+    tagBulkPanelsOpen.replace || tagBulkPanelsOpen.addToTagged;
   const router = useRouter();
   const popoverButtonRef = useRef<HTMLButtonElement>(null);
 
@@ -110,9 +115,16 @@ export default function AnnotationTaskTable({
         annotation_task_ids:
           targetMode === "selected" ? selectedTaskIds : undefined,
       }),
-    enabled: showBulkBar && tagReplacePanelOpen,
+    enabled: showBulkBar && anyTagBulkPanelOpen,
     refetchOnWindowFocus: false,
   });
+
+  const handleTagBulkPanelOpenChange = useCallback(
+    (panel: "replace" | "addToTagged", open: boolean) => {
+      setTagBulkPanelsOpen((prev) => ({ ...prev, [panel]: open }));
+    },
+    [],
+  );
 
   const shouldLoadTaskIndex =
     !annotationTasks.isLoading
@@ -264,7 +276,7 @@ export default function AnnotationTaskTable({
           bulkAddBadge={bulkActions.bulkAddBadge}
           bulkReplaceSoundEventTags={bulkActions.bulkReplaceSoundEventTags}
           onClearSelection={handleClearBulkSelection}
-          onTagReplacePanelOpenChange={setTagReplacePanelOpen}
+          onTagBulkPanelOpenChange={handleTagBulkPanelOpenChange}
         />
       )}
       <div className="w-full">

@@ -12,10 +12,11 @@ from sonari import exceptions, models, schemas
 from sonari.api import common
 from sonari.api.common import BaseAPI
 from sonari.filters.base import Filter
-from sonari.utils.sound_event_tag_replace import (
-    is_replace_all_tag,
-    sound_event_annotations_for_tag_replace,
+from sonari.api.bulk_sound_event_tag_replace import (
+    build_bulk_params,
+    process_bulk_tag_replace_chunk,
 )
+from sonari.utils.sound_event_tag_replace import is_replace_all_tag
 
 __all__ = [
     "AnnotationTaskAPI",
@@ -1197,12 +1198,18 @@ class AnnotationTaskAPI(
         old_tag: schemas.TagCreate | None,
         new_tag: schemas.TagCreate | None,
         replace_all: bool,
+        add_to_tagged: bool,
         user: schemas.SimpleUser,
     ) -> schemas.AnnotationTaskBulkResult:
         """Replace sound event tags across many annotation tasks."""
-        from sonari.api import annotation_projects, sound_event_annotations, tags as tags_api
+        from sonari.api import tags as tags_api
 
         effective_replace_all = replace_all or is_replace_all_tag(old_tag)
+        if add_to_tagged:
+            if replace_all or effective_replace_all:
+                raise ValueError("add_to_tagged cannot be combined with replace_all.")
+            if old_tag is None or new_tag is None or is_replace_all_tag(old_tag):
+                raise ValueError("add_to_tagged requires old_tag and new_tag.")
         if new_tag is None and old_tag is None and not effective_replace_all:
             raise ValueError("Provide old_tag, new_tag, or replace_all to update tags.")
 
@@ -1211,7 +1218,7 @@ class AnnotationTaskAPI(
         sound_events_updated = 0
         failures: list[schemas.AnnotationTaskBulkFailure] = []
 
-        new_tag_obj: schemas.Tag | None = None
+        new_tag_id: int | None = None
         if new_tag is not None:
             new_tag_obj = await tags_api.get_or_create(
                 session,
@@ -1219,116 +1226,46 @@ class AnnotationTaskAPI(
                 new_tag.value,
                 user,
             )
+            new_tag_id = new_tag_obj.id
 
-        old_tag_obj: schemas.Tag | None = None
+        old_tag_id: int | None = None
+        old_tag_provided = old_tag is not None
         if old_tag is not None and not is_replace_all_tag(old_tag):
             old_tag_obj = await tags_api.get(session, (old_tag.key, old_tag.value))
+            old_tag_id = old_tag_obj.id
+
+        bulk_params = build_bulk_params(
+            new_tag_id=new_tag_id,
+            old_tag_id=old_tag_id,
+            effective_replace_all=effective_replace_all,
+            old_tag_provided=old_tag_provided,
+            add_to_tagged=add_to_tagged,
+            user=user,
+        )
 
         for chunk_start in range(0, len(task_ids), _BULK_CHUNK_SIZE):
             chunk = task_ids[chunk_start : chunk_start + _BULK_CHUNK_SIZE]
-
-            query = (
-                select(models.AnnotationTask)
-                .where(models.AnnotationTask.id.in_(chunk))
-                .options(
-                    selectinload(models.AnnotationTask.sound_event_annotations).selectinload(
-                        models.SoundEventAnnotation.tags,
-                    ),
-                    selectinload(models.AnnotationTask.sound_event_annotations).selectinload(
-                        models.SoundEventAnnotation.features,
-                    ),
+            try:
+                chunk_result = await process_bulk_tag_replace_chunk(
+                    session,
+                    chunk,
+                    bulk_params,
                 )
-            )
-            result = await session.execute(query)
-            tasks_by_id = {obj.id: obj for obj in result.scalars().unique().all()}
-
-            chunk_had_changes = False
-            for task_id in chunk:
-                model = tasks_by_id.get(task_id)
-                if model is None:
+                failures.extend(chunk_result.failures)
+                tasks_updated += chunk_result.tasks_updated
+                sound_events_updated += chunk_result.sound_events_updated
+                if chunk_result.tasks_updated > 0 or chunk_result.sound_events_updated > 0:
+                    await session.commit()
+            except Exception as exc:  # noqa: BLE001
+                await session.rollback()
+                message = str(exc)
+                for task_id in chunk:
                     failures.append(
                         schemas.AnnotationTaskBulkFailure(
                             annotation_task_id=task_id,
-                            message="Annotation task not found.",
-                        )
+                            message=message,
+                        ),
                     )
-                    continue
-
-                try:
-                    async with session.begin_nested():
-                        sea_schemas = [
-                            sound_event_annotations._schema.model_validate(sea)
-                            for sea in (model.sound_event_annotations or [])
-                        ]
-                        seas = sound_event_annotations_for_tag_replace(
-                            sea_schemas,
-                            old_tag=old_tag,
-                            replace_all=effective_replace_all,
-                        )
-                        if not seas:
-                            continue
-
-                        task_had_changes = False
-                        for sea in seas:
-                            sea_changed = False
-                            if effective_replace_all:
-                                for tag in list(sea.tags or []):
-                                    sea = await sound_event_annotations.remove_tag(
-                                        session,
-                                        sea,
-                                        tag,
-                                    )
-                                    sea_changed = True
-                            elif old_tag_obj is not None:
-                                if any(
-                                    t.key == old_tag_obj.key and t.value == old_tag_obj.value
-                                    for t in (sea.tags or [])
-                                ):
-                                    sea = await sound_event_annotations.remove_tag(
-                                        session,
-                                        sea,
-                                        old_tag_obj,
-                                    )
-                                    sea_changed = True
-
-                            if new_tag_obj is not None:
-                                try:
-                                    sea = await sound_event_annotations.add_tag(
-                                        session,
-                                        sea,
-                                        new_tag_obj,
-                                        user,
-                                    )
-                                    sea_changed = True
-                                except exceptions.DuplicateObjectError:
-                                    pass
-
-                            if sea_changed:
-                                await sound_event_annotations.mark_as_edited_by_user(
-                                    session,
-                                    sea,
-                                    user,
-                                )
-                                sound_events_updated += 1
-                                task_had_changes = True
-
-                        if task_had_changes:
-                            await annotation_projects.invalidate_species_counts_for_task(
-                                session,
-                                task_id,
-                            )
-                            tasks_updated += 1
-                            chunk_had_changes = True
-                except Exception as exc:  # noqa: BLE001
-                    failures.append(
-                        schemas.AnnotationTaskBulkFailure(
-                            annotation_task_id=task_id,
-                            message=str(exc),
-                        )
-                    )
-
-            if chunk_had_changes:
-                await session.commit()
 
         return schemas.AnnotationTaskBulkResult(
             tasks_targeted=tasks_targeted,

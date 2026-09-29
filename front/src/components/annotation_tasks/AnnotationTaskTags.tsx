@@ -118,7 +118,7 @@ export function TagReplacePanel({
 }
 
 
-function TagAddToTaggedPanel({
+export function TagAddToTaggedPanel({
   taskTags,
   onAddTag,
 }: {

@@ -2,7 +2,10 @@ import { useCallback, useEffect, useState } from "react";
 import { Popover, PopoverButton, PopoverPanel } from "@headlessui/react";
 import Button from "@/components/Button";
 import { DialogOverlay } from "@/components/Dialog";
-import { TagReplacePanel } from "@/components/annotation_tasks/AnnotationTaskTags";
+import {
+  TagAddToTaggedPanel,
+  TagReplacePanel,
+} from "@/components/annotation_tasks/AnnotationTaskTags";
 import {
   CompleteIcon,
   HelpIcon,
@@ -26,14 +29,16 @@ type BulkMutation<T> = UseMutationResult<
 
 function ReportPopoverOpen({
   open,
+  panel,
   onOpenChange,
 }: {
   open: boolean;
-  onOpenChange?: (open: boolean) => void;
+  panel: "replace" | "addToTagged";
+  onOpenChange?: (panel: "replace" | "addToTagged", open: boolean) => void;
 }) {
   useEffect(() => {
-    onOpenChange?.(open);
-  }, [open, onOpenChange]);
+    onOpenChange?.(panel, open);
+  }, [open, onOpenChange, panel]);
   return null;
 }
 
@@ -99,7 +104,7 @@ export default function AnnotationTaskBulkActionBar({
   bulkAddBadge,
   bulkReplaceSoundEventTags,
   onClearSelection,
-  onTagReplacePanelOpenChange,
+  onTagBulkPanelOpenChange,
 }: {
   targetMode: "selected" | "filter_all";
   selectedTaskIds: number[];
@@ -113,9 +118,13 @@ export default function AnnotationTaskBulkActionBar({
     old_tag?: Pick<Tag, "key" | "value"> | null;
     new_tag?: Pick<Tag, "key" | "value"> | null;
     replace_all?: boolean;
+    add_to_tagged?: boolean;
   }>;
   onClearSelection: () => void;
-  onTagReplacePanelOpenChange?: (open: boolean) => void;
+  onTagBulkPanelOpenChange?: (
+    panel: "replace" | "addToTagged",
+    open: boolean,
+  ) => void;
 }) {
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [pendingAction, setPendingAction] = useState<(() => void) | null>(null);
@@ -166,7 +175,7 @@ export default function AnnotationTaskBulkActionBar({
   }));
 
   const handleReplaceTag = useCallback(
-    (oldTag: Tag | null, newTag: Tag) => {
+    (oldTag: Tag | null, newTag: Tag, options?: { add_to_tagged?: boolean }) => {
       runWithConfirm(() => {
         bulkReplaceSoundEventTags.mutate(
           {
@@ -174,6 +183,24 @@ export default function AnnotationTaskBulkActionBar({
             old_tag: oldTag,
             new_tag: newTag,
             replace_all: isReplaceAllTag(oldTag),
+            add_to_tagged: options?.add_to_tagged ?? false,
+          },
+          { onSuccess: () => onClearSelection() },
+        );
+      });
+    },
+    [bulkReplaceSoundEventTags, onClearSelection, runWithConfirm, taskIds],
+  );
+
+  const handleAddTagToTagged = useCallback(
+    (filterTag: Tag, newTag: Tag) => {
+      runWithConfirm(() => {
+        bulkReplaceSoundEventTags.mutate(
+          {
+            annotation_task_ids: taskIds,
+            old_tag: filterTag,
+            new_tag: newTag,
+            add_to_tagged: true,
           },
           { onSuccess: () => onClearSelection() },
         );
@@ -219,7 +246,11 @@ export default function AnnotationTaskBulkActionBar({
         <Popover as="div" className="relative">
           {({ open }) => (
             <>
-              <ReportPopoverOpen open={open} onOpenChange={onTagReplacePanelOpenChange} />
+              <ReportPopoverOpen
+                open={open}
+                panel="replace"
+                onOpenChange={onTagBulkPanelOpenChange}
+              />
               <PopoverButton
                 as={Button}
                 mode="outline"
@@ -238,6 +269,39 @@ export default function AnnotationTaskBulkActionBar({
                     taskTags={tagCountsForPanel}
                     onReplaceTag={(oldTag, newTag) => {
                       handleReplaceTag(oldTag, newTag);
+                    }}
+                  />
+                )}
+              </PopoverPanel>
+            </>
+          )}
+        </Popover>
+        <Popover as="div" className="relative">
+          {({ open }) => (
+            <>
+              <ReportPopoverOpen
+                open={open}
+                panel="addToTagged"
+                onOpenChange={onTagBulkPanelOpenChange}
+              />
+              <PopoverButton
+                as={Button}
+                mode="outline"
+                variant="secondary"
+                disabled={isBusy || isTagSummaryLoading}
+              >
+                Add tag to tagged
+              </PopoverButton>
+              <PopoverPanel
+                className="absolute left-0 z-50 mt-2 w-96 rounded-md border border-stone-200 bg-stone-50 shadow-lg dark:border-stone-500 dark:bg-stone-700"
+              >
+                {isTagSummaryLoading ? (
+                  <p className="p-4 text-sm text-stone-500">Loading tags for selected tasks…</p>
+                ) : (
+                  <TagAddToTaggedPanel
+                    taskTags={tagCountsForPanel}
+                    onAddTag={(filterTag, newTag) => {
+                      handleAddTagToTagged(filterTag, newTag);
                     }}
                   />
                 )}

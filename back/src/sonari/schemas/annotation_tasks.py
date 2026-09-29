@@ -234,6 +234,7 @@ class AnnotationTaskBulkReplaceSoundEventTags(_AnnotationTaskBulkTarget):
     old_tag: TagCreate | None = None
     new_tag: TagCreate | None = None
     replace_all: bool = False
+    add_to_tagged: bool = False
 
 
 class SoundEventTagBulkCount(BaseModel):
