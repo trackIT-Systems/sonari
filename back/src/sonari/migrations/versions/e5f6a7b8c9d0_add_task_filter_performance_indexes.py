@@ -23,7 +23,6 @@ def upgrade() -> None:
         ["tag_id", "sound_event_annotation_id"],
         unique=False,
     )
-    op.execute("ANALYZE")
 
 
 def downgrade() -> None:
