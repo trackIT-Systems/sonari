@@ -122,6 +122,53 @@ async def test_bulk_replace_sound_event_tags(
 
 
 @pytest.mark.asyncio
+async def test_bulk_replace_multiple_tasks_same_chunk(
+    auth_client: AsyncClient,
+    db_session,
+    test_annotation_project: schemas.AnnotationProject,
+    test_recording_id: int,
+    test_annotation_task: schemas.AnnotationTask,
+    test_tag: schemas.Tag,
+):
+    """All tasks in one bulk chunk are updated (no expire-on-commit failures)."""
+    task2 = await _create_task(db_session, test_annotation_project, test_recording_id, 2.0, 3.0)
+    task3 = await _create_task(db_session, test_annotation_project, test_recording_id, 3.0, 4.0)
+    for task in (test_annotation_task, task2, task3):
+        await _create_sea_with_tag(auth_client, task, test_tag)
+
+    new_key = f"chunk_species_{uuid.uuid4().hex[:8]}"
+    task_ids = [test_annotation_task.id, task2.id, task3.id]
+    response = await auth_client.post(
+        "/api/v1/annotation_tasks/bulk/sound_event_tags/replace/",
+        params={"annotation_project__eq": test_annotation_project.id},
+        json={
+            "annotation_task_ids": task_ids,
+            "old_tag": {"key": test_tag.key, "value": test_tag.value},
+            "new_tag": {"key": new_key, "value": "bat"},
+        },
+    )
+    assert response.status_code == 200, response.text
+    data = schemas.AnnotationTaskBulkResult.model_validate(response.json())
+    assert data.tasks_targeted == 3
+    assert data.tasks_updated == 3
+    assert data.sound_events_updated == 3
+    assert data.failures == []
+
+    for task_id in task_ids:
+        detail = await auth_client.get(
+            "/api/v1/annotation_tasks/detail/",
+            params={
+                "annotation_task_id": task_id,
+                "include_sound_event_annotations": True,
+                "include_sound_event_tags": True,
+            },
+        )
+        assert detail.status_code == 200
+        tags = (detail.json().get("sound_event_annotations") or [])[0].get("tags") or []
+        assert any(t["key"] == new_key for t in tags)
+
+
+@pytest.mark.asyncio
 async def test_bulk_target_by_filter_only(
     auth_client: AsyncClient,
     db_session,

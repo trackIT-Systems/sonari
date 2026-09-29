@@ -16,3 +16,16 @@
   appearance: textfield;
   -moz-appearance: textfield;
 }
+
+@keyframes bulk-action-progress {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(400%);
+  }
+}
+
+.bulk-action-progress-indeterminate {
+  animation: bulk-action-progress 1.4s ease-in-out infinite;
+}

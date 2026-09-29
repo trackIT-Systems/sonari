@@ -297,10 +297,13 @@ export default function useAnnotationTaskTable({
         size: 34,
         meta: { width: "34%", minWidth: "16rem" },
         accessorFn: (row) => {
-          const tags = (row.sound_event_annotations || []).flatMap(event => event.tags || []);
+          const tags =
+            row.sound_event_tags?.length
+              ? row.sound_event_tags
+              : (row.sound_event_annotations || []).flatMap((event) => event.tags || []);
           const tagCounts = new Map<string, TagCount>();
 
-          tags.forEach(tag => {
+          tags.forEach((tag) => {
             const key = `${tag.key}-${tag.value}`;
             const existing = tagCounts.get(key);
             if (existing) {

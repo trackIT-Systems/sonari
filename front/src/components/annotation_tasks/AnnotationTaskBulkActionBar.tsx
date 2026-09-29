@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Popover, PopoverButton, PopoverPanel } from "@headlessui/react";
 import Button from "@/components/Button";
 import { DialogOverlay } from "@/components/Dialog";
@@ -24,19 +24,87 @@ type BulkMutation<T> = UseMutationResult<
   unknown
 >;
 
+function ReportPopoverOpen({
+  open,
+  onOpenChange,
+}: {
+  open: boolean;
+  onOpenChange?: (open: boolean) => void;
+}) {
+  useEffect(() => {
+    onOpenChange?.(open);
+  }, [open, onOpenChange]);
+  return null;
+}
+
+function BulkActionProgressBar() {
+  return (
+    <div
+      className="h-1 w-full overflow-hidden rounded-full bg-emerald-200/80 dark:bg-emerald-900/50"
+      role="progressbar"
+      aria-valuetext="Bulk action in progress"
+    >
+      <div
+        className="bulk-action-progress-indeterminate h-full w-1/3 rounded-full bg-emerald-600 motion-reduce:animate-none dark:bg-emerald-400"
+      />
+    </div>
+  );
+}
+
+function buildTargetLabel({
+  targetMode,
+  selectedTaskIds,
+  filterTotal,
+  currentPageTaskIds,
+}: {
+  targetMode: "selected" | "filter_all";
+  selectedTaskIds: number[];
+  filterTotal: number;
+  currentPageTaskIds: number[];
+}): string {
+  if (targetMode === "filter_all") {
+    return `all ${filterTotal} tasks matching the current filter`;
+  }
+
+  const currentPageIdSet = new Set(currentPageTaskIds);
+  const allCurrentPageRowsSelected =
+    currentPageTaskIds.length > 0
+    && currentPageTaskIds.every((id) => selectedTaskIds.includes(id));
+  const selectionLimitedToCurrentPage =
+    selectedTaskIds.length > 0
+    && selectedTaskIds.every((id) => currentPageIdSet.has(id));
+
+  if (
+    selectionLimitedToCurrentPage
+    && allCurrentPageRowsSelected
+    && filterTotal > selectedTaskIds.length
+  ) {
+    return `all ${selectedTaskIds.length} on this page (${filterTotal} match filters — use “All ${filterTotal} filtered” in the table)`;
+  }
+
+  if (selectedTaskIds.some((id) => !currentPageIdSet.has(id))) {
+    return `${selectedTaskIds.length} selected across pages`;
+  }
+
+  return `${selectedTaskIds.length} selected task(s)`;
+}
+
 export default function AnnotationTaskBulkActionBar({
   targetMode,
   selectedTaskIds,
   filterTotal,
+  currentPageTaskIds,
   soundEventTagCounts,
   isTagSummaryLoading,
   bulkAddBadge,
   bulkReplaceSoundEventTags,
   onClearSelection,
+  onTagReplacePanelOpenChange,
 }: {
   targetMode: "selected" | "filter_all";
   selectedTaskIds: number[];
   filterTotal: number;
+  currentPageTaskIds: number[];
   soundEventTagCounts: SoundEventTagBulkCount[];
   isTagSummaryLoading?: boolean;
   bulkAddBadge: BulkMutation<{ annotation_task_ids?: number[]; state: AnnotationStatus }>;
@@ -47,14 +115,17 @@ export default function AnnotationTaskBulkActionBar({
     replace_all?: boolean;
   }>;
   onClearSelection: () => void;
+  onTagReplacePanelOpenChange?: (open: boolean) => void;
 }) {
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [pendingAction, setPendingAction] = useState<(() => void) | null>(null);
 
-  const targetLabel =
-    targetMode === "filter_all"
-      ? `all ${filterTotal} tasks matching the current filter`
-      : `${selectedTaskIds.length} selected task(s)`;
+  const targetLabel = buildTargetLabel({
+    targetMode,
+    selectedTaskIds,
+    filterTotal,
+    currentPageTaskIds,
+  });
 
   const taskIds =
     targetMode === "selected" ? selectedTaskIds : undefined;
@@ -116,6 +187,14 @@ export default function AnnotationTaskBulkActionBar({
 
   return (
     <div className="flex flex-col gap-2 rounded-md border border-emerald-200 bg-emerald-50 px-4 py-3 dark:border-emerald-900 dark:bg-emerald-950/40">
+      {isBusy && (
+        <div className="flex flex-col gap-1">
+          <BulkActionProgressBar />
+          <span className="text-xs text-stone-600 dark:text-stone-400">
+            Applying bulk action…
+          </span>
+        </div>
+      )}
       <div className="flex flex-row flex-wrap items-center justify-between gap-2">
         <span className="text-sm text-stone-700 dark:text-stone-300">
           Bulk actions on {targetLabel}
@@ -138,23 +217,33 @@ export default function AnnotationTaskBulkActionBar({
           <VerifiedIcon className="h-6 w-6" />
         </Button>
         <Popover as="div" className="relative">
-          <PopoverButton as={Button} mode="outline" variant="secondary" disabled={isBusy || isTagSummaryLoading}>
-            Replace sound event tags
-          </PopoverButton>
-          <PopoverPanel
-            className="absolute left-0 z-50 mt-2 w-96 rounded-md border border-stone-200 bg-stone-50 shadow-lg dark:border-stone-500 dark:bg-stone-700"
-          >
-            {isTagSummaryLoading ? (
-              <p className="p-4 text-sm text-stone-500">Loading tags for selected tasks…</p>
-            ) : (
-              <TagReplacePanel
-                taskTags={tagCountsForPanel}
-                onReplaceTag={(oldTag, newTag) => {
-                  handleReplaceTag(oldTag, newTag);
-                }}
-              />
-            )}
-          </PopoverPanel>
+          {({ open }) => (
+            <>
+              <ReportPopoverOpen open={open} onOpenChange={onTagReplacePanelOpenChange} />
+              <PopoverButton
+                as={Button}
+                mode="outline"
+                variant="secondary"
+                disabled={isBusy || isTagSummaryLoading}
+              >
+                Replace sound event tags
+              </PopoverButton>
+              <PopoverPanel
+                className="absolute left-0 z-50 mt-2 w-96 rounded-md border border-stone-200 bg-stone-50 shadow-lg dark:border-stone-500 dark:bg-stone-700"
+              >
+                {isTagSummaryLoading ? (
+                  <p className="p-4 text-sm text-stone-500">Loading tags for selected tasks…</p>
+                ) : (
+                  <TagReplacePanel
+                    taskTags={tagCountsForPanel}
+                    onReplaceTag={(oldTag, newTag) => {
+                      handleReplaceTag(oldTag, newTag);
+                    }}
+                  />
+                )}
+              </PopoverPanel>
+            </>
+          )}
         </Popover>
       </div>
 

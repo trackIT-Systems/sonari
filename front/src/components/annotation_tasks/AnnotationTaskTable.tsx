@@ -38,15 +38,19 @@ export default function AnnotationTaskTable({
     () => annotationTaskFilterPersistKey(filter.annotation_project?.id),
     [filter.annotation_project?.id],
   );
+  const TASK_INDEX_MAX = 2000;
+
   const annotationTasks = useAnnotationTasks({
     filter,
     fixed,
     persistKey: filterPersistKey,
+    listView: true,
   });
   const searchInputRef = useRef<HTMLInputElement>(null);
   const [focusedElement, setFocusedElement] = useState<'search' | 'filter' | number>(-1);
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
   const [targetMode, setTargetMode] = useState<"selected" | "filter_all">("selected");
+  const [tagReplacePanelOpen, setTagReplacePanelOpen] = useState(false);
   const router = useRouter();
   const popoverButtonRef = useRef<HTMLButtonElement>(null);
 
@@ -106,11 +110,16 @@ export default function AnnotationTaskTable({
         annotation_task_ids:
           targetMode === "selected" ? selectedTaskIds : undefined,
       }),
-    enabled: showBulkBar,
+    enabled: showBulkBar && tagReplacePanelOpen,
     refetchOnWindowFocus: false,
   });
 
-  // Fetch all task indices matching the current filter (no pagination)
+  const shouldLoadTaskIndex =
+    !annotationTasks.isLoading
+    && annotationTasks.data != null
+    && annotationTasks.total > 0
+    && annotationTasks.total <= TASK_INDEX_MAX;
+
   const { data: indexPage } = useQuery({
     queryKey: ["annotation_tasks_index", annotationTasks.filter.filter],
     queryFn: () => api.annotationTasks.getIndex({
@@ -118,7 +127,7 @@ export default function AnnotationTaskTable({
       offset: 0,
       ...annotationTasks.filter.filter,
     }),
-    enabled: !annotationTasks.isLoading && annotationTasks.data != null,
+    enabled: shouldLoadTaskIndex,
     refetchOnWindowFocus: false,
   });
 
@@ -202,6 +211,11 @@ export default function AnnotationTaskTable({
     }
   });
 
+  const currentPageTaskIds = useMemo(
+    () => annotationTasks.items.map((task) => task.id),
+    [annotationTasks.items],
+  );
+
   if (annotationTasks.isLoading || annotationTasks.data == null) {
     return <Loading />;
   }
@@ -244,11 +258,13 @@ export default function AnnotationTaskTable({
           targetMode={targetMode}
           selectedTaskIds={selectedTaskIds}
           filterTotal={annotationTasks.total}
+          currentPageTaskIds={currentPageTaskIds}
           soundEventTagCounts={bulkTagSummaryQuery.data ?? []}
           isTagSummaryLoading={bulkTagSummaryQuery.isLoading}
           bulkAddBadge={bulkActions.bulkAddBadge}
           bulkReplaceSoundEventTags={bulkActions.bulkReplaceSoundEventTags}
           onClearSelection={handleClearBulkSelection}
+          onTagReplacePanelOpenChange={setTagReplacePanelOpen}
         />
       )}
       <div className="w-full">

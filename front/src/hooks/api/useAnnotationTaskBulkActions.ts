@@ -7,6 +7,17 @@ import type { AnnotationTaskBulkResult } from "@/api/annotation_tasks";
 import type { AnnotationTaskFilter } from "@/api/annotation_tasks";
 import type { AnnotationStatus, Tag } from "@/types";
 
+const MAX_FAILURE_LINES = 5;
+
+function formatBulkFailures(failures: AnnotationTaskBulkResult["failures"]): string {
+  const lines = failures.map((f) => `Task ${f.annotation_task_id}: ${f.message}`);
+  if (lines.length <= MAX_FAILURE_LINES) {
+    return lines.join("\n");
+  }
+  const head = lines.slice(0, MAX_FAILURE_LINES).join("\n");
+  return `${head}\n…and ${lines.length - MAX_FAILURE_LINES} more`;
+}
+
 function formatBulkResultSummary(result: AnnotationTaskBulkResult): string {
   const parts = [
     `${result.tasks_updated} task(s) updated`,
@@ -55,7 +66,7 @@ export default function useAnnotationTaskBulkActions({
       invalidateTaskListQueries(client);
       toast.success(formatBulkResultSummary(result));
       if (result.failures.length > 0) {
-        toast.error(result.failures.map((f) => `Task ${f.annotation_task_id}: ${f.message}`).join("\n"));
+        toast.error(formatBulkFailures(result.failures));
       }
     },
     onError,
@@ -84,7 +95,7 @@ export default function useAnnotationTaskBulkActions({
       invalidateTaskListQueries(client);
       toast.success(formatBulkResultSummary(result));
       if (result.failures.length > 0) {
-        toast.error(result.failures.map((f) => `Task ${f.annotation_task_id}: ${f.message}`).join("\n"));
+        toast.error(formatBulkFailures(result.failures));
       }
     },
     onError,
