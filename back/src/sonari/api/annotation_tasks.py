@@ -94,7 +94,7 @@ class AnnotationTaskAPI(
             models.AnnotationTask.start_time,
         )
 
-        result, count = await get_objects_from_query(
+        rows, count = await get_objects_from_query(
             session,
             models.AnnotationTask,
             query,
@@ -104,8 +104,7 @@ class AnnotationTaskAPI(
             sort_by=sort_by,
         )
 
-        # Extract rows and convert to schema objects
-        rows = result.all()
+        # Convert rows to schema objects
         indices = [
             schemas.AnnotationTaskIndex(
                 id=row[0],
@@ -141,17 +140,13 @@ class AnnotationTaskAPI(
         """
         from sqlalchemy.orm import selectinload
 
+        from sonari.api.common.utils import apply_filters
+
         # Get all tasks with their status badges
         query = select(models.AnnotationTask).options(
             selectinload(models.AnnotationTask.status_badges)
         )
-
-        # Apply filters (same pattern as get_objects_from_query)
-        for filter_ in filters or []:
-            if isinstance(filter_, Filter):
-                query = filter_.filter(query)
-            else:
-                query = query.where(filter_)
+        query = apply_filters(query, filters)
 
         result = await session.execute(query)
         tasks = result.scalars().all()
@@ -304,7 +299,7 @@ class AnnotationTaskAPI(
 
         query = query.options(*options)
 
-        result, count = await get_objects_from_query(
+        rows, count = await get_objects_from_query(
             session,
             models.AnnotationTask,
             query,
@@ -313,8 +308,8 @@ class AnnotationTaskAPI(
             filters=filters,
             sort_by=sort_by,
         )
-        # Don't use unique() - just return the scalars directly
-        objs = result.scalars().all()
+        # Don't deduplicate - just return the objects directly
+        objs = [row[0] for row in rows]
 
         # Load sound event tags separately if requested
         if include_sound_event_tags:
@@ -1066,19 +1061,11 @@ class AnnotationTaskAPI(
         annotation_task_ids: list[int] | None,
     ) -> list[int]:
         """Resolve task IDs for bulk operations (intersect explicit IDs with filter)."""
-        from sonari.api.common.utils import get_objects_from_query
+        from sonari.api.common.utils import apply_filters
 
-        query = select(models.AnnotationTask.id)
-        result, _count = await get_objects_from_query(
-            session,
-            models.AnnotationTask,
-            query,
-            limit=None,
-            offset=0,
-            filters=filters,
-            sort_by=None,
-        )
-        filter_ids = [row[0] for row in result.all()]
+        query = apply_filters(select(models.AnnotationTask.id), filters)
+        result = await session.execute(query)
+        filter_ids = list(result.scalars().all())
         filter_id_set = set(filter_ids)
 
         if annotation_task_ids is not None:
