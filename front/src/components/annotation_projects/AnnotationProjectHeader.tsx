@@ -11,6 +11,7 @@ import { H1 } from "@/components/Headings";
 import { DatasetIcon, EditIcon, TasksIcon } from "@/components/icons";
 import Tabs from "@/components/Tabs";
 import api from "@/app/api";
+import { clearAnnotationTaskFilterPersist } from "@/hooks/utils/annotationTaskFilterPersistKey";
 import { blurActiveElement } from "@/utils/focus";
 
 import type { AnnotationProject } from "@/types";
@@ -25,8 +26,13 @@ export default function AnnotationProjectHeader({
   const selectedLayoutSegment = useSelectedLayoutSegment();
   const [isLoadingFirstTask, setIsLoadingFirstTask] = useState(false);
 
+  const enteringFromOverview = selectedLayoutSegment === null;
+
   const handleAnnotateClick = useCallback(async () => {
     // Always fetch the first task, don't remember the previous one
+    if (enteringFromOverview) {
+      clearAnnotationTaskFilterPersist(annotationProject.id);
+    }
     setIsLoadingFirstTask(true);
     try {
       const response = await api.annotationTasks.getMany({
@@ -52,7 +58,7 @@ export default function AnnotationProjectHeader({
     } finally {
       setIsLoadingFirstTask(false);
     }
-  }, [annotationProject, params, router]);
+  }, [annotationProject, enteringFromOverview, params, router]);
 
   return (
     <Header>
@@ -80,6 +86,9 @@ export default function AnnotationProjectHeader({
               isActive: selectedLayoutSegment === "tasks",
               icon: <TasksIcon className="w-5 h-5 align-middle"/>,
               onClick: () => {
+                if (enteringFromOverview) {
+                  clearAnnotationTaskFilterPersist(annotationProject.id);
+                }
                 router.push(
                   `/annotation_projects/detail/tasks/?${params.toString()}`,
                 );
