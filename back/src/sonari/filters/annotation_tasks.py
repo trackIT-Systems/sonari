@@ -4,7 +4,7 @@ from datetime import datetime, timedelta, time
 from typing import Literal
 
 from soundevent import data
-from sqlalchemy import Float, Select, and_, exists, func, literal, not_, or_, select
+from sqlalchemy import Float, Select, and_, exists, func, literal, not_, or_, select, union_all
 from sqlalchemy.ext.compiler import compiles
 from sqlalchemy.sql.expression import FunctionElement
 
@@ -265,55 +265,77 @@ def _tag_id_subquery(key: str, value: str):
     )
 
 
+def _task_ids_with_tag_key_value(key: str, value: str):
+    """Task ids that have this tag on a sound event or as a task-level tag."""
+    via_sound_events = (
+        select(models.SoundEventAnnotation.annotation_task_id)
+        .select_from(models.SoundEventAnnotation)
+        .join(
+            models.SoundEventAnnotationTag,
+            models.SoundEventAnnotationTag.sound_event_annotation_id
+            == models.SoundEventAnnotation.id,
+        )
+        .join(models.Tag, models.Tag.id == models.SoundEventAnnotationTag.tag_id)
+        .where(models.Tag.key == key, models.Tag.value == value)
+    )
+    via_task_tags = (
+        select(models.AnnotationTaskTag.annotation_task_id)
+        .select_from(models.AnnotationTaskTag)
+        .join(models.Tag, models.Tag.id == models.AnnotationTaskTag.tag_id)
+        .where(models.Tag.key == key, models.Tag.value == value)
+    )
+    return via_sound_events.union(via_task_tags)
+
+
 def _task_has_tag_key_value(key: str, value: str):
     """Task has this tag on a sound event or as an annotation-task tag."""
-    tag_id = _tag_id_subquery(key, value)
-    sound_event_exists = exists(
-        select(1)
+    return models.AnnotationTask.id.in_(_task_ids_with_tag_key_value(key, value))
+
+
+def _task_distinct_tag_count_subquery():
+    """Per-task distinct tag counts (sound-event tags and task-level tags)."""
+    sea_level = (
+        select(
+            models.SoundEventAnnotation.annotation_task_id.label("task_id"),
+            models.SoundEventAnnotationTag.tag_id.label("tag_id"),
+        )
         .select_from(models.SoundEventAnnotation)
         .join(
             models.SoundEventAnnotationTag,
             models.SoundEventAnnotationTag.sound_event_annotation_id
             == models.SoundEventAnnotation.id,
         )
-        .where(
-            models.SoundEventAnnotation.annotation_task_id == models.AnnotationTask.id,
-            models.SoundEventAnnotationTag.tag_id == tag_id,
-        )
-        .correlate(models.AnnotationTask)
     )
-    task_tag_exists = exists(
-        select(1)
+    task_level = (
+        select(
+            models.AnnotationTaskTag.annotation_task_id.label("task_id"),
+            models.AnnotationTaskTag.tag_id.label("tag_id"),
+        )
         .select_from(models.AnnotationTaskTag)
-        .where(
-            models.AnnotationTaskTag.annotation_task_id == models.AnnotationTask.id,
-            models.AnnotationTaskTag.tag_id == tag_id,
-        )
-        .correlate(models.AnnotationTask)
     )
-    return or_(sound_event_exists, task_tag_exists)
+    combined = union_all(sea_level, task_level).subquery("task_tag_pairs")
+    return (
+        select(
+            combined.c.task_id,
+            func.count(func.distinct(combined.c.tag_id)).label("tag_count"),
+        )
+        .group_by(combined.c.task_id)
+        .subquery("task_distinct_tag_counts")
+    )
 
 
-def _task_distinct_tag_count_expression():
-    """Distinct tag ids on a task (sound-event tags and task-level tags)."""
-    sound_event_tag_ids = (
-        select(models.SoundEventAnnotationTag.tag_id)
-        .select_from(models.SoundEventAnnotation)
-        .join(
-            models.SoundEventAnnotationTag,
-            models.SoundEventAnnotationTag.sound_event_annotation_id
-            == models.SoundEventAnnotation.id,
-        )
-        .where(models.SoundEventAnnotation.annotation_task_id == models.AnnotationTask.id)
-        .correlate(models.AnnotationTask)
+def _apply_count_bounds_with_subquery(
+    query: Select,
+    count_filter: "SoundEventAnnotationTagCountFilter | SoundEventAnnotationCountFilter",
+    counts_subquery,
+    count_column: str,
+) -> Select:
+    query = query.outerjoin(
+        counts_subquery,
+        counts_subquery.c.task_id == models.AnnotationTask.id,
     )
-    task_level_tag_ids = (
-        select(models.AnnotationTaskTag.tag_id)
-        .where(models.AnnotationTaskTag.annotation_task_id == models.AnnotationTask.id)
-        .correlate(models.AnnotationTask)
-    )
-    distinct_tag_ids = sound_event_tag_ids.union(task_level_tag_ids).subquery()
-    return select(func.count()).select_from(distinct_tag_ids).scalar_subquery()
+    count_expr = func.coalesce(counts_subquery.c[count_column], 0)
+    return _apply_tag_count_bounds(query, count_filter, count_expr)
 
 
 def _apply_tag_count_bounds(query: Select, count_filter: "SoundEventAnnotationTagCountFilter", count_expr):
@@ -349,10 +371,11 @@ class SoundEventAnnotationTagCountFilter(base.Filter):
     def filter(self, query: Select) -> Select:
         if not _tag_count_filter_active(self):
             return query
-        return _apply_tag_count_bounds(
+        return _apply_count_bounds_with_subquery(
             query,
             self,
-            _task_distinct_tag_count_expression(),
+            _task_distinct_tag_count_subquery(),
+            "tag_count",
         )
 
 
@@ -405,15 +428,15 @@ class SoundEventAnnotationTagFilter(base.Filter):
         return query
 
 
-def _task_sound_event_count_expression():
-    """Number of sound event annotations on the task."""
+def _task_sound_event_count_subquery():
+    """Per-task sound event annotation counts."""
     return (
-        select(func.count(models.SoundEventAnnotation.id))
-        .where(
-            models.SoundEventAnnotation.annotation_task_id == models.AnnotationTask.id,
+        select(
+            models.SoundEventAnnotation.annotation_task_id.label("task_id"),
+            func.count(models.SoundEventAnnotation.id).label("sea_count"),
         )
-        .correlate(models.AnnotationTask)
-        .scalar_subquery()
+        .group_by(models.SoundEventAnnotation.annotation_task_id)
+        .subquery("task_sound_event_counts")
     )
 
 
@@ -430,32 +453,31 @@ def _sound_event_annotation_has_tag(key: str, value: str):
     )
 
 
-def _sound_events_matching_include_tags_count_expression(
+def _sound_events_matching_include_tags_count_subquery(
     tag_filter: SoundEventAnnotationTagFilter,
 ):
-    """Count sound events on the task that match included tags (at event level)."""
+    """Per-task counts of sound events that match included tags (at event level)."""
     assert tag_filter.keys is not None and tag_filter.values is not None
     keys = tag_filter.keys.split(",")
     values = tag_filter.values.split(",")
     pairs = list(zip(keys, values, strict=True))
     match = _resolved_include_match(tag_filter.include_match)
 
-    conditions = [
-        models.SoundEventAnnotation.annotation_task_id == models.AnnotationTask.id,
-    ]
+    sea = models.SoundEventAnnotation
     tag_conditions = [
         _sound_event_annotation_has_tag(key, value) for key, value in pairs
     ]
-    if match == "and":
-        conditions.extend(tag_conditions)
-    else:
-        conditions.append(or_(*tag_conditions))
+    sea_where = and_(*tag_conditions) if match == "and" else or_(*tag_conditions)
 
     return (
-        select(func.count(models.SoundEventAnnotation.id))
-        .where(and_(*conditions))
-        .correlate(models.AnnotationTask)
-        .scalar_subquery()
+        select(
+            sea.annotation_task_id.label("task_id"),
+            func.count(sea.id).label("sea_count"),
+        )
+        .select_from(sea)
+        .where(sea_where)
+        .group_by(sea.annotation_task_id)
+        .subquery("task_matching_sea_counts")
     )
 
 
@@ -471,10 +493,11 @@ class SoundEventAnnotationCountFilter(base.Filter):
     def filter(self, query: Select) -> Select:
         if not _tag_count_filter_active(self):
             return query
-        return _apply_tag_count_bounds(
+        return _apply_count_bounds_with_subquery(
             query,
             self,
-            _task_sound_event_count_expression(),
+            _task_sound_event_count_subquery(),
+            "sea_count",
         )
 
 
@@ -673,25 +696,27 @@ def _confidence_feature_name_clause_for_tag_creator(tag_creator_username):
     )
 
 
-def _sound_event_confidence_exists(
+def _task_ids_matching_confidence(
     gt: float | None,
     lt: float | None,
     tag_key: str | None = None,
     tag_value: str | None = None,
 ):
-    """EXISTS: a sound event on this task with confidence in range (optional tag)."""
-    tag_creator_user = models.User.__table__.alias("tag_creator_user")
+    """Task ids with a tagged sound event whose confidence is in range."""
+    tag_creator_user = models.User.__table__.alias("tag_creator_user_conf")
 
     subquery = (
-        select(1)
+        select(models.SoundEventAnnotation.annotation_task_id)
         .select_from(models.SoundEventAnnotation)
         .join(
             models.SoundEventAnnotationFeature,
-            models.SoundEventAnnotation.id == models.SoundEventAnnotationFeature.sound_event_annotation_id,
+            models.SoundEventAnnotation.id
+            == models.SoundEventAnnotationFeature.sound_event_annotation_id,
         )
         .join(
             models.SoundEventAnnotationTag,
-            models.SoundEventAnnotationTag.sound_event_annotation_id == models.SoundEventAnnotation.id,
+            models.SoundEventAnnotationTag.sound_event_annotation_id
+            == models.SoundEventAnnotation.id,
         )
         .join(models.Tag, models.Tag.id == models.SoundEventAnnotationTag.tag_id)
         .outerjoin(
@@ -699,7 +724,6 @@ def _sound_event_confidence_exists(
             tag_creator_user.c.id == models.Tag.created_by_id,
         )
         .where(
-            models.SoundEventAnnotation.annotation_task_id == models.AnnotationTask.id,
             _confidence_feature_name_clause_for_tag_creator(tag_creator_user.c.username),
         )
     )
@@ -715,7 +739,19 @@ def _sound_event_confidence_exists(
     if lt is not None:
         subquery = subquery.where(models.SoundEventAnnotationFeature.value < lt)
 
-    return exists(subquery)
+    return subquery.distinct()
+
+
+def _sound_event_confidence_exists(
+    gt: float | None,
+    lt: float | None,
+    tag_key: str | None = None,
+    tag_value: str | None = None,
+):
+    """Task has a sound event with confidence in range (optional tag)."""
+    return models.AnnotationTask.id.in_(
+        _task_ids_matching_confidence(gt, lt, tag_key=tag_key, tag_value=tag_value)
+    )
 
 
 class ConfidenceFilter(base.Filter):
@@ -904,7 +940,7 @@ _AnnotationTaskFilterCombined = base.combine(
 
 
 class AnnotationTaskFilter(_AnnotationTaskFilterCombined):
-    """Annotation task filter with correlated tag + confidence when both are set."""
+    """Annotation task filter with combined tag + confidence when both are set."""
 
     def filter(self, query: Select) -> Select:
         filters = self.build_filter_list()
@@ -965,13 +1001,14 @@ class AnnotationTaskFilter(_AnnotationTaskFilterCombined):
             sound_event_count_filter
         ):
             if include_tags_active and tag_filter is not None:
-                count_expr = _sound_events_matching_include_tags_count_expression(
-                    tag_filter
-                )
+                counts = _sound_events_matching_include_tags_count_subquery(tag_filter)
             else:
-                count_expr = _task_sound_event_count_expression()
-            query = _apply_tag_count_bounds(
-                query, sound_event_count_filter, count_expr
+                counts = _task_sound_event_count_subquery()
+            query = _apply_count_bounds_with_subquery(
+                query,
+                sound_event_count_filter,
+                counts,
+                "sea_count",
             )
 
         return query
