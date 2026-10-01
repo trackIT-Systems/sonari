@@ -1,4 +1,4 @@
-import { useCallback, type CSSProperties } from "react";
+import { Fragment, useCallback, type CSSProperties, type ReactNode } from "react";
 import { flexRender } from "@tanstack/react-table";
 import { useKeyPressEvent } from "react-use";
 import useKeyFilter from "@/hooks/utils/useKeyFilter";
@@ -48,6 +48,8 @@ export default function Table<S>({
   onSelect,
   handleNumberKeys = true,
   getRowClassName,
+  onRowClick,
+  renderExpandedRow,
 }: {
   table: Table<S>;
   onCellKeyDown?: ({
@@ -67,6 +69,9 @@ export default function Table<S>({
   onSelect?: (row: S) => void;
   handleNumberKeys?: boolean;
   getRowClassName?: (row: S) => string | undefined;
+  onRowClick?: (row: S) => void;
+  /** Content rendered in a full-width sub-row below the row, or null for none */
+  renderExpandedRow?: (row: S) => ReactNode | null;
 }) {
 
   useKeyPressEvent(useKeyFilter({ key: LIST_ELEMENT_DOWN_SHORTCUT }), (event) => {
@@ -152,26 +157,41 @@ export default function Table<S>({
       </thead>
       <tbody className="z-0 text-sm text-stone-800 dark:text-stone-300">
         {table.getRowModel().rows.map((row, index) => {
+          const expanded = renderExpandedRow?.(row.original);
+          const cells = row.getVisibleCells();
           return (
-            <tr
-              key={row.id}
-              className={`hover:dark:bg-stone-800 hover:bg-stone-200 max-h-40 h-min ${index === selectedIndex ? 'bg-stone-200 dark:bg-stone-800' : ''
-                } ${getRowClassName?.(row.original) ?? ''}`}
-            >
-              {row.getVisibleCells().map((cell) => {
-                return (
-                  <td
-                    role="gridcell"
-                    className="border outline-none focus:ring-1 focus:ring-emerald-500 focus:ring-offset-1 focus:ring-offset-transparent border-stone-300 dark:border-stone-600 max-h-40"
-                    tabIndex={-1}
-                    key={cell.id}
-                    style={columnLayoutStyle(cell.column)}
-                  >
-                    {flexRender(cell.column.columnDef.cell, cell.getContext())}
+            <Fragment key={row.id}>
+              <tr
+                onClick={onRowClick && ((event) => {
+                  // Keep links, checkboxes and buttons working as usual
+                  if ((event.target as HTMLElement).closest("a, button, input, label")) return;
+                  onRowClick(row.original);
+                })}
+                className={`hover:dark:bg-stone-800 hover:bg-stone-200 max-h-40 h-min ${onRowClick ? 'cursor-pointer' : ''} ${index === selectedIndex ? 'bg-stone-200 dark:bg-stone-800' : ''
+                  } ${getRowClassName?.(row.original) ?? ''}`}
+              >
+                {cells.map((cell) => {
+                  return (
+                    <td
+                      role="gridcell"
+                      className="border outline-none focus:ring-1 focus:ring-emerald-500 focus:ring-offset-1 focus:ring-offset-transparent border-stone-300 dark:border-stone-600 max-h-40"
+                      tabIndex={-1}
+                      key={cell.id}
+                      style={columnLayoutStyle(cell.column)}
+                    >
+                      {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                    </td>
+                  );
+                })}
+              </tr>
+              {expanded != null && (
+                <tr>
+                  <td colSpan={cells.length} className="border border-stone-300 dark:border-stone-600">
+                    {expanded}
                   </td>
-                );
-              })}
-            </tr>
+                </tr>
+              )}
+            </Fragment>
           );
         })}
       </tbody>

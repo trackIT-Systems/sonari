@@ -23,6 +23,7 @@ import FilterBar from "@/components/filters/FilterBar";
 import Table from "@/components/tables/Table";
 import Pagination from "@/components/lists/Pagination";
 import { LIST_OVERVIEW_DOWN_SHORTCUT, SEARCH_BAR_LEAVE_SHORTCUT, FILTER_POPOVER_SHORTCUT } from "@/utils/keyboard";
+import AnnotationTaskSpectrogramPreview from "@/components/annotation_tasks/AnnotationTaskSpectrogramPreview";
 import { findTemporallyRelatedTasks } from "@/utils/temporalClusters";
 import Button from "../Button";
 import { FilterIcon } from "../icons";
@@ -62,6 +63,7 @@ export default function AnnotationTaskTable({
   const popoverButtonRef = useRef<HTMLButtonElement>(null);
   const [highlightRelated, setHighlightRelated] = useState(true);
   const [relatedWindow, setRelatedWindow] = useState(5);
+  const [expandedTaskIds, setExpandedTaskIds] = useState<Set<number>>(new Set());
 
   const activeFilter = annotationTasks.filter.filter;
 
@@ -245,6 +247,22 @@ export default function AnnotationTaskTable({
     [relatedTaskIds],
   );
 
+  const toggleExpandedTask = useCallback((task: AnnotationTask) => {
+    setExpandedTaskIds((prev) => {
+      const next = new Set(prev);
+      if (!next.delete(task.id)) next.add(task.id);
+      return next;
+    });
+  }, []);
+
+  const renderExpandedRow = useCallback(
+    (task: AnnotationTask) =>
+      expandedTaskIds.has(task.id)
+        ? <AnnotationTaskSpectrogramPreview task={task} />
+        : null,
+    [expandedTaskIds],
+  );
+
   if (annotationTasks.isLoading || annotationTasks.data == null) {
     return <Loading />;
   }
@@ -329,6 +347,8 @@ export default function AnnotationTaskTable({
             onFocusChange={handleTableFocus}
             onSelect={handleSelect}
             getRowClassName={getRowClassName}
+            onRowClick={toggleExpandedTask}
+            renderExpandedRow={renderExpandedRow}
             handleNumberKeys={
               focusedElement !== 'search'
               && focusedElement !== 'filter'
