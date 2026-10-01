@@ -214,6 +214,7 @@ class AnnotationTaskBulkResult(BaseModel):
     tasks_updated: int
     tasks_skipped: int
     sound_events_updated: int
+    sound_events_skipped: int = 0
     failures: list[AnnotationTaskBulkFailure]
 
 

@@ -526,7 +526,7 @@ def get_annotation_tasks_router(settings: SonariSettings):
         filter: Annotated[AnnotationTaskFilter, Depends(AnnotationTaskFilter)],  # type: ignore
         body: schemas.AnnotationTaskBulkDeleteSoundEvents,
     ):
-        """Delete sound event annotations (and their tags) carrying a tag across many tasks."""
+        """Delete sound event annotations whose only tag is the given tag across many tasks."""
         task_ids = await api.annotation_tasks.resolve_bulk_task_ids(
             session,
             filters=[filter],

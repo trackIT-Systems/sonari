@@ -31,6 +31,9 @@ function formatBulkResultSummary(
   if (result.sound_events_updated > 0) {
     parts.push(`${result.sound_events_updated} sound event(s) ${soundEventVerb}`);
   }
+  if (result.sound_events_skipped > 0) {
+    parts.push(`${result.sound_events_skipped} sound event(s) skipped (other tags present)`);
+  }
   if (result.failures.length > 0) {
     parts.push(`${result.failures.length} failed`);
   }

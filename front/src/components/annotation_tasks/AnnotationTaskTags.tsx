@@ -201,7 +201,7 @@ export function TagDeleteSoundEventsPanel({
   return (
     <div className="p-4">
       <div className="mb-2 text-stone-700 dark:text-stone-300 underline underline-offset-2 decoration-red-500 decoration-2">
-        Delete sound events with ...
+        Delete sound events tagged only with ...
       </div>
       <SearchMenu
         limit={100}

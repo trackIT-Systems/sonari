@@ -1270,7 +1270,7 @@ class AnnotationTaskAPI(
         task_ids: list[int],
         tag: schemas.TagCreate,
     ) -> schemas.AnnotationTaskBulkResult:
-        """Delete every sound event annotation carrying ``tag`` across many tasks."""
+        """Delete sound event annotations whose only tag is ``tag`` across many tasks."""
         from sonari.api import tags as tags_api
 
         if is_replace_all_tag(tag):
@@ -1280,6 +1280,7 @@ class AnnotationTaskAPI(
 
         tasks_updated = 0
         sound_events_deleted = 0
+        sound_events_skipped = 0
         failures: list[schemas.AnnotationTaskBulkFailure] = []
 
         for chunk_start in range(0, len(task_ids), _BULK_CHUNK_SIZE):
@@ -1293,6 +1294,7 @@ class AnnotationTaskAPI(
                 failures.extend(chunk_result.failures)
                 tasks_updated += chunk_result.tasks_updated
                 sound_events_deleted += chunk_result.sound_events_updated
+                sound_events_skipped += chunk_result.sound_events_skipped
                 if chunk_result.sound_events_updated > 0:
                     await session.commit()
             except Exception as exc:  # noqa: BLE001
@@ -1311,6 +1313,7 @@ class AnnotationTaskAPI(
             tasks_updated=tasks_updated,
             tasks_skipped=0,
             sound_events_updated=sound_events_deleted,
+            sound_events_skipped=sound_events_skipped,
             failures=failures,
         )
 

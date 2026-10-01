@@ -580,3 +580,64 @@ async def test_bulk_delete_sound_events_rejects_all_tags(
         },
     )
     assert response.status_code == 400
+
+
+@pytest.mark.asyncio
+async def test_bulk_delete_sound_events_skips_multi_tagged(
+    auth_client: AsyncClient,
+    db_session,
+    test_annotation_project: schemas.AnnotationProject,
+    test_annotation_task: schemas.AnnotationTask,
+    test_tag: schemas.Tag,
+    test_user,
+):
+    """Sound events carrying the tag plus any other tag are skipped, not deleted."""
+    only_tagged = await _create_sea_with_tag(auth_client, test_annotation_task, test_tag)
+
+    other_key = f"other_{uuid.uuid4().hex[:8]}"
+    await api.tags.get_or_create(
+        db_session,
+        other_key,
+        "bat",
+        schemas.SimpleUser.model_validate(test_user),
+    )
+    await db_session.commit()
+    multi = await auth_client.post(
+        "/api/v1/sound_event_annotations/",
+        params={"annotation_task_id": test_annotation_task.id},
+        json={
+            "geometry": {"type": "TimeInterval", "coordinates": [0.3, 0.4]},
+            "tags": [
+                {"key": test_tag.key, "value": test_tag.value},
+                {"key": other_key, "value": "bat"},
+            ],
+        },
+    )
+    assert multi.status_code in [200, 201], multi.text
+
+    response = await auth_client.post(
+        "/api/v1/annotation_tasks/bulk/sound_events/delete/",
+        params={"annotation_project__eq": test_annotation_project.id},
+        json={
+            "annotation_task_ids": [test_annotation_task.id],
+            "tag": {"key": test_tag.key, "value": test_tag.value},
+        },
+    )
+    assert response.status_code == 200, response.text
+    data = schemas.AnnotationTaskBulkResult.model_validate(response.json())
+    assert data.sound_events_updated == 1
+    assert data.sound_events_skipped == 1
+
+    gone = await auth_client.get(
+        "/api/v1/sound_event_annotations/detail/",
+        params={"sound_event_annotation_id": only_tagged["id"]},
+    )
+    assert gone.status_code == 404
+
+    kept = await auth_client.get(
+        "/api/v1/sound_event_annotations/detail/",
+        params={"sound_event_annotation_id": multi.json()["id"], "include_tags": True},
+    )
+    assert kept.status_code == 200
+    kept_keys = {t["key"] for t in kept.json().get("tags") or []}
+    assert kept_keys == {test_tag.key, other_key}

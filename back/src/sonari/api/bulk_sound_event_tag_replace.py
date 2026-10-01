@@ -45,6 +45,7 @@ class BulkTagReplaceChunkResult:
     tasks_updated: int
     sound_events_updated: int
     failures: list[schemas.AnnotationTaskBulkFailure]
+    sound_events_skipped: int = 0
 
 
 def _target_seas_select(task_ids: Sequence[int], params: BulkSoundEventTagReplaceParams):
@@ -234,7 +235,10 @@ async def process_bulk_delete_sound_events_chunk(
     task_ids: list[int],
     tag_id: int,
 ) -> BulkTagReplaceChunkResult:
-    """Delete sound event annotations carrying ``tag_id`` (with all their tags and features)."""
+    """Delete sound event annotations whose only tag is ``tag_id`` (with their features).
+
+    Sound events that carry ``tag_id`` alongside any other tag are skipped.
+    """
     failures: list[schemas.AnnotationTaskBulkFailure] = []
 
     existing_result = await session.execute(select(Task.id).where(Task.id.in_(task_ids)))
@@ -251,8 +255,14 @@ async def process_bulk_delete_sound_events_chunk(
     if not existing_ids:
         return BulkTagReplaceChunkResult(0, 0, failures)
 
+    has_other_tag = exists(
+        select(1).where(
+            SeaTag.sound_event_annotation_id == Sea.id,
+            SeaTag.tag_id != tag_id,
+        ),
+    )
     target_result = await session.execute(
-        select(Sea.id, Sea.annotation_task_id).where(
+        select(Sea.id, Sea.annotation_task_id, has_other_tag).where(
             Sea.annotation_task_id.in_(existing_ids),
             exists(
                 select(1).where(
@@ -262,9 +272,11 @@ async def process_bulk_delete_sound_events_chunk(
             ),
         ),
     )
-    sea_to_task = {row[0]: row[1] for row in target_result.all()}
+    rows = target_result.all()
+    sea_to_task = {row[0]: row[1] for row in rows if not row[2]}
+    skipped = len(rows) - len(sea_to_task)
     if not sea_to_task:
-        return BulkTagReplaceChunkResult(0, 0, failures)
+        return BulkTagReplaceChunkResult(0, 0, failures, sound_events_skipped=skipped)
 
     sea_ids = list(sea_to_task.keys())
     # Explicit child deletes so this does not rely on DB-level ON DELETE CASCADE.
@@ -281,6 +293,7 @@ async def process_bulk_delete_sound_events_chunk(
         tasks_updated=len(tasks_with_changes),
         sound_events_updated=len(sea_ids),
         failures=failures,
+        sound_events_skipped=skipped,
     )
 
 

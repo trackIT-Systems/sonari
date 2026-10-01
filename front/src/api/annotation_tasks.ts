@@ -306,6 +306,7 @@ export const AnnotationTaskBulkResultSchema = z.object({
   tasks_updated: z.number(),
   tasks_skipped: z.number(),
   sound_events_updated: z.number(),
+  sound_events_skipped: z.number().default(0),
   failures: z.array(AnnotationTaskBulkFailureSchema),
 });
 

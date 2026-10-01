@@ -235,7 +235,7 @@ export default function AnnotationTaskBulkActionBar({
         },
         {
           title: "Delete sound events?",
-          message: `This will permanently delete ${count} sound event(s) tagged "${tag.key}: ${tag.value}", including all of their tags, across ${targetLabel}. This cannot be undone.`,
+          message: `This will permanently delete every sound event whose only tag is "${tag.key}: ${tag.value}" across ${targetLabel}. ${count} sound event(s) carry this tag; those that also have other tags are skipped. This cannot be undone.`,
           confirmLabel: "Delete",
           destructive: true,
         },
