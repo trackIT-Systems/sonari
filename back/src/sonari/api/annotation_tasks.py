@@ -1,5 +1,6 @@
 """Python API for interacting with Annotation Tasks."""
 
+from statistics import median
 from typing import Sequence
 
 from soundevent import data
@@ -11,6 +12,7 @@ from sqlalchemy.sql._typing import _ColumnExpressionArgument
 from sonari import exceptions, models, schemas
 from sonari.api import common
 from sonari.api.common import BaseAPI
+from sonari.filters.annotation_tasks import confidence_feature_name_clause_for_tag_creator
 from sonari.filters.base import Filter
 from sonari.api.bulk_sound_event_tag_replace import (
     build_bulk_params,
@@ -316,12 +318,18 @@ class AnnotationTaskAPI(
         if include_sound_event_tags:
             task_ids = [obj.id for obj in objs]
             sound_event_tags_map = await self._load_sound_event_tags(session, task_ids)
+            stats_map = await self._load_sound_event_tag_stats(session, task_ids)
             tasks_with_tags = []
             for obj in objs:
                 task = self._schema.model_validate(obj)
                 tags_for_task = sound_event_tags_map.get(obj.id, [])
                 # Use model_copy with update to add sound_event_tags
-                task_with_tags = task.model_copy(update={"sound_event_tags": tags_for_task})
+                task_with_tags = task.model_copy(
+                    update={
+                        "sound_event_tags": tags_for_task,
+                        "sound_event_tag_stats": stats_map.get(obj.id, []),
+                    }
+                )
                 tasks_with_tags.append(task_with_tags)
             return tasks_with_tags, count
 
@@ -440,7 +448,13 @@ class AnnotationTaskAPI(
         if include_sound_event_tags:
             sound_event_tags_map = await self._load_sound_event_tags(session, [obj.id])
             # Use model_copy with update to add sound_event_tags
-            data = data.model_copy(update={"sound_event_tags": sound_event_tags_map.get(obj.id, [])})
+            stats_map = await self._load_sound_event_tag_stats(session, [obj.id])
+            data = data.model_copy(
+                update={
+                    "sound_event_tags": sound_event_tags_map.get(obj.id, []),
+                    "sound_event_tag_stats": stats_map.get(obj.id, []),
+                }
+            )
 
         self._update_cache(data)
         return data
@@ -1037,6 +1051,70 @@ class AnnotationTaskAPI(
                 )
 
         return tags_by_task
+
+    async def _load_sound_event_tag_stats(
+        self,
+        session: AsyncSession,
+        task_ids: list[int],
+    ) -> dict[int, list[schemas.SoundEventTagStats]]:
+        """Load per-tag confidence statistics (median, max) for tasks.
+
+        Confidence is ``species_confidence`` for tags created by ``birdedge`` and
+        ``detection_confidence`` otherwise, matching the confidence filter.
+        """
+        if not task_ids:
+            return {}
+
+        tag_creator = models.User.__table__.alias("stats_tag_creator")
+        query = (
+            select(
+                models.SoundEventAnnotation.annotation_task_id,
+                models.Tag.key,
+                models.Tag.value,
+                models.SoundEventAnnotationFeature.value,
+            )
+            .select_from(models.SoundEventAnnotation)
+            .join(
+                models.SoundEventAnnotationTag,
+                models.SoundEventAnnotation.id == models.SoundEventAnnotationTag.sound_event_annotation_id,
+            )
+            .join(models.Tag, models.SoundEventAnnotationTag.tag_id == models.Tag.id)
+            .outerjoin(tag_creator, tag_creator.c.id == models.Tag.created_by_id)
+            .outerjoin(
+                models.SoundEventAnnotationFeature,
+                and_(
+                    models.SoundEventAnnotationFeature.sound_event_annotation_id == models.SoundEventAnnotation.id,
+                    confidence_feature_name_clause_for_tag_creator(tag_creator.c.username),
+                ),
+            )
+        )
+
+        # (task_id, key, value) -> [event count, confidences]
+        grouped: dict[tuple[int, str, str], tuple[list[int], list[float]]] = {}
+        for start in range(0, len(task_ids), 500):
+            chunk = task_ids[start : start + 500]
+            result = await session.execute(
+                query.where(models.SoundEventAnnotation.annotation_task_id.in_(chunk))
+            )
+            for task_id, key, value, confidence in result.all():
+                count, confidences = grouped.setdefault((task_id, key, value), ([0], []))
+                count[0] += 1
+                if confidence is not None:
+                    confidences.append(confidence)
+
+        stats_by_task: dict[int, list[schemas.SoundEventTagStats]] = {}
+        for (task_id, key, value), (count, confidences) in grouped.items():
+            stats_by_task.setdefault(task_id, []).append(
+                schemas.SoundEventTagStats(
+                    key=key,
+                    value=value,
+                    count=count[0],
+                    median_confidence=median(confidences) if confidences else None,
+                    max_confidence=max(confidences) if confidences else None,
+                )
+            )
+
+        return stats_by_task
 
     def _key_fn(self, obj: dict):
         return (

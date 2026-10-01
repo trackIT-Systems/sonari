@@ -8,6 +8,7 @@ import {
   BoundingBoxSchema,
   DatasetSchema,
   FeatureSchema,
+  SoundEventTagStatsSchema,
   FloatEqFilterSchema,
   GeometrySchema,
   GeometryTypeSchema,
@@ -35,6 +36,7 @@ export type User = z.infer<typeof UserSchema>;
 export type Tag = z.infer<typeof TagSchema>;
 
 export type Feature = z.infer<typeof FeatureSchema>;
+export type SoundEventTagStats = z.infer<typeof SoundEventTagStatsSchema>;
 
 export type Note = z.infer<typeof NoteSchema>;
 

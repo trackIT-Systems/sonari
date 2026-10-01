@@ -61,6 +61,17 @@ export const FeatureSchema = z.object({
   value: z.number(),
 });
 
+/** Confidence statistics of one tag over the sound events of a task. */
+export const SoundEventTagStatsSchema = z.object({
+  key: z.string(),
+  value: z.string(),
+  count: z.number().int(),
+  median_confidence: z.number().nullish(),
+  max_confidence: z.number().nullish(),
+});
+
+type SoundEventTagStats = z.infer<typeof SoundEventTagStatsSchema>;
+
 // Base schema without circular reference
 const NoteBaseSchema = z.object({
   id: z.number().int().positive(),
@@ -291,6 +302,7 @@ const AnnotationTaskBaseSchema = z.object({
   annotation_project: AnnotationProjectSchema.nullish(),
   tags: z.array(TagSchema).nullish(),
   sound_event_tags: z.array(TagSchema).nullish(),
+  sound_event_tag_stats: z.array(SoundEventTagStatsSchema).nullish(),
   features: z.array(FeatureSchema).nullish(),
   status_badges: z.array(AnnotationStatusBadgeSchema).nullish(),
   created_on: z.coerce.date(),
@@ -304,6 +316,7 @@ type AnnotationTask = AnnotationTaskBase & {
   recording?: Recording | null;
   sound_event_annotations?: SoundEventAnnotation[] | null;
   sound_event_tags?: Tag[] | null;
+  sound_event_tag_stats?: SoundEventTagStats[] | null;
   notes?: Note[] | null;
 };
 
@@ -319,6 +332,7 @@ export const AnnotationTaskSchema: z.ZodType<AnnotationTask> = z.object({
   sound_event_annotations: z.array(z.lazy(() => SoundEventAnnotationSchema)).nullish(),
   tags: z.array(TagSchema).nullish(),
   sound_event_tags: z.array(TagSchema).nullish(),
+  sound_event_tag_stats: z.array(SoundEventTagStatsSchema).nullish(),
   notes: z.array(z.lazy(() => NoteSchema)).nullish(),
   features: z.array(FeatureSchema).nullish(),
   status_badges: z.array(AnnotationStatusBadgeSchema).nullish(),

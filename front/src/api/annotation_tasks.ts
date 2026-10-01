@@ -149,6 +149,10 @@ const AnnotationTaskFilterSchema = z.object({
     gt: z.number().optional(),
     lt: z.number().optional(),
   }).optional(),
+  median_confidence: z.object({
+    gt: z.number().optional(),
+    lt: z.number().optional(),
+  }).optional(),
   sound_event_annotation_min_frequency: z.object({
     gt: z.number().optional(),
     lt: z.number().optional(),
@@ -274,6 +278,8 @@ export function buildAnnotationTaskFilterQueryParams(
       : undefined,
     confidence__gt: params.confidence?.gt,
     confidence__lt: params.confidence?.lt,
+    median_confidence__gt: params.median_confidence?.gt,
+    median_confidence__lt: params.median_confidence?.lt,
     sound_event_annotation_min_frequency__gt: params.sound_event_annotation_min_frequency?.gt,
     sound_event_annotation_min_frequency__lt: params.sound_event_annotation_min_frequency?.lt,
     sound_event_annotation_max_frequency__gt: params.sound_event_annotation_max_frequency?.gt,

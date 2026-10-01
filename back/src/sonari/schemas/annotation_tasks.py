@@ -27,6 +27,7 @@ __all__ = [
     "AnnotationTaskBulkResult",
     "AnnotationTaskBulkTagSummary",
     "SoundEventTagBulkCount",
+    "SoundEventTagStats",
     "AnnotationTaskCreate",
     "AnnotationTaskUpdate",
     "AnnotationTaskTag",
@@ -67,6 +68,25 @@ class AnnotationStatusBadgeUpdate(BaseModel):
 
     state: AnnotationState | None = None
     """State of the task."""
+
+
+class SoundEventTagStats(BaseModel):
+    """Confidence statistics of one tag over the sound events of a task."""
+
+    key: str
+    """Key of the tag."""
+
+    value: str
+    """Value of the tag."""
+
+    count: int
+    """Number of sound events in the task with this tag."""
+
+    median_confidence: float | None = None
+    """Median confidence over those sound events (None if none has one)."""
+
+    max_confidence: float | None = None
+    """Maximum confidence over those sound events (None if none has one)."""
 
 
 class AnnotationTaskTag(BaseSchema):
@@ -111,6 +131,9 @@ class AnnotationTask(BaseSchema):
 
     sound_event_tags: Optional[list[Tag]] = None
     """Aggregated tags from sound event annotations (without loading full sound events)"""
+
+    sound_event_tag_stats: Optional[list[SoundEventTagStats]] = None
+    """Per-tag confidence statistics over the task's sound events"""
 
     notes: Optional[list["Note"]] = None
     """ All notes of that task"""

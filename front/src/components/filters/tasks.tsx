@@ -762,6 +762,87 @@ const tasksFilterDefs: FilterDef<AnnotationTaskFilter>[] = [
       <SpectrogramIcon className="h-5 w-5 inline-block text-stone-500 mr-1 align-middle" />
     ),
   },
+  {
+    name: "Median Confidence",
+    field: "median_confidence",
+    selector: ({ setFilter, filter }) => {
+      const tags = filter.get("sound_event_annotation_tag");
+      const hasTags =
+        tags !== undefined &&
+        (Array.isArray(tags) ? tags.length > 0 : true);
+      return (
+        <div className="flex flex-col gap-2 w-full">
+          {hasTags ? (
+            <p className="text-xs text-stone-500 dark:text-stone-400">
+              Median is taken per selected tag, over that tag's sound events in the task.
+            </p>
+          ) : null}
+          <FloatFilter
+            name="median_confidence"
+            showDecimals={true}
+            min={0}
+            max={1}
+            step={0.01}
+            onChange={(val) => {
+              const currentValue = filter.get("median_confidence") || {};
+              if ("gt" in val) {
+                const newValue = {
+                  ...currentValue,
+                  gt: val.gt,
+                };
+                setFilter("median_confidence", newValue);
+              } else if ("lt" in val) {
+                const newValue = {
+                  ...currentValue,
+                  lt: val.lt,
+                };
+                setFilter("median_confidence", newValue);
+              }
+            }}
+          />
+        </div>
+      );
+    },
+    render: ({ value, clear, setFilter }) => (
+      <>
+        {value?.gt !== undefined && (
+          <NumberFilterBadge
+            field="Median confidence"
+            value={{ gt: value.gt }}
+            onRemove={() => {
+              const newValue = { ...value };
+              delete newValue.gt;
+              Object.keys(newValue).length === 0 ? clear() : setFilter("median_confidence", newValue);
+            }}
+          />
+        )}
+        {value?.lt !== undefined && (
+          <NumberFilterBadge
+            field="Median confidence"
+            value={{ lt: value.lt }}
+            onRemove={() => {
+              const newValue = { ...value };
+              delete newValue.lt;
+              Object.keys(newValue).length === 0 ? clear() : setFilter("median_confidence", newValue);
+            }}
+          />
+        )}
+      </>
+    ),
+    description: (filter) => {
+      const tags = filter.get("sound_event_annotation_tag");
+      const hasTags =
+        tags !== undefined &&
+        (Array.isArray(tags) ? tags.length > 0 : true);
+      if (hasTags) {
+        return "Filter by the median confidence of each selected tag's sound events in the task. With multiple tags, every selected tag must be in this range.";
+      }
+      return "Filter by the median confidence of all sound events in the task. You can set both a minimum and maximum.";
+    },
+    icon: (
+      <SpectrogramIcon className="h-5 w-5 inline-block text-stone-500 mr-1 align-middle" />
+    ),
+  },
   // {
   //   name: "Species Confidence",
   //   field: "species_confidence",

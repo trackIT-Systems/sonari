@@ -706,7 +706,7 @@ class SampleFilter(base.Filter):
         return query.where(bucket < threshold)
 
 
-def _confidence_feature_name_clause_for_tag_creator(tag_creator_username):
+def confidence_feature_name_clause_for_tag_creator(tag_creator_username):
     """Pick confidence feature from the user who created the tag (birdedge → species)."""
     return or_(
         and_(
@@ -747,7 +747,7 @@ def _sound_event_confidence_exists(
         )
         .where(
             models.SoundEventAnnotation.annotation_task_id == models.AnnotationTask.id,
-            _confidence_feature_name_clause_for_tag_creator(tag_creator_user.c.username),
+            confidence_feature_name_clause_for_tag_creator(tag_creator_user.c.username),
         )
     )
 
@@ -842,6 +842,128 @@ def _apply_tag_exclude_and_confidence_filters(
             )
         )
 
+    return query
+
+
+def _task_median_confidence_in_range(
+    gt: float | None,
+    lt: float | None,
+    tag_key: str | None = None,
+    tag_value: str | None = None,
+    candidate_tasks: Select | None = None,
+):
+    """Condition: the task's median confidence is in range (optionally for one tag).
+
+    ``candidate_tasks`` is a select of task ids that already pass the other
+    filters. Restricting the ranking to them avoids ranking every sound event
+    in the database.
+
+    The median is taken over the confidence of the task's tagged sound events,
+    using the same feature selection as ``_sound_event_confidence_exists``. It is
+    computed portably with window functions (no percentile function needed):
+    with ``cnt`` values ranked ``1..cnt``, the median is the average of the
+    values whose rank ``rn`` satisfies ``2 * rn in (cnt, cnt + 1, cnt + 2)``.
+    """
+    tag_creator_user = models.User.__table__.alias("median_tag_creator")
+    task_id = models.SoundEventAnnotation.annotation_task_id
+
+    values = (
+        select(
+            task_id.label("task_id"),
+            models.SoundEventAnnotationFeature.value.label("value"),
+        )
+        .select_from(models.SoundEventAnnotation)
+        .join(
+            models.SoundEventAnnotationFeature,
+            models.SoundEventAnnotation.id == models.SoundEventAnnotationFeature.sound_event_annotation_id,
+        )
+        .join(
+            models.SoundEventAnnotationTag,
+            models.SoundEventAnnotationTag.sound_event_annotation_id == models.SoundEventAnnotation.id,
+        )
+        .join(models.Tag, models.Tag.id == models.SoundEventAnnotationTag.tag_id)
+        .outerjoin(tag_creator_user, tag_creator_user.c.id == models.Tag.created_by_id)
+        .where(confidence_feature_name_clause_for_tag_creator(tag_creator_user.c.username))
+    )
+    if tag_key is not None and tag_value is not None:
+        values = values.where(models.Tag.key == tag_key, models.Tag.value == tag_value)
+    if candidate_tasks is not None:
+        values = values.where(task_id.in_(candidate_tasks))
+    values = values.subquery("median_values")
+
+    ranked = select(
+        values.c.task_id,
+        values.c.value,
+        func.row_number()
+        .over(partition_by=values.c.task_id, order_by=values.c.value)
+        .label("rn"),
+        func.count().over(partition_by=values.c.task_id).label("cnt"),
+    ).subquery("median_ranked")
+
+    medians = (
+        select(ranked.c.task_id)
+        .where((ranked.c.rn * 2).in_([ranked.c.cnt, ranked.c.cnt + 1, ranked.c.cnt + 2]))
+        .group_by(ranked.c.task_id)
+    )
+    if gt is not None:
+        medians = medians.having(func.avg(ranked.c.value) > gt)
+    if lt is not None:
+        medians = medians.having(func.avg(ranked.c.value) < lt)
+
+    return models.AnnotationTask.id.in_(medians)
+
+
+class MedianConfidenceFilter(base.Filter):
+    """Filter by the median confidence of the sound events in a task.
+
+    With included tags, the median is computed per tag (over that tag's sound
+    events) and every included tag must satisfy it (or any, for OR matching).
+    """
+
+    gt: float | None = None
+    lt: float | None = None
+
+    def filter(self, query: Select) -> Select:
+        if self.gt is None and self.lt is None:
+            return query
+
+        return query.where(
+            _task_median_confidence_in_range(
+                self.gt,
+                self.lt,
+                candidate_tasks=_candidate_task_ids(query),
+            )
+        )
+
+
+def _candidate_task_ids(query: Select) -> Select:
+    """Select of the task ids matched by ``query`` so far."""
+    return query.with_only_columns(models.AnnotationTask.id).order_by(None)
+
+
+def _apply_tag_and_median_confidence_filters(
+    query: Select,
+    tag_filter: SoundEventAnnotationTagFilter,
+    median_filter: MedianConfidenceFilter,
+) -> Select:
+    """Median confidence per included tag (AND or OR)."""
+    assert tag_filter.keys is not None and tag_filter.values is not None
+    pairs = list(zip(tag_filter.keys.split(","), tag_filter.values.split(","), strict=True))
+    candidates = _candidate_task_ids(query)
+    conditions = [
+        _task_median_confidence_in_range(
+            median_filter.gt,
+            median_filter.lt,
+            tag_key=key,
+            tag_value=value,
+            candidate_tasks=candidates,
+        )
+        for key, value in pairs
+    ]
+    if _resolved_include_match(tag_filter.include_match) == "or":
+        return query.where(or_(*conditions))
+    for condition in conditions:
+        query = query.where(condition)
     return query
 
 
@@ -945,6 +1067,7 @@ _AnnotationTaskFilterCombined = base.combine(
     day=DayFilter,
     sample=SampleFilter,
     confidence=ConfidenceFilter,
+    median_confidence=MedianConfidenceFilter,
     sound_event_annotation_min_frequency=SoundEventAnnotationMinFreqFilter,
     sound_event_annotation_max_frequency=SoundEventAnnotationMaxFreqFilter,
 )
@@ -959,6 +1082,7 @@ class AnnotationTaskFilter(_AnnotationTaskFilterCombined):
         tag_count_filter: SoundEventAnnotationTagCountFilter | None = None
         sound_event_count_filter: SoundEventAnnotationCountFilter | None = None
         confidence_filter: ConfidenceFilter | None = None
+        median_filter: MedianConfidenceFilter | None = None
         other_filters: list[base.Filter] = []
 
         for filter_ in filters:
@@ -970,6 +1094,8 @@ class AnnotationTaskFilter(_AnnotationTaskFilterCombined):
                 sound_event_count_filter = filter_
             elif isinstance(filter_, ConfidenceFilter):
                 confidence_filter = filter_
+            elif isinstance(filter_, MedianConfidenceFilter):
+                median_filter = filter_
             else:
                 other_filters.append(filter_)
 
@@ -1005,6 +1131,16 @@ class AnnotationTaskFilter(_AnnotationTaskFilterCombined):
                 query = _apply_tag_exclude_and_confidence_filters(
                     query, tag_filter, confidence_filter
                 )
+
+        if median_filter is not None and (
+            median_filter.gt is not None or median_filter.lt is not None
+        ):
+            if include_tags_active:
+                query = _apply_tag_and_median_confidence_filters(
+                    query, tag_filter, median_filter
+                )
+            else:
+                query = median_filter.filter(query)
 
         # With confidence active, include/exclude tags are handled above.
         use_grouped_tags = tag_filter is not None and not confidence_active

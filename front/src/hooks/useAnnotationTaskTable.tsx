@@ -1,4 +1,4 @@
-import type { AnnotationStatusBadge, AnnotationTask, AnnotationTaskIndex, Note, Recording, Tag } from "@/types";
+import type { AnnotationStatusBadge, AnnotationTask, AnnotationTaskIndex, Note, Recording, SoundEventTagStats, Tag } from "@/types";
 import { useMemo } from "react";
 import {
   ColumnDef,
@@ -12,6 +12,7 @@ import TableCell from "@/components/tables/TableCell";
 import Checkbox from "@/components/tables/TableCheckbox";
 import StatusBadge from "@/components/StatusBadge";
 import TagComponent, { TagCount, getTagKey } from "@/components/tags/Tag";
+import Tooltip from "@/components/Tooltip";
 import Link from "next/link";
 import { NoteIcon } from "@/components/icons";
 
@@ -27,6 +28,29 @@ function NoteOverview({
       <NoteIcon className="inline-block w-3 h-3 text-stone-500" />
       <span className="text-sm text-stone-500 pl-2">{note.message}</span>
     </li>
+  );
+}
+
+function formatConfidence(value: number | null | undefined): string {
+  return value == null ? "–" : value.toFixed(2);
+}
+
+function TagConfidencePopover({ stats }: { stats?: SoundEventTagStats }) {
+  if (!stats) return <span>No sound event data</span>;
+  return (
+    <div className="flex flex-col gap-0.5">
+      <div>
+        Median confidence:{" "}
+        <span className="font-semibold tabular-nums">{formatConfidence(stats.median_confidence)}</span>
+      </div>
+      <div>
+        Max confidence:{" "}
+        <span className="font-semibold tabular-nums">{formatConfidence(stats.max_confidence)}</span>
+      </div>
+      <div className="text-xs text-stone-500">
+        {stats.count} sound event{stats.count === 1 ? "" : "s"} with this tag
+      </div>
+    </div>
   );
 }
 
@@ -317,14 +341,23 @@ export default function useAnnotationTaskTable({
         },
         cell: (props) => {
           const tagCounts = props.getValue() as Array<{ tag: Tag; count: number }>;
+          const statsByTag = new Map(
+            (props.row.original.sound_event_tag_stats ?? []).map((stats) => [
+              getTagKey(stats),
+              stats,
+            ]),
+          );
           return (
             <div className="flex min-w-0 flex-wrap gap-1 p-1">
               {tagCounts.map(({ tag, count }) => (
-                <TagComponent
+                <Tooltip
                   key={getTagKey(tag)}
-                  tag={tag}
-                  count={count}
-                />
+                  placement="top"
+                  portal
+                  tooltip={<TagConfidencePopover stats={statsByTag.get(getTagKey(tag))} />}
+                >
+                  <TagComponent tag={tag} count={count} />
+                </Tooltip>
               ))}
             </div>
           );
