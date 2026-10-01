@@ -47,6 +47,7 @@ export default function Table<S>({
   onFocusChange,
   onSelect,
   handleNumberKeys = true,
+  getRowClassName,
 }: {
   table: Table<S>;
   onCellKeyDown?: ({
@@ -65,6 +66,7 @@ export default function Table<S>({
   onFocusChange?: (index: number) => void;
   onSelect?: (row: S) => void;
   handleNumberKeys?: boolean;
+  getRowClassName?: (row: S) => string | undefined;
 }) {
 
   useKeyPressEvent(useKeyFilter({ key: LIST_ELEMENT_DOWN_SHORTCUT }), (event) => {
@@ -154,7 +156,7 @@ export default function Table<S>({
             <tr
               key={row.id}
               className={`hover:dark:bg-stone-800 hover:bg-stone-200 max-h-40 h-min ${index === selectedIndex ? 'bg-stone-200 dark:bg-stone-800' : ''
-                }`}
+                } ${getRowClassName?.(row.original) ?? ''}`}
             >
               {row.getVisibleCells().map((cell) => {
                 return (

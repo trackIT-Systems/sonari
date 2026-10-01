@@ -23,6 +23,7 @@ import FilterBar from "@/components/filters/FilterBar";
 import Table from "@/components/tables/Table";
 import Pagination from "@/components/lists/Pagination";
 import { LIST_OVERVIEW_DOWN_SHORTCUT, SEARCH_BAR_LEAVE_SHORTCUT, FILTER_POPOVER_SHORTCUT } from "@/utils/keyboard";
+import { findTemporallyRelatedTasks } from "@/utils/temporalClusters";
 import Button from "../Button";
 import { FilterIcon } from "../icons";
 
@@ -59,6 +60,8 @@ export default function AnnotationTaskTable({
   const anyTagBulkPanelOpen = Object.values(tagBulkPanelsOpen).some(Boolean);
   const router = useRouter();
   const popoverButtonRef = useRef<HTMLButtonElement>(null);
+  const [highlightRelated, setHighlightRelated] = useState(true);
+  const [relatedWindow, setRelatedWindow] = useState(5);
 
   const activeFilter = annotationTasks.filter.filter;
 
@@ -229,6 +232,19 @@ export default function AnnotationTaskTable({
     [annotationTasks.items],
   );
 
+  const relatedTaskIds = useMemo(
+    () => highlightRelated
+      ? findTemporallyRelatedTasks(annotationTasks.items, relatedWindow)
+      : new Set<number>(),
+    [highlightRelated, annotationTasks.items, relatedWindow],
+  );
+
+  const getRowClassName = useCallback(
+    (task: AnnotationTask) =>
+      relatedTaskIds.has(task.id) ? "bg-emerald-100 dark:bg-emerald-900/30" : undefined,
+    [relatedTaskIds],
+  );
+
   if (annotationTasks.isLoading || annotationTasks.data == null) {
     return <Loading />;
   }
@@ -260,6 +276,30 @@ export default function AnnotationTaskTable({
             normalizeForPreset={normalizeDateRangeForPreset}
           />
         </div>
+        <label
+          className="flex flex-row items-center gap-2 text-sm text-stone-600 dark:text-stone-400"
+          title="Highlight tasks that share a sound event tag and are within the time window of another task (gap between end of one and start of next)"
+        >
+          <input
+            type="checkbox"
+            checked={highlightRelated}
+            onChange={(e) => setHighlightRelated(e.target.checked)}
+          />
+          Highlight related within
+          <input
+            type="number"
+            min={0}
+            step={0.5}
+            value={relatedWindow}
+            disabled={!highlightRelated}
+            onChange={(e) => {
+              const value = parseFloat(e.target.value);
+              setRelatedWindow(Number.isFinite(value) ? Math.max(0, value) : 0);
+            }}
+            className="w-16 rounded-md border border-stone-300 bg-transparent px-2 py-1 dark:border-stone-600"
+          />
+          s
+        </label>
       </div>
       <FilterBar
         filter={annotationTasks.filter}
@@ -288,6 +328,7 @@ export default function AnnotationTaskTable({
             selectedIndex={typeof focusedElement === 'number' ? focusedElement : -1}
             onFocusChange={handleTableFocus}
             onSelect={handleSelect}
+            getRowClassName={getRowClassName}
             handleNumberKeys={
               focusedElement !== 'search'
               && focusedElement !== 'filter'
