@@ -517,6 +517,28 @@ def get_annotation_tasks_router(settings: SonariSettings):
         )
         return result
 
+    @annotation_tasks_router.post(
+        "/bulk/sound_events/delete/",
+        response_model=schemas.AnnotationTaskBulkResult,
+    )
+    async def bulk_delete_sound_events_by_tag(
+        session: Session,
+        filter: Annotated[AnnotationTaskFilter, Depends(AnnotationTaskFilter)],  # type: ignore
+        body: schemas.AnnotationTaskBulkDeleteSoundEvents,
+    ):
+        """Delete sound event annotations (and their tags) carrying a tag across many tasks."""
+        task_ids = await api.annotation_tasks.resolve_bulk_task_ids(
+            session,
+            filters=[filter],
+            annotation_task_ids=body.annotation_task_ids,
+        )
+        result = await api.annotation_tasks.bulk_delete_sound_events_by_tag(
+            session,
+            task_ids=task_ids,
+            tag=body.tag,
+        )
+        return result
+
     @annotation_tasks_router.delete(
         "/detail/badges/",
         response_model=schemas.AnnotationTask,

@@ -4,6 +4,7 @@ import Button from "@/components/Button";
 import { DialogOverlay } from "@/components/Dialog";
 import {
   TagAddToTaggedPanel,
+  TagDeleteSoundEventsPanel,
   TagReplacePanel,
 } from "@/components/annotation_tasks/AnnotationTaskTags";
 import {
@@ -27,14 +28,23 @@ type BulkMutation<T> = UseMutationResult<
   unknown
 >;
 
+export type TagBulkPanel = "replace" | "addToTagged" | "deleteSoundEvents";
+
+type ConfirmContent = {
+  title: string;
+  message: string;
+  confirmLabel: string;
+  destructive: boolean;
+};
+
 function ReportPopoverOpen({
   open,
   panel,
   onOpenChange,
 }: {
   open: boolean;
-  panel: "replace" | "addToTagged";
-  onOpenChange?: (panel: "replace" | "addToTagged", open: boolean) => void;
+  panel: TagBulkPanel;
+  onOpenChange?: (panel: TagBulkPanel, open: boolean) => void;
 }) {
   useEffect(() => {
     onOpenChange?.(panel, open);
@@ -103,6 +113,7 @@ export default function AnnotationTaskBulkActionBar({
   isTagSummaryLoading,
   bulkAddBadge,
   bulkReplaceSoundEventTags,
+  bulkDeleteSoundEventsByTag,
   onClearSelection,
   onTagBulkPanelOpenChange,
 }: {
@@ -120,14 +131,16 @@ export default function AnnotationTaskBulkActionBar({
     replace_all?: boolean;
     add_to_tagged?: boolean;
   }>;
+  bulkDeleteSoundEventsByTag: BulkMutation<{
+    annotation_task_ids?: number[];
+    tag: Pick<Tag, "key" | "value">;
+  }>;
   onClearSelection: () => void;
-  onTagBulkPanelOpenChange?: (
-    panel: "replace" | "addToTagged",
-    open: boolean,
-  ) => void;
+  onTagBulkPanelOpenChange?: (panel: TagBulkPanel, open: boolean) => void;
 }) {
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [pendingAction, setPendingAction] = useState<(() => void) | null>(null);
+  const [confirmContent, setConfirmContent] = useState<ConfirmContent | null>(null);
 
   const targetLabel = buildTargetLabel({
     targetMode,
@@ -140,9 +153,10 @@ export default function AnnotationTaskBulkActionBar({
     targetMode === "selected" ? selectedTaskIds : undefined;
 
   const runWithConfirm = useCallback(
-    (action: () => void) => {
-      if (targetMode === "filter_all") {
+    (action: () => void, content?: ConfirmContent) => {
+      if (content || targetMode === "filter_all") {
         setPendingAction(() => action);
+        setConfirmContent(content ?? null);
         setConfirmOpen(true);
       } else {
         action();
@@ -154,6 +168,7 @@ export default function AnnotationTaskBulkActionBar({
   const handleConfirm = useCallback(() => {
     pendingAction?.();
     setPendingAction(null);
+    setConfirmContent(null);
     setConfirmOpen(false);
   }, [pendingAction]);
 
@@ -209,8 +224,30 @@ export default function AnnotationTaskBulkActionBar({
     [bulkReplaceSoundEventTags, onClearSelection, runWithConfirm, taskIds],
   );
 
+  const handleDeleteSoundEvents = useCallback(
+    (tag: Tag, count: number) => {
+      runWithConfirm(
+        () => {
+          bulkDeleteSoundEventsByTag.mutate(
+            { annotation_task_ids: taskIds, tag },
+            { onSuccess: () => onClearSelection() },
+          );
+        },
+        {
+          title: "Delete sound events?",
+          message: `This will permanently delete ${count} sound event(s) tagged "${tag.key}: ${tag.value}", including all of their tags, across ${targetLabel}. This cannot be undone.`,
+          confirmLabel: "Delete",
+          destructive: true,
+        },
+      );
+    },
+    [bulkDeleteSoundEventsByTag, onClearSelection, runWithConfirm, targetLabel, taskIds],
+  );
+
   const isBusy =
-    bulkAddBadge.isPending || bulkReplaceSoundEventTags.isPending;
+    bulkAddBadge.isPending
+    || bulkReplaceSoundEventTags.isPending
+    || bulkDeleteSoundEventsByTag.isPending;
 
   return (
     <div className="flex flex-col gap-2 rounded-md border border-emerald-200 bg-emerald-50 px-4 py-3 dark:border-emerald-900 dark:bg-emerald-950/40">
@@ -309,6 +346,42 @@ export default function AnnotationTaskBulkActionBar({
             </>
           )}
         </Popover>
+        <Popover as="div" className="relative">
+          {({ open }) => (
+            <>
+              <ReportPopoverOpen
+                open={open}
+                panel="deleteSoundEvents"
+                onOpenChange={onTagBulkPanelOpenChange}
+              />
+              <PopoverButton
+                as={Button}
+                mode="outline"
+                variant="danger"
+                disabled={isBusy || isTagSummaryLoading}
+              >
+                Delete sound events by tag
+              </PopoverButton>
+              <PopoverPanel
+                className="absolute left-0 z-50 mt-2 w-96 rounded-md border border-stone-200 bg-stone-50 shadow-lg dark:border-stone-500 dark:bg-stone-700"
+              >
+                {({ close }) =>
+                  isTagSummaryLoading ? (
+                    <p className="p-4 text-sm text-stone-500">Loading tags for selected tasks…</p>
+                  ) : (
+                    <TagDeleteSoundEventsPanel
+                      taskTags={tagCountsForPanel}
+                      onDeleteSoundEvents={(tag, count) => {
+                        close();
+                        handleDeleteSoundEvents(tag, count);
+                      }}
+                    />
+                  )
+                }
+              </PopoverPanel>
+            </>
+          )}
+        </Popover>
       </div>
 
       <DialogOverlay
@@ -316,14 +389,15 @@ export default function AnnotationTaskBulkActionBar({
         onClose={() => {
           setConfirmOpen(false);
           setPendingAction(null);
+          setConfirmContent(null);
         }}
-        title="Apply to all matching tasks?"
+        title={confirmContent?.title ?? "Apply to all matching tasks?"}
       >
         {({ close }) => (
           <div className="flex flex-col gap-4 p-4">
             <p className="text-sm">
-              This will update {filterTotal} annotation tasks that match your current
-              filters. This cannot be undone in one step.
+              {confirmContent?.message
+                ?? `This will update ${filterTotal} annotation tasks that match your current filters. This cannot be undone in one step.`}
             </p>
             <div className="flex flex-row justify-end gap-2">
               <Button mode="outline" variant="secondary" onClick={close}>
@@ -331,13 +405,13 @@ export default function AnnotationTaskBulkActionBar({
               </Button>
               <Button
                 mode="filled"
-                variant="primary"
+                variant={confirmContent?.destructive ? "danger" : "primary"}
                 onClick={() => {
                   handleConfirm();
                   close();
                 }}
               >
-                Apply
+                {confirmContent?.confirmLabel ?? "Apply"}
               </Button>
             </div>
           </div>

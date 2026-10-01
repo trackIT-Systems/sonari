@@ -21,6 +21,7 @@ __all__ = [
     "AnnotationStatusBadgeUpdate",
     "AnnotationTask",
     "AnnotationTaskBulkAddBadge",
+    "AnnotationTaskBulkDeleteSoundEvents",
     "AnnotationTaskBulkFailure",
     "AnnotationTaskBulkReplaceSoundEventTags",
     "AnnotationTaskBulkResult",
@@ -235,6 +236,12 @@ class AnnotationTaskBulkReplaceSoundEventTags(_AnnotationTaskBulkTarget):
     new_tag: TagCreate | None = None
     replace_all: bool = False
     add_to_tagged: bool = False
+
+
+class AnnotationTaskBulkDeleteSoundEvents(_AnnotationTaskBulkTarget):
+    """Bulk delete sound event annotations carrying a tag within annotation tasks."""
+
+    tag: TagCreate
 
 
 class SoundEventTagBulkCount(BaseModel):

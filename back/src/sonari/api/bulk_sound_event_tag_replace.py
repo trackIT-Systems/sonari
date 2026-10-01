@@ -1,4 +1,4 @@
-"""Set-based SQL for bulk sound-event tag replace."""
+"""Set-based SQL for bulk sound-event tag replace and delete."""
 
 from __future__ import annotations
 
@@ -17,6 +17,7 @@ from sonari.cache import invalidate_cache
 __all__ = [
     "BulkSoundEventTagReplaceParams",
     "BulkTagReplaceChunkResult",
+    "process_bulk_delete_sound_events_chunk",
     "process_bulk_tag_replace_chunk",
 ]
 
@@ -224,6 +225,61 @@ async def process_bulk_tag_replace_chunk(
     return BulkTagReplaceChunkResult(
         tasks_updated=len(tasks_with_changes),
         sound_events_updated=len(changed_sea_ids),
+        failures=failures,
+    )
+
+
+async def process_bulk_delete_sound_events_chunk(
+    session: AsyncSession,
+    task_ids: list[int],
+    tag_id: int,
+) -> BulkTagReplaceChunkResult:
+    """Delete sound event annotations carrying ``tag_id`` (with all their tags and features)."""
+    failures: list[schemas.AnnotationTaskBulkFailure] = []
+
+    existing_result = await session.execute(select(Task.id).where(Task.id.in_(task_ids)))
+    existing_ids = set(existing_result.scalars().all())
+    for task_id in task_ids:
+        if task_id not in existing_ids:
+            failures.append(
+                schemas.AnnotationTaskBulkFailure(
+                    annotation_task_id=task_id,
+                    message="Annotation task not found.",
+                ),
+            )
+
+    if not existing_ids:
+        return BulkTagReplaceChunkResult(0, 0, failures)
+
+    target_result = await session.execute(
+        select(Sea.id, Sea.annotation_task_id).where(
+            Sea.annotation_task_id.in_(existing_ids),
+            exists(
+                select(1).where(
+                    SeaTag.sound_event_annotation_id == Sea.id,
+                    SeaTag.tag_id == tag_id,
+                ),
+            ),
+        ),
+    )
+    sea_to_task = {row[0]: row[1] for row in target_result.all()}
+    if not sea_to_task:
+        return BulkTagReplaceChunkResult(0, 0, failures)
+
+    sea_ids = list(sea_to_task.keys())
+    # Explicit child deletes so this does not rely on DB-level ON DELETE CASCADE.
+    await session.execute(delete(SeaTag).where(SeaTag.sound_event_annotation_id.in_(sea_ids)))
+    await session.execute(
+        delete(SeaFeature).where(SeaFeature.sound_event_annotation_id.in_(sea_ids)),
+    )
+    await session.execute(delete(Sea).where(Sea.id.in_(sea_ids)))
+
+    tasks_with_changes = set(sea_to_task.values())
+    await _invalidate_species_counts_for_tasks(session, list(tasks_with_changes))
+
+    return BulkTagReplaceChunkResult(
+        tasks_updated=len(tasks_with_changes),
+        sound_events_updated=len(sea_ids),
         failures=failures,
     )
 

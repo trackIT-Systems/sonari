@@ -14,6 +14,7 @@ from sonari.api.common import BaseAPI
 from sonari.filters.base import Filter
 from sonari.api.bulk_sound_event_tag_replace import (
     build_bulk_params,
+    process_bulk_delete_sound_events_chunk,
     process_bulk_tag_replace_chunk,
 )
 from sonari.utils.sound_event_tag_replace import is_replace_all_tag
@@ -1259,6 +1260,57 @@ class AnnotationTaskAPI(
             tasks_updated=tasks_updated,
             tasks_skipped=0,
             sound_events_updated=sound_events_updated,
+            failures=failures,
+        )
+
+    async def bulk_delete_sound_events_by_tag(
+        self,
+        session: AsyncSession,
+        *,
+        task_ids: list[int],
+        tag: schemas.TagCreate,
+    ) -> schemas.AnnotationTaskBulkResult:
+        """Delete every sound event annotation carrying ``tag`` across many tasks."""
+        from sonari.api import tags as tags_api
+
+        if is_replace_all_tag(tag):
+            raise ValueError("Deleting sound events requires a specific tag.")
+
+        tag_obj = await tags_api.get(session, (tag.key, tag.value))
+
+        tasks_updated = 0
+        sound_events_deleted = 0
+        failures: list[schemas.AnnotationTaskBulkFailure] = []
+
+        for chunk_start in range(0, len(task_ids), _BULK_CHUNK_SIZE):
+            chunk = task_ids[chunk_start : chunk_start + _BULK_CHUNK_SIZE]
+            try:
+                chunk_result = await process_bulk_delete_sound_events_chunk(
+                    session,
+                    chunk,
+                    tag_obj.id,
+                )
+                failures.extend(chunk_result.failures)
+                tasks_updated += chunk_result.tasks_updated
+                sound_events_deleted += chunk_result.sound_events_updated
+                if chunk_result.sound_events_updated > 0:
+                    await session.commit()
+            except Exception as exc:  # noqa: BLE001
+                await session.rollback()
+                message = str(exc)
+                for task_id in chunk:
+                    failures.append(
+                        schemas.AnnotationTaskBulkFailure(
+                            annotation_task_id=task_id,
+                            message=message,
+                        ),
+                    )
+
+        return schemas.AnnotationTaskBulkResult(
+            tasks_targeted=len(task_ids),
+            tasks_updated=tasks_updated,
+            tasks_skipped=0,
+            sound_events_updated=sound_events_deleted,
             failures=failures,
         )
 

@@ -495,3 +495,88 @@ async def test_bulk_replace_removes_confidence_for_human_user(
     assert detail.status_code == 200
     features = detail.json().get("features") or []
     assert not any(f["name"] in ("detection_confidence", "species_confidence") for f in features)
+
+
+@pytest.mark.asyncio
+async def test_bulk_delete_sound_events_by_tag(
+    auth_client: AsyncClient,
+    db_session,
+    test_annotation_project: schemas.AnnotationProject,
+    test_recording_id: int,
+    test_annotation_task: schemas.AnnotationTask,
+    test_tag: schemas.Tag,
+    test_user,
+):
+    """Only sound events carrying the tag are deleted, together with their tags."""
+    task2 = await _create_task(db_session, test_annotation_project, test_recording_id, 6.0, 7.0)
+    tagged = await _create_sea_with_tag(auth_client, test_annotation_task, test_tag)
+    await _create_sea_with_tag(auth_client, task2, test_tag)
+
+    keep_key = f"keep_{uuid.uuid4().hex[:8]}"
+    await api.tags.get_or_create(
+        db_session,
+        keep_key,
+        "bat",
+        schemas.SimpleUser.model_validate(test_user),
+    )
+    await db_session.commit()
+    keep = await auth_client.post(
+        "/api/v1/sound_event_annotations/",
+        params={"annotation_task_id": test_annotation_task.id},
+        json={
+            "geometry": {"type": "TimeInterval", "coordinates": [0.3, 0.4]},
+            "tags": [{"key": keep_key, "value": "bat"}],
+        },
+    )
+    assert keep.status_code in [200, 201], keep.text
+
+    response = await auth_client.post(
+        "/api/v1/annotation_tasks/bulk/sound_events/delete/",
+        params={"annotation_project__eq": test_annotation_project.id},
+        json={
+            "annotation_task_ids": [test_annotation_task.id, task2.id],
+            "tag": {"key": test_tag.key, "value": test_tag.value},
+        },
+    )
+    assert response.status_code == 200, response.text
+    data = schemas.AnnotationTaskBulkResult.model_validate(response.json())
+    assert data.tasks_targeted == 2
+    assert data.tasks_updated == 2
+    assert data.sound_events_updated == 2
+    assert data.failures == []
+
+    deleted = await auth_client.get(
+        "/api/v1/sound_event_annotations/detail/",
+        params={"sound_event_annotation_id": tagged["id"]},
+    )
+    assert deleted.status_code == 404
+
+    detail = await auth_client.get(
+        "/api/v1/annotation_tasks/detail/",
+        params={
+            "annotation_task_id": test_annotation_task.id,
+            "include_sound_event_annotations": True,
+            "include_sound_event_tags": True,
+        },
+    )
+    seas = detail.json().get("sound_event_annotations") or []
+    assert len(seas) == 1
+    assert [t["key"] for t in seas[0]["tags"]] == [keep_key]
+
+
+@pytest.mark.asyncio
+async def test_bulk_delete_sound_events_rejects_all_tags(
+    auth_client: AsyncClient,
+    test_annotation_project: schemas.AnnotationProject,
+    test_annotation_task: schemas.AnnotationTask,
+):
+    """The 'all tags' pseudo-tag is not allowed for bulk sound event deletion."""
+    response = await auth_client.post(
+        "/api/v1/annotation_tasks/bulk/sound_events/delete/",
+        params={"annotation_project__eq": test_annotation_project.id},
+        json={
+            "annotation_task_ids": [test_annotation_task.id],
+            "tag": {"key": "all", "value": "tags"},
+        },
+    )
+    assert response.status_code == 400

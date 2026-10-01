@@ -191,6 +191,40 @@ export function TagAddToTaggedPanel({
   );
 }
 
+export function TagDeleteSoundEventsPanel({
+  taskTags,
+  onDeleteSoundEvents,
+}: {
+  taskTags: { tag: Tag; count: number }[];
+  onDeleteSoundEvents: (tag: Tag, count: number) => void;
+}) {
+  return (
+    <div className="p-4">
+      <div className="mb-2 text-stone-700 dark:text-stone-300 underline underline-offset-2 decoration-red-500 decoration-2">
+        Delete sound events with ...
+      </div>
+      <SearchMenu
+        limit={100}
+        key="delete-sound-events"
+        options={taskTags}
+        fields={["type", "tag.key", "tag.value"]}
+        renderOption={(option) =>
+          <TagComponent
+            key={getTagKey(option.tag)}
+            tag={option.tag}
+            onClose={() => { }}
+            count={option.count}
+          />
+        }
+        getOptionKey={(option) => `${option.tag.key}-${option.tag.value}`}
+        onSelect={(option) => onDeleteSoundEvents(option.tag, option.count)}
+        empty={<div className="text-stone-500 text-center w-full">No tags found</div>}
+        autoFocus
+      />
+    </div>
+  );
+}
+
 function TagAddPanel({
   onReplaceTag,
   title = "Select Tag to add",

@@ -6,8 +6,8 @@ import { type FilterDef } from "@/components/filters/FilterMenu";
 import {
   BooleanFilter,
   IncludeTagMatchFilter,
+  type IntegerCountFilter,
   DatasetFilter,
-  TagFilter,
   FloatFilter,
   FloatEqFilterFn,
   IntegerFilter,
@@ -32,6 +32,7 @@ import {
 import type { AnnotationTaskFilter } from "@/api/annotation_tasks";
 import type { Filter } from "@/hooks/utils/useFilter";
 import type { Tag } from "@/types";
+import TagSearchBar from "@/components/tags/TagSearchBar";
 import { DateRangeFilter, formatDate, formatTime } from "./DateRangeFilter";
 
 type TaskFilterTag = Tag & { exclude?: boolean };
@@ -40,19 +41,74 @@ function soundEventTagEntryKey(tag: TaskFilterTag) {
   return `${tag.key}:${tag.value}:${tag.exclude ? "exclude" : "include"}`;
 }
 
+function formatIntegerCount(value: IntegerCountFilter | undefined) {
+  if (value == null) return null;
+  const ops: [keyof IntegerCountFilter, string][] = [
+    ["eq", "="],
+    ["gt", ">"],
+    ["ge", ">="],
+    ["lt", "<"],
+    ["le", "<="],
+  ];
+  const parts = ops
+    .filter(([op]) => value[op] !== undefined)
+    .map(([op, label]) => `${label} ${value[op]}`);
+  return parts.length > 0 ? parts.join(", ") : null;
+}
+
 function SoundEventAnnotationTagSelector({
   filter,
-  setFilter,
+  close,
 }: {
   filter: Filter<AnnotationTaskFilter>;
-  setFilter: Filter<AnnotationTaskFilter>["set"];
+  close: () => void;
 }) {
   const [includeMode, setIncludeMode] = useState(true);
+  // Remount the search bar after each pick so the input is cleared and refocused.
+  const [searchKey, setSearchKey] = useState(0);
   const includeMatch =
     filter.get("sound_event_annotation_tag_include_match") ?? "or";
   const confidence = filter.get("confidence");
   const hasConfidence =
     confidence?.gt !== undefined || confidence?.lt !== undefined;
+
+  const currentValue = filter.get("sound_event_annotation_tag");
+  const selectedTags: TaskFilterTag[] =
+    currentValue === undefined
+      ? []
+      : Array.isArray(currentValue)
+        ? currentValue
+        : [currentValue];
+  const tagCount = formatIntegerCount(
+    filter.get("sound_event_annotation_tag_count"),
+  );
+  const soundEventCount = formatIntegerCount(
+    filter.get("sound_event_annotation_count"),
+  );
+
+  const isSameEntry = (a: TaskFilterTag, b: TaskFilterTag) =>
+    a.key === b.key && a.value === b.value && !!a.exclude === !!b.exclude;
+
+  const addTag = (tag: Tag) => {
+    const entry: TaskFilterTag = {
+      ...tag,
+      exclude: includeMode ? undefined : true,
+    };
+    setSearchKey((k) => k + 1);
+    if (selectedTags.some((t) => isSameEntry(t, entry))) {
+      return;
+    }
+    filter.set("sound_event_annotation_tag", [...selectedTags, entry]);
+  };
+
+  const removeTag = (tag: TaskFilterTag) => {
+    const newValue = selectedTags.filter((t) => !isSameEntry(t, tag));
+    if (newValue.length === 0) {
+      filter.clear("sound_event_annotation_tag");
+    } else {
+      filter.set("sound_event_annotation_tag", newValue);
+    }
+  };
 
   return (
     <div className="flex flex-col gap-2 w-full">
@@ -79,6 +135,31 @@ function SoundEventAnnotationTagSelector({
           excluded tag.
         </p>
       ) : null}
+      <TagSearchBar
+        key={searchKey}
+        onSelect={addTag}
+        canCreate={false}
+        excludeTags={selectedTags.filter(
+          (t) => !!t.exclude === !includeMode,
+        )}
+        placeholder={includeMode ? "Add tag to include..." : "Add tag to exclude..."}
+      />
+      {selectedTags.length > 0 ? (
+        <div className="flex flex-wrap gap-1">
+          {selectedTags.map((tag) => (
+            <FilterBadge
+              key={soundEventTagEntryKey(tag)}
+              field={tag.exclude ? "Exclude" : "Include"}
+              value={`${tag.key}: ${tag.value}`}
+              onRemove={() => removeTag(tag)}
+            />
+          ))}
+        </div>
+      ) : (
+        <p className="text-xs text-stone-500 dark:text-stone-400">
+          No tags selected yet. Pick as many as you need.
+        </p>
+      )}
       <div className="flex flex-col gap-1">
         <span className="text-xs text-stone-500 dark:text-stone-400 text-center">
           Distinct tags on task (optional)
@@ -86,9 +167,18 @@ function SoundEventAnnotationTagSelector({
         <IntegerFilter
           name="Amount"
           onChange={(val) => {
-            setFilter("sound_event_annotation_tag_count", val);
+            filter.set("sound_event_annotation_tag_count", val);
           }}
         />
+        {tagCount != null ? (
+          <div>
+            <FilterBadge
+              field="Distinct tags"
+              value={tagCount}
+              onRemove={() => filter.clear("sound_event_annotation_tag_count")}
+            />
+          </div>
+        ) : null}
         <p className="text-xs text-stone-500 dark:text-stone-400">
           Number of different tags on the task. With one included tag, amount
           2 means that tag is present and the task has exactly two distinct
@@ -102,39 +192,28 @@ function SoundEventAnnotationTagSelector({
         <IntegerFilter
           name="Amount"
           onChange={(val) => {
-            setFilter("sound_event_annotation_count", val);
+            filter.set("sound_event_annotation_count", val);
           }}
         />
+        {soundEventCount != null ? (
+          <div>
+            <FilterBadge
+              field="Sound events"
+              value={soundEventCount}
+              onRemove={() => filter.clear("sound_event_annotation_count")}
+            />
+          </div>
+        ) : null}
         <p className="text-xs text-stone-500 dark:text-stone-400">
           Number of sound event annotations. With included tags, only events
           carrying those tags are counted (OR/AND applies per event).
         </p>
       </div>
-      <TagFilter
-        onChange={(tag) => {
-          const entry: TaskFilterTag = {
-            ...tag,
-            exclude: includeMode ? undefined : true,
-          };
-          const currentValue = filter.get("sound_event_annotation_tag");
-          const list: TaskFilterTag[] =
-            currentValue === undefined
-              ? []
-              : Array.isArray(currentValue)
-                ? [...currentValue]
-                : [currentValue];
-          const duplicate = list.some(
-            (t) =>
-              t.key === entry.key &&
-              t.value === entry.value &&
-              !!t.exclude === !!entry.exclude,
-          );
-          if (duplicate) {
-            return;
-          }
-          setFilter("sound_event_annotation_tag", [...list, entry]);
-        }}
-      />
+      <div className="flex justify-end">
+        <Button mode="filled" variant="primary" onClick={close}>
+          Done
+        </Button>
+      </div>
     </div>
   );
 }
@@ -262,8 +341,8 @@ const tasksFilterDefs: FilterDef<AnnotationTaskFilter>[] = [
         />
       ));
     },
-    selector: ({ setFilter, filter }) => (
-      <SoundEventAnnotationTagSelector filter={filter} setFilter={setFilter} />
+    selector: ({ filter, close }) => (
+      <SoundEventAnnotationTagSelector filter={filter} close={close} />
     ),
     description: (filter) => {
       const confidence = filter.get("confidence");

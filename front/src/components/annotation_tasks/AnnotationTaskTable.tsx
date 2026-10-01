@@ -12,6 +12,7 @@ import { annotationTaskFilterPersistKey } from "@/hooks/utils/annotationTaskFilt
 import useAnnotationTaskTable from "@/hooks/useAnnotationTaskTable";
 import useAnnotationTaskBulkActions from "@/hooks/api/useAnnotationTaskBulkActions";
 import AnnotationTaskBulkActionBar from "@/components/annotation_tasks/AnnotationTaskBulkActionBar";
+import type { TagBulkPanel } from "@/components/annotation_tasks/AnnotationTaskBulkActionBar";
 import Loading from "@/app/loading";
 import Search from "@/components/inputs/Search";
 import FilterPopover from "@/components/filters/FilterMenu";
@@ -50,12 +51,12 @@ export default function AnnotationTaskTable({
   const [focusedElement, setFocusedElement] = useState<'search' | 'filter' | number>(-1);
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
   const [targetMode, setTargetMode] = useState<"selected" | "filter_all">("selected");
-  const [tagBulkPanelsOpen, setTagBulkPanelsOpen] = useState({
+  const [tagBulkPanelsOpen, setTagBulkPanelsOpen] = useState<Record<TagBulkPanel, boolean>>({
     replace: false,
     addToTagged: false,
+    deleteSoundEvents: false,
   });
-  const anyTagBulkPanelOpen =
-    tagBulkPanelsOpen.replace || tagBulkPanelsOpen.addToTagged;
+  const anyTagBulkPanelOpen = Object.values(tagBulkPanelsOpen).some(Boolean);
   const router = useRouter();
   const popoverButtonRef = useRef<HTMLButtonElement>(null);
 
@@ -120,7 +121,7 @@ export default function AnnotationTaskTable({
   });
 
   const handleTagBulkPanelOpenChange = useCallback(
-    (panel: "replace" | "addToTagged", open: boolean) => {
+    (panel: TagBulkPanel, open: boolean) => {
       setTagBulkPanelsOpen((prev) => ({ ...prev, [panel]: open }));
     },
     [],
@@ -275,6 +276,7 @@ export default function AnnotationTaskTable({
           isTagSummaryLoading={bulkTagSummaryQuery.isLoading}
           bulkAddBadge={bulkActions.bulkAddBadge}
           bulkReplaceSoundEventTags={bulkActions.bulkReplaceSoundEventTags}
+          bulkDeleteSoundEventsByTag={bulkActions.bulkDeleteSoundEventsByTag}
           onClearSelection={handleClearBulkSelection}
           onTagBulkPanelOpenChange={handleTagBulkPanelOpenChange}
         />

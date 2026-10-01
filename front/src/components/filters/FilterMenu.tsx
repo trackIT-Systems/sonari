@@ -1,4 +1,4 @@
-import { Popover, PopoverButton, PopoverPanel } from "@headlessui/react";
+import { Popover, PopoverButton, PopoverPanel, useClose } from "@headlessui/react";
 import { type ReactNode, useState, useRef } from "react";
 
 import Button, { getButtonClassName } from "@/components/Button";
@@ -18,12 +18,19 @@ export type FilterDef<T extends Object> = {
   hideInMenu?: boolean;
   description?: string | ((filter: Filter<T>) => string);
   icon?: ReactNode;
+  /**
+   * Renders the filter input. `setFilter` applies a value and returns to the
+   * filter list; selectors that collect several values can instead write via
+   * `filter.set` (keeps the panel open) and call `close` when finished.
+   */
   selector: ({
     setFilter,
-    filter
+    filter,
+    close,
   }: {
     setFilter: SetFilter<T>;
     filter: Filter<T>;
+    close: () => void;
   }) => ReactNode;
   render: (renderProps: {
     value: any;
@@ -76,6 +83,7 @@ function FilterPanel<T extends Object>({
   filterDefs: FilterDef<T>[];
 }) {
   const [selectedFilter, setSelectedFilter] = useState<FilterDef<T> | null>(null);
+  const closePopover = useClose();
 
   const cancelButtonRef = useRef<HTMLButtonElement>(null);
 
@@ -131,7 +139,11 @@ function FilterPanel<T extends Object>({
             filter.set(name, value);
             setSelectedFilter(null);
           },
-          filter  // Pass the filter prop
+          filter,
+          close: () => {
+            setSelectedFilter(null);
+            closePopover();
+          },
         })}
       </div>
     </>

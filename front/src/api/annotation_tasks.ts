@@ -334,6 +334,7 @@ const DEFAULT_ENDPOINTS = {
   bulkAddBadge: "/api/v1/annotation_tasks/bulk/badges/",
   bulkReplaceSoundEventTags: "/api/v1/annotation_tasks/bulk/sound_event_tags/replace/",
   bulkSoundEventTagSummary: "/api/v1/annotation_tasks/bulk/sound_event_tags/summary/",
+  bulkDeleteSoundEventsByTag: "/api/v1/annotation_tasks/bulk/sound_events/delete/",
 };
 
 export function registerAnnotationTasksAPI(
@@ -602,6 +603,28 @@ export function registerAnnotationTasksAPI(
     return AnnotationTaskBulkResultSchema.parse(response.data);
   }
 
+  async function bulkDeleteSoundEventsByTag({
+    filter,
+    annotation_task_ids,
+    tag,
+  }: {
+    filter: AnnotationTaskFilter;
+    annotation_task_ids?: number[];
+    tag: Pick<Tag, "key" | "value">;
+  }): Promise<AnnotationTaskBulkResult> {
+    const response = await instance.post(
+      endpoints.bulkDeleteSoundEventsByTag,
+      {
+        annotation_task_ids,
+        tag: { key: tag.key, value: tag.value },
+      },
+      {
+        params: buildAnnotationTaskFilterQueryParams(filter),
+      },
+    );
+    return AnnotationTaskBulkResultSchema.parse(response.data);
+  }
+
   return {
     getMany,
     getIndex,
@@ -617,5 +640,6 @@ export function registerAnnotationTasksAPI(
     bulkAddBadge,
     bulkReplaceSoundEventTags,
     bulkSoundEventTagSummary,
+    bulkDeleteSoundEventsByTag,
   } as const;
 }

@@ -18,7 +18,10 @@ function formatBulkFailures(failures: AnnotationTaskBulkResult["failures"]): str
   return `${head}\n…and ${lines.length - MAX_FAILURE_LINES} more`;
 }
 
-function formatBulkResultSummary(result: AnnotationTaskBulkResult): string {
+function formatBulkResultSummary(
+  result: AnnotationTaskBulkResult,
+  soundEventVerb: string = "updated",
+): string {
   const parts = [
     `${result.tasks_updated} task(s) updated`,
   ];
@@ -26,7 +29,7 @@ function formatBulkResultSummary(result: AnnotationTaskBulkResult): string {
     parts.push(`${result.tasks_skipped} skipped`);
   }
   if (result.sound_events_updated > 0) {
-    parts.push(`${result.sound_events_updated} sound event(s) updated`);
+    parts.push(`${result.sound_events_updated} sound event(s) ${soundEventVerb}`);
   }
   if (result.failures.length > 0) {
     parts.push(`${result.failures.length} failed`);
@@ -104,8 +107,32 @@ export default function useAnnotationTaskBulkActions({
     onError,
   });
 
+  const bulkDeleteSoundEventsByTag = useMutation({
+    mutationFn: ({
+      annotation_task_ids,
+      tag,
+    }: {
+      annotation_task_ids?: number[];
+      tag: Pick<Tag, "key" | "value">;
+    }) =>
+      api.annotationTasks.bulkDeleteSoundEventsByTag({
+        filter,
+        annotation_task_ids,
+        tag,
+      }),
+    onSuccess: (result) => {
+      invalidateTaskListQueries(client);
+      toast.success(formatBulkResultSummary(result, "deleted"));
+      if (result.failures.length > 0) {
+        toast.error(formatBulkFailures(result.failures));
+      }
+    },
+    onError,
+  });
+
   return {
     bulkAddBadge,
     bulkReplaceSoundEventTags,
+    bulkDeleteSoundEventsByTag,
   };
 }

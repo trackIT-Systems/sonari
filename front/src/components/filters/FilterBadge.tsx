@@ -15,8 +15,8 @@ export default function FilterBadge({
 }) {
   return (
     <span className="inline-flex items-center whitespace-nowrap rounded-md bg-blue-50 px-2 py-1 text-xs font-medium text-blue-600 ring-1 ring-inset ring-blue-500/10 gap-1">
-      <span className="align-middle h-full font-bold">{field}</span>
-      <span>{operation}</span>
+      <span className="font-bold">{field}</span>
+      {operation ? <span>{operation}</span> : null}
       <span>{value}</span>
       <button
         className="ml-1 hover:bg-blue-200 rounded p-1"
