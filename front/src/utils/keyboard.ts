@@ -83,7 +83,7 @@ export const DELETE_SOUND_EVENT_ANNOTATION_SHORTCUT = "x";
 
 export const ADD_TAG_SHORTCUT = "a";
 export const ADD_UNTAGGED_TAG_SHORTCUT = "a";
-export const ADD_TO_TAGGED_TAG_SHORTCUT = "g";
+export const ADD_TO_TAGGED_TAG_SHORTCUT = "t";
 export const REPLACE_TAG_SHORTCUT = "r";
 export const DELETE_TAG_SHORTCUT = "d";
 
@@ -412,3 +412,88 @@ export const AUDIO_KEY_SHORTCUTS: KeyShortcut[] = [
         description: "Play or pause the audio",
     },
 ];
+
+
+/** Shortcuts available on the annotation task table (shown in its help dialog). */
+export const TASK_TABLE_SHORTCUTS: KeyShortcut[] = [
+    {
+        label: "Move through rows",
+        shortcut: "↑ / ↓",
+        description: "Move to the previous / next task and show its spectrogram preview. ↓ from the top focuses the search; ↑ on the first row returns to it.",
+    },
+    {
+        label: "Open task",
+        shortcut: ACCEPT_SHORTCUT,
+        description: "Open the highlighted task for annotation.",
+    },
+    {
+        label: "Open task by position",
+        shortcut: `${SELECT_FST_ELEMENT_SHORTCUT} – ${SELECT_FRT_ELEMENT_SHORTCUT}`,
+        description: "With no rows selected: open the 1st to 4th task of the page.",
+    },
+    {
+        label: "Toggle preview",
+        shortcut: "Click",
+        description: "Click a row to open or close its spectrogram preview. Up to 5 previews stay open; the oldest closes first.",
+    },
+    {
+        label: "Select by dragging",
+        shortcut: "Drag",
+        description: "Click and drag over rows to select them. Starting on an already selected row deselects instead. The page scrolls near the edges.",
+    },
+    {
+        label: "Select row",
+        shortcut: "Shift",
+        description: "Tap Shift on a row with an open preview to tick or untick its checkbox.",
+    },
+    {
+        label: "Clear selection",
+        shortcut: ABORT_SHORTCUT,
+        description: "Untick all selected rows and close the bulk action bar.",
+    },
+    {
+        label: "Status: completed",
+        shortcut: ACCEPT_TASK_SHORTCUT,
+        description: "With rows selected: mark them completed.",
+    },
+    {
+        label: "Status: unsure",
+        shortcut: UNSURE_TASK_SHORTCUT,
+        description: "With rows selected: mark them unsure.",
+    },
+    {
+        label: "Status: needs review",
+        shortcut: REJECT_TASK_SHORTCUT,
+        description: "With rows selected: mark them as needing review.",
+    },
+    {
+        label: "Status: verified",
+        shortcut: VERIFY_TASK_SHORTCUT,
+        description: "With rows selected: mark them verified.",
+    },
+    {
+        label: "Add task tag",
+        shortcut: ADD_TAG_SHORTCUT,
+        description: "With rows selected: open the add task tag panel.",
+    },
+    {
+        label: "Replace tags",
+        shortcut: REPLACE_TAG_SHORTCUT,
+        description: "With rows selected: open the replace sound event tags panel.",
+    },
+    {
+        label: "Add tag to tagged",
+        shortcut: ADD_TO_TAGGED_TAG_SHORTCUT,
+        description: "With rows selected: open the add tag to tagged panel.",
+    },
+    {
+        label: "Delete sound events",
+        shortcut: DELETE_TAG_SHORTCUT,
+        description: "With rows selected: open the delete sound events by tag panel (you still confirm before anything is deleted).",
+    },
+    {
+        label: "Filter",
+        shortcut: FILTER_POPOVER_SHORTCUT,
+        description: "Open the filter panel.",
+    },
+]

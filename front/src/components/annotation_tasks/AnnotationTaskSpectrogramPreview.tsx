@@ -13,6 +13,47 @@ const MAX_PREVIEW_DURATION = 30;
 /** Time columns requested from the backend, ~4x the canvas width for smooth downscaling */
 const TARGET_COLUMNS = 4000;
 
+const KHZ_STEPS = [1, 2, 5, 10, 20, 25, 50, 100];
+/** Aim for a tick roughly every this many pixels of preview height */
+const TICK_SPACING_PX = 36;
+
+/** Frequency ticks (kHz) with a "nice" step, excluding 0 and the very top. */
+function getFrequencyTicks(maxHz: number): number[] {
+  const maxKHz = maxHz / 1000;
+  const target = (maxKHz * TICK_SPACING_PX) / PREVIEW_HEIGHT;
+  const step = KHZ_STEPS.find((candidate) => candidate >= target) ?? KHZ_STEPS[KHZ_STEPS.length - 1];
+  const ticks: number[] = [];
+  for (let f = step; f < maxKHz * 0.97; f += step) ticks.push(f);
+  return ticks;
+}
+
+/**
+ * Light frequency scale drawn as an HTML overlay (crisp at any canvas
+ * scaling): faint dashed guides with small kHz labels on the left edge.
+ */
+function FrequencyAxis({ maxHz }: { maxHz: number }) {
+  const maxKHz = maxHz / 1000;
+  const ticks = useMemo(() => getFrequencyTicks(maxHz), [maxHz]);
+  const label = "pointer-events-none absolute left-1 -translate-y-1/2 rounded-sm bg-black/40 px-1 text-[10px] leading-4 tabular-nums text-white/90";
+
+  return (
+    <div className="pointer-events-none absolute inset-0 overflow-hidden rounded-md" aria-hidden>
+      {ticks.map((f) => {
+        const top = `${(1 - f / maxKHz) * 100}%`;
+        return (
+          <div key={f} className="absolute inset-x-0" style={{ top }}>
+            <div className="border-t border-dashed border-white/25" />
+            <span className={label}>{f}k</span>
+          </div>
+        );
+      })}
+      <span className="absolute right-1 top-1 rounded-sm bg-black/40 px-1 text-[10px] leading-4 text-white/80">
+        kHz
+      </span>
+    </div>
+  );
+}
+
 /**
  * Small, static spectrogram of a whole task (full time range, no axes,
  * no sound events), loaded as a single image. Only requested while mounted.
@@ -92,13 +133,16 @@ export default function AnnotationTaskSpectrogramPreview({
 
   return (
     <div className="p-2">
-      <canvas
-        ref={canvasRef}
-        className="w-full rounded-md"
-        style={{ height: PREVIEW_HEIGHT }}
-        width={SPECTROGRAM_CANVAS_DIMENSIONS.width}
-        height={PREVIEW_HEIGHT}
-      />
+      <div className="relative">
+        <canvas
+          ref={canvasRef}
+          className="w-full rounded-md"
+          style={{ height: PREVIEW_HEIGHT }}
+          width={SPECTROGRAM_CANVAS_DIMENSIONS.width}
+          height={PREVIEW_HEIGHT}
+        />
+        <FrequencyAxis maxHz={samplerate / 2} />
+      </div>
       {isError && (
         <p className="pt-1 text-sm text-red-500">Failed to load preview.</p>
       )}

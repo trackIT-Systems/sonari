@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Popover, PopoverButton, PopoverPanel } from "@headlessui/react";
 import Button from "@/components/Button";
 import { DialogOverlay } from "@/components/Dialog";
@@ -13,6 +13,18 @@ import {
   NeedsReviewIcon,
   VerifiedIcon,
 } from "@/components/icons";
+import KeyboardKey from "@/components/KeyboardKey";
+import TagSearchBar from "@/components/tags/TagSearchBar";
+import {
+  ACCEPT_TASK_SHORTCUT,
+  ADD_TAG_SHORTCUT,
+  ADD_TO_TAGGED_TAG_SHORTCUT,
+  DELETE_TAG_SHORTCUT,
+  REJECT_TASK_SHORTCUT,
+  REPLACE_TAG_SHORTCUT,
+  UNSURE_TASK_SHORTCUT,
+  VERIFY_TASK_SHORTCUT,
+} from "@/utils/keyboard";
 import { isReplaceAllTag } from "@/utils/soundEventTagReplace";
 
 import type { SoundEventTagBulkCount } from "@/api/annotation_tasks";
@@ -28,7 +40,14 @@ type BulkMutation<T> = UseMutationResult<
   unknown
 >;
 
-export type TagBulkPanel = "replace" | "addToTagged" | "deleteSoundEvents";
+export type TagBulkPanel = "addTaskTag" | "replace" | "addToTagged" | "deleteSoundEvents";
+
+/** Panels that list the sound event tags of the targeted tasks. */
+export const SOUND_EVENT_TAG_PANELS: TagBulkPanel[] = [
+  "replace",
+  "addToTagged",
+  "deleteSoundEvents",
+];
 
 type ConfirmContent = {
   title: string;
@@ -36,6 +55,26 @@ type ConfirmContent = {
   confirmLabel: string;
   destructive: boolean;
 };
+
+const STATUS_SHORTCUTS: Record<string, AnnotationStatus> = {
+  [ACCEPT_TASK_SHORTCUT]: "completed",
+  [UNSURE_TASK_SHORTCUT]: "assigned",
+  [REJECT_TASK_SHORTCUT]: "rejected",
+  [VERIFY_TASK_SHORTCUT]: "verified",
+};
+
+/** True when the key event comes from a field where the user is typing. */
+function isTextEntryTarget(target: EventTarget | null): boolean {
+  if (!(target instanceof HTMLElement)) return false;
+  if (target.isContentEditable) return true;
+  if (target instanceof HTMLTextAreaElement || target instanceof HTMLSelectElement) {
+    return true;
+  }
+  if (target instanceof HTMLInputElement) {
+    return !["checkbox", "radio", "button"].includes(target.type);
+  }
+  return false;
+}
 
 function ReportPopoverOpen({
   open,
@@ -112,6 +151,7 @@ export default function AnnotationTaskBulkActionBar({
   soundEventTagCounts,
   isTagSummaryLoading,
   bulkAddBadge,
+  bulkAddTag,
   bulkReplaceSoundEventTags,
   bulkDeleteSoundEventsByTag,
   onClearSelection,
@@ -124,6 +164,10 @@ export default function AnnotationTaskBulkActionBar({
   soundEventTagCounts: SoundEventTagBulkCount[];
   isTagSummaryLoading?: boolean;
   bulkAddBadge: BulkMutation<{ annotation_task_ids?: number[]; state: AnnotationStatus }>;
+  bulkAddTag: BulkMutation<{
+    annotation_task_ids?: number[];
+    tag: Pick<Tag, "key" | "value">;
+  }>;
   bulkReplaceSoundEventTags: BulkMutation<{
     annotation_task_ids?: number[];
     old_tag?: Pick<Tag, "key" | "value"> | null;
@@ -141,6 +185,25 @@ export default function AnnotationTaskBulkActionBar({
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [pendingAction, setPendingAction] = useState<(() => void) | null>(null);
   const [confirmContent, setConfirmContent] = useState<ConfirmContent | null>(null);
+  const [openPanels, setOpenPanels] = useState<Record<TagBulkPanel, boolean>>({
+    addTaskTag: false,
+    replace: false,
+    addToTagged: false,
+    deleteSoundEvents: false,
+  });
+  const addTaskTagButtonRef = useRef<HTMLButtonElement>(null);
+  const replaceButtonRef = useRef<HTMLButtonElement>(null);
+  const addToTaggedButtonRef = useRef<HTMLButtonElement>(null);
+  const deleteButtonRef = useRef<HTMLButtonElement>(null);
+
+  const handlePanelOpenChange = useCallback(
+    (panel: TagBulkPanel, open: boolean) => {
+      setOpenPanels((prev) => (prev[panel] === open ? prev : { ...prev, [panel]: open }));
+      onTagBulkPanelOpenChange?.(panel, open);
+    },
+    [onTagBulkPanelOpenChange],
+  );
+  const anyPanelOpen = Object.values(openPanels).some(Boolean);
 
   const targetLabel = buildTargetLabel({
     targetMode,
@@ -182,6 +245,18 @@ export default function AnnotationTaskBulkActionBar({
       });
     },
     [bulkAddBadge, onClearSelection, runWithConfirm, taskIds],
+  );
+
+  const handleAddTaskTag = useCallback(
+    (tag: Tag) => {
+      runWithConfirm(() => {
+        bulkAddTag.mutate(
+          { annotation_task_ids: taskIds, tag },
+          { onSuccess: () => onClearSelection() },
+        );
+      });
+    },
+    [bulkAddTag, onClearSelection, runWithConfirm, taskIds],
   );
 
   const tagCountsForPanel = soundEventTagCounts.map(({ key, value, count }) => ({
@@ -246,8 +321,46 @@ export default function AnnotationTaskBulkActionBar({
 
   const isBusy =
     bulkAddBadge.isPending
+    || bulkAddTag.isPending
     || bulkReplaceSoundEventTags.isPending
     || bulkDeleteSoundEventsByTag.isPending;
+
+  // Keyboard shortcuts: 1-4 set the status, A / R / T / D open the tag panels.
+  useEffect(() => {
+    if (isBusy || confirmOpen || anyPanelOpen) return;
+
+    const panelButtons: Record<string, React.RefObject<HTMLButtonElement | null>> = {
+      [ADD_TAG_SHORTCUT]: addTaskTagButtonRef,
+      [REPLACE_TAG_SHORTCUT]: replaceButtonRef,
+      [ADD_TO_TAGGED_TAG_SHORTCUT]: addToTaggedButtonRef,
+      [DELETE_TAG_SHORTCUT]: deleteButtonRef,
+    };
+
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.defaultPrevented) return;
+      if (event.ctrlKey || event.metaKey || event.altKey || event.shiftKey) return;
+      if (isTextEntryTarget(event.target)) return;
+      // e.g. the shortcut help is open
+      if (document.querySelector('[role="dialog"]')) return;
+
+      const status = STATUS_SHORTCUTS[event.key];
+      if (status) {
+        event.preventDefault();
+        handleStatus(status);
+        return;
+      }
+
+      const button = panelButtons[event.key];
+      // The task tag panel does not depend on the sound event tag summary
+      if (button && (button === addTaskTagButtonRef || !isTagSummaryLoading)) {
+        event.preventDefault();
+        button.current?.click();
+      }
+    };
+
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [isBusy, confirmOpen, anyPanelOpen, handleStatus, isTagSummaryLoading]);
 
   return (
     <div className="flex flex-col gap-2 rounded-md border border-emerald-200 bg-emerald-50 px-4 py-3 dark:border-emerald-900 dark:bg-emerald-950/40">
@@ -268,16 +381,16 @@ export default function AnnotationTaskBulkActionBar({
         </Button>
       </div>
       <div className="flex flex-row flex-wrap items-center gap-2">
-        <Button mode="text" variant="primary" onClick={() => handleStatus("completed")} disabled={isBusy}>
+        <Button mode="text" variant="primary" onClick={() => handleStatus("completed")} disabled={isBusy} title={`Completed (${ACCEPT_TASK_SHORTCUT})`}>
           <CompleteIcon className="h-6 w-6" />
         </Button>
-        <Button mode="text" variant="warning" onClick={() => handleStatus("assigned")} disabled={isBusy}>
+        <Button mode="text" variant="warning" onClick={() => handleStatus("assigned")} disabled={isBusy} title={`Unsure (${UNSURE_TASK_SHORTCUT})`}>
           <HelpIcon className="h-6 w-6" />
         </Button>
-        <Button mode="text" variant="danger" onClick={() => handleStatus("rejected")} disabled={isBusy}>
+        <Button mode="text" variant="danger" onClick={() => handleStatus("rejected")} disabled={isBusy} title={`Needs review (${REJECT_TASK_SHORTCUT})`}>
           <NeedsReviewIcon className="h-6 w-6" />
         </Button>
-        <Button mode="text" variant="primary" onClick={() => handleStatus("verified")} disabled={isBusy}>
+        <Button mode="text" variant="primary" onClick={() => handleStatus("verified")} disabled={isBusy} title={`Verified (${VERIFY_TASK_SHORTCUT})`}>
           <VerifiedIcon className="h-6 w-6" />
         </Button>
         <Popover as="div" className="relative">
@@ -285,16 +398,56 @@ export default function AnnotationTaskBulkActionBar({
             <>
               <ReportPopoverOpen
                 open={open}
-                panel="replace"
-                onOpenChange={onTagBulkPanelOpenChange}
+                panel="addTaskTag"
+                onOpenChange={handlePanelOpenChange}
               />
               <PopoverButton
                 as={Button}
+                ref={addTaskTagButtonRef}
+                mode="outline"
+                variant="secondary"
+                disabled={isBusy}
+              >
+                Add task tag <KeyboardKey code={ADD_TAG_SHORTCUT} />
+              </PopoverButton>
+              <PopoverPanel
+                className="absolute left-0 z-50 mt-2 w-96 rounded-md border border-stone-200 bg-stone-50 shadow-lg dark:border-stone-500 dark:bg-stone-700"
+              >
+                {({ close }) => (
+                  <div className="p-4">
+                    <div className="mb-2 text-stone-700 dark:text-stone-300 underline underline-offset-2 decoration-amber-500 decoration-2">
+                      Add tag to tasks ...
+                    </div>
+                    <TagSearchBar
+                      placeholder="Search or create tag..."
+                      onSelect={(tag) => {
+                        close();
+                        handleAddTaskTag(tag);
+                      }}
+                      autoFocus
+                    />
+                  </div>
+                )}
+              </PopoverPanel>
+            </>
+          )}
+        </Popover>
+        <Popover as="div" className="relative">
+          {({ open }) => (
+            <>
+              <ReportPopoverOpen
+                open={open}
+                panel="replace"
+                onOpenChange={handlePanelOpenChange}
+              />
+              <PopoverButton
+                as={Button}
+                ref={replaceButtonRef}
                 mode="outline"
                 variant="secondary"
                 disabled={isBusy || isTagSummaryLoading}
               >
-                Replace sound event tags
+                Replace sound event tags <KeyboardKey code={REPLACE_TAG_SHORTCUT} />
               </PopoverButton>
               <PopoverPanel
                 className="absolute left-0 z-50 mt-2 w-96 rounded-md border border-stone-200 bg-stone-50 shadow-lg dark:border-stone-500 dark:bg-stone-700"
@@ -319,15 +472,16 @@ export default function AnnotationTaskBulkActionBar({
               <ReportPopoverOpen
                 open={open}
                 panel="addToTagged"
-                onOpenChange={onTagBulkPanelOpenChange}
+                onOpenChange={handlePanelOpenChange}
               />
               <PopoverButton
                 as={Button}
+                ref={addToTaggedButtonRef}
                 mode="outline"
                 variant="secondary"
                 disabled={isBusy || isTagSummaryLoading}
               >
-                Add tag to tagged
+                Add tag to tagged <KeyboardKey code={ADD_TO_TAGGED_TAG_SHORTCUT} />
               </PopoverButton>
               <PopoverPanel
                 className="absolute left-0 z-50 mt-2 w-96 rounded-md border border-stone-200 bg-stone-50 shadow-lg dark:border-stone-500 dark:bg-stone-700"
@@ -352,15 +506,16 @@ export default function AnnotationTaskBulkActionBar({
               <ReportPopoverOpen
                 open={open}
                 panel="deleteSoundEvents"
-                onOpenChange={onTagBulkPanelOpenChange}
+                onOpenChange={handlePanelOpenChange}
               />
               <PopoverButton
                 as={Button}
+                ref={deleteButtonRef}
                 mode="outline"
                 variant="danger"
                 disabled={isBusy || isTagSummaryLoading}
               >
-                Delete sound events by tag
+                Delete sound events by tag <KeyboardKey code={DELETE_TAG_SHORTCUT} />
               </PopoverButton>
               <PopoverPanel
                 className="absolute left-0 z-50 mt-2 w-96 rounded-md border border-stone-200 bg-stone-50 shadow-lg dark:border-stone-500 dark:bg-stone-700"

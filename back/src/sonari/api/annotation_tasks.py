@@ -1,10 +1,11 @@
 """Python API for interacting with Annotation Tasks."""
 
 from statistics import median
+import datetime
 from typing import Sequence
 
 from soundevent import data
-from sqlalchemy import and_, func, select, tuple_
+from sqlalchemy import and_, exists, func, insert, literal, select, tuple_
 from sqlalchemy.orm import selectinload
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.sql._typing import _ColumnExpressionArgument
@@ -1217,6 +1218,94 @@ class AnnotationTaskAPI(
 
         return schemas.AnnotationTaskBulkResult(
             tasks_targeted=tasks_targeted,
+            tasks_updated=tasks_updated,
+            tasks_skipped=tasks_skipped,
+            sound_events_updated=0,
+            failures=failures,
+        )
+
+    async def bulk_add_tag(
+        self,
+        session: AsyncSession,
+        *,
+        task_ids: list[int],
+        tag: schemas.TagCreate,
+        user: schemas.SimpleUser,
+    ) -> schemas.AnnotationTaskBulkResult:
+        """Add a tag to many tasks; skip tasks that already have it."""
+        from sonari.api import tags as tags_api
+
+        tag_obj = await tags_api.get_or_create(session, tag.key, tag.value, user)
+        tag_id = tag_obj.id
+
+        tasks_updated = 0
+        tasks_skipped = 0
+        failures: list[schemas.AnnotationTaskBulkFailure] = []
+
+        for chunk_start in range(0, len(task_ids), _BULK_CHUNK_SIZE):
+            chunk = task_ids[chunk_start : chunk_start + _BULK_CHUNK_SIZE]
+            try:
+                existing_result = await session.execute(
+                    select(models.AnnotationTask.id).where(
+                        models.AnnotationTask.id.in_(chunk),
+                    ),
+                )
+                existing_ids = set(existing_result.scalars().all())
+                for task_id in chunk:
+                    if task_id not in existing_ids:
+                        failures.append(
+                            schemas.AnnotationTaskBulkFailure(
+                                annotation_task_id=task_id,
+                                message="Annotation task not found.",
+                            ),
+                        )
+                if not existing_ids:
+                    continue
+
+                # Like add_tag: a task counts as tagged if any user attached the tag.
+                already_tagged = exists(
+                    select(1).where(
+                        models.AnnotationTaskTag.annotation_task_id
+                        == models.AnnotationTask.id,
+                        models.AnnotationTaskTag.tag_id == tag_id,
+                    ),
+                )
+                now = datetime.datetime.now(datetime.timezone.utc)
+                source = select(
+                    models.AnnotationTask.id.label("annotation_task_id"),
+                    literal(tag_id).label("tag_id"),
+                    literal(user.id).label("created_by_id"),
+                    literal(now).label("created_on"),
+                ).where(
+                    models.AnnotationTask.id.in_(existing_ids),
+                    ~already_tagged,
+                )
+                result = await session.execute(
+                    insert(models.AnnotationTaskTag)
+                    .from_select(
+                        ["annotation_task_id", "tag_id", "created_by_id", "created_on"],
+                        source,
+                    )
+                    .returning(models.AnnotationTaskTag.annotation_task_id),
+                )
+                inserted = len(result.all())
+                tasks_updated += inserted
+                tasks_skipped += len(existing_ids) - inserted
+                if inserted > 0:
+                    await session.commit()
+            except Exception as exc:  # noqa: BLE001
+                await session.rollback()
+                message = str(exc)
+                for task_id in chunk:
+                    failures.append(
+                        schemas.AnnotationTaskBulkFailure(
+                            annotation_task_id=task_id,
+                            message=message,
+                        ),
+                    )
+
+        return schemas.AnnotationTaskBulkResult(
+            tasks_targeted=len(task_ids),
             tasks_updated=tasks_updated,
             tasks_skipped=tasks_skipped,
             sound_events_updated=0,

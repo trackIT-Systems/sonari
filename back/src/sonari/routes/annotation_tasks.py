@@ -471,6 +471,29 @@ def get_annotation_tasks_router(settings: SonariSettings):
         return result
 
     @annotation_tasks_router.post(
+        "/bulk/tags/",
+        response_model=schemas.AnnotationTaskBulkResult,
+    )
+    async def bulk_add_annotation_task_tags(
+        session: Session,
+        user: CurrentUser,
+        filter: Annotated[AnnotationTaskFilter, Depends(AnnotationTaskFilter)],  # type: ignore
+        body: schemas.AnnotationTaskBulkAddTag,
+    ):
+        """Add a tag to many annotation tasks (skip tasks that already have it)."""
+        task_ids = await api.annotation_tasks.resolve_bulk_task_ids(
+            session,
+            filters=[filter],
+            annotation_task_ids=body.annotation_task_ids,
+        )
+        return await api.annotation_tasks.bulk_add_tag(
+            session,
+            task_ids=task_ids,
+            tag=body.tag,
+            user=user,
+        )
+
+    @annotation_tasks_router.post(
         "/bulk/sound_event_tags/summary/",
         response_model=list[schemas.SoundEventTagBulkCount],
     )

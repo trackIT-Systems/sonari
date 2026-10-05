@@ -40,6 +40,7 @@ function TabButton({
   children,
   active = false,
   className,
+  onClick,
   ...props
 }: {
   children: ReactNode;
@@ -48,6 +49,11 @@ function TabButton({
   return (
     <button
       {...props}
+      onClick={(event) => {
+        onClick?.(event);
+        // Don't keep the tab focused: focused buttons block keyboard shortcuts
+        event.currentTarget.blur();
+      }}
       className={classnames(
         BASE_CLASS,
         active ? ACTIVE_CLASS : INACTIVE_CLASS,
@@ -63,11 +69,16 @@ function TabLink({
   children,
   active = false,
   className,
+  onClick,
   ...props
 }: { children: ReactNode; active: boolean } & ComponentProps<typeof Link>) {
   return (
     <Link
       {...props}
+      onClick={(event) => {
+        onClick?.(event);
+        event.currentTarget.blur();
+      }}
       className={classnames(
         BASE_CLASS,
         active ? ACTIVE_CLASS : INACTIVE_CLASS,

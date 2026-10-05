@@ -12,6 +12,7 @@ import { annotationTaskFilterPersistKey } from "@/hooks/utils/annotationTaskFilt
 import useAnnotationTaskTable from "@/hooks/useAnnotationTaskTable";
 import useAnnotationTaskBulkActions from "@/hooks/api/useAnnotationTaskBulkActions";
 import AnnotationTaskBulkActionBar from "@/components/annotation_tasks/AnnotationTaskBulkActionBar";
+import { SOUND_EVENT_TAG_PANELS } from "@/components/annotation_tasks/AnnotationTaskBulkActionBar";
 import type { TagBulkPanel } from "@/components/annotation_tasks/AnnotationTaskBulkActionBar";
 import Loading from "@/app/loading";
 import Search from "@/components/inputs/Search";
@@ -22,11 +23,48 @@ import tasksFilterDefs from "../filters/tasks";
 import FilterBar from "@/components/filters/FilterBar";
 import Table from "@/components/tables/Table";
 import Pagination from "@/components/lists/Pagination";
-import { LIST_OVERVIEW_DOWN_SHORTCUT, SEARCH_BAR_LEAVE_SHORTCUT, FILTER_POPOVER_SHORTCUT } from "@/utils/keyboard";
+import ShortcutHelper from "@/components/ShortcutHelper";
+import { getScrollParent } from "@/utils/focus";
+import { TASK_TABLE_SHORTCUTS, LIST_OVERVIEW_DOWN_SHORTCUT, SEARCH_BAR_LEAVE_SHORTCUT, FILTER_POPOVER_SHORTCUT } from "@/utils/keyboard";
 import AnnotationTaskSpectrogramPreview from "@/components/annotation_tasks/AnnotationTaskSpectrogramPreview";
 import { findTemporallyRelatedTasks } from "@/utils/temporalClusters";
 import Button from "../Button";
 import { FilterIcon } from "../icons";
+
+/**
+ * Scrolls the one real scroll container so a table row (and its expanded
+ * preview, if any) is visible, keeping clear of the sticky bulk action bar.
+ */
+function scrollRowIntoView(taskId: number, topInset: number) {
+  const row = document.querySelector<HTMLElement>(`[data-row-id="${taskId}"]`);
+  if (!row) return;
+  const preview = document.querySelector<HTMLElement>(`[data-expanded-row-for="${taskId}"]`);
+
+  const container = getScrollParent(row);
+  const viewTop = container ? container.getBoundingClientRect().top : 0;
+  const viewBottom = container
+    ? container.getBoundingClientRect().bottom
+    : window.innerHeight;
+
+  const rowTop = row.getBoundingClientRect().top;
+  const bottom = (preview ?? row).getBoundingClientRect().bottom;
+  const minTop = viewTop + topInset;
+  const maxBottom = viewBottom - 16;
+
+  let delta = 0;
+  if (rowTop < minTop) {
+    delta = rowTop - minTop;
+  } else if (bottom > maxBottom) {
+    // Bring the preview into view, but never push the row itself off the top
+    delta = Math.min(bottom - maxBottom, rowTop - minTop);
+  }
+  if (delta === 0) return;
+  if (container) container.scrollBy({ top: delta });
+  else window.scrollBy({ top: delta });
+}
+
+/** Maximum number of spectrogram previews open at once */
+const MAX_OPEN_PREVIEWS = 5;
 
 export default function AnnotationTaskTable({
   filter,
@@ -54,16 +92,21 @@ export default function AnnotationTaskTable({
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
   const [targetMode, setTargetMode] = useState<"selected" | "filter_all">("selected");
   const [tagBulkPanelsOpen, setTagBulkPanelsOpen] = useState<Record<TagBulkPanel, boolean>>({
+    addTaskTag: false,
     replace: false,
     addToTagged: false,
     deleteSoundEvents: false,
   });
   const anyTagBulkPanelOpen = Object.values(tagBulkPanelsOpen).some(Boolean);
+  const anySoundEventTagPanelOpen = SOUND_EVENT_TAG_PANELS.some(
+    (panel) => tagBulkPanelsOpen[panel],
+  );
   const router = useRouter();
   const popoverButtonRef = useRef<HTMLButtonElement>(null);
   const [highlightRelated, setHighlightRelated] = useState(true);
   const [relatedWindow, setRelatedWindow] = useState(5);
-  const [expandedTaskIds, setExpandedTaskIds] = useState<Set<number>>(new Set());
+  // Oldest first, so the oldest preview is dropped when the limit is reached
+  const [expandedTaskIds, setExpandedTaskIds] = useState<number[]>([]);
 
   const activeFilter = annotationTasks.filter.filter;
 
@@ -121,7 +164,7 @@ export default function AnnotationTaskTable({
         annotation_task_ids:
           targetMode === "selected" ? selectedTaskIds : undefined,
       }),
-    enabled: showBulkBar && anyTagBulkPanelOpen,
+    enabled: showBulkBar && anySoundEventTagPanelOpen,
     refetchOnWindowFocus: false,
   });
 
@@ -174,16 +217,6 @@ export default function AnnotationTaskTable({
     onSelectAllMatchingFilter: handleSelectAllMatchingFilter,
     targetMode,
   });
-
-  const handleSearchKeyDown = useCallback((e: React.KeyboardEvent) => {
-    if (e.key === LIST_OVERVIEW_DOWN_SHORTCUT) {
-      e.preventDefault();
-      if (annotationTasks.items.length > 0) {
-        setFocusedElement(0);
-        searchInputRef.current?.blur();
-      }
-    }
-  }, [annotationTasks.items]);
 
   useKeyPressEvent(useKeyFilter({ key: SEARCH_BAR_LEAVE_SHORTCUT }), (event) => {
     if (focusedElement === -1) {
@@ -247,17 +280,138 @@ export default function AnnotationTaskTable({
     [relatedTaskIds],
   );
 
-  const toggleExpandedTask = useCallback((task: AnnotationTask) => {
-    setExpandedTaskIds((prev) => {
-      const next = new Set(prev);
-      if (!next.delete(task.id)) next.add(task.id);
-      return next;
-    });
+  // Entering the table via the header tab leaves that tab focused, which blocks
+  // the keyboard shortcuts (they ignore events from buttons). Release it.
+  useEffect(() => {
+    const active = document.activeElement;
+    if (
+      active instanceof HTMLElement
+      && (active instanceof HTMLButtonElement || active instanceof HTMLAnchorElement)
+    ) {
+      active.blur();
+    }
   }, []);
+
+  // Escape drops the checkbox selection (unless a panel/dialog or text field owns the key)
+  useEffect(() => {
+    if (!showBulkBar || anyTagBulkPanelOpen) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== "Escape" || event.defaultPrevented) return;
+      const target = event.target;
+      if (
+        target instanceof HTMLInputElement && !["checkbox", "radio", "button"].includes(target.type)
+      ) return;
+      if (target instanceof HTMLTextAreaElement) return;
+      if (document.querySelector('[role="dialog"]')) return;
+      handleClearBulkSelection();
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [showBulkBar, anyTagBulkPanelOpen, handleClearBulkSelection]);
+
+  // Row expanded by arrow navigation (not by click); it is replaced as the
+  // user moves on, so only previews the user opened by click stay open.
+  const [navExpandedId, setNavExpandedId] = useState<number | null>(null);
+
+  const bulkBarRef = useRef<HTMLDivElement>(null);
+  const pendingScrollIdRef = useRef<number | null>(null);
+
+  // After arrow navigation has re-rendered (previous preview collapsed, new
+  // one expanded), scroll the current row into view.
+  useEffect(() => {
+    const taskId = pendingScrollIdRef.current;
+    if (taskId == null) return;
+    pendingScrollIdRef.current = null;
+    const barHeight = bulkBarRef.current?.offsetHeight ?? 0;
+    scrollRowIntoView(taskId, barHeight + 8);
+  }, [focusedElement, expandedTaskIds]);
+
+  const expandForNavigation = useCallback(
+    (taskId: number) => {
+      pendingScrollIdRef.current = taskId;
+      setExpandedTaskIds((prev) => {
+        if (prev.includes(taskId)) return prev;
+        return [...prev.filter((id) => id !== navExpandedId), taskId].slice(-MAX_OPEN_PREVIEWS);
+      });
+      setNavExpandedId((prev) => (expandedTaskIds.includes(taskId) ? prev : taskId));
+    },
+    [navExpandedId, expandedTaskIds],
+  );
+
+  const handleSearchKeyDown = useCallback((e: React.KeyboardEvent) => {
+    if (e.key === LIST_OVERVIEW_DOWN_SHORTCUT) {
+      e.preventDefault();
+      if (annotationTasks.items.length > 0) {
+        setFocusedElement(0);
+        expandForNavigation(annotationTasks.items[0].id);
+        searchInputRef.current?.blur();
+      }
+    }
+  }, [annotationTasks.items, expandForNavigation]);
+
+  const handleRowClick = useCallback(
+    (task: AnnotationTask, { index }: { index: number }) => {
+      setFocusedElement(index);
+      // A clicked preview stays open when navigating on
+      setNavExpandedId((prev) => (prev === task.id ? null : prev));
+      setExpandedTaskIds((prev) =>
+        prev.includes(task.id)
+          ? prev.filter((id) => id !== task.id)
+          : [...prev, task.id].slice(-MAX_OPEN_PREVIEWS),
+      );
+    },
+    [],
+  );
+
+  // ArrowUp/ArrowDown: the (table-managed) current row expands its preview.
+  // Shift on an expanded current row toggles its checkbox.
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.ctrlKey || event.metaKey || event.altKey) return;
+      if (typeof focusedElement !== "number" || focusedElement < 0) return;
+      const target = event.target;
+      if (
+        target instanceof HTMLInputElement
+        && !["checkbox", "radio", "button"].includes(target.type)
+      ) return;
+      if (target instanceof HTMLTextAreaElement) return;
+
+      const items = annotationTasks.items;
+
+      if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+        const nextIndex = event.key === "ArrowDown"
+          ? Math.min(items.length - 1, focusedElement + 1)
+          : focusedElement - 1;
+        const next = items[nextIndex];
+        if (next) expandForNavigation(next.id);
+        return;
+      }
+
+      if (event.key === "Shift" && !event.repeat) {
+        const current = items[focusedElement];
+        if (!current || !expandedTaskIds.includes(current.id)) return;
+        handleRowSelectionChange((prev) => {
+          const next = { ...prev };
+          const id = String(current.id);
+          if (next[id]) delete next[id];
+          else next[id] = true;
+          return next;
+        });
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [
+    focusedElement,
+    annotationTasks.items,
+    expandedTaskIds,
+    expandForNavigation,
+    handleRowSelectionChange,
+  ]);
 
   const renderExpandedRow = useCallback(
     (task: AnnotationTask) =>
-      expandedTaskIds.has(task.id)
+      expandedTaskIds.includes(task.id)
         ? <AnnotationTaskSpectrogramPreview task={task} />
         : null,
     [expandedTaskIds],
@@ -293,6 +447,7 @@ export default function AnnotationTaskTable({
             filter={annotationTasks.filter}
             normalizeForPreset={normalizeDateRangeForPreset}
           />
+          <ShortcutHelper shortcuts={TASK_TABLE_SHORTCUTS} />
         </div>
         <label
           className="flex flex-row items-center gap-2 text-sm text-stone-600 dark:text-stone-400"
@@ -325,6 +480,7 @@ export default function AnnotationTaskTable({
         filterDef={tasksFilterDefs}
       />
       {showBulkBar && (
+        <div ref={bulkBarRef} className="sticky top-0 z-30 rounded-md bg-stone-100 shadow-md dark:bg-stone-900">
         <AnnotationTaskBulkActionBar
           targetMode={targetMode}
           selectedTaskIds={selectedTaskIds}
@@ -333,11 +489,13 @@ export default function AnnotationTaskTable({
           soundEventTagCounts={bulkTagSummaryQuery.data ?? []}
           isTagSummaryLoading={bulkTagSummaryQuery.isLoading}
           bulkAddBadge={bulkActions.bulkAddBadge}
+          bulkAddTag={bulkActions.bulkAddTag}
           bulkReplaceSoundEventTags={bulkActions.bulkReplaceSoundEventTags}
           bulkDeleteSoundEventsByTag={bulkActions.bulkDeleteSoundEventsByTag}
           onClearSelection={handleClearBulkSelection}
           onTagBulkPanelOpenChange={handleTagBulkPanelOpenChange}
         />
+        </div>
       )}
       <div className="w-full">
         <div className="w-full min-w-0 overflow-x-auto rounded-md outline outline-1 outline-stone-200 dark:outline-stone-800">
@@ -347,7 +505,8 @@ export default function AnnotationTaskTable({
             onFocusChange={handleTableFocus}
             onSelect={handleSelect}
             getRowClassName={getRowClassName}
-            onRowClick={toggleExpandedTask}
+            dragSelect
+            onRowClick={handleRowClick}
             renderExpandedRow={renderExpandedRow}
             handleNumberKeys={
               focusedElement !== 'search'

@@ -1,4 +1,4 @@
-import { Fragment, useCallback, type CSSProperties, type ReactNode } from "react";
+import { Fragment, useCallback, useEffect, useRef, type CSSProperties, type ReactNode } from "react";
 import { flexRender } from "@tanstack/react-table";
 import { useKeyPressEvent } from "react-use";
 import useKeyFilter from "@/hooks/utils/useKeyFilter";
@@ -12,7 +12,9 @@ import {
   SELECT_FRT_ELEMENT_SHORTCUT,
 } from "@/utils/keyboard";
 
-import type { Column, Table } from "@tanstack/react-table";
+import { getScrollParent } from "@/utils/focus";
+
+import type { Column, RowSelectionState, Table } from "@tanstack/react-table";
 
 type TableColumnLayoutMeta = {
   width?: string;
@@ -50,6 +52,7 @@ export default function Table<S>({
   getRowClassName,
   onRowClick,
   renderExpandedRow,
+  dragSelect = false,
 }: {
   table: Table<S>;
   onCellKeyDown?: ({
@@ -69,10 +72,107 @@ export default function Table<S>({
   onSelect?: (row: S) => void;
   handleNumberKeys?: boolean;
   getRowClassName?: (row: S) => string | undefined;
-  onRowClick?: (row: S) => void;
+  onRowClick?: (row: S, info: { index: number; event: React.MouseEvent }) => void;
   /** Content rendered in a full-width sub-row below the row, or null for none */
   renderExpandedRow?: (row: S) => ReactNode | null;
+  /** Click and drag over rows to select (or deselect) a range of rows */
+  dragSelect?: boolean;
 }) {
+  const dragCleanupRef = useRef<(() => void) | null>(null);
+  const suppressClickRef = useRef(false);
+
+  // Stop an active drag if the table unmounts
+  useEffect(() => () => dragCleanupRef.current?.(), []);
+
+  const startDragSelect = useCallback(
+    (event: React.MouseEvent<HTMLTableRowElement>, startId: string) => {
+      if (event.button !== 0) return;
+      if ((event.target as HTMLElement).closest("a, button, input, label")) return;
+
+      const base: RowSelectionState = { ...table.getState().rowSelection };
+      const mode = base[startId] ? "deselect" : "select";
+      const scrollParent = getScrollParent(event.currentTarget);
+      const pointer = { x: event.clientX, y: event.clientY };
+      let moved = false;
+      let frame = 0;
+      let lastRange = "";
+
+      const rowIdAt = (x: number, y: number): string | null => {
+        for (const el of document.elementsFromPoint(x, y)) {
+          const tr = el.closest<HTMLElement>("tr[data-row-id], tr[data-expanded-row-for]");
+          if (tr) return tr.dataset.rowId ?? tr.dataset.expandedRowFor ?? null;
+        }
+        return null;
+      };
+
+      const tick = () => {
+        // Auto-scroll near the edges of the scroll area
+        const top = scrollParent ? scrollParent.getBoundingClientRect().top : 0;
+        const bottom = scrollParent ? scrollParent.getBoundingClientRect().bottom : window.innerHeight;
+        const edge = 56;
+        let dy = 0;
+        if (pointer.y < top + edge) dy = -Math.min(24, (top + edge - pointer.y) / 2);
+        else if (pointer.y > bottom - edge) dy = Math.min(24, (pointer.y - (bottom - edge)) / 2);
+        if (dy !== 0) {
+          if (scrollParent) scrollParent.scrollBy({ top: dy });
+          else window.scrollBy({ top: dy });
+        }
+
+        const currentId = rowIdAt(pointer.x, pointer.y);
+        if (currentId != null && (moved || currentId !== startId)) {
+          if (!moved) {
+            moved = true;
+            document.body.style.userSelect = "none";
+            window.getSelection()?.removeAllRanges();
+          }
+          const ids = table.getRowModel().rows.map((r) => r.id);
+          const a = ids.indexOf(startId);
+          const b = ids.indexOf(currentId);
+          const range = `${Math.min(a, b)}:${Math.max(a, b)}`;
+          if (a >= 0 && b >= 0 && range !== lastRange) {
+            lastRange = range;
+            const next: RowSelectionState = { ...base };
+            for (const id of ids.slice(Math.min(a, b), Math.max(a, b) + 1)) {
+              if (mode === "select") next[id] = true;
+              else delete next[id];
+            }
+            table.setRowSelection(next);
+          }
+        }
+        frame = requestAnimationFrame(tick);
+      };
+
+      const onMove = (e: MouseEvent) => {
+        pointer.x = e.clientX;
+        pointer.y = e.clientY;
+      };
+
+      const cleanup = () => {
+        cancelAnimationFrame(frame);
+        window.removeEventListener("mousemove", onMove);
+        window.removeEventListener("mouseup", onUp);
+        document.body.style.userSelect = "";
+        dragCleanupRef.current = null;
+      };
+
+      const onUp = () => {
+        cleanup();
+        if (moved) {
+          // The click that follows a drag must not toggle a preview
+          suppressClickRef.current = true;
+          setTimeout(() => { suppressClickRef.current = false; }, 0);
+        }
+      };
+
+      dragCleanupRef.current?.();
+      dragCleanupRef.current = cleanup;
+      window.addEventListener("mousemove", onMove);
+      window.addEventListener("mouseup", onUp);
+      frame = requestAnimationFrame(tick);
+    },
+    [table],
+  );
+
 
   useKeyPressEvent(useKeyFilter({ key: LIST_ELEMENT_DOWN_SHORTCUT }), (event) => {
     event.preventDefault();
@@ -162,10 +262,13 @@ export default function Table<S>({
           return (
             <Fragment key={row.id}>
               <tr
+                data-row-id={row.id}
+                onMouseDown={dragSelect ? (event) => startDragSelect(event, row.id) : undefined}
                 onClick={onRowClick && ((event) => {
+                  if (suppressClickRef.current) return;
                   // Keep links, checkboxes and buttons working as usual
                   if ((event.target as HTMLElement).closest("a, button, input, label")) return;
-                  onRowClick(row.original);
+                  onRowClick(row.original, { index, event });
                 })}
                 className={`hover:dark:bg-stone-800 hover:bg-stone-200 max-h-40 h-min ${onRowClick ? 'cursor-pointer' : ''} ${index === selectedIndex ? 'bg-stone-200 dark:bg-stone-800' : ''
                   } ${getRowClassName?.(row.original) ?? ''}`}
@@ -185,7 +288,7 @@ export default function Table<S>({
                 })}
               </tr>
               {expanded != null && (
-                <tr>
+                <tr data-expanded-row-for={row.id}>
                   <td colSpan={cells.length} className="border border-stone-300 dark:border-stone-600">
                     {expanded}
                   </td>

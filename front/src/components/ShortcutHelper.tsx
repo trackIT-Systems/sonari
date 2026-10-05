@@ -24,7 +24,14 @@ export default function ShortcutHelper({
 
   return (
     <>
-      <Button mode="text" variant="info" type="button" onClick={() => setShow(true)}>
+      <Button
+        mode="text"
+        variant="info"
+        type="button"
+        // Don't take focus on click, so nothing is left focused after closing
+        onMouseDown={(event) => event.preventDefault()}
+        onClick={() => setShow(true)}
+      >
         <HelpIcon className="inline-block w-4 h-4 align-middle" />
       </Button>
       <DialogOverlay
@@ -58,7 +65,7 @@ export default function ShortcutHelper({
                 </td>
               </tr>
               {shortcuts?.map((shortcut) => (
-                <tr key={shortcut.shortcut}>
+                <tr key={`${shortcut.shortcut}-${shortcut.label}`}>
                   <td className="p-2 border border-stone-500 text-center">
                     <KeyboardKey code={shortcut.shortcut.trim() || " "} />
                   </td>

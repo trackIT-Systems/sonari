@@ -78,6 +78,29 @@ export default function useAnnotationTaskBulkActions({
     onError,
   });
 
+  const bulkAddTag = useMutation({
+    mutationFn: ({
+      annotation_task_ids,
+      tag,
+    }: {
+      annotation_task_ids?: number[];
+      tag: Pick<Tag, "key" | "value">;
+    }) =>
+      api.annotationTasks.bulkAddTag({
+        filter,
+        annotation_task_ids,
+        tag,
+      }),
+    onSuccess: (result) => {
+      invalidateTaskListQueries(client);
+      toast.success(formatBulkResultSummary(result));
+      if (result.failures.length > 0) {
+        toast.error(formatBulkFailures(result.failures));
+      }
+    },
+    onError,
+  });
+
   const bulkReplaceSoundEventTags = useMutation({
     mutationFn: ({
       annotation_task_ids,
@@ -135,6 +158,7 @@ export default function useAnnotationTaskBulkActions({
 
   return {
     bulkAddBadge,
+    bulkAddTag,
     bulkReplaceSoundEventTags,
     bulkDeleteSoundEventsByTag,
   };

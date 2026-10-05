@@ -16,6 +16,7 @@ export default function ProBatExport() {
   const exportSelection = useExportSelection();
   const { downloadFile } = useExportDownload();
   const [groupSpecies, setGroupSpecies] = useState<boolean>(false);
+  const [posttriggerMs, setPosttriggerMs] = useState<string>("");
 
   const handleExport = async () => {
     if (exportSelection.selectedProjects.length === 0) return;
@@ -41,6 +42,9 @@ export default function ProBatExport() {
         formattedStartDate,
         formattedEndDate,
         groupSpecies,
+        posttriggerMs.trim() !== "" && Number(posttriggerMs) > 0
+          ? Number(posttriggerMs)
+          : undefined,
       );
 
       downloadFile(blob, filename);
@@ -79,6 +83,25 @@ export default function ProBatExport() {
             groupSpecies={groupSpecies}
             onGroupSpeciesChange={setGroupSpecies}
           />
+
+          <div className="flex flex-col gap-y-2">
+            <label htmlFor="posttrigger-ms" className="font-medium">
+              Simulated posttrigger (ms)
+            </label>
+            <input
+              id="posttrigger-ms"
+              type="number"
+              min={1}
+              placeholder="e.g. 200 (empty = original recordings)"
+              value={posttriggerMs}
+              onChange={(e) => setPosttriggerMs(e.target.value)}
+              className="rounded border border-stone-300 dark:border-stone-600 bg-transparent px-3 py-2"
+            />
+            <span className="text-sm text-stone-500">
+              Virtually splits recordings at pauses longer than this value, as in bcAdmin.
+              Parts get the suffix _1, _2, ... The result is a separate file; originals stay unchanged.
+            </span>
+          </div>
 
           <ExportSummary
             isExporting={exportSelection.isExporting}

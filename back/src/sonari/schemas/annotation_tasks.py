@@ -21,6 +21,7 @@ __all__ = [
     "AnnotationStatusBadgeUpdate",
     "AnnotationTask",
     "AnnotationTaskBulkAddBadge",
+    "AnnotationTaskBulkAddTag",
     "AnnotationTaskBulkDeleteSoundEvents",
     "AnnotationTaskBulkFailure",
     "AnnotationTaskBulkReplaceSoundEventTags",
@@ -251,6 +252,12 @@ class AnnotationTaskBulkAddBadge(_AnnotationTaskBulkTarget):
     """Bulk-add a status badge to annotation tasks."""
 
     state: AnnotationState
+
+
+class AnnotationTaskBulkAddTag(_AnnotationTaskBulkTarget):
+    """Bulk-add a tag to annotation tasks."""
+
+    tag: TagCreate
 
 
 class AnnotationTaskBulkReplaceSoundEventTags(_AnnotationTaskBulkTarget):

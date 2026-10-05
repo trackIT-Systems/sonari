@@ -641,3 +641,68 @@ async def test_bulk_delete_sound_events_skips_multi_tagged(
     assert kept.status_code == 200
     kept_keys = {t["key"] for t in kept.json().get("tags") or []}
     assert kept_keys == {test_tag.key, other_key}
+
+
+@pytest.mark.asyncio
+async def test_bulk_add_task_tag_adds_and_skips_existing(
+    auth_client: AsyncClient,
+    db_session,
+    test_annotation_project: schemas.AnnotationProject,
+    test_recording_id: int,
+    test_annotation_task: schemas.AnnotationTask,
+    test_tag: schemas.Tag,
+):
+    """Tasks that already have the tag are skipped; the rest get it."""
+    task2 = await _create_task(db_session, test_annotation_project, test_recording_id, 7.0, 8.0)
+
+    first = await auth_client.post(
+        "/api/v1/annotation_tasks/detail/tags/",
+        params={"annotation_task_id": test_annotation_task.id},
+        json={"key": test_tag.key, "value": test_tag.value},
+    )
+    assert first.status_code in [200, 201], first.text
+
+    response = await auth_client.post(
+        "/api/v1/annotation_tasks/bulk/tags/",
+        params={"annotation_project__eq": test_annotation_project.id},
+        json={
+            "annotation_task_ids": [test_annotation_task.id, task2.id],
+            "tag": {"key": test_tag.key, "value": test_tag.value},
+        },
+    )
+    assert response.status_code == 200, response.text
+    data = schemas.AnnotationTaskBulkResult.model_validate(response.json())
+    assert data.tasks_targeted == 2
+    assert data.tasks_updated == 1
+    assert data.tasks_skipped == 1
+    assert data.failures == []
+
+    for task_id in (test_annotation_task.id, task2.id):
+        detail = await auth_client.get(
+            "/api/v1/annotation_tasks/detail/",
+            params={"annotation_task_id": task_id, "include_tags": True},
+        )
+        assert detail.status_code == 200
+        tags = [(t["key"], t["value"]) for t in detail.json().get("tags") or []]
+        assert tags.count((test_tag.key, test_tag.value)) == 1
+
+
+@pytest.mark.asyncio
+async def test_bulk_add_task_tag_creates_new_tag(
+    auth_client: AsyncClient,
+    test_annotation_project: schemas.AnnotationProject,
+    test_annotation_task: schemas.AnnotationTask,
+):
+    """A tag that does not exist yet is created, as in the tag search bar."""
+    new_key = f"task_tag_{uuid.uuid4().hex[:8]}"
+    response = await auth_client.post(
+        "/api/v1/annotation_tasks/bulk/tags/",
+        params={"annotation_project__eq": test_annotation_project.id},
+        json={
+            "annotation_task_ids": [test_annotation_task.id],
+            "tag": {"key": new_key, "value": "x"},
+        },
+    )
+    assert response.status_code == 200, response.text
+    data = schemas.AnnotationTaskBulkResult.model_validate(response.json())
+    assert data.tasks_updated == 1
