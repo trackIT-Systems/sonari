@@ -57,10 +57,12 @@ export function registerWaveformsAPI(
     recording,
     segment,
     parameters = DEFAULT_SPECTROGRAM_PARAMETERS,
+    signal,
   }: {
     recording: Recording;
     segment?: Interval;
     parameters?: SpectrogramParameters;
+    signal?: AbortSignal;
   }): Promise<Blob> {
     const parsed_params = SpectrogramParametersSchema.parse(parameters);
     const { gamma, cmap, window_size_samples, overlap_percent } = parsed_params;
@@ -88,6 +90,7 @@ export function registerWaveformsAPI(
     const response = await instsance.get(endpoints.get, {
       params: query,
       responseType: 'blob',
+      signal,
     });
 
     return response.data;

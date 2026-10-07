@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useMemo } from "react";
 import api from "@/app/api";
 import { spectrogramCache } from "@/utils/spectrogram_cache";
 import {
@@ -7,7 +7,7 @@ import {
   getChunksToLoad,
   type Chunk,
 } from "@/utils/chunks";
-import useSpectrogramChunksState from "./useSpectrogramChunksState";
+import useChunkImageLoader, { blobToImage } from "./useChunkImageLoader";
 
 import type {
   AnnotationTask,
@@ -15,12 +15,12 @@ import type {
   SpectrogramWindow,
 } from "@/types";
 
-interface ChunkWithImage {
-  chunk: Chunk;
-  image: HTMLImageElement | null;
-  isLoading: boolean;
-  isError: boolean;
-}
+/**
+ * Spectrogram chunks are computed server side, so keep only a few requests in
+ * flight. Together with the waveform requests this stays below the browser's
+ * six connections per host, leaving room for audio and API calls.
+ */
+const MAX_CONCURRENT_SPECTROGRAM_REQUESTS = 3;
 
 /**
  * Hook to manage loading of multiple spectrogram chunks with viewport-aware lazy loading
@@ -63,19 +63,6 @@ export default function useSpectrogramImages({
     withSpectrogram,
   ]);
 
-  // Track loading state for each chunk
-  const { chunks: chunkStates, setReady, setError, startLoading, setChunks } =
-    useSpectrogramChunksState(allChunks);
-
-  // Store loaded images
-  const [images, setImages] = useState<Map<number, HTMLImageElement>>(new Map());
-
-  // Reset chunk states and clear images when parameters change
-  useEffect(() => {
-    setChunks(allChunks);
-    setImages(new Map());
-  }, [parameters, allChunks, setChunks]);
-
   // Find chunks that are visible in current viewport
   const visibleChunks = useMemo(() => {
     if (!withSpectrogram || allChunks.length === 0) return [];
@@ -93,134 +80,41 @@ export default function useSpectrogramImages({
     return getChunksToLoad(allChunks, visibleChunks);
   }, [allChunks, visibleChunks, withSpectrogram]);
 
-  // Load chunks when they become needed
-  useEffect(() => {
-    if (!withSpectrogram) return;
+  const { recording_id: recordingId, start_time: taskStartTime } = task;
 
-    const loadChunks = async () => {
-      const loadPromises = chunksToLoad.map(async (chunk) => {
-        const index = chunk.index;
-        const state = chunkStates[index];
+  const load = useCallback(
+    (chunk: Chunk, signal: AbortSignal) => {
+      const segment = {
+        min: chunk.buffer.min + taskStartTime,
+        max: chunk.buffer.max + taskStartTime,
+      };
+      return spectrogramCache.getOrLoad(
+        recordingId,
+        { time: segment, freq: { min: 0, max: samplerate / 2 } },
+        parameters,
+        async () =>
+          blobToImage(
+            await api.spectrograms.getBlob({
+              recording_id: recordingId,
+              segment,
+              parameters,
+              signal,
+            }),
+          ),
+        signal,
+      );
+    },
+    [recordingId, taskStartTime, samplerate, parameters],
+  );
 
-        // Skip if already loaded, loading, or errored
-        if (state?.isReady || state?.isLoading || state?.isError) {
-          return;
-        }
-
-        // Mark as loading
-        startLoading([index]);
-
-        try {
-          const chunkWindow: SpectrogramWindow = {
-            time: {
-              min: chunk.buffer.min + task.start_time,
-              max: chunk.buffer.max + task.start_time,
-            },
-            freq: { min: 0, max: samplerate / 2 },
-          };
-
-          const image = await spectrogramCache.getOrLoad(
-            task.recording_id,
-            chunkWindow,
-            parameters,
-            async () => {
-              // Use authenticated API method to get blob
-              const blob = await api.spectrograms.getBlob({
-                recording_id: task.recording_id,
-                segment: {
-                  min: chunk.buffer.min + task.start_time,
-                  max: chunk.buffer.max + task.start_time,
-                },
-                parameters,
-              });
-
-              const size = blob.size;
-              const objectUrl = URL.createObjectURL(blob);
-
-              try {
-                const img = new Image();
-                await new Promise<void>((resolve, reject) => {
-                  img.onload = async () => {
-                    try {
-                      await img.decode();
-                      resolve();
-                    } catch (err) {
-                      reject(err);
-                    }
-                  };
-                  img.onerror = reject;
-                  img.src = objectUrl;
-                });
-                return { image: img, size };
-              } finally {
-                URL.revokeObjectURL(objectUrl);
-              }
-            },
-          );
-
-          // Update state and images
-          setImages((prev) => {
-            const next = new Map(prev);
-            next.set(index, image);
-            return next;
-          });
-          setReady(index);
-        } catch (error) {
-          console.error(`Failed to load chunk ${index}:`, error);
-          setError(index);
-        }
-      });
-
-      await Promise.all(loadPromises);
-
-      // Check if all visible chunks are loaded
-      const allVisibleLoaded = visibleChunks.every((chunk) => {
-        const state = chunkStates[chunk.index];
-        return state?.isReady;
-      });
-
-      if (allVisibleLoaded && visibleChunks.length > 0) {
-        onAllSegmentsLoaded?.();
-      }
-    };
-
-    loadChunks();
-  }, [
-    chunksToLoad,
-    chunkStates,
-    startLoading,
-    setReady,
-    setError,
-    task.recording_id,
-    task.start_time,
-    parameters,
-    samplerate,
-    withSpectrogram,
+  return useChunkImageLoader({
+    allChunks,
     visibleChunks,
-    onAllSegmentsLoaded,
-  ]);
-
-  // Combine chunk data with images and states for rendering
-  // Return all chunks that have loaded images, not just visible ones
-  // This prevents flickering during scroll by keeping previously loaded chunks visible
-  const chunksWithImages: ChunkWithImage[] = useMemo(() => {
-    return allChunks
-      .filter((chunk) => images.has(chunk.index))
-      .map((chunk) => {
-        const state = chunkStates[chunk.index];
-        return {
-          chunk,
-          image: images.get(chunk.index) || null,
-          isLoading: state?.isLoading || false,
-          isError: state?.isError || false,
-        };
-      });
-  }, [allChunks, chunkStates, images]);
-
-  return {
-    chunks: chunksWithImages,
-    isLoading: chunksWithImages.some((c) => c.isLoading),
-    isError: chunksWithImages.some((c) => c.isError),
-  };
+    chunksToLoad,
+    resetKey: parameters,
+    enabled: withSpectrogram,
+    load,
+    maxConcurrent: MAX_CONCURRENT_SPECTROGRAM_REQUESTS,
+    onAllVisibleLoaded: onAllSegmentsLoaded,
+  });
 }
-

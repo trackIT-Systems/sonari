@@ -114,11 +114,16 @@ export default function AnnotationTaskSpectrogram({
   // Extract recording with null safety
   const { recording, start_time: taskStartTime, end_time: taskEndTime } = annotationTask!;
 
+  // Depend on the samplerate value, not the `recording` object: task mutations
+  // replace the whole task (and recording) object, which would otherwise
+  // recompute everything below and reset the zoom and unsaved parameters.
+  const recordingSamplerate = recording?.samplerate;
+
   // Apply auto STFT calculation to parameters if enabled
   const effectiveParameters = useMemo(() => {
-    if (!recording) return parameters;
-    return applyAutoSTFT(parameters, recording.samplerate);
-  }, [parameters, recording]);
+    if (recordingSamplerate == null) return parameters;
+    return applyAutoSTFT(parameters, recordingSamplerate);
+  }, [parameters, recordingSamplerate]);
   
   const taskSoundEventAnnotations = useMemo(
     () => soundEventAnnotationsOverride ?? annotationTask?.sound_event_annotations ?? [],
@@ -131,14 +136,13 @@ export default function AnnotationTaskSpectrogram({
    * the effective frequency range based on current parameters.
    */
   const taskBounds = useMemo<SpectrogramWindow>(() => {
-    const baseSamplerate = recording!.samplerate;
-    const samplerate = clampSamplerate(effectiveParameters, baseSamplerate)
+    const samplerate = clampSamplerate(effectiveParameters, recordingSamplerate!)
     
     return {
       time: { min: taskStartTime, max: taskEndTime },
       freq: { min: 0, max: samplerate / 2 },
     };
-  }, [taskStartTime, taskEndTime, effectiveParameters, recording]);
+  }, [taskStartTime, taskEndTime, effectiveParameters, recordingSamplerate]);
 
   /**
    * Initial window - Determines the starting view when component mounts.
@@ -147,8 +151,7 @@ export default function AnnotationTaskSpectrogram({
    */
   const initial = useMemo(
     () => {
-      const baseSamplerate = recording!.samplerate;
-      const samplerate = clampSamplerate(effectiveParameters, baseSamplerate)
+      const samplerate = clampSamplerate(effectiveParameters, recordingSamplerate!)
       if (withSpectrogram) {
         
         const _initial = getInitialViewingWindow({
@@ -165,7 +168,7 @@ export default function AnnotationTaskSpectrogram({
         }
       }
     },
-    [recording, taskStartTime, taskEndTime, withSpectrogram, effectiveParameters],
+    [recordingSamplerate, taskStartTime, taskEndTime, withSpectrogram, effectiveParameters],
   );
 
   const getPlaybackBounds = useCallback(() => {
@@ -365,23 +368,21 @@ export default function AnnotationTaskSpectrogram({
     passSiblingIds,
   });
 
+  // Draw progressively: chunks appear as they arrive. Skipping the draw while
+  // any visible chunk is pending would freeze the view (and the playhead)
+  // until the slowest request finished.
   const drawSpectrogramCanvas = useMemo(() => {
-    // Wait until all visible chunks are loaded before displaying
-    if (spectrogramIsLoading) {
-      return (ctx: CanvasRenderingContext2D) => {
-        ctx.canvas.style.cursor = "wait";
-      };
-    }
+    const cursor = spectrogramIsLoading ? "wait" : "default";
     if (trackingAudio) {
       return (ctx: CanvasRenderingContext2D) => {
-        ctx.canvas.style.cursor = "default";
+        ctx.canvas.style.cursor = cursor;
         drawSpectrogram(ctx);
         drawTrackAudio(ctx);
         annotate?.drawSpectrogram(ctx);
       };
     }
     return (ctx: CanvasRenderingContext2D) => {
-      ctx.canvas.style.cursor = "default";
+      ctx.canvas.style.cursor = cursor;
       drawSpectrogram(ctx);
       // Draw the onset line even when not playing
       drawOnsetAt?.(ctx, audio.currentTime);
@@ -404,12 +405,7 @@ export default function AnnotationTaskSpectrogram({
       ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
       return;
     }
-    // Wait until all visible chunks are loaded before displaying
-    if (waveform.isLoading) {
-      ctx.canvas.style.cursor = "wait";
-      return;
-    }
-    ctx.canvas.style.cursor = "default";
+    ctx.canvas.style.cursor = waveform.isLoading ? "wait" : "default";
     
     // Draw complete waveform
     waveform.draw(ctx);

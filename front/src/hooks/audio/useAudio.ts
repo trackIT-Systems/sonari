@@ -71,7 +71,12 @@ export default function useAudio({
   withAutoplay: boolean;
   onWithAutoplayChange: () => void;
 } & Partial<PlayerState>): PlayerState & PlayerControls {
-  const audio = useRef<HTMLAudioElement>(new Audio());
+  // Lazily create the element once; `useRef(new Audio())` would construct a
+  // throwaway element on every render (i.e. every animation frame while playing).
+  const audio = useRef<HTMLAudioElement>(null as unknown as HTMLAudioElement);
+  if (audio.current == null) {
+    audio.current = new Audio();
+  }
 
   const speedOptions = useMemo(() => ALL_SPEED_OPTIONS, []);
   const defaultSpeedOption = useMemo(
@@ -108,114 +113,129 @@ export default function useAudio({
     setIsPlaying(false);
   }, [speed]);
 
-  // Track when we should stop audio on cleanup (only for recording changes)
-  const shouldStopOnCleanup = useRef<boolean>(false);
+  // Autoplay is read through a ref so toggling it does not re-seek the audio.
+  const withAutoplayRef = useRef(withAutoplay);
+  withAutoplayRef.current = withAutoplay;
+
   const prevFullAudioUrl = useRef<string | undefined>(undefined);
-  
+
+  // Load the source and seek to the segment start. Only runs when the audio
+  // file or the segment changes, never for loop/volume/autoplay toggles, which
+  // previously restarted playback from the segment start.
   useEffect(() => {
     const { current } = audio;
-    
-    // Check if this is a recording change (different audio file)
-    const isRecordingChange = prevFullAudioUrl.current !== undefined && 
+
+    const isRecordingChange = prevFullAudioUrl.current !== undefined &&
                               prevFullAudioUrl.current !== fullAudioUrl;
-    
-    // Set flag for cleanup function
-    shouldStopOnCleanup.current = isRecordingChange;
-    
+    prevFullAudioUrl.current = fullAudioUrl;
+
     // Only update src if it's different (avoids re-download)
     if (current.src !== fullAudioUrl) {
-      // Stop current audio before changing source if this is a recording change
       if (isRecordingChange) {
         current.pause();
         setIsPlaying(false);
       }
-      
+
       current.preload = "auto";
       current.src = fullAudioUrl;
       current.load();
     }
-    
-    current.loop = loop;
-    current.volume = volume;
+
     current.playbackRate = 1; // Speed is handled in the URL
-    
-    // Seek to the start of our segment
+
     current.currentTime = playbackStartTime / speed;
     setTime(playbackStartTime);
-    
-    if (withAutoplay && !isRecordingChange) {
+
+    if (withAutoplayRef.current && !isRecordingChange) {
       current.play().then(() => setIsPlaying(true)).catch(() => {});
     }
+  }, [fullAudioUrl, speed, playbackStartTime, playbackEndTime]);
 
-    // Update the previous URL after processing
-    prevFullAudioUrl.current = fullAudioUrl;
+  useEffect(() => {
+    audio.current.volume = volume;
+  }, [volume]);
 
-    let timer: number;
+  // Track playback position. Segment looping is handled here rather than with
+  // the native `loop` flag, which only loops at the end of the whole file.
+  useEffect(() => {
+    const { current } = audio;
+    current.loop = false;
 
-    const updateTime = () => {
-      if (current.paused) return;
-      
-      // Convert audio currentTime back to actual time considering speed
-      const actualCurrentTime = current.currentTime * speed;
-      
-      // Check if we've reached the end of our segment
-      if (actualCurrentTime >= playbackEndTime) {
-        // Stop at segment end
-        current.pause();
-        setIsPlaying(false);
+    let timer: number | undefined;
+
+    const cancel = () => {
+      if (timer != null) cancelAnimationFrame(timer);
+      timer = undefined;
+    };
+
+    const finish = () => {
+      cancel();
+      if (loop) {
+        current.currentTime = playbackStartTime / speed;
         setTime(playbackStartTime);
+        current.play().catch(() => {});
+        // `play` fires (and reschedules) only if the element was paused.
+        if (timer == null) timer = requestAnimationFrame(updateTime);
         return;
       }
-      
+      current.pause();
+      setIsPlaying(false);
+      // Leave the playhead at the end so the onset line visibly reaches it;
+      // pressing play again restarts from the segment start.
+      setTime(playbackEndTime);
+    };
+
+    const updateTime = () => {
+      timer = undefined;
+      if (current.paused) return;
+
+      const actualCurrentTime = current.currentTime * speed;
+      if (actualCurrentTime >= playbackEndTime) {
+        finish();
+        return;
+      }
+
       setTime(actualCurrentTime);
       timer = requestAnimationFrame(updateTime);
     };
 
-    timer = requestAnimationFrame(updateTime);
-
     const onPlay = () => {
-      // Ensure we're starting from the right position
       const actualCurrentTime = current.currentTime * speed;
-      if (actualCurrentTime < playbackStartTime || actualCurrentTime > playbackEndTime) {
+      if (actualCurrentTime < playbackStartTime || actualCurrentTime >= playbackEndTime) {
         current.currentTime = playbackStartTime / speed;
         setTime(playbackStartTime);
       }
+      cancel();
       timer = requestAnimationFrame(updateTime);
     };
 
     const onPause = () => {
-      cancelAnimationFrame(timer);
+      cancel();
     };
 
-    const onError = () => {
-      cancelAnimationFrame(timer);
-    }
-
+    // The file can end a few ms before the task end time (or `currentTime`
+    // can stop short of the duration), so treat `ended` as reaching the end.
     const onEnded = () => {
-      cancelAnimationFrame(timer);
-      setIsPlaying(false);
-      setTime(playbackStartTime);
+      finish();
+    };
+
+    if (!current.paused) {
+      timer = requestAnimationFrame(updateTime);
     }
 
     current.addEventListener("play", onPlay);
     current.addEventListener("pause", onPause);
-    current.addEventListener("error", onError);
+    current.addEventListener("error", onPause);
     current.addEventListener("ended", onEnded);
 
     return () => {
-      cancelAnimationFrame(timer);
+      cancel();
       current.removeEventListener("play", onPlay);
       current.removeEventListener("pause", onPause);
-      current.removeEventListener("error", onError);
+      current.removeEventListener("error", onPause);
       current.removeEventListener("ended", onEnded);
-      // Only stop audio during cleanup if this was a recording change
-      if (shouldStopOnCleanup.current) {
-        current.pause();
-        current.currentTime = 0;
-        setIsPlaying(false);
-      }
     };
-  }, [fullAudioUrl, speed, playbackStartTime, playbackEndTime, loop, volume, withAutoplay]);
+  }, [speed, playbackStartTime, playbackEndTime, loop]);
 
   // Cleanup audio on component unmount
   useEffect(() => {
@@ -238,7 +258,11 @@ export default function useAudio({
     
     // Ensure we start from the segment beginning if we're outside bounds
     const actualCurrentTime = audio.current.currentTime * speed;
-    if (actualCurrentTime < playbackStartTime || actualCurrentTime >= playbackEndTime) {
+    if (
+      audio.current.ended ||
+      actualCurrentTime < playbackStartTime ||
+      actualCurrentTime >= playbackEndTime
+    ) {
       audio.current.currentTime = playbackStartTime / speed;
     }
     
@@ -288,8 +312,7 @@ export default function useAudio({
   }, [isPlaying, handlePlay, handlePause]);
 
   const handleToggleLoop = useCallback(() => {
-    audio.current.loop = !audio.current.loop;
-    setLoop(audio.current.loop);
+    setLoop((prev) => !prev);
   }, []);
 
   useAudioKeyShortcuts({

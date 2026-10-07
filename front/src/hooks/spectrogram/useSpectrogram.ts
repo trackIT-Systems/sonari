@@ -226,21 +226,18 @@ export default function useSpectrogram({
   // Used for image loading, drawing, and window bounds updates
   const effectiveSamplerate = clampSamplerate(parameters, samplerate);
 
-  // Handle significant parameter changes that affect frequency bounds (e.g., resampling)
-  // When resampling changes, reset window to show full new frequency range
+  // When resampling changes the samplerate, reset the window to show the full
+  // new frequency range (time range is preserved). Compared against the
+  // previous samplerate so a mere `bounds` identity change keeps the freq zoom.
+  const prevEffectiveSamplerateRef = useRef(effectiveSamplerate);
   useEffect(() => {
-    const prevEffectiveSamplerate = window.freq.max * 2; // Reverse calculate from current window
-    const freqBoundsChanged = Math.abs(effectiveSamplerate / 2 - prevEffectiveSamplerate) > 1000; // 1kHz threshold
-    
-    if (freqBoundsChanged) {
-      // Reset frequency range to show full spectrum, preserve time range
-      setConstrainedWindow((prev) => ({
-        time: prev.time,
-        freq: { min: 0, max: effectiveSamplerate / 2 },
-      }));
-    }
-  }, [effectiveSamplerate, setConstrainedWindow]); // eslint-disable-line react-hooks/exhaustive-deps
-  // Note: window intentionally not in deps to avoid infinite loop
+    if (prevEffectiveSamplerateRef.current === effectiveSamplerate) return;
+    prevEffectiveSamplerateRef.current = effectiveSamplerate;
+    setConstrainedWindow((prev) => ({
+      time: prev.time,
+      freq: { min: 0, max: effectiveSamplerate / 2 },
+    }));
+  }, [effectiveSamplerate, setConstrainedWindow]);
 
   const zoom = useCallback(
     (oldWindow: SpectrogramWindow, in_out: string): SpectrogramWindow => {
@@ -278,11 +275,15 @@ export default function useSpectrogram({
 
   // NOTE: Need to update the window if the initial window
   // changes. This usually happens when the visualised clip
-  // changes.
+  // changes. Compare by value: parents recreate an equal `initial` whenever
+  // the task query is replaced (tag/badge/note mutations), which must not
+  // throw away the user's zoom.
+  const prevInitialWindowRef = useRef(initialWindow);
   useEffect(() => {
-    if (initialWindow != null) {
-      setConstrainedWindow(initialWindow);
-    }
+    if (initialWindow == null) return;
+    if (windowsEqual(prevInitialWindowRef.current, initialWindow)) return;
+    prevInitialWindowRef.current = initialWindow;
+    setConstrainedWindow(initialWindow);
   }, [initialWindow, setConstrainedWindow]);
 
   const {
@@ -619,6 +620,15 @@ export default function useSpectrogram({
     enableZoom,
     disable,
   };
+}
+
+function windowsEqual(a: SpectrogramWindow, b: SpectrogramWindow): boolean {
+  return (
+    a.time.min === b.time.min &&
+    a.time.max === b.time.max &&
+    a.freq.min === b.freq.min &&
+    a.freq.max === b.freq.max
+  );
 }
 
 export function clampSamplerate(parameters: SpectrogramParameters, samplerate: number): number {
