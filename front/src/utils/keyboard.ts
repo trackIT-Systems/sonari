@@ -139,6 +139,7 @@ export const NAVIGATE_FOT_ELEMENT_SHORTCUT = "8";
 export const NAVIGATE_FTH_ELEMENT_SHORTCUT = "9";
 export const NAVIGATE_STH_ELEMENT_SHORTCUT = "0";
 export const FILTER_POPOVER_SHORTCUT = "f";
+export const PIN_PREVIEW_SHORTCUT = "p";
 
 export const ROOT_NAVIGATION_SHORTCUTS: KeyShortcut[] = [
     {
@@ -419,22 +420,27 @@ export const TASK_TABLE_SHORTCUTS: KeyShortcut[] = [
     {
         label: "Move through rows",
         shortcut: "↑ / ↓",
-        description: "Move to the previous / next task and show its spectrogram preview. ↓ from the top focuses the search; ↑ on the first row returns to it.",
+        description: "Move to the previous / next task. The spectrogram preview follows the current row and the page scrolls with it. ↓ from the top focuses the search; ↑ on the first row returns to it.",
     },
     {
         label: "Open task",
         shortcut: ACCEPT_SHORTCUT,
-        description: "Open the highlighted task for annotation.",
+        description: "Open the highlighted task for annotation in a new tab.",
     },
     {
         label: "Open task by position",
         shortcut: `${SELECT_FST_ELEMENT_SHORTCUT} – ${SELECT_FRT_ELEMENT_SHORTCUT}`,
-        description: "With no rows selected: open the 1st to 4th task of the page.",
+        description: "With no rows selected: open the 1st to 4th task of the page in a new tab.",
     },
     {
         label: "Toggle preview",
         shortcut: "Click",
-        description: "Click a row to open or close its spectrogram preview. Up to 5 previews stay open; the oldest closes first.",
+        description: "Click a row to make it current and show its spectrogram preview there. Click the current row again to close its preview.",
+    },
+    {
+        label: "Pin preview",
+        shortcut: PIN_PREVIEW_SHORTCUT,
+        description: "Keep the current row's preview open while you move on, to compare tasks. Press again (or click the pin) to unpin. Up to 5 pins; the oldest is dropped.",
     },
     {
         label: "Select by dragging",

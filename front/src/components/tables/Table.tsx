@@ -53,6 +53,7 @@ export default function Table<S>({
   onRowClick,
   renderExpandedRow,
   dragSelect = false,
+  arrowKeys = true,
 }: {
   table: Table<S>;
   onCellKeyDown?: ({
@@ -77,6 +78,8 @@ export default function Table<S>({
   renderExpandedRow?: (row: S) => ReactNode | null;
   /** Click and drag over rows to select (or deselect) a range of rows */
   dragSelect?: boolean;
+  /** Handle ArrowUp/ArrowDown row movement here. Turn off when the parent owns the cursor. */
+  arrowKeys?: boolean;
 }) {
   const dragCleanupRef = useRef<(() => void) | null>(null);
   const suppressClickRef = useRef(false);
@@ -174,7 +177,7 @@ export default function Table<S>({
   );
 
 
-  useKeyPressEvent(useKeyFilter({ key: LIST_ELEMENT_DOWN_SHORTCUT }), (event) => {
+  useKeyPressEvent(useKeyFilter({ key: LIST_ELEMENT_DOWN_SHORTCUT, enabled: arrowKeys }), (event) => {
     event.preventDefault();
     if (selectedIndex > -1) {
       const newIndex = Math.min(table.getRowModel().rows.length - 1, selectedIndex + 1);
@@ -182,7 +185,7 @@ export default function Table<S>({
     }
   });
 
-  useKeyPressEvent(useKeyFilter({ key: LIST_ELEMENT_UP_SHORTCUT }), (event) => {
+  useKeyPressEvent(useKeyFilter({ key: LIST_ELEMENT_UP_SHORTCUT, enabled: arrowKeys }), (event) => {
     event.preventDefault();
     if (selectedIndex <= 0) {
       onFocusChange?.(-1);

@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { RowSelectionState, OnChangeFn } from "@tanstack/react-table";
-import { useRouter } from "next/navigation";
 import { useKeyPressEvent } from "react-use";
 import { useQuery } from "@tanstack/react-query";
 import api from "@/app/api";
@@ -25,7 +24,7 @@ import Table from "@/components/tables/Table";
 import Pagination from "@/components/lists/Pagination";
 import ShortcutHelper from "@/components/ShortcutHelper";
 import { getScrollParent } from "@/utils/focus";
-import { TASK_TABLE_SHORTCUTS, LIST_OVERVIEW_DOWN_SHORTCUT, SEARCH_BAR_LEAVE_SHORTCUT, FILTER_POPOVER_SHORTCUT } from "@/utils/keyboard";
+import { PIN_PREVIEW_SHORTCUT, TASK_TABLE_SHORTCUTS, LIST_OVERVIEW_DOWN_SHORTCUT, SEARCH_BAR_LEAVE_SHORTCUT, FILTER_POPOVER_SHORTCUT } from "@/utils/keyboard";
 import AnnotationTaskSpectrogramPreview from "@/components/annotation_tasks/AnnotationTaskSpectrogramPreview";
 import { findTemporallyRelatedTasks } from "@/utils/temporalClusters";
 import Button from "../Button";
@@ -63,8 +62,10 @@ function scrollRowIntoView(taskId: number, topInset: number) {
   else window.scrollBy({ top: delta });
 }
 
-/** Maximum number of spectrogram previews open at once */
-const MAX_OPEN_PREVIEWS = 5;
+/** Maximum number of pinned spectrogram previews (the oldest pin is dropped) */
+const MAX_PINNED_PREVIEWS = 5;
+/** The active preview only loads once the cursor has rested this long (holding an arrow key) */
+const PREVIEW_SETTLE_MS = 150;
 
 export default function AnnotationTaskTable({
   filter,
@@ -88,7 +89,14 @@ export default function AnnotationTaskTable({
     listView: true,
   });
   const searchInputRef = useRef<HTMLInputElement>(null);
-  const [focusedElement, setFocusedElement] = useState<'search' | 'filter' | number>(-1);
+  const [focusedElement, setFocusedElementState] = useState<'search' | 'filter' | number>(-1);
+  // The cursor is mirrored in a ref so that key handlers always see the latest
+  // value, even when key auto-repeat outpaces React re-rendering.
+  const cursorRef = useRef<'search' | 'filter' | number>(-1);
+  const setFocusedElement = useCallback((next: 'search' | 'filter' | number) => {
+    cursorRef.current = next;
+    setFocusedElementState(next);
+  }, []);
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
   const [targetMode, setTargetMode] = useState<"selected" | "filter_all">("selected");
   const [tagBulkPanelsOpen, setTagBulkPanelsOpen] = useState<Record<TagBulkPanel, boolean>>({
@@ -101,12 +109,9 @@ export default function AnnotationTaskTable({
   const anySoundEventTagPanelOpen = SOUND_EVENT_TAG_PANELS.some(
     (panel) => tagBulkPanelsOpen[panel],
   );
-  const router = useRouter();
   const popoverButtonRef = useRef<HTMLButtonElement>(null);
   const [highlightRelated, setHighlightRelated] = useState(true);
   const [relatedWindow, setRelatedWindow] = useState(5);
-  // Oldest first, so the oldest preview is dropped when the limit is reached
-  const [expandedTaskIds, setExpandedTaskIds] = useState<number[]>([]);
 
   const activeFilter = annotationTasks.filter.filter;
 
@@ -238,9 +243,12 @@ export default function AnnotationTaskTable({
   const handleSelect = useCallback((task: AnnotationTask) => {
     const link = getAnnotationTaskLink(task.annotation_project_id, task.id);
     if (link) {
-      router.push(`/annotation_projects/${link}`);
+      // Open the annotate view in a new tab so the table (filters, selection,
+      // scroll position) stays as it is.
+      const basePath = process.env.NEXT_PUBLIC_SONARI_FOLDER ?? "";
+      window.open(`${basePath}/annotation_projects/${link}`, "_blank", "noopener");
     }
-  }, [router, getAnnotationTaskLink]);
+  }, [getAnnotationTaskLink]);
 
   const btn = <Button
     mode="outline"
@@ -309,87 +317,139 @@ export default function AnnotationTaskTable({
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [showBulkBar, anyTagBulkPanelOpen, handleClearBulkSelection]);
 
-  // Row expanded by arrow navigation (not by click); it is replaced as the
-  // user moves on, so only previews the user opened by click stay open.
-  const [navExpandedId, setNavExpandedId] = useState<number | null>(null);
-
   const bulkBarRef = useRef<HTMLDivElement>(null);
   const pendingScrollIdRef = useRef<number | null>(null);
 
-  // After arrow navigation has re-rendered (previous preview collapsed, new
-  // one expanded), scroll the current row into view.
+  // Preview model: the current row ("cursor") has the one active preview, which
+  // follows it; pinned previews stay open on their rows. Everything the key
+  // handler needs is mirrored in refs (see cursorRef).
+  const itemsRef = useRef(annotationTasks.items);
+  itemsRef.current = annotationTasks.items;
+  const [activeOpen, setActiveOpenState] = useState(false);
+  const activeOpenRef = useRef(false);
+  const setActiveOpen = useCallback((open: boolean) => {
+    activeOpenRef.current = open;
+    setActiveOpenState(open);
+  }, []);
+  const [pinnedIds, setPinnedIds] = useState<number[]>([]);
+  const pinnedRef = useRef<number[]>([]);
+  const updatePinned = useCallback((update: (prev: number[]) => number[]) => {
+    pinnedRef.current = update(pinnedRef.current);
+    setPinnedIds(pinnedRef.current);
+  }, []);
+  const togglePin = useCallback(
+    (taskId: number) =>
+      updatePinned((prev) =>
+        prev.includes(taskId)
+          ? prev.filter((id) => id !== taskId)
+          : [...prev, taskId].slice(-MAX_PINNED_PREVIEWS),
+      ),
+    [updatePinned],
+  );
+
+  const activeTaskId =
+    activeOpen && typeof focusedElement === "number" && focusedElement >= 0
+      ? annotationTasks.items[focusedElement]?.id ?? null
+      : null;
+
+  // Don't request spectrograms for rows the cursor only passes through.
+  const [activeSettled, setActiveSettled] = useState(true);
+  useEffect(() => {
+    setActiveSettled(false);
+    const timer = setTimeout(() => setActiveSettled(true), PREVIEW_SETTLE_MS);
+    return () => clearTimeout(timer);
+  }, [activeTaskId]);
+
+  // After the cursor moved and the previews re-rendered (previous one collapsed,
+  // new one expanded), scroll the current row into view.
   useEffect(() => {
     const taskId = pendingScrollIdRef.current;
     if (taskId == null) return;
     pendingScrollIdRef.current = null;
     const barHeight = bulkBarRef.current?.offsetHeight ?? 0;
     scrollRowIntoView(taskId, barHeight + 8);
-  }, [focusedElement, expandedTaskIds]);
+  }, [focusedElement, activeOpen, pinnedIds]);
 
-  const expandForNavigation = useCallback(
-    (taskId: number) => {
-      pendingScrollIdRef.current = taskId;
-      setExpandedTaskIds((prev) => {
-        if (prev.includes(taskId)) return prev;
-        return [...prev.filter((id) => id !== navExpandedId), taskId].slice(-MAX_OPEN_PREVIEWS);
-      });
-      setNavExpandedId((prev) => (expandedTaskIds.includes(taskId) ? prev : taskId));
+  const moveCursorTo = useCallback(
+    (index: number) => {
+      const task = itemsRef.current[index];
+      if (!task) return;
+      setFocusedElement(index);
+      setActiveOpen(true);
+      pendingScrollIdRef.current = task.id;
     },
-    [navExpandedId, expandedTaskIds],
+    [setFocusedElement, setActiveOpen],
   );
 
   const handleSearchKeyDown = useCallback((e: React.KeyboardEvent) => {
     if (e.key === LIST_OVERVIEW_DOWN_SHORTCUT) {
       e.preventDefault();
       if (annotationTasks.items.length > 0) {
-        setFocusedElement(0);
-        expandForNavigation(annotationTasks.items[0].id);
+        moveCursorTo(0);
         searchInputRef.current?.blur();
       }
     }
-  }, [annotationTasks.items, expandForNavigation]);
+  }, [annotationTasks.items.length, moveCursorTo]);
 
   const handleRowClick = useCallback(
     (task: AnnotationTask, { index }: { index: number }) => {
-      setFocusedElement(index);
-      // A clicked preview stays open when navigating on
-      setNavExpandedId((prev) => (prev === task.id ? null : prev));
-      setExpandedTaskIds((prev) =>
-        prev.includes(task.id)
-          ? prev.filter((id) => id !== task.id)
-          : [...prev, task.id].slice(-MAX_OPEN_PREVIEWS),
-      );
+      if (cursorRef.current === index) {
+        // Clicking the current row closes its preview (pinned or not)
+        updatePinned((prev) => prev.filter((id) => id !== task.id));
+        setActiveOpen(!activeOpenRef.current || pinnedRef.current.includes(task.id));
+      } else {
+        setFocusedElement(index);
+        setActiveOpen(true);
+      }
     },
-    [],
+    [setFocusedElement, setActiveOpen, updatePinned],
   );
 
-  // ArrowUp/ArrowDown: the (table-managed) current row expands its preview.
-  // Shift on an expanded current row toggles its checkbox.
+  // One keyboard handler for moving the cursor, pinning and ticking the
+  // current row. It only reads refs, so it is registered once and never stale.
+  //   ArrowUp / ArrowDown  move the cursor (its preview follows, the page scrolls)
+  //   p                    pin / unpin the current row's preview
+  //   Shift (tap)          tick / untick the checkbox of the current row
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.ctrlKey || event.metaKey || event.altKey) return;
-      if (typeof focusedElement !== "number" || focusedElement < 0) return;
+      const cursor = cursorRef.current;
+      if (typeof cursor !== "number" || cursor < 0) return;
       const target = event.target;
       if (
         target instanceof HTMLInputElement
         && !["checkbox", "radio", "button"].includes(target.type)
       ) return;
       if (target instanceof HTMLTextAreaElement) return;
+      if (document.querySelector('[role="dialog"]')) return;
 
-      const items = annotationTasks.items;
+      const items = itemsRef.current;
 
       if (event.key === "ArrowDown" || event.key === "ArrowUp") {
-        const nextIndex = event.key === "ArrowDown"
-          ? Math.min(items.length - 1, focusedElement + 1)
-          : focusedElement - 1;
-        const next = items[nextIndex];
-        if (next) expandForNavigation(next.id);
+        event.preventDefault();
+        const next = event.key === "ArrowDown"
+          ? Math.min(items.length - 1, cursor + 1)
+          : cursor - 1;
+        if (next < 0) {
+          setFocusedElement("search");
+          searchInputRef.current?.focus();
+        } else if (next !== cursor) {
+          moveCursorTo(next);
+        }
+        return;
+      }
+
+      const current = items[cursor];
+      if (!current) return;
+
+      if (event.key === PIN_PREVIEW_SHORTCUT && !event.shiftKey) {
+        togglePin(current.id);
         return;
       }
 
       if (event.key === "Shift" && !event.repeat) {
-        const current = items[focusedElement];
-        if (!current || !expandedTaskIds.includes(current.id)) return;
+        const previewOpen = activeOpenRef.current || pinnedRef.current.includes(current.id);
+        if (!previewOpen) return;
         handleRowSelectionChange((prev) => {
           const next = { ...prev };
           const id = String(current.id);
@@ -401,20 +461,22 @@ export default function AnnotationTaskTable({
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [
-    focusedElement,
-    annotationTasks.items,
-    expandedTaskIds,
-    expandForNavigation,
-    handleRowSelectionChange,
-  ]);
+  }, [moveCursorTo, setFocusedElement, togglePin, handleRowSelectionChange]);
 
   const renderExpandedRow = useCallback(
-    (task: AnnotationTask) =>
-      expandedTaskIds.includes(task.id)
-        ? <AnnotationTaskSpectrogramPreview task={task} />
-        : null,
-    [expandedTaskIds],
+    (task: AnnotationTask) => {
+      const pinned = pinnedIds.includes(task.id);
+      if (!pinned && task.id !== activeTaskId) return null;
+      return (
+        <AnnotationTaskSpectrogramPreview
+          task={task}
+          pinned={pinned}
+          deferred={!pinned && !activeSettled}
+          onTogglePin={() => togglePin(task.id)}
+        />
+      );
+    },
+    [pinnedIds, activeTaskId, activeSettled, togglePin],
   );
 
   if (annotationTasks.isLoading || annotationTasks.data == null) {
@@ -506,6 +568,7 @@ export default function AnnotationTaskTable({
             onSelect={handleSelect}
             getRowClassName={getRowClassName}
             dragSelect
+            arrowKeys={false}
             onRowClick={handleRowClick}
             renderExpandedRow={renderExpandedRow}
             handleNumberKeys={

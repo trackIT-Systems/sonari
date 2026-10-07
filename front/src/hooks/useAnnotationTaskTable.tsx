@@ -211,6 +211,8 @@ export default function useAnnotationTaskTable({
               <Link
                 className="hover:font-bold hover:text-emerald-500 focus:ring focus:ring-emerald-500 focus:outline-none block break-words"
                 href={fullHref}
+                target="_blank"
+                rel="noopener noreferrer"
               >
                 {pathFormatter(recording.path)}
               </Link>

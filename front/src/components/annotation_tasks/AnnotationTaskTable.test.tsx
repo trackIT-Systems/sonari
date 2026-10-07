@@ -26,8 +26,23 @@ vi.mock("@/components/filters/FilterPresets", () => ({ default: () => null }));
 vi.mock("@/components/filters/FilterBar", () => ({ default: () => null }));
 vi.mock("@/components/lists/Pagination", () => ({ default: () => null }));
 vi.mock("@/components/annotation_tasks/AnnotationTaskSpectrogramPreview", () => ({
-  default: ({ task }: { task: { id: number } }) => (
-    <div data-testid={`preview-${task.id}`}>preview {task.id}</div>
+  default: ({
+    task,
+    pinned,
+    deferred,
+    onTogglePin,
+  }: {
+    task: { id: number };
+    pinned?: boolean;
+    deferred?: boolean;
+    onTogglePin?: () => void;
+  }) => (
+    <div data-testid={`preview-${task.id}`} data-deferred={String(Boolean(deferred))}>
+      preview {task.id}
+      <button type="button" onClick={onTogglePin}>
+        {pinned ? "Pinned" : "Pin"}
+      </button>
+    </div>
   ),
 }));
 
@@ -122,8 +137,8 @@ afterEach(() => {
 
 // ---- tests ----------------------------------------------------------------
 
-describe("preview toggling", () => {
-  it("opens and closes a preview on row click", () => {
+describe("active preview", () => {
+  it("opens the preview on the clicked row and closes it on a second click", () => {
     renderTable();
     clickRow(1);
     expect(openPreviews()).toEqual([1]);
@@ -131,66 +146,169 @@ describe("preview toggling", () => {
     expect(openPreviews()).toEqual([]);
   });
 
-  it("keeps at most 5 previews open, dropping the oldest", () => {
+  it("moves the one preview to another clicked row instead of opening a second", () => {
     renderTable();
-    [1, 2, 3, 4, 5, 6].forEach(clickRow);
-    expect(openPreviews()).toEqual([2, 3, 4, 5, 6]);
+    clickRow(1);
+    clickRow(4);
+    expect(openPreviews()).toEqual([4]);
+    expect(highlighted()).toEqual([4]);
+  });
+
+  it("never shows two previews when clicking and arrowing are mixed", () => {
+    renderTable();
+    press("ArrowDown"); // cursor -1 -> no-op (search owns the first ArrowDown)
+    clickRow(3);
+    press("ArrowDown");
+    press("ArrowDown");
+    clickRow(9);
+    press("ArrowUp");
+    clickRow(2);
+    press("ArrowDown");
+    expect(openPreviews()).toHaveLength(1);
+    expect(openPreviews()).toEqual(highlighted());
   });
 });
 
 describe("arrow navigation", () => {
-  it("moves the highlight and expands the current row, collapsing the previous nav preview", () => {
+  it("moves the highlight and the preview together", () => {
     renderTable();
-    clickRow(1); // pinned by click
+    clickRow(1);
     press("ArrowDown");
     expect(highlighted()).toEqual([2]);
-    expect(openPreviews()).toEqual([1, 2]);
+    expect(openPreviews()).toEqual([2]);
     press("ArrowDown");
     expect(highlighted()).toEqual([3]);
-    expect(openPreviews()).toEqual([1, 3]); // 2 was only navigated through
+    expect(openPreviews()).toEqual([3]);
   });
 
-  it("ArrowUp moves back and expands that row", () => {
+  it("ArrowUp moves back", () => {
     renderTable();
     clickRow(4);
     press("ArrowUp");
     expect(highlighted()).toEqual([3]);
-    expect(openPreviews()).toContain(3);
+    expect(openPreviews()).toEqual([3]);
   });
 
-  // KNOWN BUG (found by these tests): the table moves its highlight through
-  // react-use's useKeyPressEvent, which fires once per press (edge-triggered:
-  // auto-repeat keydowns without a keyup are ignored). The preview/scroll
-  // handler is a plain keydown listener, so while an arrow key is held the
-  // preview and scroll keep advancing but the highlight (and Shift selection)
-  // does not. Batched events also read stale state.
-  // Fix: one cursor in a ref and one keydown handler for everything.
-  it.fails("holding the key with a re-render between repeats moves one row per repeat", () => {
+  it("ArrowUp on the first row returns to the search box", () => {
+    renderTable();
+    clickRow(1);
+    press("ArrowUp");
+    expect(highlighted()).toEqual([]);
+    expect(openPreviews()).toEqual([]);
+  });
+
+  it("opens a closed preview when moving on", () => {
+    renderTable();
+    clickRow(1);
+    clickRow(1); // close
+    press("ArrowDown");
+    expect(openPreviews()).toEqual([2]);
+  });
+
+  it("holding the key with a re-render between repeats moves one row per repeat", () => {
     renderTable();
     clickRow(1);
     holdKeyWithRenders("ArrowDown", 4);
     expect(highlighted()).toEqual([5]);
+    expect(openPreviews()).toEqual([5]);
   });
 
-  it.fails("holding the key (several events before a re-render) still advances one row per event", () => {
+  it("holding the key (several repeats before a re-render) advances one row per repeat", () => {
     renderTable();
     clickRow(1);
     holdKeys(["ArrowDown", "ArrowDown", "ArrowDown", "ArrowDown"]);
     expect(highlighted()).toEqual([5]);
-    expect(openPreviews()).toContain(5);
+    expect(openPreviews()).toEqual([5]);
   });
 
-  it.fails("holding the key never leaves more than the pinned row plus the current one open", () => {
+  it("holding the key stops at the last row and keeps a single preview", () => {
     renderTable();
     clickRow(1);
     for (let i = 0; i < 6; i++) holdKeys(["ArrowDown", "ArrowDown"]);
-    expect(openPreviews().length).toBeLessThanOrEqual(2);
-    expect(highlighted()).toEqual([N]); // clamped at the last row
+    expect(highlighted()).toEqual([N]);
+    expect(openPreviews()).toEqual([N]);
+  });
+
+  it("holding ArrowUp walks back up to the first row", () => {
+    renderTable();
+    clickRow(6);
+    holdKeys(["ArrowUp", "ArrowUp", "ArrowUp"]);
+    expect(highlighted()).toEqual([3]);
+  });
+});
+
+describe("loading the active preview", () => {
+  it("defers loading while the cursor is moving and loads once it rests", async () => {
+    renderTable();
+    clickRow(1);
+    press("ArrowDown");
+    press("ArrowDown");
+    expect(preview(3)!.getAttribute("data-deferred")).toBe("true");
+    await act(() => new Promise<void>((r) => setTimeout(r, 250)));
+    expect(preview(3)!.getAttribute("data-deferred")).toBe("false");
+  });
+
+  it("never defers a pinned preview", () => {
+    renderTable();
+    clickRow(1);
+    press("p");
+    press("ArrowDown");
+    expect(preview(1)!.getAttribute("data-deferred")).toBe("false");
+  });
+});
+
+describe("pinning previews", () => {
+  it("p pins the current preview; it stays when the cursor moves on", () => {
+    renderTable();
+    clickRow(1);
+    press("p");
+    press("ArrowDown");
+    press("ArrowDown");
+    expect(openPreviews()).toEqual([1, 3]);
+    expect(highlighted()).toEqual([3]);
+  });
+
+  it("p on a pinned current row unpins it", () => {
+    renderTable();
+    clickRow(1);
+    press("p");
+    press("ArrowDown");
+    press("ArrowUp");
+    press("p");
+    press("ArrowDown");
+    expect(openPreviews()).toEqual([2]);
+  });
+
+  it("keeps at most 5 pins, dropping the oldest", () => {
+    renderTable();
+    clickRow(1);
+    for (let i = 0; i < 6; i++) {
+      press("p");
+      press("ArrowDown");
+    }
+    // rows 1..6 were pinned; row 7 is the active preview
+    expect(openPreviews()).toEqual([2, 3, 4, 5, 6, 7]);
+  });
+
+  it("clicking the pin button toggles the pin", () => {
+    renderTable();
+    clickRow(2);
+    fireEvent.click(screen.getByRole("button", { name: "Pin" }));
+    press("ArrowDown");
+    expect(openPreviews()).toEqual([2, 3]);
+  });
+
+  it("clicking the current pinned row closes its preview", () => {
+    renderTable();
+    clickRow(1);
+    press("p");
+    clickRow(1);
+    expect(openPreviews()).toEqual([]);
   });
 });
 
 describe("Shift selection", () => {
-  it("toggles the checkbox of the current expanded row", () => {
+  it("toggles the checkbox of the current row", () => {
     renderTable();
     clickRow(1);
     press("Shift");
@@ -215,16 +333,41 @@ describe("Shift selection", () => {
     expect(checked()).toEqual([2]);
   });
 
-  // KNOWN BUG, same cause: Shift reads the current row from stale state.
-  it.fails("selects the right row when arrow and Shift arrive in the same batch", () => {
+  it("selects the right row when arrow and Shift arrive in the same batch", () => {
     renderTable();
     clickRow(1);
-    holdKeys(["ArrowDown", "Shift"]);
+    // Two distinct key presses landing before React re-renders
+    act(() => {
+      keyEvent("keydown", "ArrowDown");
+      keyEvent("keydown", "Shift");
+    });
+    act(() => {
+      keyEvent("keyup", "ArrowDown");
+      keyEvent("keyup", "Shift");
+    });
     expect(checked()).toEqual([2]);
+  });
+
+  it("works on a pinned row whose preview is the only one open there", () => {
+    renderTable();
+    clickRow(1);
+    press("p");
+    press("Shift");
+    press("ArrowDown");
+    press("ArrowUp");
+    expect(checked()).toEqual([1]);
   });
 
   it("does nothing when no row is current", () => {
     renderTable();
+    press("Shift");
+    expect(checked()).toEqual([]);
+  });
+
+  it("does nothing when the current row's preview is closed", () => {
+    renderTable();
+    clickRow(1);
+    clickRow(1); // close
     press("Shift");
     expect(checked()).toEqual([]);
   });
@@ -253,11 +396,32 @@ describe("bulk shortcuts", () => {
     expect(push).not.toHaveBeenCalled();
   });
 
-  it("without a selection, 1 opens the first task", () => {
+  it("without a selection, 1 opens the first task in a new tab", () => {
+    const open = vi.spyOn(window, "open").mockReturnValue(null);
     renderTable();
     press("1");
-    expect(push).toHaveBeenCalledTimes(1);
+    expect(open).toHaveBeenCalledTimes(1);
+    expect(open.mock.calls[0][0]).toContain("/annotation_projects/detail/annotation/?annotation_task_id=1");
+    expect(open.mock.calls[0][1]).toBe("_blank");
+    expect(push).not.toHaveBeenCalled();
     expect(bulkAddBadge).not.toHaveBeenCalled();
+  });
+
+  it("Enter on the highlighted row opens the annotate view in a new tab", () => {
+    const open = vi.spyOn(window, "open").mockReturnValue(null);
+    renderTable();
+    clickRow(3);
+    press("Enter");
+    expect(open).toHaveBeenCalledTimes(1);
+    expect(open.mock.calls[0][0]).toContain("annotation_task_id=3");
+    expect(open.mock.calls[0][1]).toBe("_blank");
+  });
+
+  it("the recording link opens in a new tab", () => {
+    renderTable();
+    const link = row(1).querySelector("a")!;
+    expect(link.getAttribute("target")).toBe("_blank");
+    expect(link.getAttribute("rel")).toContain("noopener");
   });
 
   it("opens the replace panel with r", async () => {

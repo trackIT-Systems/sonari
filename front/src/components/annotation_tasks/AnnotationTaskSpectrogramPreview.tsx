@@ -47,7 +47,7 @@ function FrequencyAxis({ maxHz }: { maxHz: number }) {
           </div>
         );
       })}
-      <span className="absolute right-1 top-1 rounded-sm bg-black/40 px-1 text-[10px] leading-4 text-white/80">
+      <span className="absolute left-1 top-1 rounded-sm bg-black/40 px-1 text-[10px] leading-4 text-white/80">
         kHz
       </span>
     </div>
@@ -60,8 +60,16 @@ function FrequencyAxis({ maxHz }: { maxHz: number }) {
  */
 export default function AnnotationTaskSpectrogramPreview({
   task,
+  pinned = false,
+  deferred = false,
+  onTogglePin,
 }: {
   task: AnnotationTask;
+  /** Pinned previews stay open while the cursor moves on */
+  pinned?: boolean;
+  /** Show the empty frame without requesting the image yet */
+  deferred?: boolean;
+  onTogglePin?: () => void;
 }) {
   const recording = task.recording;
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -102,7 +110,7 @@ export default function AnnotationTaskSpectrogramPreview({
     recording_id: task.recording_id,
     segment,
     parameters,
-    enabled: recording != null && !tooLong,
+    enabled: recording != null && !tooLong && !deferred,
   });
 
   const draw = useCallback(
@@ -142,6 +150,22 @@ export default function AnnotationTaskSpectrogramPreview({
           height={PREVIEW_HEIGHT}
         />
         <FrequencyAxis maxHz={samplerate / 2} />
+        {onTogglePin && (
+          <button
+            type="button"
+            // Don't take focus: a focused button blocks the table's shortcuts
+            onMouseDown={(event) => event.preventDefault()}
+            onClick={onTogglePin}
+            title={pinned ? "Unpin preview (p)" : "Keep this preview open while moving on (p)"}
+            className={`absolute right-1 top-1 rounded-sm px-1.5 text-[10px] leading-4 text-white backdrop-blur-sm ${
+              pinned
+                ? "bg-emerald-600/80 hover:bg-emerald-600"
+                : "bg-black/40 text-white/90 hover:bg-black/60"
+            }`}
+          >
+            {pinned ? "Pinned" : "Pin"} <span className="font-mono">p</span>
+          </button>
+        )}
       </div>
       {isError && (
         <p className="pt-1 text-sm text-red-500">Failed to load preview.</p>
