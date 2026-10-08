@@ -1,10 +1,12 @@
 import { useCallback, useMemo, useRef } from "react";
 
-import { DEFAULT_SPECTROGRAM_PARAMETERS, applyAutoSTFT } from "@/api/spectrograms";
+import { applyAutoSTFT } from "@/api/spectrograms";
 import { SPECTROGRAM_CANVAS_DIMENSIONS } from "@/constants";
+import { drawAllFrequencyLines } from "@/draw/freqLines";
 import useCanvas from "@/hooks/draw/useCanvas";
 import { clampSamplerate } from "@/hooks/spectrogram/useSpectrogram";
 import useSpectrogramPreviewImage from "@/hooks/spectrogram/useSpectrogramPreviewImage";
+import useStore from "@/store";
 import type { AnnotationTask, SpectrogramWindow } from "@/types";
 
 const PREVIEW_HEIGHT = 160;
@@ -57,6 +59,8 @@ function FrequencyAxis({ maxHz }: { maxHz: number }) {
 /**
  * Small, static spectrogram of a whole task (full time range, no axes,
  * no sound events), loaded as a single image. Only requested while mounted.
+ * It is rendered with the user's saved spectrogram parameters, and their
+ * frequency lines are drawn on top.
  */
 export default function AnnotationTaskSpectrogramPreview({
   task,
@@ -76,15 +80,11 @@ export default function AnnotationTaskSpectrogramPreview({
   const duration = task.end_time - task.start_time;
   const tooLong = duration > MAX_PREVIEW_DURATION;
 
+  const savedParameters = useStore((state) => state.spectrogramSettings);
+
   const parameters = useMemo(() => {
-    if (!recording) return DEFAULT_SPECTROGRAM_PARAMETERS;
-    const auto = applyAutoSTFT(
-      {
-        ...DEFAULT_SPECTROGRAM_PARAMETERS,
-        mix_channels: recording.channels > 1,
-      },
-      recording.samplerate,
-    );
+    if (!recording) return savedParameters;
+    const auto = applyAutoSTFT(savedParameters, recording.samplerate);
     // Auto STFT overlap is tuned for panning (hundreds of thousands of columns);
     // for a preview only ~TARGET_COLUMNS are needed. Backend accepts 1-99%.
     const samples = duration * clampSamplerate(auto, recording.samplerate);
@@ -92,9 +92,24 @@ export default function AnnotationTaskSpectrogramPreview({
     const overlap = 100 * (1 - samples / (TARGET_COLUMNS * windowSize));
     return {
       ...auto,
+      // The saved channel may not exist on this recording
+      channel: auto.channel < recording.channels ? auto.channel : 0,
       overlap_percent: Math.min(99, Math.max(1, Math.round(overlap))),
     };
-  }, [recording, duration]);
+  }, [recording, duration, savedParameters]);
+
+  // Frequency lines and the time zoom do not change the image, so they stay out
+  // of the request: they would otherwise be part of the cache key and toggling
+  // a line would download an identical spectrogram again.
+  const imageParameters = useMemo(
+    () => ({
+      ...parameters,
+      freqLines: [],
+      time_zoom_automatic: true,
+      time_zoom_duration_seconds: undefined,
+    }),
+    [parameters],
+  );
 
   const samplerate = clampSamplerate(parameters, recording?.samplerate ?? 0);
 
@@ -109,7 +124,7 @@ export default function AnnotationTaskSpectrogramPreview({
   const { image, isError } = useSpectrogramPreviewImage({
     recording_id: task.recording_id,
     segment,
-    parameters,
+    parameters: imageParameters,
     enabled: recording != null && !tooLong && !deferred,
   });
 
@@ -123,8 +138,9 @@ export default function AnnotationTaskSpectrogramPreview({
       ctx.imageSmoothingEnabled = true;
       ctx.imageSmoothingQuality = "high";
       ctx.drawImage(image, 0, 0, width, height);
+      drawAllFrequencyLines(ctx, parameters.freqLines, segment);
     },
-    [image],
+    [image, parameters.freqLines, segment],
   );
 
   useCanvas({ ref: canvasRef as React.RefObject<HTMLCanvasElement>, draw });
