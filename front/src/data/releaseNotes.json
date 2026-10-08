@@ -1,0 +1,18 @@
+{
+  "2026.9.6": {
+    "highlights": [
+      {
+        "title": "Release notes",
+        "description": "New features for this release appear here when you ship a tag."
+      }
+    ]
+  },
+  "2026.10.2": {
+    "highlights": [
+      {
+        "title": "Release notes",
+        "description": "Annotation Task Table now has spectogram preview on click or using arrow keys up and down. Bulk tag operations with shortscuts also implemented."
+      }
+    ]
+  }
+}

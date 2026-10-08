@@ -10,7 +10,12 @@ import {
   GO_EXPORT_SHORTCUT,
   getSpecialKeyLabel
 } from "@/utils/keyboard";
-import { getAppVersion, getAppVersionShort } from "@/utils/version";
+import { useReleaseNotesContext } from "@/components/ReleaseNotesProvider";
+import {
+  getAppVersion,
+  getReleaseTag,
+  getSidebarVersionLabel,
+} from "@/utils/version";
 
 import KeyboardKey from "../KeyboardKey";
 import {
@@ -169,8 +174,10 @@ export function SideMenu() {
 
   useSpecialKeyShortcuts(shortcuts);
 
-  const fullVersion = getAppVersion();
-  const shortVersion = getAppVersionShort();
+  const buildVersion = getAppVersion();
+  const releaseTag = getReleaseTag();
+  const sidebarVersionLabel = getSidebarVersionLabel();
+  const { hasReleaseNotes, openReleaseNotes } = useReleaseNotesContext();
 
   return (
     <aside
@@ -200,16 +207,31 @@ export function SideMenu() {
               portal={true}
               tooltip={
                 <p className="whitespace-nowrap text-stone-700 dark:text-stone-300">
-                  Version {fullVersion}
+                  {hasReleaseNotes
+                    ? `What's new in ${releaseTag}`
+                    : buildVersion === releaseTag
+                      ? `Version ${releaseTag}`
+                      : `Version ${releaseTag} (${buildVersion})`}
                 </p>
               }
             >
-              <span
-                className="cursor-default select-none text-center text-[10px] font-medium tabular-nums text-stone-400 dark:text-stone-500"
-                aria-label={`Version ${fullVersion}`}
-              >
-                {shortVersion}
-              </span>
+              {hasReleaseNotes ? (
+                <button
+                  type="button"
+                  className="cursor-pointer select-none text-center text-[10px] font-medium tabular-nums text-stone-400 hover:text-stone-600 dark:text-stone-500 dark:hover:text-stone-300"
+                  aria-label={`What's new in ${releaseTag}`}
+                  onClick={openReleaseNotes}
+                >
+                  {sidebarVersionLabel}
+                </button>
+              ) : (
+                <span
+                  className="cursor-default select-none text-center text-[10px] font-medium tabular-nums text-stone-400 dark:text-stone-500"
+                  aria-label={`Version ${releaseTag}`}
+                >
+                  {sidebarVersionLabel}
+                </span>
+              )}
             </Tooltip>
           </li>
         </ul>

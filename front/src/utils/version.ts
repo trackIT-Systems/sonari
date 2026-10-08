@@ -3,7 +3,19 @@
  * Clears localStorage and browser caches when a new version is detected.
  */
 
+import releaseNotesByTag from "@/data/releaseNotes.json";
+
+/** Baked at build time: git tag in Docker CI (`NEXT_PUBLIC_APP_VERSION`), else git describe / package.json locally. */
 const APP_VERSION = process.env.NEXT_PUBLIC_APP_VERSION ?? "unknown";
+
+export type ReleaseNotesHighlight = {
+  title: string;
+  description?: string;
+};
+
+export type ReleaseNotesEntry = {
+  highlights: ReleaseNotesHighlight[];
+};
 const VERSION_KEY = "sonari-app-version";
 const STORAGE_KEY = "sonari-storage";
 
@@ -52,7 +64,7 @@ export function getAppVersion(): string {
 }
 
 /**
- * First two dot-separated segments (e.g. YYYY.MM from YYYY.MM.id).
+ * First two dot-separated segments (e.g. YYYY.MM from YYYY.MM.patch).
  */
 export function getAppVersionShort(): string {
   const parts = APP_VERSION.split(".");
@@ -60,5 +72,37 @@ export function getAppVersionShort(): string {
     return `${parts[0]}.${parts[1]}`;
   }
   return APP_VERSION;
+}
+
+/**
+ * Normalize build version to a release tag (e.g. git describe `2026.9.6-5-gabc` → `2026.9.6`).
+ */
+export function getReleaseTag(version: string = APP_VERSION): string {
+  const describeSuffix = version.search(/-\d+-g/);
+  if (describeSuffix !== -1) {
+    return version.slice(0, describeSuffix);
+  }
+  return version;
+}
+
+/**
+ * Compact sidebar label derived from the release tag (Docker image tag in production),
+ * not from package.json alone. CalVer tags `YYYY.M.patch` render as `M.patch`.
+ */
+export function getSidebarVersionLabel(version: string = APP_VERSION): string {
+  const tag = getReleaseTag(version);
+  const parts = tag.split(".");
+  if (parts.length >= 3 && /^\d{4}$/.test(parts[0])) {
+    return `${parts[1]}.${parts[2]}`;
+  }
+  return tag.length > 7 ? tag.slice(-7) : tag;
+}
+
+export function getReleaseNotes(tag?: string): ReleaseNotesEntry | null {
+  const releaseTag = tag ?? getReleaseTag();
+  const entry = (releaseNotesByTag as Record<string, ReleaseNotesEntry>)[
+    releaseTag
+  ];
+  return entry ?? null;
 }
 

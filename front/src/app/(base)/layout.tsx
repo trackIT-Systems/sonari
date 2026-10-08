@@ -4,6 +4,7 @@ import { type ReactNode } from "react";
 import { SideMenu } from "@/components/navigation/SideMenu";
 import { AuthProvider, useAuth } from "@/components/auth/AuthContext";
 import { AuthGuard } from "@/components/auth/AuthGuard";
+import { ReleaseNotesProvider } from "@/components/ReleaseNotesProvider";
 import UserContext from "./context";
 
 function AuthenticatedContent({ children }: { children: ReactNode }) {
@@ -17,10 +18,12 @@ function AuthenticatedContent({ children }: { children: ReactNode }) {
 
   return (
     <UserContext.Provider value={user}>
-      <div className="flex h-full min-w-0 w-full">
-        <SideMenu />
-        <div className="min-w-0 flex-1 h-full">{children}</div>
-      </div>
+      <ReleaseNotesProvider userId={user.id}>
+        <div className="flex h-full min-w-0 w-full">
+          <SideMenu />
+          <div className="min-w-0 flex-1 h-full">{children}</div>
+        </div>
+      </ReleaseNotesProvider>
     </UserContext.Provider>
   );
 }
