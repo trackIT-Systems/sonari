@@ -111,6 +111,7 @@ export const PLAY_SHORTCUT = " ";
 
 export const FILTER_SHORTCUT = "f";
 export const DISABLE_SPECTROGRAM_SHORTCUT = "h";
+export const FULLSCREEN_SHORTCUT = "w";
 export const PSD_TOGGLE_SHORTCUT = "t";
 export const CHANNEL_CYCLE_SHORTCUT = "C";
 export const GEOMETRY_TYPE_SHORTCUT = "e";
@@ -226,6 +227,11 @@ export const TASK_STATE_SHORTCUTS: KeyShortcut[] = [
 ]
 
 export const SPECTROGRAM_KEY_SHORTCUTS: KeyShortcut[] = [
+    {
+        label: "Full page spectrogram",
+        shortcut: FULLSCREEN_SHORTCUT,
+        description: "Show only the spectrogram, filling the page. Press again to leave",
+    },
     {
         label: "Disable spectrogram",
         shortcut: DISABLE_SPECTROGRAM_SHORTCUT,

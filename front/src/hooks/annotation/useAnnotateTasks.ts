@@ -1,14 +1,9 @@
-import {
-  useQueryClient,
-} from "@tanstack/react-query";
 import { useCallback, useEffect, useMemo, useState, useRef } from "react";
 
-import {
-  AnnotationTaskFilter,
-  type AnnotationTaskPage,
-} from "@/api/annotation_tasks";
+import { AnnotationTaskFilter } from "@/api/annotation_tasks";
 import useAnnotationTaskIndex from "@/hooks/api/useAnnotationTaskIndex";
 import useAnnotationTaskStats from "@/hooks/api/useAnnotationTaskStats";
+import { reconcileAnnotationTaskIndex } from "@/hooks/annotation/reconcileAnnotationTaskIndex";
 import { annotationTaskFilterPersistKey } from "@/hooks/utils/annotationTaskFilterPersistKey";
 import { type Filter } from "@/hooks/utils/useFilter";
 
@@ -81,7 +76,14 @@ export default function useAnnotateTasks({
   const [currentTask, setCurrentTask] = useState<AnnotationTask | null>(
     initialTask ?? null,
   );
-  const client = useQueryClient();
+  /** Target id from a reconcile navigation until the URL task catches up */
+  const pendingReconcileTaskIdRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    if (initialTask != null && initialTask.id === pendingReconcileTaskIdRef.current) {
+      pendingReconcileTaskIdRef.current = null;
+    }
+  }, [initialTask?.id]);
 
   const filterPersistKey = useMemo(
     () => annotationTaskFilterPersistKey(initialFilter.annotation_project?.id),
@@ -114,6 +116,24 @@ export default function useAnnotateTasks({
   const isLoading = isLoadingIndex || isLoadingStats;
   const isError = isErrorIndex || isErrorStats;
   const items = indexItems;
+
+  // Keep local selection aligned with the URL when it points at a filtered task
+  // (e.g. browser back). Do not pull back a task that is excluded by the filter.
+  useEffect(() => {
+    if (initialTask == null) {
+      return;
+    }
+    if (pendingReconcileTaskIdRef.current != null) {
+      return;
+    }
+    if (initialTask.id === currentTask?.id) {
+      return;
+    }
+    if (!items.some((item) => item.id === initialTask.id)) {
+      return;
+    }
+    setCurrentTask(initialTask);
+  }, [initialTask, currentTask?.id, items]);
 
   const index = useMemo(() => {
     if (currentTask === null) return -1;
@@ -194,11 +214,27 @@ export default function useAnnotateTasks({
   }, [items, onChangeTask]);
 
   useEffect(() => {
-    if (currentTask == null && items.length > 0) {
-      // Cast minimal index to AnnotationTask for navigation
-      goToTask(items[0] as unknown as AnnotationTask);
+    const action = reconcileAnnotationTaskIndex({
+      currentTaskId: currentTask?.id ?? null,
+      itemIds: items.map((item) => item.id),
+      isLoading,
+    });
+    if (action !== "go_to_first") {
+      return;
     }
-  }, [currentTask, items, goToTask]);
+    const first = items[0];
+    if (first == null) {
+      return;
+    }
+    if (currentTask?.id === first.id) {
+      return;
+    }
+    if (pendingReconcileTaskIdRef.current === first.id) {
+      return;
+    }
+    pendingReconcileTaskIdRef.current = first.id;
+    goToTask(first as unknown as AnnotationTask);
+  }, [currentTask, items, isLoading, goToTask]);
 
   return {
     current: index,

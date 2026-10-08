@@ -7,6 +7,7 @@ import useKeyFilter from "@/hooks/utils/useKeyFilter";
 import { applyAutoSTFT } from "@/api/spectrograms";
 import type {
   AnnotationTask,
+  Dimensions,
   SoundEventAnnotation,
   SpectrogramParameters,
   SpectrogramWindow,
@@ -165,6 +166,10 @@ export default function SoundEventAnnotationSpectrogramView({
     parameters,
     withSpectrogram,
     getReferenceWindow,
+    referenceWindow,
+    embed = false,
+    embedControls = false,
+    canvasDimensions,
 }: {
     soundEventAnnotation: SoundEventAnnotation;
     task: AnnotationTask,
@@ -173,7 +178,15 @@ export default function SoundEventAnnotationSpectrogramView({
     withSpectrogram: boolean;
     /** Current window of the main spectrogram, whose scale ratio this view copies */
     getReferenceWindow?: () => SpectrogramWindow | null;
+    /** Reactive main spectrogram window (preferred over getReferenceWindow) */
+    referenceWindow?: SpectrogramWindow | null;
+    /** Minimal chrome for overlays and other embedded previews */
+    embed?: boolean;
+    /** Pan/zoom/measure toolbar when embed is true */
+    embedControls?: boolean;
+    canvasDimensions?: Dimensions;
 }) {
+    const dimensions = canvasDimensions ?? SOUND_EVENT_CANVAS_DIMENSIONS;
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const showPSD = useStore((s) => s.showPSD);
     const setShowPSD = useStore((s) => s.setShowPSD);
@@ -223,6 +236,7 @@ export default function SoundEventAnnotationSpectrogramView({
         // using, so it keeps the shape the user just looked at. Before the main
         // spectrogram reports a window, fall back to the view it opens with.
         const reference =
+            referenceWindow ??
             getReferenceWindow?.() ??
             getInitialViewingWindow({
                 startTime: task.start_time,
@@ -234,7 +248,7 @@ export default function SoundEventAnnotationSpectrogramView({
         return adjustWindowToBounds(
             matchWindowScaleRatio({
                 window: fitted,
-                dimensions: SOUND_EVENT_CANVAS_DIMENSIONS,
+                dimensions,
                 reference,
             }),
             bounds,
@@ -247,6 +261,8 @@ export default function SoundEventAnnotationSpectrogramView({
         selectedParameters,
         bounds,
         getReferenceWindow,
+        referenceWindow,
+        dimensions,
     ]);
 
     const soundEventCoords = useMemo(
@@ -265,7 +281,7 @@ export default function SoundEventAnnotationSpectrogramView({
         initial,
         parameters: selectedParameters,
         canvasRef,
-        dimensions: SOUND_EVENT_CANVAS_DIMENSIONS,
+        dimensions,
         enabled: !isMeasuring,
         withSpectrogram,
         withShortcuts: false,
@@ -296,7 +312,7 @@ export default function SoundEventAnnotationSpectrogramView({
     // by leaving measure mode, same as on the main spectrogram.
     const { props: measureProps, draw: drawMeasurement } = useCreateLineString({
         window: spectrogramWindow,
-        dimensions: SOUND_EVENT_CANVAS_DIMENSIONS,
+        dimensions,
         enabled: isMeasuring,
         style: MEASURE_STYLE,
     });
@@ -326,6 +342,83 @@ export default function SoundEventAnnotationSpectrogramView({
         ref: canvasRef as React.RefObject<HTMLCanvasElement>,
         draw: drawCanvas,
     });
+
+    const canvasBlock = (
+        <div
+            className="relative overflow-hidden rounded-md border border-stone-200 dark:border-stone-600"
+            style={{
+                width: dimensions.width,
+                height: dimensions.height,
+            }}
+        >
+            <canvas
+                ref={canvasRef}
+                width={dimensions.width}
+                height={dimensions.height}
+                style={{
+                    width: dimensions.width,
+                    height: dimensions.height,
+                }}
+                className="rounded-md"
+                {...canvasProps}
+            />
+            {spectrogram.isLoading && (
+                <div className="absolute inset-0 flex items-center justify-center bg-stone-100 bg-opacity-50 dark:bg-stone-800">
+                    <span className="text-sm text-stone-500">Loading...</span>
+                </div>
+            )}
+        </div>
+    );
+
+    const interactControls =
+        withSpectrogram ? (
+            <div className="mb-2 flex flex-row flex-wrap items-center gap-2">
+                <SpectrogramControls
+                    canZoom={spectrogram.canZoom}
+                    fixedAspectRatio={fixedAspectRatio}
+                    withShortcutHints={false}
+                    onReset={handleReset}
+                    onZoom={spectrogram.enableZoom}
+                    onToggleAspectRatio={toggleFixedAspectRatio}
+                />
+                <SpectrogramZoomControls
+                    withShortcutHints={false}
+                    onZoomIn={handleZoomIn}
+                    onZoomOut={handleZoomOut}
+                />
+                <MeasurementControls
+                    isMeasuring={isMeasuring}
+                    withShortcutHints={false}
+                    onMeasure={handleToggleMeasure}
+                />
+            </div>
+        ) : null;
+
+    if (embed) {
+        return (
+            <div
+                className="flex w-full min-w-0 max-w-full flex-col items-stretch overflow-hidden"
+                onPointerDown={(e) => e.stopPropagation()}
+            >
+                {embedControls && (
+                    <div className="min-w-0 max-w-full overflow-hidden">
+                        {interactControls}
+                    </div>
+                )}
+                {withSpectrogram ? canvasBlock : (
+                    <div
+                        className="flex items-center justify-center rounded-md border border-dashed border-stone-300 text-xs text-stone-500 dark:border-stone-600"
+                        style={{
+                            width: dimensions.width,
+                            height: dimensions.height,
+                        }}
+                    >
+                        Spectrogram disabled
+                    </div>
+                )}
+            </div>
+        );
+    }
 
     return (
         <div className="flex flex-col gap-2">
@@ -357,28 +450,7 @@ export default function SoundEventAnnotationSpectrogramView({
 
             {/* Spectrogram view - hidden when showing PSD */}
             <div style={{ display: showPSD ? "none" : "block" }}>
-                {withSpectrogram && (
-                    <div className="flex flex-row gap-4 mb-2">
-                        <SpectrogramControls
-                            canZoom={spectrogram.canZoom}
-                            fixedAspectRatio={fixedAspectRatio}
-                            withShortcutHints={false}
-                            onReset={handleReset}
-                            onZoom={spectrogram.enableZoom}
-                            onToggleAspectRatio={toggleFixedAspectRatio}
-                        />
-                        <SpectrogramZoomControls
-                            withShortcutHints={false}
-                            onZoomIn={handleZoomIn}
-                            onZoomOut={handleZoomOut}
-                        />
-                        <MeasurementControls
-                            isMeasuring={isMeasuring}
-                            withShortcutHints={false}
-                            onMeasure={handleToggleMeasure}
-                        />
-                    </div>
-                )}
+                {interactControls}
                 <div className="flex">
                     <div className="flex flex-col justify-between pr-2 text-right w-16">
                         <span className="text-xs text-stone-600">
@@ -393,30 +465,7 @@ export default function SoundEventAnnotationSpectrogramView({
                         </span>
                     </div>
 
-                    <div
-                        className="relative flex items-center justify-center overflow-clip rounded-md border border-stone-200 dark:border-stone-600"
-                        style={{
-                            width: SOUND_EVENT_CANVAS_DIMENSIONS.width,
-                            height: SOUND_EVENT_CANVAS_DIMENSIONS.height,
-                        }}
-                    >
-                        <canvas
-                            ref={canvasRef}
-                            width={SOUND_EVENT_CANVAS_DIMENSIONS.width}
-                            height={SOUND_EVENT_CANVAS_DIMENSIONS.height}
-                            style={{
-                                width: SOUND_EVENT_CANVAS_DIMENSIONS.width,
-                                height: SOUND_EVENT_CANVAS_DIMENSIONS.height,
-                            }}
-                            className="rounded-md"
-                            {...canvasProps}
-                        />
-                        {spectrogram.isLoading && (
-                            <div className="absolute inset-0 flex items-center justify-center bg-stone-100 dark:bg-stone-800 bg-opacity-50">
-                                <span className="text-sm text-stone-500">Loading...</span>
-                            </div>
-                        )}
-                    </div>
+                    {canvasBlock}
                 </div>
 
                 <div className="flex justify-between pl-16 pr-2 pt-2">

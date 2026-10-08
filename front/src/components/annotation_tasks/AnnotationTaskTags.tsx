@@ -265,6 +265,7 @@ export default function AnnotationTaskTags({
   onAddTagToSoundEventAnnotationsWithTag,
   selectedSoundEventAnnotation,
   tagVisibility,
+  headless = false,
 }: {
   annotationTask: AnnotationTask;
   onReplaceTagInSoundEventAnnotations?: (oldTag: Tag | null, newTag: Tag | null, selectedSoundEventAnnotation?: SoundEventAnnotation | null) => void;
@@ -272,6 +273,8 @@ export default function AnnotationTaskTags({
   onAddTagToSoundEventAnnotationsWithTag?: (filterTag: Tag, newTag: Tag, selectedSoundEventAnnotation?: SoundEventAnnotation | null) => void;
   selectedSoundEventAnnotation?: SoundEventAnnotation | null;
   tagVisibility?: TagVisibilityFilter;
+  /** Render no card, only the shortcut-driven popovers (full page view) */
+  headless?: boolean;
 }) {
 
   const replaceButtonRef = useRef<HTMLButtonElement>(null);
@@ -380,6 +383,265 @@ export default function AnnotationTaskTags({
     [onReplaceTagInSoundEventAnnotations, selectedSoundEventAnnotation]
   );
 
+  const actions = (
+    <div className="flex shrink-0 items-center">
+      <Popover as="div" className="relative inline-block text-left">
+        {({ open, close }) => {
+          return (
+            <>
+              <div className="group relative">
+                <PopoverButton as="div"
+                  className={`
+          inline-flex items-center justify-center text-sm font-medium
+          text-info-600 hover:text-info-700
+        `}
+                >
+                  <Button
+                    ref={replaceButtonRef}
+                    mode="text"
+                    variant="info"
+                    type="button"
+                    autoFocus={false}
+                  >
+                    Replace
+                  </Button>
+                </PopoverButton>
+                <div
+                  className="
+                  opacity-0 scale-95 group-hover:opacity-100 group-hover:scale-100
+                  transition duration-100 ease-out
+                  pointer-events-none
+                  absolute top-full left-1/2 -translate-x-1/2 mt-2 
+                  rounded p-2 shadow-lg 
+                  bg-stone-50 dark:bg-stone-700 
+                  text-stone-600 dark:text-stone-400 
+                  text-sm
+                  z-50 whitespace-nowrap
+                "
+                >
+                  <div className="inline-flex gap-2 items-center">
+                    Replace Tags in Task
+                    <div className="text-xs">
+                      <KeyboardKey code={REPLACE_TAG_SHORTCUT} />
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <PopoverPanel
+                unmount
+                onMouseDown={(e) => e.preventDefault()}
+                className="visible absolute right-0 mt-2 w-96 divide-y divide-stone-100 rounded-md bg-stone-50 dark:bg-stone-700 border border-stone-200 dark:border-stone-500 shadow-md dark:shadow-stone-800 ring-1 ring-stone-900 ring-opacity-5 focus:outline-none z-50 origin-top-right transition transform data-[closed]:scale-95 data-[closed]:opacity-0 data-[enter]:duration-100 data-[leave]:duration-75 data-[enter]:ease-out data-[leave]:ease-in"
+              >
+                <TagReplacePanel
+                  taskTags={popoverTagsWithCount}
+                  onReplaceTag={async (oldTag, newTag) => {
+                    close();
+                    await handleTagReplaceRemove(oldTag, newTag);
+                  }}
+                />
+              </PopoverPanel>
+            </>
+          );
+        }}
+      </Popover>
+      <div className="h-4 w-px bg-stone-200 dark:bg-stone-600 mx-2" />
+      <Popover as="div" className="relative inline-block text-left">
+        {({ open, close }) => {
+          return (
+            <>
+              <div className="group relative">
+                <PopoverButton as="div"
+                  className={`
+          inline-flex items-center justify-center text-sm font-medium
+          text-info-600 hover:text-info-700
+        `}
+                >
+                  <Button
+                    ref={addButtonRef}
+                    mode="text"
+                    variant="info"
+                    type="button"
+                    autoFocus={false}
+                  >
+                    Add
+                  </Button>
+                </PopoverButton>
+                <div
+                  className="
+          opacity-0 scale-95 group-hover:opacity-100 group-hover:scale-100
+          transition duration-100 ease-out
+          pointer-events-none
+          absolute top-full left-1/2 -translate-x-1/2 mt-2 
+          rounded p-2 shadow-lg 
+          bg-stone-50 dark:bg-stone-700 
+          text-stone-600 dark:text-stone-400 
+          text-sm
+          z-50 whitespace-nowrap
+        "
+                >
+                  <div className="inline-flex gap-2 items-center">
+                    Add Tags to all Sound Event Annotations
+                    <div className="text-xs">
+                      <KeyboardKey code={ADD_TAG_SHORTCUT} />
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <PopoverPanel
+                unmount
+                onMouseDown={(e) => e.preventDefault()}
+                className="visible absolute right-0 mt-2 w-96 divide-y divide-stone-100 rounded-md bg-stone-50 dark:bg-stone-700 border border-stone-200 dark:border-stone-500 shadow-md dark:shadow-stone-800 ring-1 ring-stone-900 ring-opacity-5 z-50 origin-top-right transition transform data-[closed]:scale-95 data-[closed]:opacity-0 data-[enter]:duration-100 data-[leave]:duration-75 data-[enter]:ease-out data-[leave]:ease-in"
+              >
+                <TagAddPanel
+                  onReplaceTag={async (_, newTag) => {
+                    close();
+                    await handleTagReplaceRemove(null, newTag);
+                  }}
+                />
+              </PopoverPanel>
+            </>
+          );
+        }}
+      </Popover>
+      <div className="h-4 w-px bg-stone-200 dark:bg-stone-600 mx-2" />
+      <Popover as="div" className="relative inline-block text-left">
+        {({ close }) => {
+          return (
+            <>
+              <div className="group relative">
+                <PopoverButton as="div"
+                  className={`
+          inline-flex items-center justify-center text-sm font-medium
+          text-info-600 hover:text-info-700
+        `}
+                >
+                  <Button
+                    ref={addToTaggedButtonRef}
+                    mode="text"
+                    variant="info"
+                    type="button"
+                    autoFocus={false}
+                  >
+                    Add to tagged
+                  </Button>
+                </PopoverButton>
+                <div
+                  className="
+          opacity-0 scale-95 group-hover:opacity-100 group-hover:scale-100
+          transition duration-100 ease-out
+          pointer-events-none
+          absolute top-full left-1/2 -translate-x-1/2 mt-2 
+          rounded p-2 shadow-lg 
+          bg-stone-50 dark:bg-stone-700 
+          text-stone-600 dark:text-stone-400 
+          text-sm
+          z-50 whitespace-nowrap
+        "
+                >
+                  <div className="inline-flex gap-2 items-center">
+                    Add tag to sound events that already have a specific tag
+                    <div className="text-xs">
+                      <KeyboardKey code={ADD_TO_TAGGED_TAG_SHORTCUT} />
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <PopoverPanel
+                unmount
+                onMouseDown={(e) => e.preventDefault()}
+                className="visible absolute right-0 mt-2 w-96 divide-y divide-stone-100 rounded-md bg-stone-50 dark:bg-stone-700 border border-stone-200 dark:border-stone-500 shadow-md dark:shadow-stone-800 ring-1 ring-stone-900 ring-opacity-5 z-50 origin-top-right transition transform data-[closed]:scale-95 data-[closed]:opacity-0 data-[enter]:duration-100 data-[leave]:duration-75 data-[enter]:ease-out data-[leave]:ease-in"
+              >
+                <TagAddToTaggedPanel
+                  taskTags={popoverTagsWithCount}
+                  onAddTag={async (filterTag, newTag) => {
+                    close();
+                    await onAddTagToSoundEventAnnotationsWithTag?.(
+                      filterTag,
+                      newTag,
+                      selectedSoundEventAnnotation,
+                    );
+                  }}
+                />
+              </PopoverPanel>
+            </>
+          );
+        }}
+      </Popover>
+      <div className="h-4 w-px bg-stone-200 dark:bg-stone-600 mx-2" />
+      <Popover as="div" className="relative inline-block text-left">
+        {({ close }) => {
+          return (
+            <>
+              <div className="group relative">
+                <PopoverButton as="div"
+                  className={`
+          inline-flex items-center justify-center text-sm font-medium
+          text-info-600 hover:text-info-700
+        `}
+                >
+                  <Button
+                    ref={addUntaggedButtonRef}
+                    mode="text"
+                    variant="info"
+                    type="button"
+                    autoFocus={false}
+                  >
+                    Add untagged
+                  </Button>
+                </PopoverButton>
+                <div
+                  className="
+          opacity-0 scale-95 group-hover:opacity-100 group-hover:scale-100
+          transition duration-100 ease-out
+          pointer-events-none
+          absolute top-full left-1/2 -translate-x-1/2 mt-2 
+          rounded p-2 shadow-lg 
+          bg-stone-50 dark:bg-stone-700 
+          text-stone-600 dark:text-stone-400 
+          text-sm
+          z-50 whitespace-nowrap
+        "
+                >
+                  <div className="inline-flex gap-2 items-center">
+                    Add tag to untagged sound event annotations
+                    <div className="text-xs">
+                      <KeyboardKey code={`${getSpecialKeyLabel("Shift")} ${ADD_UNTAGGED_TAG_SHORTCUT}`} />
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <PopoverPanel
+                unmount
+                onMouseDown={(e) => e.preventDefault()}
+                className="visible absolute right-0 mt-2 w-96 divide-y divide-stone-100 rounded-md bg-stone-50 dark:bg-stone-700 border border-stone-200 dark:border-stone-500 shadow-md dark:shadow-stone-800 ring-1 ring-stone-900 ring-opacity-5 z-50 origin-top-right transition transform data-[closed]:scale-95 data-[closed]:opacity-0 data-[enter]:duration-100 data-[leave]:duration-75 data-[enter]:ease-out data-[leave]:ease-in"
+              >
+                <TagAddPanel
+                  title="Select tag to add to untagged sound events"
+                  placeholder="Search tag to add..."
+                  onReplaceTag={async (_, newTag) => {
+                    close();
+                    await onAddTagToUntaggedSoundEventAnnotations?.(newTag);
+                  }}
+                />
+              </PopoverPanel>
+            </>
+          );
+        }}
+      </Popover>
+    </div>
+  );
+
+  // Full page view: the card is gone but its shortcuts must keep working, so
+  // only the action row stays mounted, invisible and out of the way. Its
+  // popovers opt back into visibility and open from the top right corner.
+  if (headless) {
+    return (
+      <div className="fixed right-4 top-4 z-50 h-0 w-0">
+        <div className="invisible absolute right-0 top-0">{actions}</div>
+      </div>
+    );
+  }
+
   return (
     <Card className="min-w-0 max-w-full">
       <div className="flex min-w-0 justify-between items-center gap-2 mb-2">
@@ -387,251 +649,7 @@ export default function AnnotationTaskTags({
           <TagsIcon className="inline-block mr-1 w-5 h-5" />
           All Sound Event Annotation Tags
         </H4>
-        <div className="flex shrink-0 items-center">
-          <Popover as="div" className="relative inline-block text-left">
-            {({ open, close }) => {
-              return (
-                <>
-                  <div className="group relative">
-                    <PopoverButton as="div"
-                      className={`
-              inline-flex items-center justify-center text-sm font-medium
-              text-info-600 hover:text-info-700
-            `}
-                    >
-                      <Button
-                        ref={replaceButtonRef}
-                        mode="text"
-                        variant="info"
-                        type="button"
-                        autoFocus={false}
-                      >
-                        Replace
-                      </Button>
-                    </PopoverButton>
-                    <div
-                      className="
-                      opacity-0 scale-95 group-hover:opacity-100 group-hover:scale-100
-                      transition duration-100 ease-out
-                      pointer-events-none
-                      absolute top-full left-1/2 -translate-x-1/2 mt-2 
-                      rounded p-2 shadow-lg 
-                      bg-stone-50 dark:bg-stone-700 
-                      text-stone-600 dark:text-stone-400 
-                      text-sm
-                      z-50 whitespace-nowrap
-                    "
-                    >
-                      <div className="inline-flex gap-2 items-center">
-                        Replace Tags in Task
-                        <div className="text-xs">
-                          <KeyboardKey code={REPLACE_TAG_SHORTCUT} />
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                  <PopoverPanel
-                    unmount
-                    onMouseDown={(e) => e.preventDefault()}
-                    className="absolute right-0 mt-2 w-96 divide-y divide-stone-100 rounded-md bg-stone-50 dark:bg-stone-700 border border-stone-200 dark:border-stone-500 shadow-md dark:shadow-stone-800 ring-1 ring-stone-900 ring-opacity-5 focus:outline-none z-50 origin-top-right transition transform data-[closed]:scale-95 data-[closed]:opacity-0 data-[enter]:duration-100 data-[leave]:duration-75 data-[enter]:ease-out data-[leave]:ease-in"
-                  >
-                    <TagReplacePanel
-                      taskTags={popoverTagsWithCount}
-                      onReplaceTag={async (oldTag, newTag) => {
-                        close();
-                        await handleTagReplaceRemove(oldTag, newTag);
-                      }}
-                    />
-                  </PopoverPanel>
-                </>
-              );
-            }}
-          </Popover>
-          <div className="h-4 w-px bg-stone-200 dark:bg-stone-600 mx-2" />
-          <Popover as="div" className="relative inline-block text-left">
-            {({ open, close }) => {
-              return (
-                <>
-                  <div className="group relative">
-                    <PopoverButton as="div"
-                      className={`
-              inline-flex items-center justify-center text-sm font-medium
-              text-info-600 hover:text-info-700
-            `}
-                    >
-                      <Button
-                        ref={addButtonRef}
-                        mode="text"
-                        variant="info"
-                        type="button"
-                        autoFocus={false}
-                      >
-                        Add
-                      </Button>
-                    </PopoverButton>
-                    <div
-                      className="
-              opacity-0 scale-95 group-hover:opacity-100 group-hover:scale-100
-              transition duration-100 ease-out
-              pointer-events-none
-              absolute top-full left-1/2 -translate-x-1/2 mt-2 
-              rounded p-2 shadow-lg 
-              bg-stone-50 dark:bg-stone-700 
-              text-stone-600 dark:text-stone-400 
-              text-sm
-              z-50 whitespace-nowrap
-            "
-                    >
-                      <div className="inline-flex gap-2 items-center">
-                        Add Tags to all Sound Event Annotations
-                        <div className="text-xs">
-                          <KeyboardKey code={ADD_TAG_SHORTCUT} />
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                  <PopoverPanel
-                    unmount
-                    onMouseDown={(e) => e.preventDefault()}
-                    className="absolute right-0 mt-2 w-96 divide-y divide-stone-100 rounded-md bg-stone-50 dark:bg-stone-700 border border-stone-200 dark:border-stone-500 shadow-md dark:shadow-stone-800 ring-1 ring-stone-900 ring-opacity-5 z-50 origin-top-right transition transform data-[closed]:scale-95 data-[closed]:opacity-0 data-[enter]:duration-100 data-[leave]:duration-75 data-[enter]:ease-out data-[leave]:ease-in"
-                  >
-                    <TagAddPanel
-                      onReplaceTag={async (_, newTag) => {
-                        close();
-                        await handleTagReplaceRemove(null, newTag);
-                      }}
-                    />
-                  </PopoverPanel>
-                </>
-              );
-            }}
-          </Popover>
-          <div className="h-4 w-px bg-stone-200 dark:bg-stone-600 mx-2" />
-          <Popover as="div" className="relative inline-block text-left">
-            {({ close }) => {
-              return (
-                <>
-                  <div className="group relative">
-                    <PopoverButton as="div"
-                      className={`
-              inline-flex items-center justify-center text-sm font-medium
-              text-info-600 hover:text-info-700
-            `}
-                    >
-                      <Button
-                        ref={addToTaggedButtonRef}
-                        mode="text"
-                        variant="info"
-                        type="button"
-                        autoFocus={false}
-                      >
-                        Add to tagged
-                      </Button>
-                    </PopoverButton>
-                    <div
-                      className="
-              opacity-0 scale-95 group-hover:opacity-100 group-hover:scale-100
-              transition duration-100 ease-out
-              pointer-events-none
-              absolute top-full left-1/2 -translate-x-1/2 mt-2 
-              rounded p-2 shadow-lg 
-              bg-stone-50 dark:bg-stone-700 
-              text-stone-600 dark:text-stone-400 
-              text-sm
-              z-50 whitespace-nowrap
-            "
-                    >
-                      <div className="inline-flex gap-2 items-center">
-                        Add tag to sound events that already have a specific tag
-                        <div className="text-xs">
-                          <KeyboardKey code={ADD_TO_TAGGED_TAG_SHORTCUT} />
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                  <PopoverPanel
-                    unmount
-                    onMouseDown={(e) => e.preventDefault()}
-                    className="absolute right-0 mt-2 w-96 divide-y divide-stone-100 rounded-md bg-stone-50 dark:bg-stone-700 border border-stone-200 dark:border-stone-500 shadow-md dark:shadow-stone-800 ring-1 ring-stone-900 ring-opacity-5 z-50 origin-top-right transition transform data-[closed]:scale-95 data-[closed]:opacity-0 data-[enter]:duration-100 data-[leave]:duration-75 data-[enter]:ease-out data-[leave]:ease-in"
-                  >
-                    <TagAddToTaggedPanel
-                      taskTags={popoverTagsWithCount}
-                      onAddTag={async (filterTag, newTag) => {
-                        close();
-                        await onAddTagToSoundEventAnnotationsWithTag?.(
-                          filterTag,
-                          newTag,
-                          selectedSoundEventAnnotation,
-                        );
-                      }}
-                    />
-                  </PopoverPanel>
-                </>
-              );
-            }}
-          </Popover>
-          <div className="h-4 w-px bg-stone-200 dark:bg-stone-600 mx-2" />
-          <Popover as="div" className="relative inline-block text-left">
-            {({ close }) => {
-              return (
-                <>
-                  <div className="group relative">
-                    <PopoverButton as="div"
-                      className={`
-              inline-flex items-center justify-center text-sm font-medium
-              text-info-600 hover:text-info-700
-            `}
-                    >
-                      <Button
-                        ref={addUntaggedButtonRef}
-                        mode="text"
-                        variant="info"
-                        type="button"
-                        autoFocus={false}
-                      >
-                        Add untagged
-                      </Button>
-                    </PopoverButton>
-                    <div
-                      className="
-              opacity-0 scale-95 group-hover:opacity-100 group-hover:scale-100
-              transition duration-100 ease-out
-              pointer-events-none
-              absolute top-full left-1/2 -translate-x-1/2 mt-2 
-              rounded p-2 shadow-lg 
-              bg-stone-50 dark:bg-stone-700 
-              text-stone-600 dark:text-stone-400 
-              text-sm
-              z-50 whitespace-nowrap
-            "
-                    >
-                      <div className="inline-flex gap-2 items-center">
-                        Add tag to untagged sound event annotations
-                        <div className="text-xs">
-                          <KeyboardKey code={`${getSpecialKeyLabel("Shift")} ${ADD_UNTAGGED_TAG_SHORTCUT}`} />
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                  <PopoverPanel
-                    unmount
-                    onMouseDown={(e) => e.preventDefault()}
-                    className="absolute right-0 mt-2 w-96 divide-y divide-stone-100 rounded-md bg-stone-50 dark:bg-stone-700 border border-stone-200 dark:border-stone-500 shadow-md dark:shadow-stone-800 ring-1 ring-stone-900 ring-opacity-5 z-50 origin-top-right transition transform data-[closed]:scale-95 data-[closed]:opacity-0 data-[enter]:duration-100 data-[leave]:duration-75 data-[enter]:ease-out data-[leave]:ease-in"
-                  >
-                    <TagAddPanel
-                      title="Select tag to add to untagged sound events"
-                      placeholder="Search tag to add..."
-                      onReplaceTag={async (_, newTag) => {
-                        close();
-                        await onAddTagToUntaggedSoundEventAnnotations?.(newTag);
-                      }}
-                    />
-                  </PopoverPanel>
-                </>
-              );
-            }}
-          </Popover>
-        </div>
+        {actions}
 
 
       </div>

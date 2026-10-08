@@ -24,6 +24,7 @@ export default function SelectedSoundEventAnnotation({
   withSpectrogram,
   parameters,
   getReferenceWindow,
+  referenceWindow,
   onUpdate,
   tagVisibility,
   onSelectSoundEventAnnotation,
@@ -41,6 +42,7 @@ export default function SelectedSoundEventAnnotation({
   parameters: SpectrogramParameters;
   /** Current window of the main spectrogram, whose scale ratio this view copies */
   getReferenceWindow?: () => SpectrogramWindow | null;
+  referenceWindow?: SpectrogramWindow | null;
   onUpdate?: (annotation: SoundEventAnnotation) => void;
   tagVisibility?: TagVisibilityFilter;
   onSelectSoundEventAnnotation?: (annotation: SoundEventAnnotation) => void;
@@ -92,6 +94,7 @@ export default function SelectedSoundEventAnnotation({
           parameters={parameters}
           withSpectrogram={withSpectrogram}
           getReferenceWindow={getReferenceWindow}
+          referenceWindow={referenceWindow}
         />
       </Card>
       <PassContext

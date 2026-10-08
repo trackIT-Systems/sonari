@@ -54,6 +54,7 @@ function FilterCombobox<T extends Object>({
       <SearchMenu
         options={filterDefs.filter((def) => !def.hideInMenu)}
         static={true}
+        inlineOptions
         renderOption={(filter) => (
           <>
             {filter.icon ?? filter.icon}
@@ -172,10 +173,10 @@ export default function FilterPopover<T extends Object>({
     className = getButtonClassName({ mode, variant });
   }
 
-  const panelPositionClass =
+  const panelAnchor =
     panelAlign === "start"
-      ? "left-0 origin-top-left"
-      : "right-0 origin-top-right";
+      ? { to: "bottom start" as const, gap: 4, padding: 16 }
+      : { to: "bottom end" as const, gap: 4, padding: 16 };
 
   return (
     <Popover as="div" className="relative inline-block text-left">
@@ -190,7 +191,9 @@ export default function FilterPopover<T extends Object>({
       )}
       <PopoverPanel
         unmount
-        className={`absolute ${panelPositionClass} mt-1 w-96 max-w-[min(24rem,calc(100vw-2rem))] divide-y divide-stone-100 rounded-md bg-stone-50 dark:bg-stone-700 border border-stone-200 dark:border-stone-500 shadow-md dark:shadow-stone-800 ring-1 ring-stone-900 ring-opacity-5 focus:outline-none z-50 transition transform data-[closed]:scale-95 data-[closed]:opacity-0 data-[enter]:duration-100 data-[leave]:duration-75 data-[enter]:ease-out data-[leave]:ease-in`}
+        portal
+        anchor={panelAnchor}
+        className="z-[60] w-96 max-w-[min(24rem,calc(100vw-2rem))] rounded-md bg-stone-50 dark:bg-stone-700 border border-stone-200 dark:border-stone-500 shadow-md dark:shadow-stone-800 ring-1 ring-stone-900 ring-opacity-5 focus:outline-none transition transform data-[closed]:scale-95 data-[closed]:opacity-0 data-[enter]:duration-100 data-[leave]:duration-75 data-[enter]:ease-out data-[leave]:ease-in [--anchor-max-height:calc(100vh-2rem)]"
       >
         <div className="p-4">
           <FilterPanel filter={filter} filterDefs={filterDef} />

@@ -1,4 +1,5 @@
 import { Combobox, ComboboxOption, ComboboxOptions, ComboboxInput } from "@headlessui/react";
+import classNames from "classnames";
 import Fuse from "fuse.js";
 import { type ReactNode, useEffect, useMemo, useState } from "react";
 
@@ -30,6 +31,8 @@ export default function SearchMenu<
   initialQuery = "",
   as = Search,
   empty,
+  inlineOptions = false,
+  optionsListClassName,
 }: {
   options: T[];
   renderOption: (option: T) => ReactNode;
@@ -45,6 +48,10 @@ export default function SearchMenu<
   onChange?: (value: string) => void;
   initialQuery?: string;
   empty?: ReactNode;
+  /** Lay out static options in document flow (for anchored popover panels). */
+  inlineOptions?: boolean;
+  /** Max-height utility classes for the option list (default `max-h-60`). */
+  optionsListClassName?: string;
 }) {
   const [limit, setLimit] = useState(initialLimit);
   const [query, setQuery] = useState(initialQuery);
@@ -66,8 +73,15 @@ export default function SearchMenu<
     return fuse.search(query, { limit }).map((result) => result.item);
   }, [query, fuse, options, limit]);
 
-  const optionsClassName =
-    "w-full rounded-md border bg-stone-50 dark:bg-stone-700 border-stone-200 dark:border-stone-600 py-2 px-1 overflow-auto shadow-lg focus:outline-none";
+  // max-h caps the list so a long result set scrolls inside the menu instead
+  // of growing the menu past the viewport, which (for a `fixed` positioned
+  // popover) would otherwise push the whole page into a scrollable state.
+  const optionsClassName = inlineOptions
+    ? classNames("w-full focus:outline-none", optionsListClassName)
+    : classNames(
+        "w-full rounded-md border bg-stone-50 dark:bg-stone-700 border-stone-200 dark:border-stone-600 py-2 px-1 overflow-auto shadow-lg focus:outline-none",
+        optionsListClassName ?? "max-h-60",
+      );
 
   if (isStatic) {
     return (
@@ -86,7 +100,11 @@ export default function SearchMenu<
             />
             <ComboboxOptions
               static={isStatic}
-              className={`absolute mt-1 ${optionsClassName}`}
+              className={classNames(
+                inlineOptions ? "mt-2" : "mt-1",
+                !inlineOptions && "absolute",
+                optionsClassName,
+              )}
             >
               <MenuContents
                 options={filteredOptions}

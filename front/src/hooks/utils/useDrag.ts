@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import { mergeProps, useMove } from "react-aria";
 
 import { SPECTROGRAM_CANVAS_DIMENSIONS } from "@/constants";
@@ -41,6 +41,9 @@ export default function useDrag<T>({
   const [isDragging, setIsDragging] = useState(false);
   const [shift, setShift] = useState<Pixel>({ x: 0, y: 0 });
   const [initialPosition, setInitialPosition] = useState<Pixel | null>(null);
+  // CSS-to-canvas pixel factor of the element the drag started on. Drag deltas
+  // arrive in CSS pixels while positions are in canvas pixels.
+  const scaleRef = useRef({ x: 1, y: 1 });
 
   const clickProps = useMemo(() => {
     if (!enabled) return {};
@@ -63,6 +66,7 @@ export default function useDrag<T>({
         scaleY = SPECTROGRAM_CANVAS_DIMENSIONS.height / rect.height;
       }
       
+      scaleRef.current = { x: scaleX, y: scaleY };
       const point = {
         x: e.nativeEvent.offsetX * scaleX,
         y: e.nativeEvent.offsetY * scaleY,
@@ -112,12 +116,14 @@ export default function useDrag<T>({
       deltaY: number;
     } & EventKeys) => {
       if (!enabled || initialPosition == null) return;
-      setShift(({ x, y }) => ({ x: x + deltaX, y: y + deltaY }));
+      const dx = deltaX * scaleRef.current.x;
+      const dy = deltaY * scaleRef.current.y;
+      setShift(({ x, y }) => ({ x: x + dx, y: y + dy }));
       onMove?.({
         initial: initialPosition,
         current: {
-          x: initialPosition.x + shift.x + deltaX,
-          y: initialPosition.y + shift.y + deltaY,
+          x: initialPosition.x + shift.x + dx,
+          y: initialPosition.y + shift.y + dy,
         },
         shiftKey,
         ctrlKey,

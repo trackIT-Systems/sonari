@@ -1,13 +1,18 @@
 import { useCallback, useState, useMemo, useEffect, useRef, CSSProperties } from "react";
+import { useKeyPressEvent } from "react-use";
+import classNames from "classnames";
 
 import { DEFAULT_SPECTROGRAM_PARAMETERS } from "@/api/spectrograms";
 import AnnotationProgress from "@/components/annotation_tasks/AnnotationProgress";
+import AnnotationTaskStatus from "@/components/annotation_tasks/AnnotationTaskStatus";
 import RecordingAnnotationContext from "@/components/annotation_tasks/RecordingAnnotationContext";
 import SelectedSoundEventAnnotation from "@/components/annotation_tasks/SelectedSoundEventAnnotation";
-import AnnotationTaskStatus from "@/components/annotation_tasks/AnnotationTaskStatus";
 import AnnotationTaskSpectrogram from "@/components/annotation_tasks/AnnotationTaskSpectrogram";
+import Button from "@/components/Button";
 import Empty from "@/components/Empty";
+import { SpectrogramSettingsIcon } from "@/components/icons";
 import Loading from "@/components/Loading";
+import Tooltip from "@/components/Tooltip";
 import useAnnotateTasks from "@/hooks/annotation/useAnnotateTasks";
 import useRecordingAnnotationTasks from "@/hooks/annotation/useRecordingAnnotationTasks";
 import AnnotationTaskTagBar from "@/components/annotation_tasks/AnnotationTaskTagBar";
@@ -25,7 +30,8 @@ import {
   isReplaceAllTag,
   soundEventAnnotationsForTagReplace,
 } from "@/utils/soundEventTagReplace";
-import { SOUND_EVENT_CYCLE_FILTER_SHORTCUT, DELETE_TAG_SHORTCUT, ABORT_SHORTCUT } from "@/utils/keyboard";
+import { SOUND_EVENT_CYCLE_FILTER_SHORTCUT, DELETE_TAG_SHORTCUT, ABORT_SHORTCUT, FULLSCREEN_SHORTCUT } from "@/utils/keyboard";
+import useKeyFilter from "@/hooks/utils/useKeyFilter";
 
 import type { AnnotationTaskFilter } from "@/api/annotation_tasks";
 import type { NoteCreate } from "@/api/notes";
@@ -170,16 +176,37 @@ export default function AnnotateTasks({
     [withAutoplay]
   )
 
-  // Kept in a ref: the selected sound event panel only reads it when it opens,
-  // and storing it in state would re-render the whole view on every pan frame.
-  const mainSpectrogramWindowRef = useRef<SpectrogramWindow | null>(null);
+  const [mainSpectrogramWindow, setMainSpectrogramWindow] =
+    useState<SpectrogramWindow | null>(null);
   const handleMainWindowChange = useCallback((window: SpectrogramWindow) => {
-    mainSpectrogramWindowRef.current = window;
+    setMainSpectrogramWindow((prev) => {
+      if (
+        prev != null &&
+        prev.time.min === window.time.min &&
+        prev.time.max === window.time.max &&
+        prev.freq.min === window.freq.min &&
+        prev.freq.max === window.freq.max
+      ) {
+        return prev;
+      }
+      return window;
+    });
   }, []);
-  const getMainSpectrogramWindow = useCallback(
-    () => mainSpectrogramWindowRef.current,
-    [],
-  );
+
+  // Full page view: only the spectrogram, scaled up to fill the page. Panels
+  // are hidden or swapped for headless versions, never remounted elsewhere, so
+  // playback, zoom and drafts survive toggling.
+  const [fullscreen, setFullscreen] = useState(false);
+  const [showTools, setShowTools] = useState(false);
+  const toggleFullscreen = useCallback(() => {
+    setFullscreen((prev) => {
+      if (!prev) {
+        setShowTools(false);
+      }
+      return !prev;
+    });
+  }, []);
+  useKeyPressEvent(useKeyFilter({ key: FULLSCREEN_SHORTCUT }), toggleFullscreen);
 
   const [fixedAspectRatio, setFixedAspectRatio] = useState(false);
   const toggleFixedAspectRatio = useCallback(() => {
@@ -634,13 +661,27 @@ export default function AnnotateTasks({
   }
 
   return (
-    <div className="w-full flex flex-col gap-4">
-      <div className="flex flex-col gap-4 2xl:flex-row 2xl:items-start">
+    <>
+    <div
+      className={
+        fullscreen
+          ? "fixed inset-0 z-[45] flex flex-col gap-4 overflow-hidden bg-stone-100 p-4 dark:bg-stone-900"
+          : "w-full flex flex-col gap-4"
+      }
+    >
+      <div
+        className={
+          fullscreen
+            ? "flex min-w-0 flex-row items-center gap-4"
+            : "flex flex-col gap-4 2xl:flex-row 2xl:items-start"
+        }
+      >
         <div
-          className="max-w-full shrink-0"
-          style={{ width: `${SPECTROGRAM_CONTAINER_WIDTH}px` }}
+          className={fullscreen ? "min-w-0 flex-1" : "max-w-full shrink-0"}
+          style={fullscreen ? undefined : { width: `${SPECTROGRAM_CONTAINER_WIDTH}px` }}
         >
           <AnnotationProgress
+            fill={fullscreen}
             current={tasks.current}
             taskCount={tasks.tasks.length}
             stats={tasks.stats}
@@ -651,7 +692,13 @@ export default function AnnotateTasks({
           />
         </div>
         {annotationTask != null && (
-          <div className="hidden w-[35rem] max-w-full shrink-0 2xl:block">
+          <div
+            className={
+              fullscreen
+                ? "flex shrink-0 flex-row items-center gap-2"
+                : "hidden w-[35rem] max-w-full shrink-0 2xl:block"
+            }
+          >
             <AnnotationTaskStatus
               task={annotationTask}
               onReview={handleMarkRejected}
@@ -660,18 +707,39 @@ export default function AnnotateTasks({
               onVerify={handleMarkVerified}
               onRemoveBadge={handleRemoveBadge}
             />
+            {fullscreen && (
+              <Tooltip
+                portal
+                tooltip={showTools ? "Hide spectrogram tools" : "Show spectrogram tools"}
+                placement="bottom-end"
+              >
+                <Button
+                  variant={showTools ? "primary" : "secondary"}
+                  onClick={() => setShowTools((prev) => !prev)}
+                >
+                  <SpectrogramSettingsIcon className="w-5 h-5" />
+                </Button>
+              </Tooltip>
+            )}
           </div>
         )}
       </div>
-      <div className="flex flex-col gap-4">
+      <div className={classNames("flex flex-col gap-4", fullscreen && "min-h-0 flex-1")}>
         {/*
           Below 2xl: stacked column — sound-event + all-tags max width matches spectrogram column.
           2xl+: row spectrogram | 35rem sidebar; bottom row as before.
+          Full page view: the spectrogram column takes all remaining space.
         */}
-        <div className="flex flex-col gap-4 2xl:flex-row 2xl:items-start">
+        <div
+          className={
+            fullscreen
+              ? "flex min-h-0 flex-1 flex-col"
+              : "flex flex-col gap-4 2xl:flex-row 2xl:items-start"
+          }
+        >
           <div
-            className="max-w-full shrink-0"
-            style={{ width: `${SPECTROGRAM_CONTAINER_WIDTH}px` }}
+            className={fullscreen ? "flex min-h-0 min-w-0 flex-1 flex-col" : "max-w-full shrink-0"}
+            style={fullscreen ? undefined : { width: `${SPECTROGRAM_CONTAINER_WIDTH}px` }}
           >
             {isLoadingTask ? (
               <Loading />
@@ -683,8 +751,13 @@ export default function AnnotateTasks({
                 task => task.id === annotationTask.id
               );
               return (
-              <div className="flex flex-col gap-2">
-                <div className="2xl:hidden w-full min-w-0">
+              <div className={classNames("flex flex-col gap-2", fullscreen && "min-h-0 flex-1")}>
+                <div
+                  className={classNames(
+                    "w-full min-w-0",
+                    fullscreen ? "hidden" : "2xl:hidden",
+                  )}
+                >
                   <AnnotationTaskStatus
                     task={annotationTask}
                     onReview={handleMarkRejected}
@@ -703,7 +776,7 @@ export default function AnnotateTasks({
                   sourceTaskId={sourceTaskId}
                   onSourceTaskChange={onSourceTaskChange}
                 />
-                <div className="min-w-0 grow-0">
+                <div className={fullscreen ? "flex min-h-0 min-w-0 flex-1 flex-col" : "min-w-0 grow-0"}>
                   <AnnotationTaskSpectrogram
                     key={annotationTask.id}
                     parameters={parameters}
@@ -725,12 +798,24 @@ export default function AnnotateTasks({
                     toggleFixedAspectRatio={toggleFixedAspectRatio}
                     onSegmentsLoaded={tasks.handleCurrentSegmentsLoaded}
                     onWindowChange={handleMainWindowChange}
+                    fullscreen={fullscreen}
+                    showTools={fullscreen ? showTools : true}
+                    onToggleFullscreen={toggleFullscreen}
                     onAddTagToSoundEventAnnotation={activeAddTagToSoundEventAnnotation}
                     onRemoveTagFromSoundEventAnnotation={activeRemoveTagFromSoundEventAnnotation}
                     onAddSoundEventAnnotation={activeAddSoundEventAnnotation}
                     onRemoveSoundEventAnnotation={activeRemoveSoundEventAnnotation}
                     onUpdateSoundEventAnnotation={activeUpdateSoundEventAnnotation}
                     soundEventAnnotationsOverride={displayedSoundEventAnnotations}
+                    selectedSoundEventAnnotationTask={
+                      selectedSoundEventAnnotation != null
+                        ? selectedSoundEventAnnotationTask
+                        : null
+                    }
+                    onDeselectSoundEventAnnotation={() =>
+                      setSelectedSoundEventAnnotation(null)
+                    }
+                    mainSpectrogramWindow={mainSpectrogramWindow}
                     tagVisibility={tagVisibility}
                     onTagVisibilityChange={setTagVisibility}
                   />
@@ -740,6 +825,7 @@ export default function AnnotateTasks({
             })()}
           </div>
 
+          {!fullscreen && (
           <div
             data-annotate-stacked-sidebar
             className="flex min-w-0 w-full shrink-0 flex-col gap-4 2xl:w-[35rem] 2xl:flex-none"
@@ -765,7 +851,7 @@ export default function AnnotateTasks({
                   soundEventAnnotation={selectedSoundEventAnnotation}
                   parameters={liveParameters}
                   withSpectrogram={withSpectrogram}
-                  getReferenceWindow={getMainSpectrogramWindow}
+                  referenceWindow={mainSpectrogramWindow}
                   onUpdate={onUpdateSelectedSoundEventAnnotation}
                   tagVisibility={tagVisibility}
                   onSelectSoundEventAnnotation={setSelectedSoundEventAnnotation}
@@ -796,11 +882,18 @@ export default function AnnotateTasks({
               </div>
             )}
           </div>
+          )}
         </div>
 
         {annotationTask != null && (
           <>
-            <div className="hidden w-full min-w-0 flex-row items-start gap-4 2xl:flex">
+            <div
+              className={
+                fullscreen
+                  ? "hidden"
+                  : "hidden w-full min-w-0 flex-row items-start gap-4 2xl:flex"
+              }
+            >
               <div
                 className="flex max-w-full shrink-0 flex-col gap-4"
                 style={{ width: `${SPECTROGRAM_CONTAINER_WIDTH}px` }}
@@ -818,6 +911,7 @@ export default function AnnotateTasks({
                 />
               </div>
               <div className="min-w-0 w-[35rem] max-w-full shrink-0">
+                {!fullscreen && (
                 <AnnotationTaskTags
                   annotationTask={displayAnnotationTask!}
                   onReplaceTagInSoundEventAnnotations={handleReplaceTagInSoundEventAnnotations}
@@ -826,10 +920,14 @@ export default function AnnotateTasks({
                   selectedSoundEventAnnotation={selectedSoundEventAnnotation}
                   tagVisibility={tagVisibility}
                 />
+                )}
               </div>
             </div>
             <div
-              className="flex max-w-full shrink-0 flex-col gap-4 2xl:hidden"
+              className={classNames(
+                "flex max-w-full shrink-0 flex-col gap-4 2xl:hidden",
+                fullscreen && "hidden",
+              )}
               style={{ width: `${SPECTROGRAM_CONTAINER_WIDTH}px` }}
             >
               <AnnotationTaskTagBar
@@ -846,7 +944,19 @@ export default function AnnotateTasks({
             </div>
           </>
         )}
+        {fullscreen && displayAnnotationTask != null && (
+          <AnnotationTaskTags
+            headless
+            annotationTask={displayAnnotationTask}
+            onReplaceTagInSoundEventAnnotations={handleReplaceTagInSoundEventAnnotations}
+            onAddTagToUntaggedSoundEventAnnotations={handleAddTagToUntaggedSoundEventAnnotations}
+            onAddTagToSoundEventAnnotationsWithTag={handleAddTagToSoundEventAnnotationsWithTag}
+            selectedSoundEventAnnotation={selectedSoundEventAnnotation}
+            tagVisibility={tagVisibility}
+          />
+        )}
       </div>
+    </div>
 
       {isDeletePopoverOpen && (
         <Popover as="div">
@@ -956,7 +1066,7 @@ export default function AnnotateTasks({
           }}
         </Popover>
       )}
-    </div>
+    </>
   );
 }
 

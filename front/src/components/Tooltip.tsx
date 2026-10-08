@@ -12,6 +12,7 @@ export default function Tooltip({
   offset = 8,
   interactive = false,
   portal = false, // Add portal option
+  fullWidth = false,
 }: {
   children: ReactNode;
   tooltip: ReactNode;
@@ -31,8 +32,14 @@ export default function Tooltip({
   offset?: number;
   interactive?: boolean;
   portal?: boolean; // New prop to control portaling
+  /** Let the trigger shrink/truncate inside a flex row */
+  fullWidth?: boolean;
 }) {
-  const content = <span className="max-w-fit">{children}</span>;
+  const content = fullWidth ? (
+    <span className="block w-full min-w-0 max-w-full">{children}</span>
+  ) : (
+    <span className="max-w-fit">{children}</span>
+  );
   const [hoverable, hovered] = useHover(content);
   const triggerRef = useRef<HTMLDivElement>(null);
   const [position, setPosition] = useState({ top: 0, left: 0 });
@@ -114,6 +121,9 @@ export default function Tooltip({
       case "top":
       case "bottom":
         return "-translate-x-1/2";
+      case "top-end":
+      case "bottom-end":
+        return "-translate-x-full";
       case "left":
       case "right":
         return "-translate-y-1/2";
@@ -141,7 +151,14 @@ export default function Tooltip({
   );
 
   return (
-    <Popover as="div" className="relative inline-block">
+    <Popover
+      as="div"
+      className={
+        fullWidth
+          ? "relative block w-full min-w-0 max-w-full"
+          : "relative inline-block"
+      }
+    >
       <div ref={triggerRef}>
         {interactive ? (
           <PopoverButton as={Fragment}>{hoverable}</PopoverButton>

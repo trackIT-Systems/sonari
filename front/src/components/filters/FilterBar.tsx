@@ -1,6 +1,12 @@
 import { useMemo, useCallback, memo } from "react";
+import classNames from "classnames";
 
-import {  FilterIcon } from "@/components/icons";
+import { CloseIcon, FilterIcon } from "@/components/icons";
+import Tooltip from "@/components/Tooltip";
+import {
+  formatActiveFilterSummary,
+  joinFilterSummary,
+} from "@/components/filters/formatActiveFilterSummary";
 
 import type { FilterDef } from "@/components/filters/FilterMenu";
 import type { Filter } from "@/hooks/utils/useFilter";
@@ -30,12 +36,17 @@ export default function FilterBar<T extends Object>({
   total,
   showIfEmpty = false,
   withLabel = true,
+  compactSummary = false,
+  className,
 }: {
   filter: Filter<T>;
   filterDef: FilterDef<T>[];
   total?: number;
   showIfEmpty?: boolean;
   withLabel?: boolean;
+  /** One truncating chip with full filter text on hover */
+  compactSummary?: boolean;
+  className?: string;
 }) {
   const activeFilters = Object.keys(filter.filter).filter(
     (key) => !filter.isFixed(key as keyof T),
@@ -49,8 +60,57 @@ export default function FilterBar<T extends Object>({
     return mapping;
   }, [filterDef]);
 
+  const summaryLines = useMemo(
+    () => formatActiveFilterSummary(filter, filterDef),
+    [filter, filterDef],
+  );
+
+  const clearAllFilters = useCallback(() => {
+    for (const key of Object.keys(filter.filter)) {
+      const field = key as keyof T;
+      if (!filter.isFixed(field)) {
+        filter.clear(field);
+      }
+    }
+  }, [filter]);
+
   if (activeFilters === 0 && !showIfEmpty) {
     return null;
+  }
+
+  if (compactSummary && summaryLines.length > 0) {
+    const fullText = joinFilterSummary(summaryLines, "\n");
+    const inlineText = joinFilterSummary(summaryLines);
+
+    return (
+      <div className={classNames("min-w-0 max-w-full shrink overflow-hidden", className)}>
+        <Tooltip
+          portal
+          placement="bottom-start"
+          tooltip={
+            <div className="max-w-md whitespace-pre-wrap text-sm">{fullText}</div>
+          }
+        >
+          <span
+            className="inline-flex w-fit max-w-md min-w-0 items-center gap-1 rounded-md bg-blue-50 px-2 py-1 text-xs font-medium text-blue-600 ring-1 ring-inset ring-blue-500/10"
+          >
+            <FilterIcon className="h-3.5 w-3.5 shrink-0 text-blue-600" />
+            <span className="min-w-0 truncate">{inlineText}</span>
+            <button
+              type="button"
+              className="ml-1 shrink-0 rounded p-1 hover:bg-blue-200"
+              aria-label="Clear all filters"
+              onClick={(event) => {
+                event.stopPropagation();
+                clearAllFilters();
+              }}
+            >
+              <CloseIcon className="h-3 w-3" />
+            </button>
+          </span>
+        </Tooltip>
+      </div>
+    );
   }
 
   return (

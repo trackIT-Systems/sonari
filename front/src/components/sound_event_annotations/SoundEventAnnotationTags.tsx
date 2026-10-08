@@ -22,6 +22,8 @@ export default function SoundEventAnnotationTags({
   onAddTag,
   onRemoveTag,
   tagVisibility,
+  compact = false,
+  showAddButton = true,
 }: {
   soundEventAnnotation: SoundEventAnnotation;
   tagFilter?: TagFilter;
@@ -29,6 +31,8 @@ export default function SoundEventAnnotationTags({
   onAddTag?: (tag: Tag) => void;
   onRemoveTag?: (tag: Tag) => void;
   tagVisibility?: TagVisibilityFilter;
+  compact?: boolean;
+  showAddButton?: boolean;
 }) {
   const tags = useMemo(
     () => {
@@ -41,13 +45,15 @@ export default function SoundEventAnnotationTags({
   );
 
   return (
-    <div className="flex min-w-0 max-w-full flex-col gap-2">
-      <div className="flex min-w-0 justify-between items-center gap-2 mb-2">
-        <H4 className="min-w-0 flex-1 text-center leading-tight">
-          <TagsIcon className="inline-block mr-1 w-5 h-5" />
-          Sound Event Annotation Tags
-        </H4>
-      </div>
+    <div className={compact ? "flex min-w-0 max-w-full flex-col gap-1" : "flex min-w-0 max-w-full flex-col gap-2"}>
+      {!compact && (
+        <div className="flex min-w-0 justify-between items-center gap-2 mb-2">
+          <H4 className="min-w-0 flex-1 text-center leading-tight">
+            <TagsIcon className="inline-block mr-1 w-5 h-5" />
+            Sound Event Annotation Tags
+          </H4>
+        </div>
+      )}
       <div className="flex min-w-0 flex-row flex-wrap items-center gap-1">
         {tags.map((tag) => (
           <TagComponent
@@ -58,17 +64,19 @@ export default function SoundEventAnnotationTags({
             count={null}
           />
         ))}
-        {tags.length === 0 && <NoTags />}
+        {tags.length === 0 && !compact && <NoTags />}
       </div>
-      <div className="flex flex-row justify-center gap-4 items-center">
-        <AddTagButton
-          variant="primary"
-          filter={tagFilter}
-          text="Add tags"
-          placeholder="Add tags..."
-          onAdd={onAddTag}
-        />
-      </div>
+      {showAddButton && (
+        <div className={compact ? "flex flex-row items-center" : "flex flex-row justify-center gap-4 items-center"}>
+          <AddTagButton
+            variant="primary"
+            filter={tagFilter}
+            text={compact ? "Add" : "Add tags"}
+            placeholder="Add tags..."
+            onAdd={onAddTag}
+          />
+        </div>
+      )}
     </div>
   );
 }

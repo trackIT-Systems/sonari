@@ -1,4 +1,5 @@
 import { useMemo, useRef } from "react";
+import classNames from "classnames";
 
 import Button, { getButtonClassName } from "@/components/Button";
 import FilterBar from "@/components/filters/FilterBar";
@@ -52,6 +53,7 @@ export default function AnnotationProgress({
   isLoading = false,
   onNext,
   onPrevious,
+  fill = false,
 }: {
   current?: number | null;
   taskCount: number;
@@ -60,6 +62,8 @@ export default function AnnotationProgress({
   isLoading?: boolean;
   onNext?: () => void;
   onPrevious?: () => void;
+  /** Shrink to fit a shared header row (full page view) */
+  fill?: boolean;
 }) {
 
 
@@ -89,7 +93,12 @@ export default function AnnotationProgress({
   });
 
   return (
-    <div className="inline-flex gap-4 items-center h-full w-[63rem]">
+    <div
+      className={classNames(
+        "inline-flex gap-4 items-center h-full",
+        fill ? "w-full min-w-0" : "w-[63rem]",
+      )}
+    >
       <Tooltip
         portal={true}
         tooltip={
@@ -106,29 +115,32 @@ export default function AnnotationProgress({
           <PreviousIcon className="inline-block w-8 h-8" />
         </Button>
       </Tooltip>
-      <div className="flex flex-col px-2 py-2 rounded-lg border grow dark:border-stone-800">
-        <div className="flex flex-wrap gap-4 items-center">
-          <ShortcutHelper shortcuts={SHORTCUTS} />
-          <span className="text-sm inline-flex gap-1 items-center whitespace-nowrap text-stone-500">
+      <div className="flex flex-col px-2 py-2 rounded-lg border grow min-w-0 dark:border-stone-800">
+        <div className="flex min-w-0 flex-nowrap items-center gap-4">
+          <div className="shrink-0">
+            <ShortcutHelper shortcuts={SHORTCUTS} />
+          </div>
+          <span className="shrink-0 text-sm inline-flex gap-1 items-center whitespace-nowrap text-stone-500">
             <span className="text-stone-500">Current task:</span>
             <span className="font-bold text-blue-500">{current !== null && current !== undefined && current >= 0 ? current + 1 : 0}</span>
           </span>
-          <span className="text-sm inline-flex gap-1 items-center whitespace-nowrap text-stone-500">
+          <span className="shrink-0 text-sm inline-flex gap-1 items-center whitespace-nowrap text-stone-500">
             <span>Remaining tasks:</span>
             <span className="font-medium text-blue-500">{stats?.pending_count ?? 0}</span>
           </span>
-          <span className="text-sm inline-flex gap-1 items-center whitespace-nowrap text-stone-500">
+          <span className="shrink-0 text-sm inline-flex gap-1 items-center whitespace-nowrap text-stone-500">
             <span>Total tasks:</span>
             <span className="font-medium text-blue-500">{stats?.total ?? taskCount}</span>
           </span>
           {isLoading ? (
-            <div className="flex items-center justify-center px-3 py-1">
+            <div className="flex shrink-0 items-center justify-center px-3 py-1">
               <Spinner variant="info" className="w-5 h-5" />
               <span className="text-sm ml-2 text-stone-500">
                 Filtering...
               </span>
             </div>
           ) : (
+            <div className="shrink-0">
             <FilterMenu
               filter={filter}
               filterDef={taskFilterDefs}
@@ -139,25 +151,25 @@ export default function AnnotationProgress({
               })}
               button={filterBtn}
             />
+            </div>
           )}
           {!isLoading && (
+            <div className="shrink-0">
             <FilterPresets
               storageKey="presets:annotation_tasks"
               filter={filter}
               className="ml-2"
               normalizeForPreset={normalizeDateRangeForPreset}
             />
+            </div>
           )}
           <FilterBar
             withLabel={false}
+            compactSummary
+            className="min-w-0 shrink"
             filter={filter}
             filterDef={taskFilterDefs}
           />
-          {filter.size > 0 && (
-            <Button mode="outline" className="text-xs" onClick={onNext}>
-            Apply filter
-          </Button>
-          )}
         </div>
       </div>
       <Tooltip

@@ -1,4 +1,4 @@
-import { type MouseEvent, useCallback, useMemo, useState } from "react";
+import { type MouseEvent, useCallback, useMemo, useRef, useState } from "react";
 import { mergeProps } from "react-aria";
 
 import useWindowDrag from "@/hooks/window/useWindowDrag";
@@ -60,6 +60,9 @@ export default function useWindowMotions({
   onMoveEnd?: (keys?: EventKeys) => void;
 }) {
   const [initialPosition, setInitialPosition] = useState<Position | null>(null);
+  // The element a gesture started on, so drag deltas (CSS pixels) can be
+  // converted to canvas pixels when the canvas is displayed scaled.
+  const pressedElementRef = useRef<HTMLElement | null>(null);
 
   const clickProps = useMemo(() => {
     const handleClick = (e: MouseEvent) => {
@@ -67,6 +70,7 @@ export default function useWindowMotions({
       
       // Normalize mouse coordinates from screen space to canvas space
       const element = e.currentTarget as unknown as HTMLElement;
+      pressedElementRef.current = element;
       const rect = element.getBoundingClientRect();
       let scaleX = 1;
       let scaleY = 1;
@@ -164,7 +168,7 @@ export default function useWindowMotions({
 
   const { moveProps, isDragging } = useWindowDrag({
     window,
-    elementRef,
+    elementRef: elementRef ?? pressedElementRef,
     dimensions,
     onMoveStart: handleMoveStart,
     onMove: handleMove,
