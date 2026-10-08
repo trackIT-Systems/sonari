@@ -62,6 +62,7 @@ export default function AnnotationTaskSpectrogram({
   onParameterChange,
   onSelectSoundEventAnnotation,
   onSegmentsLoaded,
+  onWindowChange,
   onAddTagToSoundEventAnnotation,
   onRemoveTagFromSoundEventAnnotation,
   onAddSoundEventAnnotation,
@@ -97,6 +98,8 @@ export default function AnnotationTaskSpectrogram({
   onParameterChange?: (params: SpectrogramParameters) => void;
   onSelectSoundEventAnnotation?: (soundEventAnnotation: SoundEventAnnotation | null) => void;
   onSegmentsLoaded: () => void;
+  /** Reports the visible window whenever the user zooms or pans */
+  onWindowChange?: (window: SpectrogramWindow) => void;
   onAddTagToSoundEventAnnotation?: (params: { soundEventAnnotation: SoundEventAnnotation; tag: Tag }) => Promise<SoundEventAnnotation>;
   onRemoveTagFromSoundEventAnnotation?: (params: { soundEventAnnotation: SoundEventAnnotation; tag: Tag }) => Promise<SoundEventAnnotation>;
   onAddSoundEventAnnotation?: (params: { geometry: Geometry; tags: Tag[] }) => Promise<SoundEventAnnotation>;
@@ -259,6 +262,10 @@ export default function AnnotationTaskSpectrogram({
     toggleFixedAspectRatio: toggleFixedAspectRatio,
     onSegmentsLoaded,
   });
+
+  useEffect(() => {
+    onWindowChange?.(spectrogram.window);
+  }, [onWindowChange, spectrogram.window]);
 
   const handleParameterSave = useCallback(() => {
     onParameterSave?.(spectrogram.parameters);

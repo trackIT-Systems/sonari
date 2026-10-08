@@ -95,6 +95,37 @@ describe("useSpectrogram window", () => {
     expect(result.current.window.freq).toEqual({ min: 0, max: 30000 });
   });
 
+  it("resets to the initial window after panning", () => {
+    const { result } = renderSpectrogram();
+    act(() => result.current.zoom(win(5, 6)));
+    act(() => result.current.reset());
+    expect(result.current.window).toEqual(win(0, 1));
+  });
+
+  it("restores the initial zoom level in place for a task that starts late", () => {
+    const { result } = renderHook(() =>
+      useSpectrogram({
+        task: { ...task, start_time: 600, end_time: 660 } as AnnotationTask,
+        samplerate: SAMPLERATE,
+        bounds: win(600, 660),
+        initial: win(610, 610.5),
+        parameters: PARAMS,
+        withSpectrogram: true,
+        fixedAspectRatio: false,
+        toggleFixedAspectRatio: () => undefined,
+        onSegmentsLoaded: () => undefined,
+        withShortcuts: false,
+      }),
+    );
+
+    act(() => result.current.zoom(win(610.1, 610.2)));
+    act(() => result.current.reset());
+
+    // Not the whole task: the initial duration, kept where the user was.
+    expect(result.current.window.time.min).toBeCloseTo(610.1, 6);
+    expect(result.current.window.time.max).toBeCloseTo(610.6, 6);
+  });
+
   it("still resets to the new initial window when it really changes", () => {
     const { result, rerender } = renderSpectrogram();
     act(() => result.current.zoom(win(10, 10.25)));

@@ -1,4 +1,5 @@
 import type {
+  Dimensions,
   Interval,
   SpectrogramParameters,
   SpectrogramWindow,
@@ -119,6 +120,71 @@ function getInitialDuration({
   const hopDuration = calculateHopDuration(window_size_samples, overlap_percent, samplerate);
   const idealDuration = SPECTROGRAM_CANVAS_DIMENSIONS.width * hopDuration;
   return Math.min(duration, idealDuration);
+}
+
+/**
+ * Expand a window so that it is drawn with the same time-to-frequency scale
+ * ratio as a reference view.
+ *
+ * Two views only show the same shape when their pixels cover the same amount of
+ * time per Hz. This stretches the window along whichever axis is "too zoomed
+ * in" until that holds. The window is only ever grown, so everything that was
+ * visible before stays visible.
+ *
+ * @param window - The window to adjust (e.g. a sound event plus some margin)
+ * @param dimensions - Canvas the window is drawn on
+ * @param reference - The window whose scale ratio should be matched
+ * @param referenceDimensions - Canvas the reference window is drawn on
+ */
+export function matchWindowScaleRatio({
+  window,
+  dimensions,
+  reference,
+  referenceDimensions = SPECTROGRAM_CANVAS_DIMENSIONS,
+}: {
+  window: SpectrogramWindow;
+  dimensions: Dimensions;
+  reference: SpectrogramWindow;
+  referenceDimensions?: Dimensions;
+}): SpectrogramWindow {
+  const duration = window.time.max - window.time.min;
+  const bandwidth = window.freq.max - window.freq.min;
+  const referenceDuration = reference.time.max - reference.time.min;
+  const referenceBandwidth = reference.freq.max - reference.freq.min;
+
+  if (
+    duration <= 0 ||
+    bandwidth <= 0 ||
+    referenceDuration <= 0 ||
+    referenceBandwidth <= 0
+  ) {
+    return window;
+  }
+
+  // Bandwidth per unit of duration that keeps both views at the same scale.
+  const targetSlope =
+    (referenceBandwidth / referenceDuration) *
+    (referenceDimensions.width / referenceDimensions.height) *
+    (dimensions.height / dimensions.width);
+
+  const grown =
+    bandwidth >= targetSlope * duration
+      ? { duration: bandwidth / targetSlope, bandwidth }
+      : { duration, bandwidth: targetSlope * duration };
+
+  const timeCenter = (window.time.max + window.time.min) / 2;
+  const freqCenter = (window.freq.max + window.freq.min) / 2;
+
+  return {
+    time: {
+      min: timeCenter - grown.duration / 2,
+      max: timeCenter + grown.duration / 2,
+    },
+    freq: {
+      min: freqCenter - grown.bandwidth / 2,
+      max: freqCenter + grown.bandwidth / 2,
+    },
+  };
 }
 
 /**

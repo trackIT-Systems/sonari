@@ -4,7 +4,8 @@ import drawBBox from "@/draw/bbox";
 import useWindowMotions from "@/hooks/window/useWindowMotions";
 import { scaleBBoxToWindow } from "@/utils/geometry";
 
-import type { Position, SpectrogramWindow } from "@/types";
+import type { Dimensions, Position, SpectrogramWindow } from "@/types";
+import { SPECTROGRAM_CANVAS_DIMENSIONS } from "@/constants";
 
 const VALID_STYLE = {
   fillAlpha: 0.3,
@@ -76,11 +77,14 @@ function enforceAspectRatio(
 
 export default function useSpectrogramZoom({
   window,
+  dimensions = SPECTROGRAM_CANVAS_DIMENSIONS,
   onZoom,
   fixedAspectRatio,
   enabled = true,
 }: {
   window: SpectrogramWindow;
+  /** Size of the canvas the window is rendered on. */
+  dimensions?: Dimensions;
   onZoom?: (window: SpectrogramWindow) => void;
   fixedAspectRatio: boolean;
   enabled?: boolean;
@@ -136,6 +140,7 @@ export default function useSpectrogramZoom({
   const { props, isDragging } = useWindowMotions({
     enabled,
     window,
+    dimensions,
     onMoveStart: handleMoveStart,
     onMove: handleMove,
     onMoveEnd: handleMoveEnd,
@@ -156,12 +161,13 @@ export default function useSpectrogramZoom({
           currentZoomWindow.freq.max,
         ],
         window,
+        dimensions,
       );
 
       const style = isValid ? VALID_STYLE : INVALID_STYLE;
       drawBBox(ctx, bbox, style);
     },
-    [enabled, currentZoomWindow, window, isValid],
+    [enabled, currentZoomWindow, window, isValid, dimensions],
   );
 
   return {

@@ -8,7 +8,12 @@ import { SpectrogramParameters } from "@/types";
 import { useEffect, useMemo } from "react";
 
 import type { TagFilter } from "@/api/tags";
-import type { AnnotationTask, SoundEventAnnotation, Tag } from "@/types";
+import type {
+  AnnotationTask,
+  SoundEventAnnotation,
+  SpectrogramWindow,
+  Tag,
+} from "@/types";
 import type { TagVisibilityFilter } from "@/utils/passes";
 
 export default function SelectedSoundEventAnnotation({
@@ -18,6 +23,7 @@ export default function SelectedSoundEventAnnotation({
   tagFilter,
   withSpectrogram,
   parameters,
+  getReferenceWindow,
   onUpdate,
   tagVisibility,
   onSelectSoundEventAnnotation,
@@ -33,6 +39,8 @@ export default function SelectedSoundEventAnnotation({
   tagFilter?: TagFilter;
   withSpectrogram: boolean;
   parameters: SpectrogramParameters;
+  /** Current window of the main spectrogram, whose scale ratio this view copies */
+  getReferenceWindow?: () => SpectrogramWindow | null;
   onUpdate?: (annotation: SoundEventAnnotation) => void;
   tagVisibility?: TagVisibilityFilter;
   onSelectSoundEventAnnotation?: (annotation: SoundEventAnnotation) => void;
@@ -83,6 +91,7 @@ export default function SelectedSoundEventAnnotation({
           samplerate={samplerate}
           parameters={parameters}
           withSpectrogram={withSpectrogram}
+          getReferenceWindow={getReferenceWindow}
         />
       </Card>
       <PassContext

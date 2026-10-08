@@ -1,25 +1,44 @@
-import { useRef, useMemo } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useKeyPressEvent } from "react-use";
 import useCanvas from "@/hooks/draw/useCanvas";
 import useSpectrogram from "@/hooks/spectrogram/useSpectrogram";
+import useCreateLineString from "@/hooks/draw/useCreateLineString";
 import useKeyFilter from "@/hooks/utils/useKeyFilter";
 import { applyAutoSTFT } from "@/api/spectrograms";
-import type { AnnotationTask, SoundEventAnnotation, SpectrogramParameters } from "@/types";
+import type {
+  AnnotationTask,
+  SoundEventAnnotation,
+  SpectrogramParameters,
+  SpectrogramWindow,
+} from "@/types";
 import { H4 } from "../Headings";
 import { ExplorationIcon } from "../icons";
 import {
-  calculateTimeFrames,
-  frequencyRangeToBinRange,
-} from "@/utils/spectrogram_calculations";
+  adjustWindowToBounds,
+  getInitialViewingWindow,
+  matchWindowScaleRatio,
+} from "@/utils/windows";
 import { PSD_TOGGLE_SHORTCUT } from "@/utils/keyboard";
+import { SOUND_EVENT_CANVAS_DIMENSIONS, ZOOM_FACTOR } from "@/constants";
 import SoundEventAnnotationPSD from "./SoundEventAnnotationPSD";
+import SpectrogramControls from "../spectrograms/SpectrogramControls";
+import SpectrogramZoomControls from "../spectrograms/SpectrogramZoomControls";
+import MeasurementControls from "../annotation_tasks/MeasurementControls";
 import useStore from "@/store";
 import Button from "../Button";
+
+const MEASURE_STYLE = {
+  borderColor: "rgb(16 185 129)",
+  fillColor: "rgb(16 185 129)",
+  borderWidth: 2,
+  borderDash: [5, 5],
+  fillAlpha: 0.2,
+};
 
 function getWindowFromGeometry(annotation: SoundEventAnnotation, taskStartTime: number, taskEndTime: number, samplerate: number) {
     const { geometry, geometry_type } = annotation;
     const duration = taskEndTime - taskStartTime;
-    
+
     switch (geometry_type) {
         case "TimeInterval":
             const ti_coordinates = geometry.coordinates as [number, number];
@@ -139,60 +158,28 @@ function getSoundEventCoordinates(annotation: SoundEventAnnotation, taskStartTim
     }
 }
 
-function calculateSpectrogramDimensions(
-    window: { time: { min: number; max: number }, freq: { min: number; max: number } },
-    parameters: SpectrogramParameters,
-    samplerate: number,
-    maxWidth = 455,
-    maxHeight = 225
-) {
-    const duration = window.time.max - window.time.min;
-
-    // Calculate time axis pixels using utility function
-    const timePixels = calculateTimeFrames(
-        duration,
-        samplerate,
-        parameters.window_size_samples,
-        parameters.overlap_percent
-    );
-
-    // Calculate frequency axis pixels using utility function
-    const { minBin, maxBin } = frequencyRangeToBinRange(
-        window.freq.min,
-        window.freq.max,
-        parameters.window_size_samples,
-        samplerate
-    );
-    const freqPixels = maxBin - minBin;
-
-    // Calculate scaling to fit within max dimensions while maintaining aspect ratio
-    const scaleWidth = maxWidth / timePixels;
-    const scaleHeight = maxHeight / freqPixels;
-    const scale = Math.min(scaleWidth, scaleHeight);
-
-    return {
-        width: Math.round(timePixels * scale),
-        height: Math.round(freqPixels * scale)
-    };
-}
-
 export default function SoundEventAnnotationSpectrogramView({
     soundEventAnnotation,
     task,
     samplerate,
     parameters,
     withSpectrogram,
+    getReferenceWindow,
 }: {
     soundEventAnnotation: SoundEventAnnotation;
     task: AnnotationTask,
     samplerate: number,
     parameters: SpectrogramParameters;
     withSpectrogram: boolean;
+    /** Current window of the main spectrogram, whose scale ratio this view copies */
+    getReferenceWindow?: () => SpectrogramWindow | null;
 }) {
-    const containerRef = useRef<HTMLDivElement>(null);
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const showPSD = useStore((s) => s.showPSD);
     const setShowPSD = useStore((s) => s.setShowPSD);
+
+    const [isMeasuring, setIsMeasuring] = useState(false);
+    const [fixedAspectRatio, setFixedAspectRatio] = useState(false);
 
     // Keyboard shortcut to toggle PSD view
     useKeyPressEvent(useKeyFilter({ key: PSD_TOGGLE_SHORTCUT }), () => setShowPSD(!showPSD));
@@ -209,57 +196,135 @@ export default function SoundEventAnnotationSpectrogramView({
         return applyAutoSTFT(parameters, samplerate);
     }, [parameters, samplerate]);
 
+    /** The whole task stays navigable, so the user can pan out of the sound event. */
+    const bounds = useMemo<SpectrogramWindow>(() => ({
+        time: { min: task.start_time, max: task.end_time },
+        freq: { min: 0, max: effectiveSamplerate / 2 },
+    }), [task.start_time, task.end_time, effectiveSamplerate]);
+
     // getWindowFromGeometry converts absolute annotation coords to relative [0, duration],
     // then we convert back to absolute for useSpectrogram.
-    const window = useMemo(() => {
+    const initial = useMemo(() => {
         const relWindow = getWindowFromGeometry(
             soundEventAnnotation,
             task.start_time,
             task.end_time,
             effectiveSamplerate
         );
-        return {
+        const fitted = {
             time: {
                 min: relWindow.time.min + task.start_time,
                 max: relWindow.time.max + task.start_time,
             },
             freq: relWindow.freq,
         };
-    }, [soundEventAnnotation, effectiveSamplerate, task.start_time, task.end_time]);
+
+        // Show the sound event at the scale the main spectrogram is currently
+        // using, so it keeps the shape the user just looked at. Before the main
+        // spectrogram reports a window, fall back to the view it opens with.
+        const reference =
+            getReferenceWindow?.() ??
+            getInitialViewingWindow({
+                startTime: task.start_time,
+                endTime: task.end_time,
+                samplerate: effectiveSamplerate,
+                parameters: selectedParameters,
+            });
+
+        return adjustWindowToBounds(
+            matchWindowScaleRatio({
+                window: fitted,
+                dimensions: SOUND_EVENT_CANVAS_DIMENSIONS,
+                reference,
+            }),
+            bounds,
+        );
+    }, [
+        soundEventAnnotation,
+        effectiveSamplerate,
+        task.start_time,
+        task.end_time,
+        selectedParameters,
+        bounds,
+        getReferenceWindow,
+    ]);
 
     const soundEventCoords = useMemo(
         () => getSoundEventCoordinates(soundEventAnnotation, task.start_time),
         [soundEventAnnotation, task.start_time]
     );
 
-    const displayCoords = useMemo(() => window, [window]);
-
-    const dimensions = useMemo(
-        () => calculateSpectrogramDimensions(window, selectedParameters, effectiveSamplerate),
-        [window, selectedParameters, effectiveSamplerate]
-    );
+    const toggleFixedAspectRatio = useCallback(() => {
+        setFixedAspectRatio((prev) => !prev);
+    }, []);
 
     const spectrogram = useSpectrogram({
         task,
         samplerate: effectiveSamplerate,
-        bounds: window,
-        initial: window,
+        bounds,
+        initial,
         parameters: selectedParameters,
         canvasRef,
-        enabled: true,
+        dimensions: SOUND_EVENT_CANVAS_DIMENSIONS,
+        enabled: !isMeasuring,
         withSpectrogram,
         withShortcuts: false,
-        fixedAspectRatio: false,
+        fixedAspectRatio,
         preload: false,
-        toggleFixedAspectRatio: () => { },
+        toggleFixedAspectRatio,
         onSegmentsLoaded: () => null,
     });
 
-    const { draw } = spectrogram;
+    const { draw, window: spectrogramWindow, props: spectrogramProps, zoom, scale } = spectrogram;
+
+    // This view exists to show one sound event, so reset goes back to it
+    // instead of keeping the current position like the main spectrogram does.
+    const handleReset = useCallback(() => zoom(initial), [zoom, initial]);
+
+    // Scale both axes by the same factor: that keeps the view centred on what
+    // the user is looking at and preserves the main spectrogram's scale ratio.
+    const handleZoomIn = useCallback(
+        () => scale({ time: 1 - ZOOM_FACTOR, freq: 1 - ZOOM_FACTOR }),
+        [scale],
+    );
+    const handleZoomOut = useCallback(
+        () => scale({ time: 1 + ZOOM_FACTOR, freq: 1 + ZOOM_FACTOR }),
+        [scale],
+    );
+
+    // The measurement stays on screen until it is cleared with a shift click or
+    // by leaving measure mode, same as on the main spectrogram.
+    const { props: measureProps, draw: drawMeasurement } = useCreateLineString({
+        window: spectrogramWindow,
+        dimensions: SOUND_EVENT_CANVAS_DIMENSIONS,
+        enabled: isMeasuring,
+        style: MEASURE_STYLE,
+    });
+
+    const handleToggleMeasure = useCallback(() => {
+        setIsMeasuring((prev) => !prev);
+    }, []);
+
+    // Leaving the spectrogram (e.g. for the PSD view) ends the measurement.
+    useEffect(() => {
+        if (showPSD || !withSpectrogram) setIsMeasuring(false);
+    }, [showPSD, withSpectrogram]);
+
+    const canvasProps = isMeasuring ? measureProps : spectrogramProps;
+
+    const drawCanvas = useCallback(
+        (ctx: CanvasRenderingContext2D) => {
+            // Frequency lines belong to the main spectrogram; they would only
+            // clutter this zoomed in view.
+            draw(ctx, { withAxes: false, withFreqLines: false });
+            drawMeasurement(ctx);
+        },
+        [draw, drawMeasurement],
+    );
 
     useCanvas({
         ref: canvasRef as React.RefObject<HTMLCanvasElement>,
-        draw: (ctx) => draw(ctx, { withAxes: false })
+        draw: drawCanvas,
     });
 
     return (
@@ -292,30 +357,59 @@ export default function SoundEventAnnotationSpectrogramView({
 
             {/* Spectrogram view - hidden when showing PSD */}
             <div style={{ display: showPSD ? "none" : "block" }}>
+                {withSpectrogram && (
+                    <div className="flex flex-row gap-4 mb-2">
+                        <SpectrogramControls
+                            canZoom={spectrogram.canZoom}
+                            fixedAspectRatio={fixedAspectRatio}
+                            withShortcutHints={false}
+                            onReset={handleReset}
+                            onZoom={spectrogram.enableZoom}
+                            onToggleAspectRatio={toggleFixedAspectRatio}
+                        />
+                        <SpectrogramZoomControls
+                            withShortcutHints={false}
+                            onZoomIn={handleZoomIn}
+                            onZoomOut={handleZoomOut}
+                        />
+                        <MeasurementControls
+                            isMeasuring={isMeasuring}
+                            withShortcutHints={false}
+                            onMeasure={handleToggleMeasure}
+                        />
+                    </div>
+                )}
                 <div className="flex">
                     <div className="flex flex-col justify-between pr-2 text-right w-16">
                         <span className="text-xs text-stone-600">
-                            {displayCoords.freq.max > 0 ? (displayCoords.freq.max / 1000).toFixed(2) + " kHz" : ""}
+                            {spectrogramWindow.freq.max > 0 ? (spectrogramWindow.freq.max / 1000).toFixed(2) + " kHz" : ""}
                         </span>
                         <span className="text-xs text-stone-600 text-center">
-                            {displayCoords.freq.max > displayCoords.freq.min ? 
-                                "∆: " + ((displayCoords.freq.max - displayCoords.freq.min) / 1000).toFixed(2) + " kHz" : ""}
+                            {spectrogramWindow.freq.max > spectrogramWindow.freq.min ?
+                                "∆: " + ((spectrogramWindow.freq.max - spectrogramWindow.freq.min) / 1000).toFixed(2) + " kHz" : ""}
                         </span>
                         <span className="text-xs text-stone-600">
-                            {displayCoords.freq.min > 0 ? (displayCoords.freq.min / 1000).toFixed(2) + " kHz" : ""}
+                            {spectrogramWindow.freq.min > 0 ? (spectrogramWindow.freq.min / 1000).toFixed(2) + " kHz" : ""}
                         </span>
                     </div>
 
                     <div
-                        ref={containerRef}
                         className="relative flex items-center justify-center overflow-clip rounded-md border border-stone-200 dark:border-stone-600"
-                        style={{ width: "28rem", height: "14rem" }}
+                        style={{
+                            width: SOUND_EVENT_CANVAS_DIMENSIONS.width,
+                            height: SOUND_EVENT_CANVAS_DIMENSIONS.height,
+                        }}
                     >
                         <canvas
                             ref={canvasRef}
-                            style={dimensions}
+                            width={SOUND_EVENT_CANVAS_DIMENSIONS.width}
+                            height={SOUND_EVENT_CANVAS_DIMENSIONS.height}
+                            style={{
+                                width: SOUND_EVENT_CANVAS_DIMENSIONS.width,
+                                height: SOUND_EVENT_CANVAS_DIMENSIONS.height,
+                            }}
                             className="rounded-md"
-                            {...spectrogram.props}
+                            {...canvasProps}
                         />
                         {spectrogram.isLoading && (
                             <div className="absolute inset-0 flex items-center justify-center bg-stone-100 dark:bg-stone-800 bg-opacity-50">
@@ -328,7 +422,7 @@ export default function SoundEventAnnotationSpectrogramView({
                 <div className="flex justify-between pl-16 pr-2 pt-2">
                     <span className="text-xs text-stone-600">{(soundEventCoords.time.min * 1000).toFixed(0)}ms</span>
                     <span className="text-xs text-stone-600 text-center">
-                        {soundEventCoords.time.max > soundEventCoords.time.min ? 
+                        {soundEventCoords.time.max > soundEventCoords.time.min ?
                             "∆: " + ((soundEventCoords.time.max - soundEventCoords.time.min) * 1000).toFixed(0) + "ms" : ""}
                     </span>
                     <span className="text-xs text-stone-600">{(soundEventCoords.time.max * 1000).toFixed(0)}ms</span>

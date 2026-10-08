@@ -2,7 +2,7 @@ import { type WheelEvent, useMemo } from "react";
 
 import { scaleXToWindow, scaleYToWindow } from "@/utils/geometry";
 
-import type { SpectrogramWindow } from "@/types";
+import type { Dimensions, SpectrogramWindow } from "@/types";
 import { SPECTROGRAM_CANVAS_DIMENSIONS } from "@/constants";
 
 /**
@@ -12,6 +12,7 @@ import { SPECTROGRAM_CANVAS_DIMENSIONS } from "@/constants";
  */
 export default function useWindowScroll({
   window,
+  dimensions = SPECTROGRAM_CANVAS_DIMENSIONS,
   onScroll,
   shift = false,
   ctrl = false,
@@ -21,6 +22,8 @@ export default function useWindowScroll({
 }: {
   /** The current spectrogram window being displayed in the canvas. */
   window: SpectrogramWindow;
+  /** Size of the canvas the window is rendered on. */
+  dimensions?: Dimensions;
   /** The callback function to handle scroll events. */
   onScroll?: ({
     time,
@@ -80,26 +83,26 @@ export default function useWindowScroll({
         if (relative) {
           // Zooming (relative scaling)
           if (isTimeZoom) {
-            return onScroll?.({ timeRatio: delta / SPECTROGRAM_CANVAS_DIMENSIONS.width });
+            return onScroll?.({ timeRatio: delta / dimensions.width });
           } else if (isFreqZoom) {
-            return onScroll?.({ freqRatio: delta / SPECTROGRAM_CANVAS_DIMENSIONS.height });
+            return onScroll?.({ freqRatio: delta / dimensions.height });
           }
         } else {
           // Panning (absolute movement)
           if (isDefaultScroll) {
             // Default scroll: deltaX (horizontal) → time, deltaY (vertical) → freq
-            const deltaTime = scaleXToWindow(deltaX, window, true);
-            const deltaFreq = scaleYToWindow(deltaY, window, true);
+            const deltaTime = scaleXToWindow(deltaX, window, true, dimensions);
+            const deltaFreq = scaleYToWindow(deltaY, window, true, dimensions);
             return onScroll?.({ time: deltaTime, freq: -deltaFreq });
           } else if (isFreqPan) {
             // Alt + scroll: move in frequency
-            const deltaFreq = scaleYToWindow(deltaY, window, true);
+            const deltaFreq = scaleYToWindow(deltaY, window, true, dimensions);
             return onScroll?.({ freq: -deltaFreq });
           }
         }
       },
     };
-  }, [enabled, onScroll, ctrl, shift, alt, relative, window]);
+  }, [enabled, onScroll, ctrl, shift, alt, relative, window, dimensions]);
 
   return {
     scrollProps,

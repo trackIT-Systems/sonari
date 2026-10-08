@@ -5,7 +5,7 @@ import useWindowDrag from "@/hooks/window/useWindowDrag";
 import { scalePixelsToWindow } from "@/utils/geometry";
 
 import type { EventKeys } from "@/hooks/utils/useDrag";
-import type { Position, SpectrogramWindow } from "@/types";
+import type { Dimensions, Position, SpectrogramWindow } from "@/types";
 import { SPECTROGRAM_CANVAS_DIMENSIONS } from "@/constants";
 
 /**
@@ -14,6 +14,7 @@ import { SPECTROGRAM_CANVAS_DIMENSIONS } from "@/constants";
 export default function useWindowMotions({
   window,
   elementRef,
+  dimensions = SPECTROGRAM_CANVAS_DIMENSIONS,
   enabled = true,
   onClick,
   onDoubleClick,
@@ -25,6 +26,8 @@ export default function useWindowMotions({
   window: SpectrogramWindow;
   /** Optional ref to the canvas/element for coordinate normalization. */
   elementRef?: React.RefObject<HTMLElement | null>;
+  /** Size of the canvas the window is rendered on. */
+  dimensions?: Dimensions;
   /** Whether the motion is enabled. */
   enabled?: boolean;
   /** Callback when a click occurs */
@@ -72,16 +75,16 @@ export default function useWindowMotions({
         scaleX = element.width / rect.width;
         scaleY = element.height / rect.height;
       } else {
-        // For other elements, normalize to SPECTROGRAM_CANVAS_DIMENSIONS
-        scaleX = SPECTROGRAM_CANVAS_DIMENSIONS.width / rect.width;
-        scaleY = SPECTROGRAM_CANVAS_DIMENSIONS.height / rect.height;
+        // For other elements, normalize to the canvas dimensions
+        scaleX = dimensions.width / rect.width;
+        scaleY = dimensions.height / rect.height;
       }
       
       const point = {
         x: e.nativeEvent.offsetX * scaleX,
         y: e.nativeEvent.offsetY * scaleY,
       };
-      const position = scalePixelsToWindow(point, window);
+      const position = scalePixelsToWindow(point, window, false, dimensions);
       setInitialPosition(position);
       onClick?.({
         position,
@@ -107,7 +110,7 @@ export default function useWindowMotions({
       onPointerDown: handleClick,
       onClick: handleClick,
     };
-  }, [enabled, window, onClick, onDoubleClick]);
+  }, [enabled, window, onClick, onDoubleClick, dimensions]);
 
   const handleMoveStart = useCallback(
     ({ shiftKey, ctrlKey, altKey, metaKey }: EventKeys = {}) => {
@@ -162,6 +165,7 @@ export default function useWindowMotions({
   const { moveProps, isDragging } = useWindowDrag({
     window,
     elementRef,
+    dimensions,
     onMoveStart: handleMoveStart,
     onMove: handleMove,
     onMoveEnd: handleMoveEnd,

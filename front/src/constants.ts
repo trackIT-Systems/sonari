@@ -38,6 +38,10 @@ export const ZOOM_FACTOR = 0.2;
 export const SPECTROGRAM_CANVAS_DIMENSIONS: Dimensions = {height: 384, width: 1000}
 export const WAVEFORM_CANVAS_DIMENSIONS: Dimensions = {height: SPECTROGRAM_CANVAS_DIMENSIONS.height / 6, width: SPECTROGRAM_CANVAS_DIMENSIONS.width}
 
+/** Canvas used by the selected sound event panel. The backing store matches the
+ * rendered size so that pointer deltas map 1:1 onto canvas pixels. */
+export const SOUND_EVENT_CANVAS_DIMENSIONS: Dimensions = {height: 224, width: 448}
+
 /** Card padding is p-4 which equals 16px on each side (32px total horizontal padding) */
 export const CARD_HORIZONTAL_PADDING = 36;
 /** Container width that accounts for Card padding to achieve 1000px content width */

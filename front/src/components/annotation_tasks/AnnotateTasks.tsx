@@ -34,6 +34,7 @@ import type {
   AnnotationStatus,
   SoundEventAnnotation,
   SpectrogramParameters,
+  SpectrogramWindow,
   Tag,
   User,
   Note,
@@ -168,6 +169,17 @@ export default function AnnotateTasks({
     },
     [withAutoplay]
   )
+
+  // Kept in a ref: the selected sound event panel only reads it when it opens,
+  // and storing it in state would re-render the whole view on every pan frame.
+  const mainSpectrogramWindowRef = useRef<SpectrogramWindow | null>(null);
+  const handleMainWindowChange = useCallback((window: SpectrogramWindow) => {
+    mainSpectrogramWindowRef.current = window;
+  }, []);
+  const getMainSpectrogramWindow = useCallback(
+    () => mainSpectrogramWindowRef.current,
+    [],
+  );
 
   const [fixedAspectRatio, setFixedAspectRatio] = useState(false);
   const toggleFixedAspectRatio = useCallback(() => {
@@ -712,6 +724,7 @@ export default function AnnotateTasks({
                     fixedAspectRatio={fixedAspectRatio}
                     toggleFixedAspectRatio={toggleFixedAspectRatio}
                     onSegmentsLoaded={tasks.handleCurrentSegmentsLoaded}
+                    onWindowChange={handleMainWindowChange}
                     onAddTagToSoundEventAnnotation={activeAddTagToSoundEventAnnotation}
                     onRemoveTagFromSoundEventAnnotation={activeRemoveTagFromSoundEventAnnotation}
                     onAddSoundEventAnnotation={activeAddSoundEventAnnotation}
@@ -752,6 +765,7 @@ export default function AnnotateTasks({
                   soundEventAnnotation={selectedSoundEventAnnotation}
                   parameters={liveParameters}
                   withSpectrogram={withSpectrogram}
+                  getReferenceWindow={getMainSpectrogramWindow}
                   onUpdate={onUpdateSelectedSoundEventAnnotation}
                   tagVisibility={tagVisibility}
                   onSelectSoundEventAnnotation={setSelectedSoundEventAnnotation}

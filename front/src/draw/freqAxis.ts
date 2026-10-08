@@ -1,4 +1,3 @@
-import { SPECTROGRAM_CANVAS_DIMENSIONS } from "@/constants";
 import {
   type AxisStyle,
   DEFAULT_AXIS_STYLE,
@@ -37,7 +36,7 @@ function drawFreqTick(
   ctx.moveTo(0, y);
   if (length == -1) {
     ctx.setLineDash([3, 10])
-    ctx.lineTo(SPECTROGRAM_CANVAS_DIMENSIONS.width, y)
+    ctx.lineTo(ctx.canvas.width, y)
   } else {
     ctx.lineTo(length, y);
   }

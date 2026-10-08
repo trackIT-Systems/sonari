@@ -18,11 +18,12 @@ import useSpectrogramMotions, { MotionMode } from "@/hooks/spectrogram/useSpectr
 import type { RefObject } from "react";
 import type {
   AnnotationTask,
+  Dimensions,
   Position,
   SpectrogramParameters,
   SpectrogramWindow,
 } from "@/types";
-import { ZOOM_FACTOR } from "@/constants";
+import { SPECTROGRAM_CANVAS_DIMENSIONS, ZOOM_FACTOR } from "@/constants";
 import { drawLineString, DEFAULT_LINESTRING_STYLE } from "@/draw/linestring";
 import { setFontStyle } from "@/draw/styles";
 
@@ -42,7 +43,7 @@ const FREQ_LINE_COLORS = [
  */
 type DrawFn = (
   ctx: CanvasRenderingContext2D,
-  options?: { withAxes?: boolean }
+  options?: { withAxes?: boolean; withFreqLines?: boolean }
 ) => void;
 
 /**
@@ -152,6 +153,7 @@ export default function useSpectrogram({
   initial: initialWindow,
   parameters: initialParameters,
   canvasRef,
+  dimensions = SPECTROGRAM_CANVAS_DIMENSIONS,
   onParameterChange,
   onModeChange,
   onDoubleClick,
@@ -171,6 +173,8 @@ export default function useSpectrogram({
   parameters: SpectrogramParameters;
   /** Optional canvas ref for position popover - if provided, shows coordinates on hover */
   canvasRef?: RefObject<HTMLCanvasElement | null>;
+  /** Size of the canvas the spectrogram is rendered on. */
+  dimensions?: Dimensions;
   onParameterChange?: (parameters: SpectrogramParameters) => void;
   onModeChange?: (mode: MotionMode) => void;
   onDoubleClick?: (dblClickProps: { position: Position }) => void;
@@ -346,11 +350,15 @@ export default function useSpectrogram({
       if (vprtDuration == initialWindowDuration && vprtBandwidth == initialWindowBandwidth) {
         return initialWindow;
       } else {
-        const time_max_new = initialWindow.time.min + (initialWindow.time.max - initialWindow.time.min);
+        // Restore the initial zoom level but stay where the user is. Durations
+        // are relative, so the initial window's own start must not leak in:
+        // for a task that does not start at 0 that would blow the window up to
+        // the whole task.
+        const initialDuration = initialWindow.time.max - initialWindow.time.min;
         return {
           time: {
             min: prev.time.min,
-            max: prev.time.min + time_max_new,
+            max: prev.time.min + initialDuration,
           },
           freq: {
             min: initialWindow.freq.min,
@@ -448,6 +456,7 @@ export default function useSpectrogram({
     disable,
   } = useSpectrogramMotions({
     window,
+    dimensions,
     onDrag: handleZoomDrag,
     onZoom: handleZoomDrag,
     onScrollMoveTime: handleShift,
@@ -468,7 +477,8 @@ export default function useSpectrogram({
 
   // Create the drawing function
   const draw = useCallback<DrawFn>(
-    (ctx, options = { withAxes: true }) => {
+    (ctx, options) => {
+      const { withAxes = true, withFreqLines = true } = options ?? {};
       if (canDrag) {
         ctx.canvas.style.cursor = "crosshair";
       } else if (canZoom) {
@@ -501,12 +511,12 @@ export default function useSpectrogram({
         ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
       }
       
-      if (withSpectrogram && options.withAxes) {
+      if (withSpectrogram && withAxes) {
         drawTimeAxis(ctx, window.time);
         drawFrequencyAxis(ctx, window.freq);
       }
       drawMotions(ctx);
-      if (parameters.freqLines && Array.isArray(parameters.freqLines)) {
+      if (withFreqLines && parameters.freqLines && Array.isArray(parameters.freqLines)) {
         parameters.freqLines.forEach((freq, index) => {
           const color = FREQ_LINE_COLORS[index % FREQ_LINE_COLORS.length];
           drawFrequencyLines(ctx, [freq], window, {
