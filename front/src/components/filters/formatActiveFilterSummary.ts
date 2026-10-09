@@ -5,7 +5,13 @@ import type { NumberFilter } from "@/types";
 
 type TagLike = { key: string; value: string; exclude?: boolean };
 
-function formatNumberFilter(value: NumberFilter & Record<string, number | undefined>) {
+type ComparisonFilter = NumberFilter & {
+  eq?: number;
+  ge?: number;
+  le?: number;
+};
+
+function formatNumberFilter(value: ComparisonFilter) {
   const parts: string[] = [];
   if (value.eq !== undefined) parts.push(`= ${value.eq}`);
   if (value.gt !== undefined) parts.push(`> ${value.gt}`);
@@ -63,7 +69,7 @@ function formatFilterValue(field: string, value: unknown): string | null {
     if ("name" in value && (value as { name?: string }).name) {
       return String((value as { name: string }).name);
     }
-    const asNumber = value as NumberFilter;
+    const asNumber = value as ComparisonFilter;
     if (
       asNumber.eq !== undefined ||
       asNumber.gt !== undefined ||

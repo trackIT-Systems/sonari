@@ -29,7 +29,7 @@ export default function SpectrogramBar({
   const setBarRef = useCallback(
     (node: HTMLDivElement | null) => {
       barElementRef.current = node;
-      measureRef(node);
+      if (node) measureRef(node);
     },
     [measureRef],
   );
