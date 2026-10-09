@@ -14,5 +14,13 @@
         "description": "Annotation Task Table now has spectogram preview on click or using arrow keys up and down. Bulk tag operations with shortscuts also implemented."
       }
     ]
+  },
+  "2026.10.3": {
+    "highlights": [
+      {
+        "title": "Release notes",
+        "description": "Annotate View has full screen mode on press of Keyboard w. Selected Sound Event now has zoom and measure actions."
+      } 
+    ]
   }
 }
