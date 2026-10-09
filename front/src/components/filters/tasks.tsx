@@ -7,14 +7,12 @@ import {
   BooleanFilter,
   IncludeTagMatchFilter,
   type IntegerCountFilter,
-  DatasetFilter,
   FloatFilter,
   FloatEqFilterFn,
   IntegerFilter,
   TextFilter,
 } from "@/components/filters/Filters";
 import {
-  DatasetIcon,
   DateIcon,
   EditIcon,
   NeedsReviewIcon,
@@ -517,51 +515,6 @@ const tasksFilterDefs: FilterDef<AnnotationTaskFilter>[] = [
     description: "Include or exclude tasks without any sound events?",
     icon: (
       <EditIcon className="h-5 w-5 inline-block text-stone-500 mr-1 align-middle" />
-    ),
-  },
-  {
-    field: "dataset",
-    name: "Station",
-    render: ({ value, clear, setFilter }) => {
-      const datasets = Array.isArray(value) ? value : [value];
-      return datasets.map(dataset => (
-        <FilterBadge 
-          key={dataset.id}
-          field="Dataset" 
-          value={dataset.name} 
-          onRemove={() => {
-            if (Array.isArray(value)) {
-              const newValue = value.filter(d => d.id !== dataset.id);
-              if (newValue.length === 0) {
-                clear();
-              } else {
-                setFilter("dataset", newValue);
-              }
-            } else {
-              clear();
-            }
-          }} 
-        />
-      ));
-    },
-    selector: ({ setFilter, filter }) => (  // Add filter to selector props
-      <DatasetFilter 
-        onChange={(dataset) => {
-          const currentValue = filter.get("dataset");
-          if (currentValue === undefined) {
-            setFilter("dataset", [dataset]);
-          } else {
-            const newValue = Array.isArray(currentValue) 
-              ? [...currentValue, dataset]
-              : [currentValue, dataset];
-            setFilter("dataset", newValue);
-          }
-        }} 
-      />
-    ),
-    description: "Only show tasks from a specific stations. You can filter for multiple stations. A task from either of the stations will be shown.",
-    icon: (
-      <DatasetIcon className="h-5 w-5 inline-block text-stone-500 mr-1 align-middle" />
     ),
   },
   {

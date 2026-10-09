@@ -205,17 +205,24 @@ export default function useAnnotationTaskTable({
           const recording = row.getValue("recording") as Recording;
           const link = getAnnotationTaskLink(row.original.annotation_project_id, row.original.id);
           const fullHref = link ? `/annotation_projects/${link}` : "#";
+          const { date, time } = recording ?? {};
 
           return (
             <TableCell>
               <Link
-                className="hover:font-bold hover:text-emerald-500 focus:ring focus:ring-emerald-500 focus:outline-none block break-words"
+                className="hover:font-bold hover:text-emerald-500 focus:ring focus:ring-emerald-500 focus:outline-none block break-words text-xs text-stone-600 dark:text-stone-400"
                 href={fullHref}
                 target="_blank"
                 rel="noopener noreferrer"
               >
                 {pathFormatter(recording.path)}
               </Link>
+              {date && (
+                <span className="block text-sm font-semibold whitespace-nowrap">
+                  {date.toLocaleDateString()}
+                  {time ? ` ${time}` : ""}
+                </span>
+              )}
             </TableCell>
           )
         },
