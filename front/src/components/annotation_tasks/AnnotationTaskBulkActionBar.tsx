@@ -56,6 +56,9 @@ type ConfirmContent = {
   destructive: boolean;
 };
 
+/** Replacing tags on more than this many tasks asks for confirmation. */
+const REPLACE_CONFIRM_THRESHOLD = 10;
+
 const STATUS_SHORTCUTS: Record<string, AnnotationStatus> = {
   [ACCEPT_TASK_SHORTCUT]: "completed",
   [UNSURE_TASK_SHORTCUT]: "assigned",
@@ -174,6 +177,7 @@ export default function AnnotationTaskBulkActionBar({
     new_tag?: Pick<Tag, "key" | "value"> | null;
     replace_all?: boolean;
     add_to_tagged?: boolean;
+    replace_group?: string;
   }>;
   bulkDeleteSoundEventsByTag: BulkMutation<{
     annotation_task_ids?: number[];
@@ -214,6 +218,19 @@ export default function AnnotationTaskBulkActionBar({
 
   const taskIds =
     targetMode === "selected" ? selectedTaskIds : undefined;
+
+  const targetCount =
+    targetMode === "selected" ? selectedTaskIds.length : filterTotal;
+
+  const replaceConfirmContent: ConfirmContent | undefined =
+    targetCount > REPLACE_CONFIRM_THRESHOLD
+      ? {
+          title: "Replace tags?",
+          message: `Are you sure you want to replace tags on ${targetLabel}? This cannot be undone in one step.`,
+          confirmLabel: "Replace",
+          destructive: false,
+        }
+      : undefined;
 
   const runWithConfirm = useCallback(
     (action: () => void, content?: ConfirmContent) => {
@@ -277,9 +294,21 @@ export default function AnnotationTaskBulkActionBar({
           },
           { onSuccess: () => onClearSelection() },
         );
-      });
+      }, replaceConfirmContent);
     },
-    [bulkReplaceSoundEventTags, onClearSelection, runWithConfirm, taskIds],
+    [bulkReplaceSoundEventTags, onClearSelection, replaceConfirmContent, runWithConfirm, taskIds],
+  );
+
+  const handleReplaceGroup = useCallback(
+    (group: string) => {
+      runWithConfirm(() => {
+        bulkReplaceSoundEventTags.mutate(
+          { annotation_task_ids: taskIds, replace_group: group },
+          { onSuccess: () => onClearSelection() },
+        );
+      }, replaceConfirmContent);
+    },
+    [bulkReplaceSoundEventTags, onClearSelection, replaceConfirmContent, runWithConfirm, taskIds],
   );
 
   const handleAddTagToTagged = useCallback(
@@ -460,6 +489,7 @@ export default function AnnotationTaskBulkActionBar({
                     onReplaceTag={(oldTag, newTag) => {
                       handleReplaceTag(oldTag, newTag);
                     }}
+                    onReplaceGroup={handleReplaceGroup}
                   />
                 )}
               </PopoverPanel>
@@ -561,6 +591,8 @@ export default function AnnotationTaskBulkActionBar({
               <Button
                 mode="filled"
                 variant={confirmContent?.destructive ? "danger" : "primary"}
+                autoFocus
+                data-autofocus
                 onClick={() => {
                   handleConfirm();
                   close();

@@ -18,6 +18,7 @@ import {
   getSpecialKeyLabel,
 } from "@/utils/keyboard";
 import { isTagVisible } from "@/utils/passes";
+import { groupReplaceOptions } from "@/utils/soundEventTagReplace";
 import type { TagVisibilityFilter } from "@/utils/passes";
 
 function NoTags() {
@@ -27,13 +28,18 @@ function NoTags() {
 }
 
 const allTag: Tag = { key: "all", value: "tags" }
+// Pseudo tag key for the "all species of group X" options in the replace list.
+const GROUP_REPLACE_KEY = "__group_replace__";
 
 export function TagReplacePanel({
   taskTags,
   onReplaceTag,
+  onReplaceGroup,
 }: {
   taskTags: { tag: Tag; count: number }[];
   onReplaceTag: (oldTag: Tag | null, newTag: Tag) => void;
+  /** Replace all species of a group (Myotis, Nyctaloid, Pipistrelloid) with the group tag. */
+  onReplaceGroup?: (group: string) => void;
 }) {
   const [selectedTagWithCount, setSelectedTagWithCount] = useState<{ tag: Tag; count: number } | null>(null);
 
@@ -43,12 +49,21 @@ export function TagReplacePanel({
     [taskTags]
   );
 
+  const groupOptions = useMemo(
+    () => (onReplaceGroup ? groupReplaceOptions(taskTags) : []),
+    [taskTags, onReplaceGroup],
+  );
+
   const allOptions = useMemo(() => {
     if (taskTags.length == 0) {
       return taskTags
     }
-    return [{ tag: allTag, count: totalCount }, ...taskTags]
-  }, [taskTags, totalCount]);
+    const groupTagOptions = groupOptions.map(({ group, count }) => ({
+      tag: { key: GROUP_REPLACE_KEY, value: group },
+      count,
+    }));
+    return [{ tag: allTag, count: totalCount }, ...groupTagOptions, ...taskTags]
+  }, [taskTags, totalCount, groupOptions]);
 
   if (selectedTagWithCount === null) {
     return (
@@ -71,7 +86,13 @@ export function TagReplacePanel({
 
           }
           getOptionKey={(option) => `${option.tag.key}-${option.tag.value}`}
-          onSelect={(option) => setSelectedTagWithCount(option)}
+          onSelect={(option) => {
+            if (option.tag.key === GROUP_REPLACE_KEY) {
+              onReplaceGroup?.(option.tag.value);
+              return;
+            }
+            setSelectedTagWithCount(option);
+          }}
           empty={<div className="text-stone-500 text-center w-full">No tags found</div>}
           autoFocus
         />
@@ -261,6 +282,7 @@ function TagAddPanel({
 export default function AnnotationTaskTags({
   annotationTask,
   onReplaceTagInSoundEventAnnotations,
+  onReplaceGroupInSoundEventAnnotations,
   onAddTagToUntaggedSoundEventAnnotations,
   onAddTagToSoundEventAnnotationsWithTag,
   selectedSoundEventAnnotation,
@@ -269,6 +291,7 @@ export default function AnnotationTaskTags({
 }: {
   annotationTask: AnnotationTask;
   onReplaceTagInSoundEventAnnotations?: (oldTag: Tag | null, newTag: Tag | null, selectedSoundEventAnnotation?: SoundEventAnnotation | null) => void;
+  onReplaceGroupInSoundEventAnnotations?: (group: string, selectedSoundEventAnnotation?: SoundEventAnnotation | null) => void;
   onAddTagToUntaggedSoundEventAnnotations?: (newTag: Tag) => void;
   onAddTagToSoundEventAnnotationsWithTag?: (filterTag: Tag, newTag: Tag, selectedSoundEventAnnotation?: SoundEventAnnotation | null) => void;
   selectedSoundEventAnnotation?: SoundEventAnnotation | null;
@@ -438,6 +461,14 @@ export default function AnnotationTaskTags({
                     close();
                     await handleTagReplaceRemove(oldTag, newTag);
                   }}
+                  onReplaceGroup={
+                    onReplaceGroupInSoundEventAnnotations
+                      ? async (group) => {
+                          close();
+                          await onReplaceGroupInSoundEventAnnotations(group, selectedSoundEventAnnotation);
+                        }
+                      : undefined
+                  }
                 />
               </PopoverPanel>
             </>

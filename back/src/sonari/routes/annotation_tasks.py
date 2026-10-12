@@ -536,6 +536,7 @@ def get_annotation_tasks_router(settings: SonariSettings):
             new_tag=body.new_tag,
             replace_all=body.replace_all,
             add_to_tagged=body.add_to_tagged,
+            replace_group=body.replace_group,
             user=user,
         )
         return result

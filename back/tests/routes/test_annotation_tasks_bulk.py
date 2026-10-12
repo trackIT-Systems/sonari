@@ -31,7 +31,7 @@ async def _create_task(
 async def _create_sea_with_tag(
     auth_client: AsyncClient,
     task: schemas.AnnotationTask,
-    tag: schemas.Tag,
+    tag: schemas.Tag | schemas.TagCreate,
 ) -> dict:
     response = await auth_client.post(
         "/api/v1/sound_event_annotations/",
@@ -376,6 +376,73 @@ async def test_bulk_replace_sound_event_tags_replace_all(
     tags = (detail.json().get("sound_event_annotations") or [])[0].get("tags") or []
     assert len(tags) == 1
     assert tags[0]["key"] == new_key
+
+
+@pytest.mark.asyncio
+async def test_bulk_replace_group_replaces_species_with_group_tag(
+    auth_client: AsyncClient,
+    db_session,
+    test_annotation_project: schemas.AnnotationProject,
+    test_annotation_task: schemas.AnnotationTask,
+    test_user,
+):
+    """replace_group swaps all species of the group for the group tag, leaving others."""
+    user = schemas.SimpleUser.model_validate(test_user)
+    myotis = await api.tags.get_or_create(db_session, "species", "Myotis daubentonii", user)
+    other = await api.tags.get_or_create(db_session, "species", "Nyctalus noctula", user)
+    await db_session.commit()
+    await _create_sea_with_tag(auth_client, test_annotation_task, myotis)
+    await _create_sea_with_tag(auth_client, test_annotation_task, other)
+
+    response = await auth_client.post(
+        "/api/v1/annotation_tasks/bulk/sound_event_tags/replace/",
+        params={"annotation_project__eq": test_annotation_project.id},
+        json={
+            "annotation_task_ids": [test_annotation_task.id],
+            "replace_group": "Myotis",
+        },
+    )
+    assert response.status_code == 200, response.text
+    result = schemas.AnnotationTaskBulkResult.model_validate(response.json())
+    assert result.sound_events_updated == 1
+
+    detail = await auth_client.get(
+        "/api/v1/annotation_tasks/detail/",
+        params={
+            "annotation_task_id": test_annotation_task.id,
+            "include_sound_event_annotations": True,
+            "include_sound_event_tags": True,
+        },
+    )
+    values = sorted(
+        t["value"]
+        for sea in detail.json().get("sound_event_annotations") or []
+        for t in sea.get("tags") or []
+    )
+    assert values == ["Myotis", "Nyctalus noctula"]
+    keys = {
+        t["value"]: t["key"]
+        for sea in detail.json().get("sound_event_annotations") or []
+        for t in sea.get("tags") or []
+    }
+    assert keys["Myotis"] == "group"
+
+
+@pytest.mark.asyncio
+async def test_bulk_replace_group_rejects_unknown_group(
+    auth_client: AsyncClient,
+    test_annotation_project: schemas.AnnotationProject,
+    test_annotation_task: schemas.AnnotationTask,
+):
+    response = await auth_client.post(
+        "/api/v1/annotation_tasks/bulk/sound_event_tags/replace/",
+        params={"annotation_project__eq": test_annotation_project.id},
+        json={
+            "annotation_task_ids": [test_annotation_task.id],
+            "replace_group": "Nope",
+        },
+    )
+    assert response.status_code >= 400
 
 
 @pytest.mark.asyncio

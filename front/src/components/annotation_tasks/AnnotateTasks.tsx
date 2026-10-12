@@ -27,7 +27,9 @@ import TagComponent, { getTagKey } from "@/components/tags/Tag";
 
 import { blurActiveElement } from "@/utils/focus";
 import {
+  GROUP_TAG_KEY,
   isReplaceAllTag,
+  isSpeciesOfGroup,
   soundEventAnnotationsForTagReplace,
 } from "@/utils/soundEventTagReplace";
 import { SOUND_EVENT_CYCLE_FILTER_SHORTCUT, DELETE_TAG_SHORTCUT, ABORT_SHORTCUT, FULLSCREEN_SHORTCUT } from "@/utils/keyboard";
@@ -581,6 +583,37 @@ export default function AnnotateTasks({
     [displayedSoundEventAnnotations, activeRemoveTagFromSoundEventAnnotation, activeAddTagToSoundEventAnnotation, activeHistory],
   );
 
+  const handleReplaceGroupInSoundEventAnnotations = useCallback(
+    async (group: string, currentAnnotation?: SoundEventAnnotation | null) => {
+      if (!displayedSoundEventAnnotations.length || !activeRemoveTagFromSoundEventAnnotation || !activeAddTagToSoundEventAnnotation) return;
+
+      const groupTag: Tag = { key: GROUP_TAG_KEY, value: group };
+      const scope = currentAnnotation ? [currentAnnotation] : displayedSoundEventAnnotations;
+      const run = activeHistory?.runBatch ?? (async (_label, fn) => fn());
+      await run(`Replace ${group} species with group`, async () => {
+        await Promise.all(
+          scope.map(async (soundEventAnnotation) => {
+            const members = (soundEventAnnotation.tags ?? []).filter((tag) =>
+              isSpeciesOfGroup(tag, group),
+            );
+            if (members.length === 0) return;
+            try {
+              for (const tag of members) {
+                await activeRemoveTagFromSoundEventAnnotation({ soundEventAnnotation, tag });
+              }
+              if (!soundEventAnnotation.tags?.some((t) => t.key === groupTag.key && t.value === groupTag.value)) {
+                await activeAddTagToSoundEventAnnotation({ soundEventAnnotation, tag: groupTag });
+              }
+            } catch (error) {
+              console.error("Error replacing group:", error);
+            }
+          }),
+        );
+      });
+    },
+    [displayedSoundEventAnnotations, activeRemoveTagFromSoundEventAnnotation, activeAddTagToSoundEventAnnotation, activeHistory],
+  );
+
   const handleAddTagToUntaggedSoundEventAnnotations = useCallback(
     async (newTag: Tag) => {
       if (!displayedSoundEventAnnotations.length || !activeAddTagToSoundEventAnnotation) {
@@ -875,6 +908,7 @@ export default function AnnotateTasks({
                 <AnnotationTaskTags
                   annotationTask={displayAnnotationTask}
                   onReplaceTagInSoundEventAnnotations={handleReplaceTagInSoundEventAnnotations}
+                  onReplaceGroupInSoundEventAnnotations={handleReplaceGroupInSoundEventAnnotations}
                   onAddTagToUntaggedSoundEventAnnotations={handleAddTagToUntaggedSoundEventAnnotations}
                   selectedSoundEventAnnotation={selectedSoundEventAnnotation}
                   tagVisibility={tagVisibility}
@@ -915,6 +949,7 @@ export default function AnnotateTasks({
                 <AnnotationTaskTags
                   annotationTask={displayAnnotationTask!}
                   onReplaceTagInSoundEventAnnotations={handleReplaceTagInSoundEventAnnotations}
+                  onReplaceGroupInSoundEventAnnotations={handleReplaceGroupInSoundEventAnnotations}
                   onAddTagToUntaggedSoundEventAnnotations={handleAddTagToUntaggedSoundEventAnnotations}
                   onAddTagToSoundEventAnnotationsWithTag={handleAddTagToSoundEventAnnotationsWithTag}
                   selectedSoundEventAnnotation={selectedSoundEventAnnotation}
@@ -949,6 +984,7 @@ export default function AnnotateTasks({
             headless
             annotationTask={displayAnnotationTask}
             onReplaceTagInSoundEventAnnotations={handleReplaceTagInSoundEventAnnotations}
+            onReplaceGroupInSoundEventAnnotations={handleReplaceGroupInSoundEventAnnotations}
             onAddTagToUntaggedSoundEventAnnotations={handleAddTagToUntaggedSoundEventAnnotations}
             onAddTagToSoundEventAnnotationsWithTag={handleAddTagToSoundEventAnnotationsWithTag}
             selectedSoundEventAnnotation={selectedSoundEventAnnotation}

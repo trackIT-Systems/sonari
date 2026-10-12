@@ -140,5 +140,6 @@ async def download_recording_audio(
     return FileResponse(
         path=file_path,
         media_type=f"audio/{media_type}",
-        headers={"Content-Disposition": f"attachment; filename={filename}"},
+        filename=filename,
+        content_disposition_type="attachment",
     )

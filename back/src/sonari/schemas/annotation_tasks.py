@@ -267,6 +267,8 @@ class AnnotationTaskBulkReplaceSoundEventTags(_AnnotationTaskBulkTarget):
     new_tag: TagCreate | None = None
     replace_all: bool = False
     add_to_tagged: bool = False
+    replace_group: str | None = None
+    """Bat group (e.g. ``Myotis``): replace all species tags of the group with the group tag."""
 
 
 class AnnotationTaskBulkDeleteSoundEvents(_AnnotationTaskBulkTarget):

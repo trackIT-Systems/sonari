@@ -1,5 +1,7 @@
 """Constants used across export functions."""
 
+from sonari.utils.bat_groups import BAT_GROUPS
+
 
 class ExportConstants:
     """Constants used across export functions."""
@@ -57,31 +59,6 @@ class ExportConstants:
     ]
 
 
-BAT_GROUPS: dict[str, str] = {
-    "Pipistrellus pipistrellus": "Pipistrelloid",
-    "Pipistrellus pygmaeus": "Pipistrelloid",
-    "Pipistrellus nathusii": "Pipistrelloid",
-    "Eptesicus serotinus": "Nyctaloid",
-    "Myotis alcathoe": "Myotis",
-    "Myotis mystacinus/brandtii": "Myotis",
-    "Myotis brandtii": "Myotis",
-    "Myotis mystacinus": "Myotis",
-    "Myotis bechsteinii": "Myotis",
-    "Myotis daubentonii": "Myotis",
-    "Myotis myotis": "Myotis",
-    "Myotis nattereri": "Myotis",
-    "Nyctalus leisleri": "Nyctaloid",
-    "Nyctalus noctula": "Nyctaloid",
-    "Vespertilio murinus": "Nyctaloid",
-    "Myotis emarginatus": "Myotis",
-    "Myotis dasycneme": "Myotis",
-    "Rhinolophus ferrumequinum": "Rhinolophus",
-    "Rhinolophus hipposideros": "Rhinolophus",
-    "Eptesicus nilsonii": "Nyctaloid",
-    "Plecotus auritus": "Plecotus",
-    "Plecotus austriacus": "Plecotus",
-    "Plecotus auritus/austriacus": "Plecotus",
-}
 
 # Latin name (or group label) → ProBat short code for CSV export
 PROBAT_SPECIES_CODES: dict[str, str] = {

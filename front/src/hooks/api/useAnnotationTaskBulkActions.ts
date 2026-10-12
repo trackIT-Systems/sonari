@@ -108,12 +108,14 @@ export default function useAnnotationTaskBulkActions({
       new_tag,
       replace_all,
       add_to_tagged,
+      replace_group,
     }: {
       annotation_task_ids?: number[];
       old_tag?: Pick<Tag, "key" | "value"> | null;
       new_tag?: Pick<Tag, "key" | "value"> | null;
       replace_all?: boolean;
       add_to_tagged?: boolean;
+      replace_group?: string;
     }) =>
       api.annotationTasks.bulkReplaceSoundEventTags({
         filter,
@@ -122,6 +124,7 @@ export default function useAnnotationTaskBulkActions({
         new_tag,
         replace_all,
         add_to_tagged,
+        replace_group,
       }),
     onSuccess: (result) => {
       invalidateTaskListQueries(client);

@@ -38,6 +38,7 @@ class BulkSoundEventTagReplaceParams:
     add_to_tagged: bool
     user_id: UUID
     retain_confidence: bool
+    old_tag_ids: tuple[int, ...] = ()
 
 
 @dataclass
@@ -61,6 +62,16 @@ def _target_seas_select(task_ids: Sequence[int], params: BulkSoundEventTagReplac
         return base.where(
             exists(
                 select(1).where(SeaTag.sound_event_annotation_id == Sea.id),
+            ),
+        )
+
+    if params.old_tag_ids:
+        return base.where(
+            exists(
+                select(1).where(
+                    SeaTag.sound_event_annotation_id == Sea.id,
+                    SeaTag.tag_id.in_(params.old_tag_ids),
+                ),
             ),
         )
 
@@ -89,6 +100,11 @@ async def _delete_tags(
 
     if params.effective_replace_all:
         stmt = stmt.where(SeaTag.sound_event_annotation_id.in_(target_sea_ids))
+    elif params.old_tag_ids:
+        stmt = stmt.where(
+            SeaTag.tag_id.in_(params.old_tag_ids),
+            SeaTag.sound_event_annotation_id.in_(target_sea_ids),
+        )
     elif params.old_tag_id is not None:
         stmt = stmt.where(
             SeaTag.tag_id == params.old_tag_id,
@@ -305,11 +321,13 @@ def build_bulk_params(
     old_tag_provided: bool,
     add_to_tagged: bool,
     user: schemas.SimpleUser,
+    old_tag_ids: Sequence[int] = (),
 ) -> BulkSoundEventTagReplaceParams:
     """Build params from resolved tag ids and request flags."""
     add_only = (
         not effective_replace_all
         and old_tag_id is None
+        and not old_tag_ids
         and not old_tag_provided
         and not add_to_tagged
     )
@@ -321,4 +339,5 @@ def build_bulk_params(
         add_to_tagged=add_to_tagged,
         user_id=user.id,
         retain_confidence=user.username in ML_CONFIDENCE_USERNAMES,
+        old_tag_ids=tuple(old_tag_ids),
     )

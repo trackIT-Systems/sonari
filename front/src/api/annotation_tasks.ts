@@ -609,6 +609,7 @@ export function registerAnnotationTasksAPI(
     new_tag,
     replace_all,
     add_to_tagged,
+    replace_group,
   }: {
     filter: AnnotationTaskFilter;
     annotation_task_ids?: number[];
@@ -616,6 +617,7 @@ export function registerAnnotationTasksAPI(
     new_tag?: Pick<Tag, "key" | "value"> | null;
     replace_all?: boolean;
     add_to_tagged?: boolean;
+    replace_group?: string;
   }): Promise<AnnotationTaskBulkResult> {
     const response = await instance.post(
       endpoints.bulkReplaceSoundEventTags,
@@ -625,6 +627,7 @@ export function registerAnnotationTasksAPI(
         new_tag: new_tag ?? undefined,
         replace_all: replace_all ?? false,
         add_to_tagged: add_to_tagged ?? false,
+        replace_group,
       },
       {
         params: buildAnnotationTaskFilterQueryParams(filter),

@@ -16,9 +16,16 @@ from sonari.api.common import BaseAPI
 from sonari.filters.annotation_tasks import confidence_feature_name_clause_for_tag_creator
 from sonari.filters.base import Filter
 from sonari.api.bulk_sound_event_tag_replace import (
+    BulkSoundEventTagReplaceParams,
     build_bulk_params,
     process_bulk_delete_sound_events_chunk,
     process_bulk_tag_replace_chunk,
+)
+from sonari.utils.bat_groups import (
+    GROUP_TAG_KEY,
+    REPLACEABLE_BAT_GROUPS,
+    SPECIES_TAG_KEY,
+    species_in_group,
 )
 from sonari.utils.sound_event_tag_replace import is_replace_all_tag
 
@@ -1355,9 +1362,18 @@ class AnnotationTaskAPI(
         replace_all: bool,
         add_to_tagged: bool,
         user: schemas.SimpleUser,
+        replace_group: str | None = None,
     ) -> schemas.AnnotationTaskBulkResult:
         """Replace sound event tags across many annotation tasks."""
         from sonari.api import tags as tags_api
+
+        if replace_group is not None:
+            return await self._bulk_replace_species_group(
+                session,
+                task_ids=task_ids,
+                group=replace_group,
+                user=user,
+            )
 
         effective_replace_all = replace_all or is_replace_all_tag(old_tag)
         if add_to_tagged:
@@ -1367,11 +1383,6 @@ class AnnotationTaskAPI(
                 raise ValueError("add_to_tagged requires old_tag and new_tag.")
         if new_tag is None and old_tag is None and not effective_replace_all:
             raise ValueError("Provide old_tag, new_tag, or replace_all to update tags.")
-
-        tasks_targeted = len(task_ids)
-        tasks_updated = 0
-        sound_events_updated = 0
-        failures: list[schemas.AnnotationTaskBulkFailure] = []
 
         new_tag_id: int | None = None
         if new_tag is not None:
@@ -1397,6 +1408,19 @@ class AnnotationTaskAPI(
             add_to_tagged=add_to_tagged,
             user=user,
         )
+
+        return await self._run_bulk_replace_chunks(session, task_ids, bulk_params)
+
+    async def _run_bulk_replace_chunks(
+        self,
+        session: AsyncSession,
+        task_ids: list[int],
+        bulk_params: BulkSoundEventTagReplaceParams,
+    ) -> schemas.AnnotationTaskBulkResult:
+        tasks_targeted = len(task_ids)
+        tasks_updated = 0
+        sound_events_updated = 0
+        failures: list[schemas.AnnotationTaskBulkFailure] = []
 
         for chunk_start in range(0, len(task_ids), _BULK_CHUNK_SIZE):
             chunk = task_ids[chunk_start : chunk_start + _BULK_CHUNK_SIZE]
@@ -1429,6 +1453,52 @@ class AnnotationTaskAPI(
             sound_events_updated=sound_events_updated,
             failures=failures,
         )
+
+    async def _bulk_replace_species_group(
+        self,
+        session: AsyncSession,
+        *,
+        task_ids: list[int],
+        group: str,
+        user: schemas.SimpleUser,
+    ) -> schemas.AnnotationTaskBulkResult:
+        """Replace every species tag of ``group`` with the tag ``group=<group>``."""
+        from sonari.api import tags as tags_api
+
+        if group not in REPLACEABLE_BAT_GROUPS:
+            raise ValueError(f"Unsupported group: {group}.")
+
+        empty = schemas.AnnotationTaskBulkResult(
+            tasks_targeted=len(task_ids),
+            tasks_updated=0,
+            tasks_skipped=0,
+            sound_events_updated=0,
+            failures=[],
+        )
+
+        member_values = [v for v in species_in_group(group) ]
+        member_ids = (
+            await session.execute(
+                select(models.Tag.id).where(
+                    models.Tag.key == SPECIES_TAG_KEY,
+                    models.Tag.value.in_(member_values),
+                ),
+            )
+        ).scalars().all()
+        if not member_ids:
+            return empty
+
+        group_tag = await tags_api.get_or_create(session, GROUP_TAG_KEY, group, user)
+        bulk_params = build_bulk_params(
+            new_tag_id=group_tag.id,
+            old_tag_id=None,
+            effective_replace_all=False,
+            old_tag_provided=True,
+            add_to_tagged=False,
+            user=user,
+            old_tag_ids=member_ids,
+        )
+        return await self._run_bulk_replace_chunks(session, task_ids, bulk_params)
 
     async def bulk_delete_sound_events_by_tag(
         self,
