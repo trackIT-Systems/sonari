@@ -26,7 +26,7 @@ import SearchMenu from "@/components/search/SearchMenu";
 import TagComponent, { getTagKey } from "@/components/tags/Tag";
 
 import { blurActiveElement } from "@/utils/focus";
-import { emitGuidedTourEvent } from "@/components/workshop/guidedTour/events";
+import { emitGuidedTourEvent, useGuidedTourReturnEvent } from "@/components/workshop/guidedTour/events";
 import {
   GROUP_TAG_KEY,
   isReplaceAllTag,
@@ -71,7 +71,6 @@ export default function AnnotateTasks({
   onRemoveBadge,
   onAddNote,
   onRemoveNote,
-  hideNotes = false,
   onAddTag,
   onRemoveTag,
   onAddTagToSoundEventAnnotation,
@@ -112,8 +111,6 @@ export default function AnnotateTasks({
   onRemoveBadge?: (task: AnnotationTask, state: AnnotationStatus, userId?: string) => Promise<AnnotationTask>;
   onAddNote?: (note: NoteCreate) => void;
   onRemoveNote?: (note: Note) => void;
-  /** Hide the task notes panel (e.g. in guided tour projects). */
-  hideNotes?: boolean;
   onAddTag?: (tag: Tag) => void;
   onRemoveTag?: (tag: Tag) => void;
   onAddTagToSoundEventAnnotation?: (params: { soundEventAnnotation: SoundEventAnnotation; tag: Tag }) => Promise<SoundEventAnnotation>;
@@ -162,7 +159,6 @@ export default function AnnotateTasks({
   const onWithSpectrogramChange = useCallback(
     () => {
       setWithSpectrogram(!withSpectrogram);
-      emitGuidedTourEvent("spectrogram-toggled");
     },
     [withSpectrogram]
   )
@@ -171,7 +167,6 @@ export default function AnnotateTasks({
   const onWithSoundEventChange = useCallback(
     () => {
       setWithSoundEvents(!withSoundEvent)
-      emitGuidedTourEvent("sound-events-toggled");
     },
     [withSoundEvent]
   )
@@ -229,7 +224,6 @@ export default function AnnotateTasks({
       }
       return !prev;
     });
-    emitGuidedTourEvent("fullscreen-toggled");
   }, []);
   useKeyPressEvent(useKeyFilter({ key: FULLSCREEN_SHORTCUT }), toggleFullscreen);
 
@@ -248,6 +242,13 @@ export default function AnnotateTasks({
     onVerifyTask,
     onDeselectSoundEventAnnotation,
   });
+
+  // The guided tour asks users to undo what they toggled (hidden spectrogram or
+  // events, full page view), so report the way back, not the first toggle.
+  useGuidedTourReturnEvent(withSpectrogram, true, "spectrogram-shown");
+  useGuidedTourReturnEvent(withSoundEvent, true, "sound-events-shown");
+  useGuidedTourReturnEvent(fullscreen, false, "fullscreen-exited");
+  useGuidedTourReturnEvent(tasks._filter.filter.pending === true, true, "pending-filter-included");
 
   const { tasks: recordingTasks } =
     useRecordingAnnotationTasks({
@@ -313,6 +314,7 @@ export default function AnnotateTasks({
     }
     const events = await activeHistory.undo();
     applyHistoryReplayEvents(events);
+    emitGuidedTourEvent("undo");
   }, [activeHistory, applyHistoryReplayEvents]);
 
   const handleRedo = useCallback(async () => {
@@ -321,6 +323,7 @@ export default function AnnotateTasks({
     }
     const events = await activeHistory.redo();
     applyHistoryReplayEvents(events);
+    emitGuidedTourEvent("redo");
   }, [activeHistory, applyHistoryReplayEvents]);
 
   useAnnotationUndoKeyShortcuts({
@@ -969,14 +972,14 @@ export default function AnnotateTasks({
                   onRemoveTag={onRemoveTag}
                 />
                 </div>
-                {!hideNotes && (
+                <div data-guided-tour="task-notes">
                 <AnnotationTaskNotes
                   onCreateNote={onAddNote}
                   onDeleteNote={onRemoveNote}
                   annotationTask={annotationTask}
                   currentUser={currentUser}
                 />
-                )}
+                </div>
               </div>
               <div className="min-w-0 w-[35rem] max-w-full shrink-0" data-guided-tour="tag-bars">
                 {!fullscreen && (
@@ -1006,14 +1009,14 @@ export default function AnnotateTasks({
                 onRemoveTag={onRemoveTag}
               />
               </div>
-              {!hideNotes && (
+              <div data-guided-tour="task-notes">
               <AnnotationTaskNotes
                 onCreateNote={onAddNote}
                 onDeleteNote={onRemoveNote}
                 annotationTask={annotationTask}
                 currentUser={currentUser}
               />
-              )}
+              </div>
             </div>
           </>
         )}

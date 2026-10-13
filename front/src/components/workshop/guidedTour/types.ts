@@ -10,6 +10,8 @@ export const guidedTourCompletionSchema = z.discriminatedUnion("type", [
   z.object({ type: z.literal("event"), event: z.enum(GUIDED_TOUR_EVENTS) }),
   /** Click anywhere inside the step's target element. */
   z.object({ type: z.literal("click") }),
+  /** Another lesson of the tour (on another page) is finished, e.g. "tasks-table". */
+  z.object({ type: z.literal("lesson"), lesson: z.string() }),
 ]);
 
 export const guidedTourStepSchema = z.object({

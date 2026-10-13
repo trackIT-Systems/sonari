@@ -86,6 +86,16 @@ describe("guided tour manifest", () => {
     }
   });
 
+  it("requires the tasks table lesson before the first status badge", () => {
+    for (const variant of ["bat", "bird"] as const) {
+      const manifest = getVariantManifest(variant)!;
+      const required = manifest.lessons[0].steps.find((s) => s.complete?.type === "lesson");
+      expect(required?.complete).toEqual({ type: "lesson", lesson: manifest.tasksTab.id });
+      const steps = manifest.lessons[0].steps;
+      expect(steps.indexOf(required!)).toBeLessThan(steps.length - 1);
+    }
+  });
+
   it("matches shortcuts", () => {
     expect(matchesShortcut("z", key({ key: "z" }))).toBe(true);
     expect(matchesShortcut("z", key({ key: "u" }))).toBe(false);

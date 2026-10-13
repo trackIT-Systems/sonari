@@ -83,7 +83,6 @@ export default function useAnnotationTaskTable({
   filterTotal,
   onSelectAllMatchingFilter,
   targetMode,
-  hideNotes = false,
 }: {
   data: AnnotationTask[];
   pathFormatter?: (path: string) => string;
@@ -97,7 +96,6 @@ export default function useAnnotationTaskTable({
   filterTotal?: number;
   onSelectAllMatchingFilter?: () => void;
   targetMode?: "selected" | "filter_all";
-  hideNotes?: boolean;
 }) {
 
   const allPageSelected =
@@ -436,13 +434,9 @@ export default function useAnnotationTaskTable({
       targetMode,
     ],
   );
-  const visibleColumns = useMemo(
-    () => (hideNotes ? columns.filter((column) => column.id !== "task_notes") : columns),
-    [columns, hideNotes],
-  );
   return useReactTable<AnnotationTask>({
     data,
-    columns: visibleColumns,
+    columns,
     enableColumnResizing: false,
     getCoreRowModel: getCoreRowModel(),
     getRowId: (row) => String(row.id),

@@ -1,7 +1,7 @@
 "use client";
 
 import { useContext, useMemo } from "react";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 
 import AnnotationProjectContext from "@/app/(base)/annotation_projects/detail/context";
 import GuidedTourCoach, {
@@ -27,6 +27,7 @@ export default function WorkshopTutorial({
 }) {
   const project = useContext(AnnotationProjectContext);
   const pathname = usePathname();
+  const router = useRouter();
 
   const variant = project?.guided_tour_variant as GuidedTourVariant | null | undefined;
   const hasManifest = variant != null && getVariantManifest(variant) != null;
@@ -79,9 +80,11 @@ export default function WorkshopTutorial({
     <GuidedTourCoach
       key={storageKey}
       lesson={lesson}
+      projectId={project.id}
       storageKey={storageKey}
       lessonNumber={onAnnotateTab ? lessonIndex + 1 : undefined}
       lessonCount={onAnnotateTab ? lessonCount : undefined}
+      onFinish={onAnnotateTab && lessonIndex === lessonCount - 1 ? () => router.push("/") : undefined}
     />
   );
 }

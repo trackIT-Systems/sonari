@@ -86,7 +86,19 @@ function isBadgeStep(step: GuidedTourStep): boolean {
   return step.complete?.type === "event" && step.complete.event === "status-badge-added";
 }
 
-/** Keeps a ring drawn around the step's target element; never intercepts input. */
+/** Whether every step of a lesson was completed (progress is read from storage). */
+export function isLessonDone(projectId: number, lessonId: string): boolean {
+  const saved = readStorage<Progress>(guidedTourStorageKey(projectId, lessonId));
+  return Array.isArray(saved?.done) && saved.done.length > 0 && saved.done.every(Boolean);
+}
+
+/**
+ * Keeps a ring drawn around the step's target element; never intercepts input.
+ *
+ * Re-measures on scroll and resize, when the element resizes, and on a slow
+ * timer for layout shifts (content loading in). It does not poll every frame,
+ * which would query the whole DOM 60 times a second on the busy annotate page.
+ */
 function useTargetRect(target: string | undefined): DOMRect | null {
   const [rect, setRect] = useState<DOMRect | null>(null);
 
@@ -95,20 +107,46 @@ function useTargetRect(target: string | undefined): DOMRect | null {
       setRect(null);
       return;
     }
+    let el: HTMLElement | null = null;
+    let observed: HTMLElement | null = null;
     let frame = 0;
     let last = "";
-    const tick = () => {
-      const el = findVisibleTarget(target);
+
+    const resizeObserver = new ResizeObserver(() => schedule());
+
+    function measure() {
+      frame = 0;
+      if (el == null || !el.isConnected || el.getClientRects().length === 0) {
+        el = findVisibleTarget(target!);
+      }
+      if (el !== observed) {
+        if (observed) resizeObserver.unobserve(observed);
+        if (el) resizeObserver.observe(el);
+        observed = el;
+      }
       const next = el?.getBoundingClientRect() ?? null;
       const sig = next ? `${next.x},${next.y},${next.width},${next.height}` : "";
       if (sig !== last) {
         last = sig;
         setRect(next);
       }
-      frame = requestAnimationFrame(tick);
+    }
+
+    function schedule() {
+      if (frame === 0) frame = requestAnimationFrame(measure);
+    }
+
+    measure();
+    window.addEventListener("scroll", schedule, true);
+    window.addEventListener("resize", schedule);
+    const timer = window.setInterval(schedule, 500);
+    return () => {
+      window.removeEventListener("scroll", schedule, true);
+      window.removeEventListener("resize", schedule);
+      window.clearInterval(timer);
+      resizeObserver.disconnect();
+      if (frame !== 0) cancelAnimationFrame(frame);
     };
-    tick();
-    return () => cancelAnimationFrame(frame);
   }, [target]);
 
   return rect;
@@ -127,15 +165,21 @@ const noFocus = (e: React.MouseEvent) => e.preventDefault();
 
 export default function GuidedTourCoach({
   lesson,
+  projectId,
   storageKey,
   lessonNumber,
   lessonCount,
+  onFinish,
 }: {
   lesson: GuidedTourLesson;
+  /** Tour project id; used to look up the progress of other lessons. */
+  projectId: number;
   /** Unique per user project + lesson; progress is restored from it. */
   storageKey: string;
   lessonNumber?: number;
   lessonCount?: number;
+  /** Set on the tour's last lesson: shows a "Finish tour" button on its last step. */
+  onFinish?: () => void;
 }) {
   const stepCount = lesson.steps.length;
   const [progress, setProgress] = useState<Progress>(() => ({
@@ -202,6 +246,31 @@ export default function GuidedTourCoach({
     [update, lesson.steps, stepCount],
   );
 
+  // A read-only step counts as done as soon as it is shown. Otherwise a lesson
+  // ending on one could never be completed.
+  useEffect(() => {
+    if (step.complete == null && !done[stepIndex]) markDone(stepIndex);
+  }, [step, stepIndex, done, markDone]);
+
+  // The app ignores shortcuts while a button has focus, and clicking a button
+  // (status badge, tab, toolbar) focuses it. Drop that focus after the click,
+  // unless the button belongs to an open dialog, menu or popover.
+  useEffect(() => {
+    const onClick = () => {
+      window.setTimeout(() => {
+        const el = document.activeElement;
+        if (!(el instanceof HTMLButtonElement || el instanceof HTMLAnchorElement)) return;
+        if (el.getAttribute("aria-expanded") === "true") return;
+        if (el.closest('[role="dialog"], [role="menu"], [role="listbox"], [data-headlessui-state~="open"]')) {
+          return;
+        }
+        el.blur();
+      }, 0);
+    };
+    document.addEventListener("click", onClick, true);
+    return () => document.removeEventListener("click", onClick, true);
+  }, []);
+
   // Status badges advance to the next lesson; hold them back until every
   // earlier step of this lesson is done.
   useEffect(() => {
@@ -233,13 +302,20 @@ export default function GuidedTourCoach({
       });
     }
 
+    if (completion.type === "lesson") {
+      // The other lesson lives on another page, so this coach is remounted
+      // when the user comes back; checking once on mount is enough.
+      if (isLessonDone(projectId, completion.lesson)) finish();
+      return;
+    }
+
     const selector = tourTargetSelector(step.target);
     const onPointer = (e: PointerEvent) => {
       if (e.target instanceof Element && e.target.closest(selector)) finish();
     };
     document.addEventListener("pointerdown", onPointer, true);
     return () => document.removeEventListener("pointerdown", onPointer, true);
-  }, [step, stepIndex, done, markDone]);
+  }, [step, stepIndex, done, markDone, projectId]);
 
   // After an action completes a step, move on automatically.
   useEffect(() => {
@@ -434,6 +510,17 @@ export default function GuidedTourCoach({
                     className="rounded-md bg-emerald-600 px-3 py-1 text-sm font-medium text-white hover:bg-emerald-700 disabled:cursor-not-allowed disabled:bg-stone-300 disabled:text-stone-500 dark:disabled:bg-stone-700 dark:disabled:text-stone-400"
                   >
                     Next
+                  </button>
+                )}
+                {isLast && onFinish && (
+                  <button
+                    type="button"
+                    onMouseDown={noFocus}
+                    onClick={onFinish}
+                    disabled={!stepDone}
+                    className="rounded-md bg-emerald-600 px-3 py-1 text-sm font-medium text-white hover:bg-emerald-700 disabled:cursor-not-allowed disabled:bg-stone-300 disabled:text-stone-500 dark:disabled:bg-stone-700 dark:disabled:text-stone-400"
+                  >
+                    Finish tour
                   </button>
                 )}
               </div>

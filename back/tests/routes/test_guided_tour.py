@@ -205,6 +205,7 @@ async def _tour_contents(db_session: AsyncSession, project_id: int):
         include_sound_event_annotations=True,
         include_sound_event_tags=True,
         include_status_badges=True,
+        include_notes=True,
     )
     return tasks
 
@@ -215,7 +216,19 @@ async def test_guided_tour_clone_copies_sound_events_and_tags(
     db_session: AsyncSession,
     test_recording_id: int,
 ):
-    await _template_with_tagged_event(db_session, test_recording_id)
+    template = await _template_with_tagged_event(db_session, test_recording_id)
+    # Template notes (authoring hints) must not reach users: their notes field
+    # is where they write feedback.
+    [template_task] = await _tour_contents(db_session, template.id)
+    admin = await api.users.get_by_username(db_session, "admin")
+    await api.notes.create(
+        db_session,
+        message="Authoring hint",
+        created_by=admin,
+        annotation_task_id=template_task.id,
+    )
+    await db_session.commit()
+
     resp = await auth_client.post(
         "/api/v1/annotation_projects/guided_tour/",
         json={"variant": "bat", "reset": True},
@@ -229,6 +242,7 @@ async def test_guided_tour_clone_copies_sound_events_and_tags(
     [sea] = tasks[0].sound_event_annotations
     assert sea.geometry.type == "TimeInterval"
     assert [(t.key, t.value) for t in sea.tags] == [("this", "is wrong")]
+    assert not tasks[0].notes
 
 
 @pytest.mark.asyncio

@@ -7,6 +7,7 @@ import { useKeyPressEvent } from "react-use";
 
 import useKeyFilter from "@/hooks/utils/useKeyFilter";
 import { HELP_SHORTCUT } from "@/utils/keyboard";
+import { useGuidedTourReturnEvent } from "@/components/workshop/guidedTour/events";
 
 type Shortcut = {
   label: string;
@@ -21,6 +22,7 @@ export default function ShortcutHelper({
 } = {}) {
   const [show, setShow] = useState(false);
   useKeyPressEvent(useKeyFilter({ key: HELP_SHORTCUT }), () => setShow((v) => !v));
+  useGuidedTourReturnEvent(show, false, "shortcuts-closed");
 
   return (
     <>

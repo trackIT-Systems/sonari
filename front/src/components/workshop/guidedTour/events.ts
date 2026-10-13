@@ -1,3 +1,5 @@
+import { useEffect, useRef } from "react";
+
 /**
  * Tiny event bus so app components can report user actions to the guided tour
  * coach without depending on it. Emitting is a no-op when no tour is listening.
@@ -14,9 +16,19 @@ export const GUIDED_TOUR_EVENTS = [
   "status-badge-added",
   "view-panned",
   "view-zoomed",
-  "spectrogram-toggled",
-  "sound-events-toggled",
-  "fullscreen-toggled",
+  "time-interval-selected",
+  "undo",
+  "redo",
+  /** Shown again after being hidden (h). */
+  "spectrogram-shown",
+  /** Shown again after being hidden (Shift+h). */
+  "sound-events-shown",
+  /** Full page view closed again (w). */
+  "fullscreen-exited",
+  "settings-closed",
+  "shortcuts-closed",
+  "pending-filter-included",
+  "note-created",
   "playback-started",
   "playback-speed-changed",
 ] as const;
@@ -36,6 +48,18 @@ export function subscribeGuidedTourEvents(
   const handler = (e: Event) => listener((e as CustomEvent<GuidedTourEvent>).detail);
   window.addEventListener(EVENT_NAME, handler);
   return () => window.removeEventListener(EVENT_NAME, handler);
+}
+
+/**
+ * Emit `event` whenever `value` changes to `target`, e.g. when the spectrogram
+ * is shown again after being hidden. Never fires for the initial value.
+ */
+export function useGuidedTourReturnEvent(value: boolean, target: boolean, event: GuidedTourEvent): void {
+  const previous = useRef(value);
+  useEffect(() => {
+    if (previous.current !== value && value === target) emitGuidedTourEvent(event);
+    previous.current = value;
+  }, [value, target, event]);
 }
 
 /**

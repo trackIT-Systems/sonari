@@ -24,6 +24,7 @@ import type {
 } from "@/types";
 import type { TagVisibilityFilter } from "@/utils/passes";
 import toast from "react-hot-toast";
+import { useGuidedTourReturnEvent } from "@/components/workshop/guidedTour/events";
 
 export type AnnotateMode = "select" | "measure" | "draw" | "edit" | "delete" | "idle";
 
@@ -152,6 +153,7 @@ export default function useAnnotateTask(props: {
     onSelectSoundEventAnnotation,
     onChangeMode: onModeChange,
   });
+  useGuidedTourReturnEvent(geometryType === "TimeInterval", true, "time-interval-selected");
 
   useEffect(() => {
     if (externalSelectedSoundEventAnnotation === undefined) {

@@ -20,7 +20,6 @@ export default function AnnotationProjectTasks({
     <AnnotationTaskTable
       filter={filter}
       fixed={["annotation_project"]}
-      hideNotes={annotationProject.is_guided_tour}
     />
   );
 }

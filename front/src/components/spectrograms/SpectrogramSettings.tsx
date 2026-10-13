@@ -24,6 +24,7 @@ import STFTSettings from "./settings/STFTSettings";
 import type { SpectrogramParameters } from "@/types";
 import KeyboardKey from "../KeyboardKey";
 import { SETTINGS_SHORTCUT } from "@/utils/keyboard";
+import { useGuidedTourReturnEvent } from "@/components/workshop/guidedTour/events";
 import useKeyFilter from "@/hooks/utils/useKeyFilter";
 import { useKeyPressEvent } from "react-use";
 import FreqLineSettings from "./settings/FreqLineSettings";
@@ -137,6 +138,7 @@ const SpectrogramSettings = memo(function SpectrogramSettings({
   const [open, setOpen] = useState(false);
 
   useKeyPressEvent(useKeyFilter({ key: SETTINGS_SHORTCUT }), () => setOpen(true));
+  useGuidedTourReturnEvent(open, false, "settings-closed");
 
   return (
     <div>

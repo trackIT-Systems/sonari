@@ -71,12 +71,10 @@ export default function AnnotationTaskTable({
   filter,
   fixed,
   pathFormatter,
-  hideNotes,
 }: {
   filter: AnnotationTaskFilter;
   fixed?: (keyof AnnotationTaskFilter)[];
   pathFormatter?: (path: string) => string;
-  hideNotes?: boolean;
 }) {
   const filterPersistKey = useMemo(
     () => annotationTaskFilterPersistKey(filter.annotation_project?.id),
@@ -223,7 +221,6 @@ export default function AnnotationTaskTable({
     filterTotal: annotationTasks.total,
     onSelectAllMatchingFilter: handleSelectAllMatchingFilter,
     targetMode,
-    hideNotes,
   });
 
   useKeyPressEvent(useKeyFilter({ key: SEARCH_BAR_LEAVE_SHORTCUT }), (event) => {

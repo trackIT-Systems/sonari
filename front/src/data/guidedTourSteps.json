@@ -57,12 +57,10 @@
           "keys": [
             "?"
           ],
-          "task": "Press ? to open the shortcut list",
+          "task": "Press ? to open the list, then close it again",
           "complete": {
-            "type": "key",
-            "keys": [
-              "?"
-            ]
+            "type": "event",
+            "event": "shortcuts-closed"
           }
         },
         {
@@ -110,6 +108,16 @@
             "target": "task-tags",
             "title": "Task tags",
             "hint": "Tags that describe the whole recording."
+          },
+          {
+            "target": "header-tabs",
+            "title": "Tasks table",
+            "hint": "The Tasks tab lists every recording. Open it, work through its short lesson, then come back here.",
+            "task": "Finish the Tasks table lesson",
+            "complete": {
+              "type": "lesson",
+              "lesson": "tasks-table"
+            }
           },
           {
             "target": "status-badges",
@@ -263,67 +271,66 @@
           {
             "target": "spec-settings",
             "title": "Spectrogram settings",
-            "hint": "Colormap, window size, frequency range. Save them for the whole project.",
+            "hint": "Colormap, window size, frequency range and more. Save them to use them on every task. Close the panel when you are done.",
             "keys": [
               "o"
             ],
-            "task": "Open the settings",
+            "task": "Open the settings, then close them again",
             "complete": {
-              "type": "click"
+              "type": "event",
+              "event": "settings-closed"
             }
           },
           {
             "target": "hide-spectrogram",
             "title": "Hide spectrogram",
-            "hint": "Useful for checking events without the image.",
+            "hint": "Useful to check where the events are without the image.",
             "keys": [
               "h"
             ],
-            "task": "Press h (press again to show it)",
+            "task": "Press h to hide it, then h again to bring it back",
             "complete": {
               "type": "event",
-              "event": "spectrogram-toggled"
+              "event": "spectrogram-shown"
             }
           },
           {
             "target": "annotate-toolbar",
             "title": "Hide sound events",
-            "hint": "Look at the raw spectrogram without boxes.",
+            "hint": "Look at the raw spectrogram without events on top. Show them again afterwards: selecting and editing only works on visible events.",
             "keys": [
               "Shift+h"
             ],
-            "task": "Press Shift + h",
+            "task": "Press Shift + h to hide them, then again to show them",
             "complete": {
               "type": "event",
-              "event": "sound-events-toggled"
+              "event": "sound-events-shown"
             }
           },
           {
             "target": "spectrogram",
             "title": "Full page view",
-            "hint": "Only the spectrogram, scaled to the screen. Press w again to exit.",
+            "hint": "Only the spectrogram, scaled to the screen.",
             "keys": [
               "w"
             ],
-            "task": "Press w",
+            "task": "Press w to open it, then w again to close it",
             "complete": {
               "type": "event",
-              "event": "fullscreen-toggled"
+              "event": "fullscreen-exited"
             }
           },
           {
             "target": "shortcuts-help",
             "title": "Shortcuts",
-            "hint": "Every shortcut on this page.",
+            "hint": "Every shortcut on this page. Close the list with Esc.",
             "keys": [
               "?"
             ],
-            "task": "Press ?",
+            "task": "Press ? to open the list, then close it again",
             "complete": {
-              "type": "key",
-              "keys": [
-                "?"
-              ]
+              "type": "event",
+              "event": "shortcuts-closed"
             }
           },
           {
@@ -403,6 +410,32 @@
             }
           },
           {
+            "target": "spectrogram",
+            "title": "Undo",
+            "hint": "Deleted something by mistake? Ctrl + Z (Cmd + Z on Mac) brings it back. Undo works for events and tags.",
+            "keys": [
+              "Ctrl+z"
+            ],
+            "task": "Undo the deletion",
+            "complete": {
+              "type": "event",
+              "event": "undo"
+            }
+          },
+          {
+            "target": "spectrogram",
+            "title": "Redo",
+            "hint": "Ctrl + Shift + Z redoes it, so the mislabeled event is gone again.",
+            "keys": [
+              "Ctrl+Shift+z"
+            ],
+            "task": "Redo the deletion",
+            "complete": {
+              "type": "event",
+              "event": "redo"
+            }
+          },
+          {
             "target": "status-badges",
             "title": "Next lesson",
             "task": "Give this task any status badge",
@@ -420,7 +453,7 @@
           {
             "target": "sound-event-detail",
             "title": "Remove a wrong tag",
-            "hint": "Select the event tagged “this: is wrong” and remove that tag.",
+            "hint": "Select the event tagged “this: is wrong” and remove that tag. Careful: x and delete mode remove the whole event. If that happens, Ctrl + Z brings it back.",
             "task": "Remove a tag from a sound event",
             "complete": {
               "type": "event",
@@ -521,16 +554,14 @@
           {
             "target": "task-filter",
             "title": "Filters",
-            "hint": "Filter by status, tags, date and more. “Pending” shows tasks without a final badge.",
+            "hint": "Filter by date, time, station, tag or status badge. Add “Pending” and choose “include”: only tasks without a final badge remain.",
             "keys": [
               "f"
             ],
-            "task": "Press f",
+            "task": "Filter to pending tasks only",
             "complete": {
-              "type": "key",
-              "keys": [
-                "f"
-              ]
+              "type": "event",
+              "event": "pending-filter-included"
             }
           },
           {
@@ -550,9 +581,28 @@
         "title": "Done",
         "steps": [
           {
+            "target": "task-notes",
+            "title": "Notes",
+            "hint": "Every task has notes for questions, remarks or problems, visible to your team. A note can be marked as an issue (shown in red) to flag a problem. Delete your own notes with the trash icon."
+          },
+          {
+            "target": "task-notes",
+            "title": "Your feedback",
+            "hint": "How was the tour? Unclear steps, missing features, bugs, ideas: all welcome. Press q to jump into the field, Shift + Enter saves the note, Esc leaves the field.",
+            "keys": [
+              "q",
+              "Shift+Enter"
+            ],
+            "task": "Write a feedback note",
+            "complete": {
+              "type": "event",
+              "event": "note-created"
+            }
+          },
+          {
             "target": "status-badges",
             "title": "Tour complete",
-            "hint": "You can restart the tour anytime from the home page."
+            "hint": "Well done! Finish the tour to go back to the home page. You can continue or restart it there anytime."
           }
         ]
       }
@@ -616,12 +666,10 @@
           "keys": [
             "?"
           ],
-          "task": "Press ? to open the shortcut list",
+          "task": "Press ? to open the list, then close it again",
           "complete": {
-            "type": "key",
-            "keys": [
-              "?"
-            ]
+            "type": "event",
+            "event": "shortcuts-closed"
           }
         },
         {
@@ -669,6 +717,16 @@
             "target": "task-tags",
             "title": "Task tags",
             "hint": "Tags that describe the whole recording."
+          },
+          {
+            "target": "header-tabs",
+            "title": "Tasks table",
+            "hint": "The Tasks tab lists every recording. Open it, work through its short lesson, then come back here.",
+            "task": "Finish the Tasks table lesson",
+            "complete": {
+              "type": "lesson",
+              "lesson": "tasks-table"
+            }
           },
           {
             "target": "status-badges",
@@ -822,67 +880,66 @@
           {
             "target": "spec-settings",
             "title": "Spectrogram settings",
-            "hint": "Colormap, window size, frequency range. Save them for the whole project.",
+            "hint": "Colormap, window size, frequency range and more. Save them to use them on every task. Close the panel when you are done.",
             "keys": [
               "o"
             ],
-            "task": "Open the settings",
+            "task": "Open the settings, then close them again",
             "complete": {
-              "type": "click"
+              "type": "event",
+              "event": "settings-closed"
             }
           },
           {
             "target": "hide-spectrogram",
             "title": "Hide spectrogram",
-            "hint": "Useful for checking events without the image.",
+            "hint": "Useful to check where the events are without the image.",
             "keys": [
               "h"
             ],
-            "task": "Press h (press again to show it)",
+            "task": "Press h to hide it, then h again to bring it back",
             "complete": {
               "type": "event",
-              "event": "spectrogram-toggled"
+              "event": "spectrogram-shown"
             }
           },
           {
             "target": "annotate-toolbar",
             "title": "Hide sound events",
-            "hint": "Look at the raw spectrogram without boxes.",
+            "hint": "Look at the raw spectrogram without events on top. Show them again afterwards: selecting and editing only works on visible events.",
             "keys": [
               "Shift+h"
             ],
-            "task": "Press Shift + h",
+            "task": "Press Shift + h to hide them, then again to show them",
             "complete": {
               "type": "event",
-              "event": "sound-events-toggled"
+              "event": "sound-events-shown"
             }
           },
           {
             "target": "spectrogram",
             "title": "Full page view",
-            "hint": "Only the spectrogram, scaled to the screen. Press w again to exit.",
+            "hint": "Only the spectrogram, scaled to the screen.",
             "keys": [
               "w"
             ],
-            "task": "Press w",
+            "task": "Press w to open it, then w again to close it",
             "complete": {
               "type": "event",
-              "event": "fullscreen-toggled"
+              "event": "fullscreen-exited"
             }
           },
           {
             "target": "shortcuts-help",
             "title": "Shortcuts",
-            "hint": "Every shortcut on this page.",
+            "hint": "Every shortcut on this page. Close the list with Esc.",
             "keys": [
               "?"
             ],
-            "task": "Press ?",
+            "task": "Press ? to open the list, then close it again",
             "complete": {
-              "type": "key",
-              "keys": [
-                "?"
-              ]
+              "type": "event",
+              "event": "shortcuts-closed"
             }
           },
           {
@@ -902,8 +959,21 @@
         "steps": [
           {
             "target": "sound-event-tools",
+            "title": "Time intervals",
+            "hint": "Bird calls are marked as time intervals: a start and an end time across the full frequency range, not boxes. Pick the time interval shape in the menu next to the create button (e opens it).",
+            "keys": [
+              "e"
+            ],
+            "task": "Switch to time intervals",
+            "complete": {
+              "type": "event",
+              "event": "time-interval-selected"
+            }
+          },
+          {
+            "target": "sound-event-tools",
             "title": "Create",
-            "hint": "Activate create mode, then draw a box on the spectrogram. The new event is selected right away.",
+            "hint": "Activate create mode, then drag across a call from its start to its end. The new event is selected right away.",
             "keys": [
               "c"
             ],
@@ -949,7 +1019,7 @@
           {
             "target": "spectrogram",
             "title": "Resize",
-            "hint": "Grab one of the little squares on the selected event and drag it.",
+            "hint": "Drag the start or end handle of the selected event.",
             "task": "Make an event bigger or smaller",
             "complete": {
               "type": "event",
@@ -987,6 +1057,32 @@
             }
           },
           {
+            "target": "spectrogram",
+            "title": "Undo",
+            "hint": "Deleted something by mistake? Ctrl + Z (Cmd + Z on Mac) brings it back. Undo works for events and tags.",
+            "keys": [
+              "Ctrl+z"
+            ],
+            "task": "Undo the deletion",
+            "complete": {
+              "type": "event",
+              "event": "undo"
+            }
+          },
+          {
+            "target": "spectrogram",
+            "title": "Redo",
+            "hint": "Ctrl + Shift + Z redoes it, so the mislabeled event is gone again.",
+            "keys": [
+              "Ctrl+Shift+z"
+            ],
+            "task": "Redo the deletion",
+            "complete": {
+              "type": "event",
+              "event": "redo"
+            }
+          },
+          {
             "target": "status-badges",
             "title": "Next lesson",
             "task": "Give this task any status badge",
@@ -1004,7 +1100,7 @@
           {
             "target": "sound-event-detail",
             "title": "Remove a wrong tag",
-            "hint": "One event is tagged “this: is wrong”. Select it and remove that tag: click the tag, or press d for a picker.",
+            "hint": "One event is tagged “this: is wrong”. Select it and remove that tag: click the tag, or press d for a picker. Careful: x and delete mode remove the whole event. If that happens, Ctrl + Z brings it back.",
             "keys": [
               "d"
             ],
@@ -1159,16 +1255,14 @@
           {
             "target": "task-filter",
             "title": "Filters",
-            "hint": "Filter by date, time, station, tag or status badge. Choose “Pending” and “include” to see only tasks without a final badge.",
+            "hint": "Filter by date, time, station, tag or status badge. Add “Pending” and choose “include”: only tasks without a final badge remain.",
             "keys": [
               "f"
             ],
-            "task": "Press f",
+            "task": "Filter to pending tasks only",
             "complete": {
-              "type": "key",
-              "keys": [
-                "f"
-              ]
+              "type": "event",
+              "event": "pending-filter-included"
             }
           },
           {
@@ -1188,9 +1282,28 @@
         "title": "Done",
         "steps": [
           {
+            "target": "task-notes",
+            "title": "Notes",
+            "hint": "Every task has notes for questions, remarks or problems, visible to your team. A note can be marked as an issue (shown in red) to flag a problem. Delete your own notes with the trash icon."
+          },
+          {
+            "target": "task-notes",
+            "title": "Your feedback",
+            "hint": "How was the tour? Unclear steps, missing features, bugs, ideas: all welcome. Press q to jump into the field, Shift + Enter saves the note, Esc leaves the field.",
+            "keys": [
+              "q",
+              "Shift+Enter"
+            ],
+            "task": "Write a feedback note",
+            "complete": {
+              "type": "event",
+              "event": "note-created"
+            }
+          },
+          {
             "target": "status-badges",
             "title": "Tour complete",
-            "hint": "Finish the remaining recordings so each has a status badge. You can restart the tour anytime from the home page."
+            "hint": "Well done! Finish the tour to go back to the home page. You can continue or restart it there anytime."
           }
         ]
       }

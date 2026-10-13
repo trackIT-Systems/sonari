@@ -190,7 +190,10 @@ export default function Page() {
 
   // Wrap mutation functions in useCallback for reference stability
   const handleAddNote = useCallback(
-    (note: NoteCreate) => addNote.mutate(note),
+    (note: NoteCreate) => {
+      emitGuidedTourEvent("note-created");
+      addNote.mutate(note);
+    },
     [addNote]
   );
 
@@ -416,7 +419,6 @@ export default function Page() {
         onRemoveBadge={handleRemoveBadge}
         onAddNote={handleAddNote}
         onRemoveNote={handleRemoveNote}
-        hideNotes={project.is_guided_tour}
         onAddTag={handleAddTag}
         onRemoveTag={handleRemoveTag}
         onAddTagToSoundEventAnnotation={handleAddTagToSoundEventAnnotation}
