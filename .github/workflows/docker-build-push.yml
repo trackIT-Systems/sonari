@@ -2,7 +2,7 @@ name: Build and Push Docker Image
 
 on:
   push:
-    branches: [ '*' ]
+    branches: [ '**' ]
     tags: [ '*' ]
 
 env:
@@ -31,13 +31,21 @@ jobs:
 
     - name: Get tag name
       id: tag
-      run: echo "tag=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+      # Docker tags allow only [A-Za-z0-9_.-] (max 128 chars), so branch names
+      # like "feature/foo" are sanitized to "feature-foo".
+      run: |
+        tag=$(echo "$GITHUB_REF_NAME" | sed 's/[^A-Za-z0-9_.-]/-/g' | cut -c1-128)
+        echo "tag=$tag" >> $GITHUB_OUTPUT
 
     - name: Set image tags
       id: image
       run: |
-        echo "tag_name=${{ env.REGISTRY }}/backend/${{ github.event.repository.name }}:${{ steps.tag.outputs.tag }}" >> $GITHUB_OUTPUT
-        echo "latest_name=${{ env.REGISTRY }}/backend/${{ github.event.repository.name }}:latest" >> $GITHUB_OUTPUT
+        image="${{ env.REGISTRY }}/backend/${{ github.event.repository.name }}"
+        echo "tag_name=$image:${{ steps.tag.outputs.tag }}" >> $GITHUB_OUTPUT
+        # Only release tags move "latest"; branch builds get their branch tag only.
+        if [ "${{ github.ref_type }}" = "tag" ]; then
+          echo "latest_name=$image:latest" >> $GITHUB_OUTPUT
+        fi
 
     - name: Build and push Docker image
       id: build
@@ -66,6 +74,6 @@ jobs:
       run: |
         echo "Images pushed to:"
         echo "  - ${{ steps.image.outputs.tag_name }}"
-        echo "  - ${{ steps.image.outputs.latest_name }}"
+        if [ -n "${{ steps.image.outputs.latest_name }}" ]; then echo "  - ${{ steps.image.outputs.latest_name }}"; fi
         echo "Image digest: ${{ steps.build.outputs.digest }}"
         echo "Git tag used: ${{ steps.tag.outputs.tag }}"
