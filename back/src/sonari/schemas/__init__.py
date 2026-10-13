@@ -17,6 +17,11 @@ from sonari.schemas.annotation_projects import (
     AnnotationProjectCreate,
     AnnotationProjectProgress,
     AnnotationProjectUpdate,
+    GuidedTourAvailableResponse,
+    GuidedTourEnsureRequest,
+    GuidedTourEnsureResponse,
+    GuidedTourProgress,
+    GuidedTourVariant,
     SpeciesTagCount,
 )
 from sonari.schemas.annotation_tasks import (
@@ -76,6 +81,11 @@ __all__ = [
     "AnnotationProjectCreate",
     "AnnotationProjectProgress",
     "AnnotationProjectUpdate",
+    "GuidedTourAvailableResponse",
+    "GuidedTourEnsureRequest",
+    "GuidedTourEnsureResponse",
+    "GuidedTourProgress",
+    "GuidedTourVariant",
     "SpeciesTagCount",
     "AnnotationStatusBadge",
     "AnnotationStatusBadgeUpdate",

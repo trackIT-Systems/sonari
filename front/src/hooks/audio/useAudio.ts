@@ -2,6 +2,7 @@ import { useCallback, useMemo, useState, useRef, useEffect } from "react";
 
 import api from "@/app/api";
 import useAudioKeyShortcuts from "@/hooks/audio/useAudioKeyShortcuts";
+import { emitGuidedTourEvent } from "@/components/workshop/guidedTour/events";
 
 import type { Recording } from "@/types";
 
@@ -91,6 +92,17 @@ export default function useAudio({
   const [loop, setLoop] = useState<boolean>(false);
   const [volume, setVolume] = useState<number>(1);
   const [isPlaying, setIsPlaying] = useState<boolean>(false);
+
+  useEffect(() => {
+    if (isPlaying) emitGuidedTourEvent("playback-started");
+  }, [isPlaying]);
+
+  const prevSpeedRef = useRef(speed);
+  useEffect(() => {
+    if (speed === prevSpeedRef.current) return;
+    prevSpeedRef.current = speed;
+    emitGuidedTourEvent("playback-speed-changed");
+  }, [speed]);
 
   // Store the actual playback bounds (what segment should be played)
   const playbackStartTime = startTime;

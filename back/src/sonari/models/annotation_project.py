@@ -6,10 +6,17 @@ has a unique name and is divided into individual tasks, each
 consisting of a part of audio from the recordings.
 """
 
+from typing import TYPE_CHECKING, Optional
+from uuid import UUID
+
 import sqlalchemy.orm as orm
+from sqlalchemy import ForeignKey
 
 from sonari.models.annotation_task import AnnotationTask
 from sonari.models.base import Base
+
+if TYPE_CHECKING:
+    from sonari.models.user import User
 
 __all__ = [
     "AnnotationProject",
@@ -50,6 +57,22 @@ class AnnotationProject(Base):
     name: orm.Mapped[str] = orm.mapped_column(unique=True)
     description: orm.Mapped[str]
     annotation_instructions: orm.Mapped[str | None] = orm.mapped_column(default=None)
+    is_guided_tour: orm.Mapped[bool] = orm.mapped_column(default=False)
+    guided_tour_variant: orm.Mapped[str | None] = orm.mapped_column(
+        default=None,
+        nullable=True,
+    )
+    guided_tour_owner_user_id: orm.Mapped[Optional[UUID]] = orm.mapped_column(
+        ForeignKey("user.id", ondelete="SET NULL"),
+        default=None,
+        nullable=True,
+        index=True,
+    )
+
+    guided_tour_owner: orm.Mapped[Optional["User"]] = orm.relationship(
+        init=False,
+        repr=False,
+    )
 
     annotation_tasks: orm.Mapped[list["AnnotationTask"]] = orm.relationship(
         back_populates="annotation_project",

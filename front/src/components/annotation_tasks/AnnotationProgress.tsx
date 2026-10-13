@@ -94,6 +94,7 @@ export default function AnnotationProgress({
 
   return (
     <div
+      data-guided-tour="progress"
       className={classNames(
         "inline-flex gap-4 items-center h-full",
         fill ? "w-full min-w-0" : "w-[63rem]",
@@ -117,7 +118,7 @@ export default function AnnotationProgress({
       </Tooltip>
       <div className="flex flex-col px-2 py-2 rounded-lg border grow min-w-0 dark:border-stone-800">
         <div className="flex min-w-0 flex-nowrap items-center gap-4">
-          <div className="shrink-0">
+          <div className="shrink-0" data-guided-tour="shortcuts-help">
             <ShortcutHelper shortcuts={SHORTCUTS} />
           </div>
           <span className="shrink-0 text-sm inline-flex gap-1 items-center whitespace-nowrap text-stone-500">
@@ -140,7 +141,7 @@ export default function AnnotationProgress({
               </span>
             </div>
           ) : (
-            <div className="shrink-0">
+            <div className="shrink-0" data-guided-tour="task-filter">
             <FilterMenu
               filter={filter}
               filterDef={taskFilterDefs}

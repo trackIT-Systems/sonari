@@ -2,15 +2,23 @@
 
 from typing import Annotated
 
-from fastapi import Depends
+from fastapi import Depends, HTTPException
 from soundevent.data import AnnotationState
 from sqlalchemy import func, select
 
 from sonari import api, models, schemas
 from sonari.filters.annotation_projects import AnnotationProjectFilter
+from sonari.filters.guided_tour import ExcludeGuidedToursFilter
 from sonari.routes.dependencies import Session
-from sonari.routes.dependencies.auth import create_authenticated_router
+from sonari.routes.dependencies.auth import CurrentUser, create_authenticated_router
 from sonari.routes.types import Limit, Offset
+from sonari.services.guided_tour import (
+    ensure_guided_tour,
+    first_task_id,
+    get_available_guided_tour_variants,
+    get_guided_tour_progress,
+    get_user_guided_tours,
+)
 
 __all__ = [
     "annotation_projects_router",
@@ -31,19 +39,65 @@ async def get_annotation_projects(
     ],
     limit: Limit = 10,
     offset: Offset = 0,
+    include_guided_tours: bool = False,
 ):
     """Get a page of annotation projects."""
+    filters: list = [filter]
+    if not include_guided_tours:
+        filters.append(ExcludeGuidedToursFilter())
     projects, total = await api.annotation_projects.get_many(
         session,
         limit=limit,
         offset=offset,
-        filters=[filter],
+        filters=filters,
     )
     return schemas.Page(
         items=projects,
         total=total,
         limit=limit,
         offset=offset,
+    )
+
+
+@annotation_projects_router.get(
+    "/guided_tour/",
+    response_model=schemas.GuidedTourAvailableResponse,
+)
+async def get_guided_tour_available(session: Session, user: CurrentUser):
+    """List available tour variants and the tours the current user has started."""
+    variants = await get_available_guided_tour_variants(session)
+    tours = await get_user_guided_tours(session, user.id)
+    return schemas.GuidedTourAvailableResponse(variants=variants, tours=tours)
+
+
+@annotation_projects_router.post(
+    "/guided_tour/",
+    response_model=schemas.GuidedTourEnsureResponse,
+)
+async def ensure_guided_tour_project(
+    session: Session,
+    user: CurrentUser,
+    body: schemas.GuidedTourEnsureRequest,
+):
+    """Create or return the current user's personal guided tour project."""
+    try:
+        project, created = await ensure_guided_tour(
+            session,
+            user,
+            body.variant,
+            reset=body.reset,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    task_id = await first_task_id(session, project.id)
+    _, _, resume_task_id = await get_guided_tour_progress(session, project.id)
+    await session.commit()
+    return schemas.GuidedTourEnsureResponse(
+        annotation_project_id=project.id,
+        first_annotation_task_id=task_id,
+        resume_annotation_task_id=resume_task_id,
+        created=created,
+        variant=body.variant,
     )
 
 

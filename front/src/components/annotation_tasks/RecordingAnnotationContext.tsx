@@ -57,7 +57,7 @@ const RecordingAnnotationContext = memo(function RecordingAnnotationContext({
   );
 
   return (
-    <div className="flex flex-col gap-2">
+    <div className="flex flex-col gap-2" data-guided-tour="recording-metadata">
       <div className="flex min-w-0 flex-row flex-wrap items-center justify-start gap-4">
         <div className="inline-flex min-w-0 shrink items-center text-stone-500">
           <RecordingIcon className="inline-block mr-1 w-5 h-5 shrink-0 text-stone-600" />

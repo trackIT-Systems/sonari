@@ -1,6 +1,7 @@
 """Schemas for Annotation Projects."""
 
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING, Literal, Optional
+from uuid import UUID
 
 from pydantic import BaseModel
 
@@ -10,11 +11,18 @@ from sonari.schemas.tags import Tag
 if TYPE_CHECKING:
     from sonari.schemas.annotation_tasks import AnnotationTask
 
+GuidedTourVariant = Literal["bird", "bat"]
+
 __all__ = [
     "AnnotationProject",
     "AnnotationProjectCreate",
     "AnnotationProjectUpdate",
     "AnnotationProjectProgress",
+    "GuidedTourEnsureRequest",
+    "GuidedTourEnsureResponse",
+    "GuidedTourAvailableResponse",
+    "GuidedTourProgress",
+    "GuidedTourVariant",
     "SpeciesTagCount",
 ]
 
@@ -47,6 +55,15 @@ class AnnotationProject(BaseSchema):
     annotation_instructions: str | None = None
     """Project instructions for annotating."""
 
+    is_guided_tour: bool = False
+    """Whether this project is a personal guided tour (hidden from project list)."""
+
+    guided_tour_owner_user_id: UUID | None = None
+    """Owner of a guided tour clone."""
+
+    guided_tour_variant: GuidedTourVariant | None = None
+    """bird or bat for guided tour templates and personal clones."""
+
     tags: Optional[list[Tag]] = None
     """Tags to be used throughout the annotation project."""
 
@@ -65,6 +82,43 @@ class AnnotationProjectUpdate(BaseModel):
 
     annotation_instructions: str | None = None
     """Project instructions for annotating."""
+
+
+class GuidedTourEnsureRequest(BaseModel):
+    """Request body for ensuring a user's guided tour project exists."""
+
+    variant: GuidedTourVariant
+    reset: bool = False
+    """If true, delete and re-clone the tour from the template."""
+
+
+class GuidedTourEnsureResponse(BaseModel):
+    """Response after ensuring a guided tour project."""
+
+    annotation_project_id: int
+    first_annotation_task_id: int | None
+    resume_annotation_task_id: int | None = None
+    """First task without a status badge (where "keep going" continues)."""
+    created: bool
+    variant: GuidedTourVariant
+
+
+class GuidedTourProgress(BaseModel):
+    """The current user's personal tour for one variant."""
+
+    variant: GuidedTourVariant
+    annotation_project_id: int
+    total_tasks: int
+    done_tasks: int
+    resume_annotation_task_id: int | None
+
+
+class GuidedTourAvailableResponse(BaseModel):
+    """Guided tour variants available on this server."""
+
+    variants: list[GuidedTourVariant]
+    tours: list[GuidedTourProgress] = []
+    """Tours the current user has already started."""
 
 
 class AnnotationProjectProgress(BaseModel):

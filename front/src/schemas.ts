@@ -289,6 +289,9 @@ export const AnnotationProjectSchema = z.object({
   name: z.string(),
   description: z.string(),
   annotation_instructions: z.string().nullish(),
+  is_guided_tour: z.boolean().optional().default(false),
+  guided_tour_owner_user_id: z.string().uuid().nullish(),
+  guided_tour_variant: z.enum(["bird", "bat"]).nullish(),
   created_on: z.coerce.date(),
 });
 

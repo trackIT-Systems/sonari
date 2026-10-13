@@ -22,5 +22,13 @@
         "description": "Annotate View has full screen mode on press of Keyboard w. Selected Sound Event now has zoom and measure actions."
       } 
     ]
+  },
+  "2026.10.4": {
+    "highlights": [
+      {
+        "title": "Guided user tour",
+        "description": "Start a personal tutorial from the home page and follow the lessons step by step. Pick up where you left off, or start from scratch. Your copy is hidden from the annotation projects list."
+      }
+    ]
   }
 }

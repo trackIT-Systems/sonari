@@ -7,6 +7,7 @@ const AnnotationProjectContext = createContext<AnnotationProject>({
   description: "",
   created_on: new Date(),
   id: -1,
+  is_guided_tour: false,
 });
 
 export default AnnotationProjectContext;

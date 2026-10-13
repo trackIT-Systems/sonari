@@ -500,17 +500,20 @@ export default function AnnotationTaskSpectrogram({
   }
 
   return (
-    <Card className={fullscreen ? "min-h-0 flex-1" : undefined}>
+    <Card className={fullscreen ? "min-h-0 flex-1" : undefined} data-guided-tour="spectrogram">
       {toolsVisible && (
-        <div className="flex flex-row gap-4">
+        <div className="flex flex-row flex-wrap gap-4" data-guided-tour="annotate-toolbar">
+          <div data-guided-tour="hide-spectrogram">
           <DisableSpectrogramButton
             withSpectrogram={withSpectrogram}
             onWithSpectrogramChange={onWithSpectrogramChange}
           />
+          </div>
           {onToggleFullscreen && (
             <FullscreenButton fullscreen={fullscreen} onToggle={onToggleFullscreen} />
           )}
           {withControls && (
+            <div data-guided-tour="zoom-tools">
             <SpectrogramControls
               canZoom={spectrogram.canZoom}
               fixedAspectRatio={fixedAspectRatio}
@@ -518,6 +521,7 @@ export default function AnnotationTaskSpectrogram({
               onZoom={spectrogram.enableZoom}
               onToggleAspectRatio={toggleFixedAspectRatio}
             />
+            </div>
           )}
 
           {!disabled && withControls && withSpectrogram && annotate && (
@@ -527,6 +531,7 @@ export default function AnnotationTaskSpectrogram({
             />
           )}
           {!disabled && withControls && withSpectrogram && withSoundEvent && annotate && (
+            <div data-guided-tour="sound-event-tools">
             <AnnotationControls
               disabled={disabled}
               isDrawing={annotate.isDrawing}
@@ -539,8 +544,10 @@ export default function AnnotationTaskSpectrogram({
               onSelect={annotate.enableSelect}
               onSelectGeometryType={annotate.setGeometryType}
             />
+            </div>
           )}
           {withSettings && withSpectrogram && withSoundEvent && (
+            <div data-guided-tour="spec-settings">
             <SpectrogramSettings
               samplerate={recording.samplerate}
               maxChannels={recording.channels}
@@ -551,8 +558,13 @@ export default function AnnotationTaskSpectrogram({
               currentTimeDurationSeconds={currentTimeDurationSeconds}
               onUseCurrentZoom={handleUseCurrentZoom}
             />
+            </div>
           )}
-          {withPlayer && <Player {...audio} />}
+          {withPlayer && (
+            <div data-guided-tour="audio-player">
+              <Player {...audio} />
+            </div>
+          )}
         </div>
       )}
       {toolsVisible && withSoundEvent && (
@@ -663,6 +675,7 @@ export default function AnnotationTaskSpectrogram({
       </div>
       </div>
       {withBar && !fullscreen && (
+        <div data-guided-tour="overview-strip">
         <SpectrogramBar
           recordingId={recording.id}
           bounds={taskBounds}
@@ -672,6 +685,7 @@ export default function AnnotationTaskSpectrogram({
           parameters={spectrogram.parameters}
           withSpectrogram={withSpectrogram}
         />
+        </div>
       )}
     </Card>
   );

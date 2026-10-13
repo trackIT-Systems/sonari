@@ -66,7 +66,7 @@ export default function AnnotationProjectHeader({
         <H1 className="min-w-0 break-words text-balance sm:max-w-[min(100%,60rem)] sm:shrink">
           {annotationProject.name}
         </H1>
-        <div className="shrink-0">
+        <div className="shrink-0" data-guided-tour="header-tabs">
         <Tabs
           tabs={[
             {

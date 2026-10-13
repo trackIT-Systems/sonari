@@ -7,6 +7,11 @@ import { AxiosError } from "axios";
 
 import UserContext from "@/app/(base)/context";
 import AnnotateTasks from "@/components/annotation_tasks/AnnotateTasks";
+import WorkshopTutorial from "@/components/workshop/WorkshopTutorial";
+import {
+  emitGuidedTourEvent,
+  isGuidedTourLessonBlocking,
+} from "@/components/workshop/guidedTour/events";
 import Loading from "@/components/Loading";
 import { CompleteIcon, NeedsReviewIcon, HelpIcon, VerifiedIcon } from "@/components/icons";
 import useAnnotationTask from "@/hooks/api/useAnnotationTask";
@@ -195,7 +200,10 @@ export default function Page() {
   );
 
   const handleAddTag = useCallback(
-    (tag: Tag) => annotationHistory.wrapAddTaskTag(tag),
+    (tag: Tag) => {
+      emitGuidedTourEvent("task-tag-added");
+      return annotationHistory.wrapAddTaskTag(tag);
+    },
     [annotationHistory],
   );
 
@@ -208,7 +216,10 @@ export default function Page() {
     (params: {
       soundEventAnnotation: SoundEventAnnotation;
       tag: Tag;
-    }) => annotationHistory.wrapAddTagToSoundEventAnnotation(params),
+    }) => {
+      emitGuidedTourEvent("sound-event-tag-added");
+      return annotationHistory.wrapAddTagToSoundEventAnnotation(params);
+    },
     [annotationHistory],
   );
 
@@ -216,19 +227,26 @@ export default function Page() {
     (params: {
       soundEventAnnotation: SoundEventAnnotation;
       tag: Tag;
-    }) => annotationHistory.wrapRemoveTagFromSoundEventAnnotation(params),
+    }) => {
+      emitGuidedTourEvent("sound-event-tag-removed");
+      return annotationHistory.wrapRemoveTagFromSoundEventAnnotation(params);
+    },
     [annotationHistory],
   );
 
   const handleAddSoundEventAnnotation = useCallback(
-    (params: { geometry: Geometry; tags: Tag[] }) =>
-      annotationHistory.wrapAddSoundEventAnnotation(params),
+    (params: { geometry: Geometry; tags: Tag[] }) => {
+      emitGuidedTourEvent("sound-event-created");
+      return annotationHistory.wrapAddSoundEventAnnotation(params);
+    },
     [annotationHistory],
   );
 
   const handleRemoveSoundEventAnnotation = useCallback(
-    (annotation: SoundEventAnnotation) =>
-      annotationHistory.wrapRemoveSoundEventAnnotation(annotation),
+    (annotation: SoundEventAnnotation) => {
+      emitGuidedTourEvent("sound-event-deleted");
+      return annotationHistory.wrapRemoveSoundEventAnnotation(annotation);
+    },
     [annotationHistory],
   );
 
@@ -236,7 +254,10 @@ export default function Page() {
     (params: {
       soundEventAnnotation: SoundEventAnnotation;
       geometry: Geometry;
-    }) => annotationHistory.wrapUpdateSoundEventAnnotation(params),
+    }) => {
+      emitGuidedTourEvent("sound-event-updated");
+      return annotationHistory.wrapUpdateSoundEventAnnotation(params);
+    },
     [annotationHistory],
   );
 
@@ -278,10 +299,15 @@ export default function Page() {
 
   const handleAddBadge = useCallback(
     async (task: AnnotationTask, state: AnnotationStatus) => {
+      if (project.is_guided_tour && isGuidedTourLessonBlocking()) {
+        toast("Finish the steps of this lesson first.", { id: "guided-tour-blocked" });
+        throw new Error("Guided tour lesson not finished");
+      }
       const result = await addBadge.mutateAsync(state);
+      if (project.is_guided_tour) emitGuidedTourEvent("status-badge-added");
       return result;
     },
-    [addBadge]
+    [addBadge, project.is_guided_tour]
   );
   
   const handleRemoveBadge = useCallback(
@@ -373,6 +399,7 @@ export default function Page() {
 
   return (
     <div className="w-full">
+      <WorkshopTutorial annotationTask={annotationTask} />
       <AnnotateTasks
         taskFilter={filter}
         annotationTask={annotationTask}
@@ -389,6 +416,7 @@ export default function Page() {
         onRemoveBadge={handleRemoveBadge}
         onAddNote={handleAddNote}
         onRemoveNote={handleRemoveNote}
+        hideNotes={project.is_guided_tour}
         onAddTag={handleAddTag}
         onRemoveTag={handleRemoveTag}
         onAddTagToSoundEventAnnotation={handleAddTagToSoundEventAnnotation}

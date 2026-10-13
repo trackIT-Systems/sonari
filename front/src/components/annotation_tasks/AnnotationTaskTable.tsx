@@ -71,10 +71,12 @@ export default function AnnotationTaskTable({
   filter,
   fixed,
   pathFormatter,
+  hideNotes,
 }: {
   filter: AnnotationTaskFilter;
   fixed?: (keyof AnnotationTaskFilter)[];
   pathFormatter?: (path: string) => string;
+  hideNotes?: boolean;
 }) {
   const filterPersistKey = useMemo(
     () => annotationTaskFilterPersistKey(filter.annotation_project?.id),
@@ -221,6 +223,7 @@ export default function AnnotationTaskTable({
     filterTotal: annotationTasks.total,
     onSelectAllMatchingFilter: handleSelectAllMatchingFilter,
     targetMode,
+    hideNotes,
   });
 
   useKeyPressEvent(useKeyFilter({ key: SEARCH_BAR_LEAVE_SHORTCUT }), (event) => {
@@ -483,7 +486,7 @@ export default function AnnotationTaskTable({
     return <Loading />;
   }
   return (
-    <div className="flex flex-col gap-y-4">
+    <div className="flex flex-col gap-y-4" data-guided-tour="task-table">
       <div className="flex flex-row justify-between space-x-4">
         <div className="flex flex-row space-x-3 basis-1/2">
           <div className="grow">
@@ -509,7 +512,9 @@ export default function AnnotationTaskTable({
             filter={annotationTasks.filter}
             normalizeForPreset={normalizeDateRangeForPreset}
           />
-          <ShortcutHelper shortcuts={TASK_TABLE_SHORTCUTS} />
+          <div data-guided-tour="task-shortcuts">
+            <ShortcutHelper shortcuts={TASK_TABLE_SHORTCUTS} />
+          </div>
         </div>
         <label
           className="flex flex-row items-center gap-2 text-sm text-stone-600 dark:text-stone-400"

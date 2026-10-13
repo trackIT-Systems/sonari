@@ -1,0 +1,1199 @@
+{
+  "bat": {
+    "tasksTab": {
+      "id": "tasks-table",
+      "title": "Tasks table",
+      "steps": [
+        {
+          "target": "task-table",
+          "title": "Tasks table",
+          "hint": "Browse and preview recordings here before you annotate."
+        },
+        {
+          "target": "task-table",
+          "title": "Move with ↑ ↓",
+          "hint": "The highlighted row moves and the list scrolls with it.",
+          "keys": [
+            "↓",
+            "↑"
+          ],
+          "task": "Press ↓ or ↑",
+          "complete": {
+            "type": "key",
+            "keys": [
+              "ArrowDown",
+              "ArrowUp"
+            ]
+          }
+        },
+        {
+          "target": "task-table",
+          "title": "Open a preview",
+          "hint": "Click a row to open its spectrogram preview. Click again to close it.",
+          "task": "Click a row",
+          "complete": {
+            "type": "click"
+          }
+        },
+        {
+          "target": "task-table",
+          "title": "Pin previews",
+          "hint": "Pin up to 5 previews to compare tasks side by side.",
+          "keys": [
+            "p"
+          ],
+          "task": "Press p",
+          "complete": {
+            "type": "key",
+            "keys": [
+              "p"
+            ]
+          }
+        },
+        {
+          "target": "task-shortcuts",
+          "title": "All shortcuts",
+          "hint": "Shift ticks rows, dragging selects several. Bulk actions and every shortcut are listed here.",
+          "keys": [
+            "?"
+          ],
+          "task": "Press ? to open the shortcut list",
+          "complete": {
+            "type": "key",
+            "keys": [
+              "?"
+            ]
+          }
+        },
+        {
+          "target": "header-tabs",
+          "title": "Back to Annotate",
+          "hint": "The lessons continue on the Annotate tab.",
+          "task": "Open the Annotate tab",
+          "complete": {
+            "type": "click"
+          }
+        }
+      ]
+    },
+    "lessons": [
+      {
+        "id": "orientation",
+        "title": "Orientation",
+        "steps": [
+          {
+            "target": "progress",
+            "title": "Project progress",
+            "hint": "Total, done and remaining tasks."
+          },
+          {
+            "target": "recording-metadata",
+            "title": "Recording info",
+            "hint": "File, site, date and samplerate of this recording."
+          },
+          {
+            "target": "spectrogram",
+            "title": "Spectrogram",
+            "hint": "You will spend most of your time here."
+          },
+          {
+            "target": "sound-event-detail",
+            "title": "Event details",
+            "hint": "Details of the selected sound event appear here."
+          },
+          {
+            "target": "tag-bars",
+            "title": "Sound event tags",
+            "hint": "All tags used by sound events in this task."
+          },
+          {
+            "target": "task-tags",
+            "title": "Task tags",
+            "hint": "Tags that describe the whole recording."
+          },
+          {
+            "target": "status-badges",
+            "title": "Status badges",
+            "hint": "A badge finishes the task and opens the next one. In this tour, each task is one lesson.",
+            "keys": [
+              "1",
+              "2",
+              "3",
+              "4"
+            ],
+            "task": "Give this task any status badge",
+            "complete": {
+              "type": "event",
+              "event": "status-badge-added"
+            }
+          }
+        ]
+      },
+      {
+        "id": "pan",
+        "title": "Moving around",
+        "steps": [
+          {
+            "target": "spectrogram",
+            "title": "Drag to pan",
+            "hint": "Click and drag the spectrogram. Trackpad scroll gestures work too.",
+            "task": "Drag the spectrogram",
+            "complete": {
+              "type": "event",
+              "event": "view-panned"
+            }
+          },
+          {
+            "target": "overview-strip",
+            "title": "Overview strip",
+            "hint": "The highlighted window marks what you see above. Drag it or click to jump.",
+            "task": "Click or drag in the overview strip",
+            "complete": {
+              "type": "click"
+            }
+          },
+          {
+            "target": "spectrogram",
+            "title": "Arrow keys",
+            "hint": "Arrows move time and frequency. Shift + ← / → switches tasks.",
+            "keys": [
+              "←",
+              "→",
+              "↑",
+              "↓"
+            ],
+            "task": "Press an arrow key",
+            "complete": {
+              "type": "key",
+              "keys": [
+                "ArrowLeft",
+                "ArrowRight",
+                "ArrowUp",
+                "ArrowDown"
+              ]
+            }
+          },
+          {
+            "target": "status-badges",
+            "title": "Next lesson",
+            "task": "Give this task any status badge",
+            "complete": {
+              "type": "event",
+              "event": "status-badge-added"
+            }
+          }
+        ]
+      },
+      {
+        "id": "zoom",
+        "title": "Zoom",
+        "steps": [
+          {
+            "target": "zoom-tools",
+            "title": "Zoom mode",
+            "hint": "Turns on box zoom.",
+            "keys": [
+              "z"
+            ],
+            "task": "Press z",
+            "complete": {
+              "type": "key",
+              "keys": [
+                "z"
+              ]
+            }
+          },
+          {
+            "target": "spectrogram",
+            "title": "Box zoom",
+            "hint": "With zoom mode on, drag a rectangle around a call.",
+            "task": "Zoom into a region",
+            "complete": {
+              "type": "event",
+              "event": "view-zoomed"
+            }
+          },
+          {
+            "target": "zoom-tools",
+            "title": "Step zoom",
+            "hint": "Zoom time in or out. Add Ctrl to zoom frequency.",
+            "keys": [
+              "+",
+              "-"
+            ],
+            "task": "Press + or -",
+            "complete": {
+              "type": "key",
+              "keys": [
+                "+",
+                "-"
+              ]
+            }
+          },
+          {
+            "target": "zoom-tools",
+            "title": "Reset",
+            "hint": "Back to the full task window.",
+            "keys": [
+              "u"
+            ],
+            "task": "Press u",
+            "complete": {
+              "type": "key",
+              "keys": [
+                "u"
+              ]
+            }
+          },
+          {
+            "target": "status-badges",
+            "title": "Next lesson",
+            "task": "Give this task any status badge",
+            "complete": {
+              "type": "event",
+              "event": "status-badge-added"
+            }
+          }
+        ]
+      },
+      {
+        "id": "spectrogram-settings",
+        "title": "View settings",
+        "steps": [
+          {
+            "target": "spec-settings",
+            "title": "Spectrogram settings",
+            "hint": "Colormap, window size, frequency range. Save them for the whole project.",
+            "keys": [
+              "o"
+            ],
+            "task": "Open the settings",
+            "complete": {
+              "type": "click"
+            }
+          },
+          {
+            "target": "hide-spectrogram",
+            "title": "Hide spectrogram",
+            "hint": "Useful for checking events without the image.",
+            "keys": [
+              "h"
+            ],
+            "task": "Press h (press again to show it)",
+            "complete": {
+              "type": "event",
+              "event": "spectrogram-toggled"
+            }
+          },
+          {
+            "target": "annotate-toolbar",
+            "title": "Hide sound events",
+            "hint": "Look at the raw spectrogram without boxes.",
+            "keys": [
+              "Shift+h"
+            ],
+            "task": "Press Shift + h",
+            "complete": {
+              "type": "event",
+              "event": "sound-events-toggled"
+            }
+          },
+          {
+            "target": "spectrogram",
+            "title": "Full page view",
+            "hint": "Only the spectrogram, scaled to the screen. Press w again to exit.",
+            "keys": [
+              "w"
+            ],
+            "task": "Press w",
+            "complete": {
+              "type": "event",
+              "event": "fullscreen-toggled"
+            }
+          },
+          {
+            "target": "shortcuts-help",
+            "title": "Shortcuts",
+            "hint": "Every shortcut on this page.",
+            "keys": [
+              "?"
+            ],
+            "task": "Press ?",
+            "complete": {
+              "type": "key",
+              "keys": [
+                "?"
+              ]
+            }
+          },
+          {
+            "target": "status-badges",
+            "title": "Next lesson",
+            "task": "Give this task any status badge",
+            "complete": {
+              "type": "event",
+              "event": "status-badge-added"
+            }
+          }
+        ]
+      },
+      {
+        "id": "sound-events",
+        "title": "Sound events",
+        "steps": [
+          {
+            "target": "sound-event-tools",
+            "title": "Create",
+            "hint": "Activate create mode, then draw a box on the spectrogram.",
+            "keys": [
+              "c"
+            ],
+            "task": "Draw a new sound event",
+            "complete": {
+              "type": "event",
+              "event": "sound-event-created"
+            }
+          },
+          {
+            "target": "sound-event-tools",
+            "title": "Select",
+            "hint": "Select mode lets you click an event. Resize it with its handles, Esc deselects.",
+            "keys": [
+              "s"
+            ],
+            "task": "Select a sound event",
+            "complete": {
+              "type": "event",
+              "event": "sound-event-selected"
+            }
+          },
+          {
+            "target": "sound-event-detail",
+            "title": "Details",
+            "hint": "Tags, measurements and a zoomed view of the selected event."
+          },
+          {
+            "target": "shortcuts-help",
+            "title": "Jump between events",
+            "hint": "Cycle through events without the mouse.",
+            "keys": [
+              "n",
+              "b"
+            ],
+            "task": "Press n or b",
+            "complete": {
+              "type": "key",
+              "keys": [
+                "n",
+                "b"
+              ]
+            }
+          },
+          {
+            "target": "sound-event-tools",
+            "title": "Delete",
+            "hint": "One event here is mislabeled. Delete mode removes events, or press x while one is selected.",
+            "keys": [
+              "x"
+            ],
+            "task": "Delete a sound event",
+            "complete": {
+              "type": "event",
+              "event": "sound-event-deleted"
+            }
+          },
+          {
+            "target": "status-badges",
+            "title": "Next lesson",
+            "task": "Give this task any status badge",
+            "complete": {
+              "type": "event",
+              "event": "status-badge-added"
+            }
+          }
+        ]
+      },
+      {
+        "id": "tags",
+        "title": "Tags",
+        "steps": [
+          {
+            "target": "sound-event-detail",
+            "title": "Remove a wrong tag",
+            "hint": "Select the event tagged “this: is wrong” and remove that tag.",
+            "task": "Remove a tag from a sound event",
+            "complete": {
+              "type": "event",
+              "event": "sound-event-tag-removed"
+            }
+          },
+          {
+            "target": "sound-event-detail",
+            "title": "Add a species",
+            "hint": "Add the correct species to the same event.",
+            "keys": [
+              "a"
+            ],
+            "task": "Add a tag to a sound event",
+            "complete": {
+              "type": "event",
+              "event": "sound-event-tag-added"
+            }
+          },
+          {
+            "target": "tag-bars",
+            "title": "Bulk tag actions",
+            "hint": "Replace a tag on every event at once (r), or tag all untagged events (a)."
+          },
+          {
+            "target": "task-tags",
+            "title": "Task tags",
+            "hint": "Tags for the whole recording, e.g. noise or recording quality.",
+            "task": "Add a task tag",
+            "complete": {
+              "type": "event",
+              "event": "task-tag-added"
+            }
+          },
+          {
+            "target": "status-badges",
+            "title": "Next lesson",
+            "task": "Give this task any status badge",
+            "complete": {
+              "type": "event",
+              "event": "status-badge-added"
+            }
+          }
+        ]
+      },
+      {
+        "id": "playback",
+        "title": "Playback",
+        "steps": [
+          {
+            "target": "audio-player",
+            "title": "Play",
+            "hint": "Audio is time-expanded according to the speed setting.",
+            "keys": [
+              "Space"
+            ],
+            "task": "Start playback",
+            "complete": {
+              "type": "event",
+              "event": "playback-started"
+            }
+          },
+          {
+            "target": "audio-player",
+            "title": "Speed",
+            "hint": "Slower speeds make ultrasonic calls audible.",
+            "task": "Change the playback speed",
+            "complete": {
+              "type": "event",
+              "event": "playback-speed-changed"
+            }
+          },
+          {
+            "target": "audio-player",
+            "title": "Repeat & autoplay",
+            "hint": "Loop the window, or start playing automatically on every task."
+          },
+          {
+            "target": "spectrogram",
+            "title": "Seek",
+            "hint": "Double-click the spectrogram where playback should start."
+          },
+          {
+            "target": "status-badges",
+            "title": "Next lesson",
+            "task": "Give this task any status badge",
+            "complete": {
+              "type": "event",
+              "event": "status-badge-added"
+            }
+          }
+        ]
+      },
+      {
+        "id": "practice",
+        "title": "Practice",
+        "steps": [
+          {
+            "target": "task-filter",
+            "title": "Filters",
+            "hint": "Filter by status, tags, date and more. “Pending” shows tasks without a final badge.",
+            "keys": [
+              "f"
+            ],
+            "task": "Press f",
+            "complete": {
+              "type": "key",
+              "keys": [
+                "f"
+              ]
+            }
+          },
+          {
+            "target": "status-badges",
+            "title": "Finish the remaining tasks",
+            "hint": "Annotate and badge each remaining recording on your own.",
+            "task": "Give this task any status badge",
+            "complete": {
+              "type": "event",
+              "event": "status-badge-added"
+            }
+          }
+        ]
+      },
+      {
+        "id": "wrap-up",
+        "title": "Done",
+        "steps": [
+          {
+            "target": "status-badges",
+            "title": "Tour complete",
+            "hint": "You can restart the tour anytime from the home page."
+          }
+        ]
+      }
+    ]
+  },
+  "bird": {
+    "tasksTab": {
+      "id": "tasks-table",
+      "title": "Tasks table",
+      "steps": [
+        {
+          "target": "task-table",
+          "title": "Tasks table",
+          "hint": "Browse and preview recordings here before you annotate."
+        },
+        {
+          "target": "task-table",
+          "title": "Move with ↑ ↓",
+          "hint": "The highlighted row moves and the list scrolls with it.",
+          "keys": [
+            "↓",
+            "↑"
+          ],
+          "task": "Press ↓ or ↑",
+          "complete": {
+            "type": "key",
+            "keys": [
+              "ArrowDown",
+              "ArrowUp"
+            ]
+          }
+        },
+        {
+          "target": "task-table",
+          "title": "Open a preview",
+          "hint": "Click a row to open its spectrogram preview. Click again to close it.",
+          "task": "Click a row",
+          "complete": {
+            "type": "click"
+          }
+        },
+        {
+          "target": "task-table",
+          "title": "Pin previews",
+          "hint": "Pin up to 5 previews to compare tasks side by side.",
+          "keys": [
+            "p"
+          ],
+          "task": "Press p",
+          "complete": {
+            "type": "key",
+            "keys": [
+              "p"
+            ]
+          }
+        },
+        {
+          "target": "task-shortcuts",
+          "title": "All shortcuts",
+          "hint": "Shift ticks rows, dragging selects several. Bulk actions and every shortcut are listed here.",
+          "keys": [
+            "?"
+          ],
+          "task": "Press ? to open the shortcut list",
+          "complete": {
+            "type": "key",
+            "keys": [
+              "?"
+            ]
+          }
+        },
+        {
+          "target": "header-tabs",
+          "title": "Back to Annotate",
+          "hint": "The lessons continue on the Annotate tab.",
+          "task": "Open the Annotate tab",
+          "complete": {
+            "type": "click"
+          }
+        }
+      ]
+    },
+    "lessons": [
+      {
+        "id": "orientation",
+        "title": "Orientation",
+        "steps": [
+          {
+            "target": "progress",
+            "title": "Project progress",
+            "hint": "Total, done and remaining tasks."
+          },
+          {
+            "target": "recording-metadata",
+            "title": "Recording info",
+            "hint": "File, site, date and samplerate of this recording."
+          },
+          {
+            "target": "spectrogram",
+            "title": "Spectrogram",
+            "hint": "You will spend most of your time here."
+          },
+          {
+            "target": "sound-event-detail",
+            "title": "Event details",
+            "hint": "Details of the selected sound event appear here."
+          },
+          {
+            "target": "tag-bars",
+            "title": "Sound event tags",
+            "hint": "All tags used by sound events in this task."
+          },
+          {
+            "target": "task-tags",
+            "title": "Task tags",
+            "hint": "Tags that describe the whole recording."
+          },
+          {
+            "target": "status-badges",
+            "title": "Status badges",
+            "hint": "A badge finishes the task and opens the next one. In this tour, each task is one lesson.",
+            "keys": [
+              "1",
+              "2",
+              "3",
+              "4"
+            ],
+            "task": "Give this task any status badge",
+            "complete": {
+              "type": "event",
+              "event": "status-badge-added"
+            }
+          }
+        ]
+      },
+      {
+        "id": "pan",
+        "title": "Moving around",
+        "steps": [
+          {
+            "target": "spectrogram",
+            "title": "Drag to pan",
+            "hint": "Click and drag the spectrogram. Trackpad scroll gestures work too.",
+            "task": "Drag the spectrogram",
+            "complete": {
+              "type": "event",
+              "event": "view-panned"
+            }
+          },
+          {
+            "target": "overview-strip",
+            "title": "Overview strip",
+            "hint": "The highlighted window marks what you see above. Drag it or click to jump.",
+            "task": "Click or drag in the overview strip",
+            "complete": {
+              "type": "click"
+            }
+          },
+          {
+            "target": "spectrogram",
+            "title": "Arrow keys",
+            "hint": "Arrows move time and frequency. Shift + ← / → switches tasks.",
+            "keys": [
+              "←",
+              "→",
+              "↑",
+              "↓"
+            ],
+            "task": "Press an arrow key",
+            "complete": {
+              "type": "key",
+              "keys": [
+                "ArrowLeft",
+                "ArrowRight",
+                "ArrowUp",
+                "ArrowDown"
+              ]
+            }
+          },
+          {
+            "target": "status-badges",
+            "title": "Next lesson",
+            "task": "Give this task any status badge",
+            "complete": {
+              "type": "event",
+              "event": "status-badge-added"
+            }
+          }
+        ]
+      },
+      {
+        "id": "zoom",
+        "title": "Zoom",
+        "steps": [
+          {
+            "target": "zoom-tools",
+            "title": "Zoom mode",
+            "hint": "Turns on box zoom.",
+            "keys": [
+              "z"
+            ],
+            "task": "Press z",
+            "complete": {
+              "type": "key",
+              "keys": [
+                "z"
+              ]
+            }
+          },
+          {
+            "target": "spectrogram",
+            "title": "Box zoom",
+            "hint": "With zoom mode on, drag a rectangle around a call.",
+            "task": "Zoom into a region",
+            "complete": {
+              "type": "event",
+              "event": "view-zoomed"
+            }
+          },
+          {
+            "target": "zoom-tools",
+            "title": "Step zoom",
+            "hint": "Zoom time in or out. Add Ctrl to zoom frequency.",
+            "keys": [
+              "+",
+              "-"
+            ],
+            "task": "Press + or -",
+            "complete": {
+              "type": "key",
+              "keys": [
+                "+",
+                "-"
+              ]
+            }
+          },
+          {
+            "target": "zoom-tools",
+            "title": "Reset",
+            "hint": "Back to the full task window.",
+            "keys": [
+              "u"
+            ],
+            "task": "Press u",
+            "complete": {
+              "type": "key",
+              "keys": [
+                "u"
+              ]
+            }
+          },
+          {
+            "target": "status-badges",
+            "title": "Next lesson",
+            "task": "Give this task any status badge",
+            "complete": {
+              "type": "event",
+              "event": "status-badge-added"
+            }
+          }
+        ]
+      },
+      {
+        "id": "spectrogram-settings",
+        "title": "View settings",
+        "steps": [
+          {
+            "target": "spec-settings",
+            "title": "Spectrogram settings",
+            "hint": "Colormap, window size, frequency range. Save them for the whole project.",
+            "keys": [
+              "o"
+            ],
+            "task": "Open the settings",
+            "complete": {
+              "type": "click"
+            }
+          },
+          {
+            "target": "hide-spectrogram",
+            "title": "Hide spectrogram",
+            "hint": "Useful for checking events without the image.",
+            "keys": [
+              "h"
+            ],
+            "task": "Press h (press again to show it)",
+            "complete": {
+              "type": "event",
+              "event": "spectrogram-toggled"
+            }
+          },
+          {
+            "target": "annotate-toolbar",
+            "title": "Hide sound events",
+            "hint": "Look at the raw spectrogram without boxes.",
+            "keys": [
+              "Shift+h"
+            ],
+            "task": "Press Shift + h",
+            "complete": {
+              "type": "event",
+              "event": "sound-events-toggled"
+            }
+          },
+          {
+            "target": "spectrogram",
+            "title": "Full page view",
+            "hint": "Only the spectrogram, scaled to the screen. Press w again to exit.",
+            "keys": [
+              "w"
+            ],
+            "task": "Press w",
+            "complete": {
+              "type": "event",
+              "event": "fullscreen-toggled"
+            }
+          },
+          {
+            "target": "shortcuts-help",
+            "title": "Shortcuts",
+            "hint": "Every shortcut on this page.",
+            "keys": [
+              "?"
+            ],
+            "task": "Press ?",
+            "complete": {
+              "type": "key",
+              "keys": [
+                "?"
+              ]
+            }
+          },
+          {
+            "target": "status-badges",
+            "title": "Next lesson",
+            "task": "Give this task any status badge",
+            "complete": {
+              "type": "event",
+              "event": "status-badge-added"
+            }
+          }
+        ]
+      },
+      {
+        "id": "sound-events",
+        "title": "Sound events",
+        "steps": [
+          {
+            "target": "sound-event-tools",
+            "title": "Create",
+            "hint": "Activate create mode, then draw a box on the spectrogram. The new event is selected right away.",
+            "keys": [
+              "c"
+            ],
+            "task": "Draw a new sound event",
+            "complete": {
+              "type": "event",
+              "event": "sound-event-created"
+            }
+          },
+          {
+            "target": "sound-event-detail",
+            "title": "Details",
+            "hint": "A preview, tags and technical details of the selected event. Events created by an AI model also show their confidence."
+          },
+          {
+            "target": "spectrogram",
+            "title": "Deselect",
+            "hint": "Escape clears the selection.",
+            "keys": [
+              "Esc"
+            ],
+            "task": "Press Escape",
+            "complete": {
+              "type": "key",
+              "keys": [
+                "Escape"
+              ]
+            }
+          },
+          {
+            "target": "sound-event-tools",
+            "title": "Select",
+            "hint": "Activate select mode, then click an event.",
+            "keys": [
+              "s"
+            ],
+            "task": "Select a sound event",
+            "complete": {
+              "type": "event",
+              "event": "sound-event-selected"
+            }
+          },
+          {
+            "target": "spectrogram",
+            "title": "Resize",
+            "hint": "Grab one of the little squares on the selected event and drag it.",
+            "task": "Make an event bigger or smaller",
+            "complete": {
+              "type": "event",
+              "event": "sound-event-updated"
+            }
+          },
+          {
+            "target": "shortcuts-help",
+            "title": "Jump between events",
+            "hint": "No scrolling through long files. Cycle through events with the keyboard.",
+            "keys": [
+              "n",
+              "b"
+            ],
+            "task": "Press n or b",
+            "complete": {
+              "type": "key",
+              "keys": [
+                "n",
+                "b"
+              ]
+            }
+          },
+          {
+            "target": "sound-event-tools",
+            "title": "Delete",
+            "hint": "One event in this recording is mislabeled “this: is wrong”. Jump to it and delete it: activate delete mode and click it, or press x with it selected. Ctrl + Z undoes a deletion.",
+            "keys": [
+              "x"
+            ],
+            "task": "Delete a sound event",
+            "complete": {
+              "type": "event",
+              "event": "sound-event-deleted"
+            }
+          },
+          {
+            "target": "status-badges",
+            "title": "Next lesson",
+            "task": "Give this task any status badge",
+            "complete": {
+              "type": "event",
+              "event": "status-badge-added"
+            }
+          }
+        ]
+      },
+      {
+        "id": "tags",
+        "title": "Tags",
+        "steps": [
+          {
+            "target": "sound-event-detail",
+            "title": "Remove a wrong tag",
+            "hint": "One event is tagged “this: is wrong”. Select it and remove that tag: click the tag, or press d for a picker.",
+            "keys": [
+              "d"
+            ],
+            "task": "Remove a tag from a sound event",
+            "complete": {
+              "type": "event",
+              "event": "sound-event-tag-removed"
+            }
+          },
+          {
+            "target": "sound-event-detail",
+            "title": "Add the right tag",
+            "hint": "Add a fitting species. Click “Add tags” or the + next to the event. Suggestions appear as you type.",
+            "keys": [
+              "a"
+            ],
+            "task": "Add a tag to a sound event",
+            "complete": {
+              "type": "event",
+              "event": "sound-event-tag-added"
+            }
+          },
+          {
+            "target": "task-tags",
+            "title": "Task tags",
+            "hint": "Tags for the whole recording, e.g. when a file only holds noise or insects.",
+            "task": "Add a task tag",
+            "complete": {
+              "type": "event",
+              "event": "task-tag-added"
+            }
+          },
+          {
+            "target": "status-badges",
+            "title": "Next lesson",
+            "task": "Give this task any status badge",
+            "complete": {
+              "type": "event",
+              "event": "status-badge-added"
+            }
+          }
+        ]
+      },
+      {
+        "id": "replace-tags",
+        "title": "Replace tags",
+        "steps": [
+          {
+            "target": "audio-player",
+            "title": "Listen first",
+            "hint": "One event is tagged Graureiher (grey heron, Ardea cinerea). Play the recording and see whether you can hear it.",
+            "keys": [
+              "Space"
+            ],
+            "task": "Start playback",
+            "complete": {
+              "type": "event",
+              "event": "playback-started"
+            }
+          },
+          {
+            "target": "tag-bars",
+            "title": "Replace a tag",
+            "hint": "Replace combines delete and add. Select the Graureiher event, then replace its tag with “this: is wrong”. Try searching for “replace”.",
+            "keys": [
+              "r"
+            ],
+            "task": "Replace a tag",
+            "complete": {
+              "type": "event",
+              "event": "tag-replaced"
+            }
+          },
+          {
+            "target": "tag-bars",
+            "title": "All events at once",
+            "hint": "Add, delete and replace work on every event of the recording when none is selected. Deselect first when you only mean one. Ctrl + Z undoes it."
+          },
+          {
+            "target": "status-badges",
+            "title": "Next lesson",
+            "task": "Give this task any status badge",
+            "complete": {
+              "type": "event",
+              "event": "status-badge-added"
+            }
+          }
+        ]
+      },
+      {
+        "id": "playback",
+        "title": "Playback",
+        "steps": [
+          {
+            "target": "audio-player",
+            "title": "Play",
+            "hint": "The player has play/pause, repeat, autoplay, a progress bar and the speed.",
+            "keys": [
+              "Space"
+            ],
+            "task": "Start playback",
+            "complete": {
+              "type": "event",
+              "event": "playback-started"
+            }
+          },
+          {
+            "target": "spectrogram",
+            "title": "Seek",
+            "hint": "Double-click the spectrogram where playback should start. A red marker shows the position."
+          },
+          {
+            "target": "audio-player",
+            "title": "Repeat & autoplay",
+            "hint": "Repeat loops the window. Autoplay starts every task you open."
+          },
+          {
+            "target": "sound-event-detail",
+            "title": "Play one event",
+            "hint": "With a sound event selected, the player plays only that event.",
+            "task": "Select a sound event",
+            "complete": {
+              "type": "event",
+              "event": "sound-event-selected"
+            }
+          },
+          {
+            "target": "audio-player",
+            "title": "Speed",
+            "hint": "Sonari picks a speed from the samplerate. Real time for birds, much slower for bats. Change it any time.",
+            "task": "Change the playback speed",
+            "complete": {
+              "type": "event",
+              "event": "playback-speed-changed"
+            }
+          },
+          {
+            "target": "status-badges",
+            "title": "Next lesson",
+            "task": "Give this task any status badge",
+            "complete": {
+              "type": "event",
+              "event": "status-badge-added"
+            }
+          }
+        ]
+      },
+      {
+        "id": "practice",
+        "title": "Practice",
+        "steps": [
+          {
+            "target": "task-filter",
+            "title": "Filters",
+            "hint": "Filter by date, time, station, tag or status badge. Choose “Pending” and “include” to see only tasks without a final badge.",
+            "keys": [
+              "f"
+            ],
+            "task": "Press f",
+            "complete": {
+              "type": "key",
+              "keys": [
+                "f"
+              ]
+            }
+          },
+          {
+            "target": "status-badges",
+            "title": "Annotate on your own",
+            "hint": "Use everything you learned on the next recording.",
+            "task": "Give this task any status badge",
+            "complete": {
+              "type": "event",
+              "event": "status-badge-added"
+            }
+          }
+        ]
+      },
+      {
+        "id": "wrap-up",
+        "title": "Done",
+        "steps": [
+          {
+            "target": "status-badges",
+            "title": "Tour complete",
+            "hint": "Finish the remaining recordings so each has a status badge. You can restart the tour anytime from the home page."
+          }
+        ]
+      }
+    ]
+  }
+}

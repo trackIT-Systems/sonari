@@ -26,6 +26,7 @@ import SearchMenu from "@/components/search/SearchMenu";
 import TagComponent, { getTagKey } from "@/components/tags/Tag";
 
 import { blurActiveElement } from "@/utils/focus";
+import { emitGuidedTourEvent } from "@/components/workshop/guidedTour/events";
 import {
   GROUP_TAG_KEY,
   isReplaceAllTag,
@@ -70,6 +71,7 @@ export default function AnnotateTasks({
   onRemoveBadge,
   onAddNote,
   onRemoveNote,
+  hideNotes = false,
   onAddTag,
   onRemoveTag,
   onAddTagToSoundEventAnnotation,
@@ -110,6 +112,8 @@ export default function AnnotateTasks({
   onRemoveBadge?: (task: AnnotationTask, state: AnnotationStatus, userId?: string) => Promise<AnnotationTask>;
   onAddNote?: (note: NoteCreate) => void;
   onRemoveNote?: (note: Note) => void;
+  /** Hide the task notes panel (e.g. in guided tour projects). */
+  hideNotes?: boolean;
   onAddTag?: (tag: Tag) => void;
   onRemoveTag?: (tag: Tag) => void;
   onAddTagToSoundEventAnnotation?: (params: { soundEventAnnotation: SoundEventAnnotation; tag: Tag }) => Promise<SoundEventAnnotation>;
@@ -158,6 +162,7 @@ export default function AnnotateTasks({
   const onWithSpectrogramChange = useCallback(
     () => {
       setWithSpectrogram(!withSpectrogram);
+      emitGuidedTourEvent("spectrogram-toggled");
     },
     [withSpectrogram]
   )
@@ -166,6 +171,7 @@ export default function AnnotateTasks({
   const onWithSoundEventChange = useCallback(
     () => {
       setWithSoundEvents(!withSoundEvent)
+      emitGuidedTourEvent("sound-events-toggled");
     },
     [withSoundEvent]
   )
@@ -195,6 +201,22 @@ export default function AnnotateTasks({
     });
   }, []);
 
+  // Report user pan/zoom to the guided tour. The first window of each task is
+  // the initial view, not a user action.
+  const lastWindowRef = useRef<{ taskId?: number; window: SpectrogramWindow } | null>(null);
+  useEffect(() => {
+    if (mainSpectrogramWindow == null) return;
+    const last = lastWindowRef.current;
+    lastWindowRef.current = { taskId: annotationTask?.id, window: mainSpectrogramWindow };
+    if (last == null || last.taskId !== annotationTask?.id) return;
+    const span = (w: SpectrogramWindow) => [w.time.max - w.time.min, w.freq.max - w.freq.min];
+    const [prevT, prevF] = span(last.window);
+    const [nextT, nextF] = span(mainSpectrogramWindow);
+    const resized = Math.abs(prevT - nextT) > 1e-9 || Math.abs(prevF - nextF) > 1e-6;
+    emitGuidedTourEvent(resized ? "view-zoomed" : "view-panned");
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- only window changes are user actions
+  }, [mainSpectrogramWindow]);
+
   // Full page view: only the spectrogram, scaled up to fill the page. Panels
   // are hidden or swapped for headless versions, never remounted elsewhere, so
   // playback, zoom and drafts survive toggling.
@@ -207,6 +229,7 @@ export default function AnnotateTasks({
       }
       return !prev;
     });
+    emitGuidedTourEvent("fullscreen-toggled");
   }, []);
   useKeyPressEvent(useKeyFilter({ key: FULLSCREEN_SHORTCUT }), toggleFullscreen);
 
@@ -331,6 +354,11 @@ export default function AnnotateTasks({
   useEffect(() => {
     setSelectedSoundEventAnnotation(null);
   }, [sourceTaskId]);
+
+  const selectedSoundEventAnnotationId = selectedSoundEventAnnotation?.id;
+  useEffect(() => {
+    if (selectedSoundEventAnnotationId != null) emitGuidedTourEvent("sound-event-selected");
+  }, [selectedSoundEventAnnotationId]);
 
   useEffect(() => {
     setSelectedSoundEventAnnotation((current) => {
@@ -579,6 +607,7 @@ export default function AnnotateTasks({
 
         await Promise.all(promises);
       });
+      emitGuidedTourEvent("tag-replaced");
     },
     [displayedSoundEventAnnotations, activeRemoveTagFromSoundEventAnnotation, activeAddTagToSoundEventAnnotation, activeHistory],
   );
@@ -861,6 +890,7 @@ export default function AnnotateTasks({
           {!fullscreen && (
           <div
             data-annotate-stacked-sidebar
+            data-guided-tour="sound-event-detail"
             className="flex min-w-0 w-full shrink-0 flex-col gap-4 2xl:w-[35rem] 2xl:flex-none"
             style={
               {
@@ -932,19 +962,23 @@ export default function AnnotateTasks({
                 className="flex max-w-full shrink-0 flex-col gap-4"
                 style={{ width: `${SPECTROGRAM_CONTAINER_WIDTH}px` }}
               >
+                <div data-guided-tour="task-tags">
                 <AnnotationTaskTagBar
                   annotationTask={annotationTask}
                   onAddTag={onAddTag}
                   onRemoveTag={onRemoveTag}
                 />
+                </div>
+                {!hideNotes && (
                 <AnnotationTaskNotes
                   onCreateNote={onAddNote}
                   onDeleteNote={onRemoveNote}
                   annotationTask={annotationTask}
                   currentUser={currentUser}
                 />
+                )}
               </div>
-              <div className="min-w-0 w-[35rem] max-w-full shrink-0">
+              <div className="min-w-0 w-[35rem] max-w-full shrink-0" data-guided-tour="tag-bars">
                 {!fullscreen && (
                 <AnnotationTaskTags
                   annotationTask={displayAnnotationTask!}
@@ -965,17 +999,21 @@ export default function AnnotateTasks({
               )}
               style={{ width: `${SPECTROGRAM_CONTAINER_WIDTH}px` }}
             >
+              <div data-guided-tour="task-tags">
               <AnnotationTaskTagBar
                 annotationTask={annotationTask}
                 onAddTag={onAddTag}
                 onRemoveTag={onRemoveTag}
               />
+              </div>
+              {!hideNotes && (
               <AnnotationTaskNotes
                 onCreateNote={onAddNote}
                 onDeleteNote={onRemoveNote}
                 annotationTask={annotationTask}
                 currentUser={currentUser}
               />
+              )}
             </div>
           </>
         )}
