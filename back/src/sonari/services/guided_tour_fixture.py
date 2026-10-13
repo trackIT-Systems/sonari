@@ -19,6 +19,7 @@ from uuid import UUID
 
 from pydantic import BaseModel, Field, model_validator
 from soundevent import Geometry
+from soundevent.audio import compute_md5_checksum
 from sqlalchemy import insert, select, tuple_
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -259,53 +260,102 @@ class ImportResult:
     warnings: list[str] = field(default_factory=list)
 
 
+async def _get_or_create_dataset(
+    session: AsyncSession,
+    fixture: GuidedTourFixture,
+    audio_dir: Path,
+    result: ImportResult,
+) -> schemas.Dataset:
+    try:
+        return await api.datasets.get_by_audio_dir(session, Path(fixture.audio_folder))
+    except exceptions.NotFoundError:
+        pass
+    try:
+        dataset = await api.datasets.get_by_name(session, fixture.audio_folder)
+    except exceptions.NotFoundError:
+        return await api.datasets.create_from_data(
+            session,
+            schemas.DatasetCreate(
+                name=fixture.audio_folder,
+                description="Audio for the Sonari guided tour.",
+                audio_dir=audio_dir / fixture.audio_folder,
+            ),
+            audio_dir=audio_dir,
+        )
+    result.warnings.append(
+        f"Dataset {dataset.name!r} already exists with audio_dir {Path(dataset.audio_dir).as_posix()}; "
+        "reusing it.",
+    )
+    return dataset
+
+
 async def _register_recordings(
     session: AsyncSession,
     fixture: GuidedTourFixture,
     audio_dir: Path,
     result: ImportResult,
 ) -> dict[str, int]:
-    """Make sure every fixture recording has a DB row; return path → id."""
+    """Make sure every fixture recording has a DB row; return path → id.
+
+    Recordings are matched by path first, then by audio hash: the same file
+    registered under another path is reused instead of inserted again
+    (``Recording.hash`` is unique).
+    """
     rec_t = models.Recording.__table__
-    paths = [Path(r.path) for r in fixture.recordings]
+    dr_t = models.DatasetRecording.__table__
+    columns = (rec_t.c.id, rec_t.c.path, rec_t.c.date, rec_t.c.time, rec_t.c.hash)
 
-    def lookup_query():
-        return select(rec_t.c.id, rec_t.c.path, rec_t.c.date, rec_t.c.time).where(rec_t.c.path.in_(paths))
+    async def by_path(paths: list[str]) -> dict:
+        query = select(*columns).where(rec_t.c.path.in_([Path(p) for p in paths]))
+        return {Path(r.path).as_posix(): r for r in await session.execute(query)}
 
-    existing = {Path(r.path).as_posix(): r for r in await session.execute(lookup_query())}
+    existing = await by_path([r.path for r in fixture.recordings])
     missing = [r for r in fixture.recordings if r.path not in existing]
 
     if missing:
-        folder = audio_dir / fixture.audio_folder
         absent = [r.path for r in missing if not (audio_dir / r.path).is_file()]
         if absent:
             raise ValueError(f"Audio files missing under {audio_dir}: {absent}")
-        try:
-            dataset = await api.datasets.get_by_audio_dir(session, Path(fixture.audio_folder))
-        except exceptions.NotFoundError:
-            dataset = await api.datasets.create_from_data(
-                session,
-                schemas.DatasetCreate(
-                    name=fixture.audio_folder,
-                    description="Audio for the Sonari guided tour.",
-                    audio_dir=folder,
-                ),
-                audio_dir=audio_dir,
-            )
+
+        # Same md5 as recordings.create computes for Recording.hash.
+        hashes = {r.path: compute_md5_checksum(audio_dir / r.path) for r in missing}
+        by_hash = {
+            r.hash: r
+            for r in await session.execute(select(*columns).where(rec_t.c.hash.in_(set(hashes.values()))))
+        }
+
+        dataset = await _get_or_create_dataset(session, fixture, audio_dir, result)
+        linked = set(
+            (await session.execute(select(dr_t.c.recording_id).where(dr_t.c.dataset_id == dataset.id))).scalars(),
+        )
+
         for rec in missing:
-            await api.datasets.add_file(
-                session,
-                dataset,
-                audio_dir / rec.path,
-                date=rec.date,
-                time=rec.time,
-                latitude=rec.latitude,
-                longitude=rec.longitude,
-                time_expansion=rec.time_expansion,
-                audio_dir=audio_dir,
-            )
-        result.registered_recordings = len(missing)
-        existing = {Path(r.path).as_posix(): r for r in await session.execute(lookup_query())}
+            row = by_hash.get(hashes[rec.path])
+            if row is None:
+                await api.datasets.add_file(
+                    session,
+                    dataset,
+                    audio_dir / rec.path,
+                    date=rec.date,
+                    time=rec.time,
+                    latitude=rec.latitude,
+                    longitude=rec.longitude,
+                    time_expansion=rec.time_expansion,
+                    audio_dir=audio_dir,
+                )
+                result.registered_recordings += 1
+                row = (await by_path([rec.path]))[rec.path]
+                by_hash[row.hash] = row
+                linked.add(row.id)
+            else:
+                result.warnings.append(
+                    f"{rec.path} is already registered as {Path(row.path).as_posix()}; reusing it.",
+                )
+                if row.id not in linked:
+                    recording = await api.recordings.get(session, row.id)
+                    await api.datasets.add_recording(session, dataset, recording)
+                    linked.add(row.id)
+            existing[rec.path] = row
 
     # Lesson order follows recording date/time; flag rows registered earlier
     # with different values.

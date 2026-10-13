@@ -1,14 +1,17 @@
 """Tests for guided tour fixture export/import and the sonari-guided-tour CLI."""
 
 import json
+import shutil
 import uuid
 import wave
 from pathlib import Path
 
 import pytest
 from pydantic import ValidationError
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from sonari import api, models, schemas
 from sonari.cli.guided_tour import parse_args, run
 from sonari.services.guided_tour_fixture import (
     GuidedTourFixture,
@@ -128,6 +131,64 @@ async def test_import_fails_when_audio_is_missing(db_session: AsyncSession, audi
     with pytest.raises(ValueError, match="b.wav"):
         await import_template_fixture(db_session, fixture, audio_dir=audio_root)
     await db_session.rollback()
+
+
+@pytest.mark.asyncio
+async def test_import_reuses_recording_registered_under_other_path(db_session: AsyncSession, audio_root: Path):
+    folder = _setup_audio(audio_root)
+    other = audio_root / f"elsewhere-{uuid.uuid4().hex[:8]}" / "a-copy.wav"
+    other.parent.mkdir(parents=True)
+    shutil.copy(audio_root / folder / "a.wav", other)
+    existing = await api.recordings.create(db_session, path=other, audio_dir=audio_root)
+    await db_session.commit()
+
+    fixture = GuidedTourFixture.model_validate(_fixture_dict(folder, "is wrong"))
+    result = await import_template_fixture(db_session, fixture, audio_dir=audio_root)
+    await db_session.commit()
+
+    assert (result.tasks, result.registered_recordings) == (3, 1)
+    assert any(f"{folder}/a.wav is already registered as" in w for w in result.warnings)
+    recording_ids = (
+        await db_session.execute(
+            select(models.AnnotationTask.recording_id)
+            .where(models.AnnotationTask.annotation_project_id == result.template_id)
+            .order_by(models.AnnotationTask.id),
+        )
+    ).scalars().all()
+    assert recording_ids[:2] == [existing.id, existing.id]
+
+    dataset = await api.datasets.get_by_audio_dir(db_session, Path(folder))
+    linked = (
+        await db_session.execute(
+            select(models.DatasetRecording.recording_id).where(models.DatasetRecording.dataset_id == dataset.id),
+        )
+    ).scalars().all()
+    assert existing.id in linked
+    assert len(linked) == 2
+
+    # A forced re-import must not link the reused recording twice.
+    await import_template_fixture(db_session, fixture, audio_dir=audio_root, force=True)
+    await db_session.commit()
+
+
+@pytest.mark.asyncio
+async def test_import_reuses_dataset_with_same_name_and_other_audio_dir(db_session: AsyncSession, audio_root: Path):
+    folder = _setup_audio(audio_root)
+    other_dir = audio_root / f"elsewhere-{uuid.uuid4().hex[:8]}"
+    other_dir.mkdir(parents=True)
+    await api.datasets.create_from_data(
+        db_session,
+        schemas.DatasetCreate(name=folder, audio_dir=other_dir),
+        audio_dir=audio_root,
+    )
+    await db_session.commit()
+
+    fixture = GuidedTourFixture.model_validate(_fixture_dict(folder, "is wrong"))
+    result = await import_template_fixture(db_session, fixture, audio_dir=audio_root)
+    await db_session.commit()
+
+    assert (result.tasks, result.registered_recordings) == (3, 2)
+    assert any(f"Dataset {folder!r} already exists" in w for w in result.warnings)
 
 
 def test_fixture_rejects_unknown_recording():
