@@ -121,7 +121,7 @@ export default function AnnotationTaskSpectrogramPreview({
     [task.start_time, task.end_time, samplerate],
   );
 
-  const { image, isError } = useSpectrogramPreviewImage({
+  const { image, isError, retry } = useSpectrogramPreviewImage({
     recording_id: task.recording_id,
     segment,
     parameters: imageParameters,
@@ -184,7 +184,18 @@ export default function AnnotationTaskSpectrogramPreview({
         )}
       </div>
       {isError && (
-        <p className="pt-1 text-sm text-red-500">Failed to load preview.</p>
+        <p className="pt-1 text-sm text-red-500">
+          Failed to load preview.{" "}
+          <button
+            type="button"
+            // Don't take focus: a focused button blocks the table's shortcuts
+            onMouseDown={(event) => event.preventDefault()}
+            onClick={retry}
+            className="underline"
+          >
+            Retry
+          </button>
+        </p>
       )}
     </div>
   );

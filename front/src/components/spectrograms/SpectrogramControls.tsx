@@ -21,7 +21,7 @@ export default function SpectrogramControls({
   onToggleAspectRatio?: () => void;
 }) {
   return (
-    <div className="flex space-x-2">
+    <div className="flex space-x-1">
       <Tooltip
         tooltip={
           <div className="inline-flex gap-2 items-center">
@@ -37,6 +37,7 @@ export default function SpectrogramControls({
       >
         <Button
           variant={fixedAspectRatio ? "primary" : "secondary"}
+          pressed={fixedAspectRatio}
           onClick={onToggleAspectRatio}
         >
           {fixedAspectRatio ? (
@@ -59,7 +60,7 @@ export default function SpectrogramControls({
         }
         placement="bottom"
       >
-        <Button variant={canZoom ? "primary" : "secondary"} onClick={onZoom}>
+        <Button variant={canZoom ? "primary" : "secondary"} pressed={canZoom} onClick={onZoom}>
           <SearchIcon className="w-5 h-5" />
         </Button>
       </Tooltip>

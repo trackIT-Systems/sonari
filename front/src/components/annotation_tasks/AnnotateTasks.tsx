@@ -131,6 +131,12 @@ export default function AnnotateTasks({
 }) {
   const [tagPalette, setTagPalette] = useState<Tag[]>([]);
   const [selectedTag, setSelectedTag] = useState<{ tag: Tag; count: number } | null>(null);
+  // The cycle tag (top right of the spectrogram) is per task: close it when
+  // the next task opens instead of carrying a stale tag preview over.
+  const currentTaskId = annotationTask?.id;
+  useEffect(() => {
+    setSelectedTag(null);
+  }, [currentTaskId]);
   const [tagVisibility, setTagVisibility] = useState<TagVisibilityFilter>(DEFAULT_TAG_VISIBILITY);
   const [liveParameters, setLiveParameters] = useState<SpectrogramParameters>(parameters);
 

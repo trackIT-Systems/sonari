@@ -19,7 +19,7 @@ export default function MeasurementControls({
   onMeasure?: () => void;
 }) {
   return (
-    <div className="flex space-x-2">
+    <div className="flex space-x-1">
       <Tooltip
         tooltip={
           <div className="inline-flex gap-1">

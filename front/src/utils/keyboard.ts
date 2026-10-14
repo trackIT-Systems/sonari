@@ -361,7 +361,7 @@ export const ANNOTATION_KEY_SHORTCUTS: KeyShortcut[] = [
     },
     {
         label: "Redo",
-        shortcut: `${getMetaKeyLabel()} ${getSpecialKeyLabel("Shift")} ${UNDO_SHORTCUT.toUpperCase()}`,
+        shortcut: `${getMetaKeyLabel()} ${getSpecialKeyLabel("Shift")} ${UNDO_SHORTCUT.toUpperCase()} / ${getMetaKeyLabel()} ${REDO_SHORTCUT.toUpperCase()}`,
         description: "Redo the last undone annotation change",
     },
 ]

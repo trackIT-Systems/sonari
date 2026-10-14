@@ -38,7 +38,7 @@ export default function Tooltip({
   const content = fullWidth ? (
     <span className="block w-full min-w-0 max-w-full">{children}</span>
   ) : (
-    <span className="max-w-fit">{children}</span>
+    <span className="inline-flex max-w-fit">{children}</span>
   );
   const [hoverable, hovered] = useHover(content);
   const triggerRef = useRef<HTMLDivElement>(null);

@@ -137,7 +137,7 @@ const SpectrogramSettings = memo(function SpectrogramSettings({
 }) {
   const [open, setOpen] = useState(false);
 
-  useKeyPressEvent(useKeyFilter({ key: SETTINGS_SHORTCUT }), () => setOpen(true));
+  useKeyPressEvent(useKeyFilter({ key: SETTINGS_SHORTCUT }), () => setOpen((value) => !value));
   useGuidedTourReturnEvent(open, false, "settings-closed");
 
   return (
@@ -166,7 +166,14 @@ const SpectrogramSettings = memo(function SpectrogramSettings({
               <Button mode="text" variant="warning" onClick={onReset}>
                 Reset
               </Button>
-              <Button mode="text" variant="primary" onClick={onSave}>
+              <Button
+                mode="text"
+                variant="primary"
+                onClick={() => {
+                  onSave?.();
+                  setOpen(false);
+                }}
+              >
                 Save
               </Button>
             </span>

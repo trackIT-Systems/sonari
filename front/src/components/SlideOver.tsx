@@ -32,7 +32,8 @@ export default function SlideOver({
           leaveFrom="opacity-100"
           leaveTo="opacity-0"
         >
-          <div className="fixed inset-0 bg-black/20 backdrop-blur-sm transition-opacity" />
+          {/* No dimming or blur: settings change the spectrogram and the effect must stay visible. */}
+          <div className="fixed inset-0 transition-opacity" />
         </TransitionChild>
 
         <div className="fixed inset-0 overflow-hidden">
