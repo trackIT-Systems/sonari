@@ -1,3 +1,4 @@
+import { getMetaKeyLabel } from "@/utils/keyboard";
 import raw from "@/data/guidedTourSteps.json";
 
 import {
@@ -74,6 +75,6 @@ export function formatKeyLabel(shortcut: string): string {
   };
   return shortcut
     .split("+")
-    .map((part) => labels[part] ?? part)
+    .map((part) => (part.toLowerCase() === "ctrl" ? getMetaKeyLabel() : (labels[part] ?? part)))
     .join(" + ");
 }

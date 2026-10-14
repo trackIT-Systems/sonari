@@ -10,6 +10,7 @@ import AnnotateTasks from "@/components/annotation_tasks/AnnotateTasks";
 import WorkshopTutorial from "@/components/workshop/WorkshopTutorial";
 import {
   emitGuidedTourEvent,
+  getGuidedTourOpenSteps,
   isGuidedTourLessonBlocking,
 } from "@/components/workshop/guidedTour/events";
 import Loading from "@/components/Loading";
@@ -303,7 +304,13 @@ export default function Page() {
   const handleAddBadge = useCallback(
     async (task: AnnotationTask, state: AnnotationStatus) => {
       if (project.is_guided_tour && isGuidedTourLessonBlocking()) {
-        toast("Finish the steps of this lesson first.", { id: "guided-tour-blocked" });
+        const open = getGuidedTourOpenSteps();
+        toast(
+          open.length > 0
+            ? `Finish the steps of this lesson first: ${open.join(", ")}.`
+            : "Finish the steps of this lesson first.",
+          { id: "guided-tour-blocked" },
+        );
         throw new Error("Guided tour lesson not finished");
       }
       const result = await addBadge.mutateAsync(state);

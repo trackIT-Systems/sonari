@@ -1,5 +1,6 @@
 import { useCallback, useMemo, useRef, useState, useEffect } from "react";
 import HideSoundEventsButton from "@/components/spectrograms/HideSoundEventsButton";
+import { emitGuidedTourEvent } from "@/components/workshop/guidedTour/events";
 import { useMeasure } from "react-use";
 import classNames from "classnames";
 
@@ -537,7 +538,11 @@ export default function AnnotationTaskSpectrogram({
               onDraw={annotate.enableDraw}
               onDelete={annotate.enableDelete}
               onSelect={annotate.enableSelect}
-              onSelectGeometryType={annotate.setGeometryType}
+              onSelectGeometryType={(type) => {
+                annotate.setGeometryType(type);
+                // Also when it was already selected: choosing it is the user action.
+                if (type === "TimeInterval") emitGuidedTourEvent("time-interval-selected");
+              }}
             />
             </div>
           )}

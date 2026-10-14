@@ -7,6 +7,8 @@ import {
   CheckIcon,
   ChevronDownIcon,
   ChevronUpIcon,
+  ArrowUpIcon,
+  ArrowDownIcon,
 } from "@heroicons/react/24/outline";
 
 import type { GuidedTourLesson, GuidedTourStep } from "./types";
@@ -170,6 +172,7 @@ export default function GuidedTourCoach({
   lessonNumber,
   lessonCount,
   onFinish,
+  getUnfinishedLessons,
 }: {
   lesson: GuidedTourLesson;
   /** Tour project id; used to look up the progress of other lessons. */
@@ -180,7 +183,11 @@ export default function GuidedTourCoach({
   lessonCount?: number;
   /** Set on the tour's last lesson: shows a "Finish tour" button on its last step. */
   onFinish?: () => void;
+  /** Titles of tour lessons that are not finished yet (checked on "Finish tour"). */
+  getUnfinishedLessons?: () => string[];
 }) {
+  const [missingLessons, setMissingLessons] = useState<string[] | null>(null);
+  const [tourComplete, setTourComplete] = useState(false);
   const stepCount = lesson.steps.length;
   const [progress, setProgress] = useState<Progress>(() => ({
     stepIndex: 0,
@@ -189,12 +196,17 @@ export default function GuidedTourCoach({
   const [minimized, setMinimized] = useState(false);
   const [canSkip, setCanSkip] = useState(false);
 
-  const wasDone = useRef(false);
+  const progressRef = useRef(progress);
+  /**
+   * Step that was shown and still unfinished the last time we looked. Only a
+   * step finishing while the user is on it may auto-advance; returning to an
+   * already finished step (Back) or restoring one must not.
+   */
+  const pendingStep = useRef<number | null>(null);
   useEffect(() => {
     const saved = loadProgress(storageKey, stepCount);
-    // A restored, already-finished step must not trigger auto-advance.
-    wasDone.current =
-      saved.done[saved.stepIndex] || lesson.steps[saved.stepIndex]?.complete == null;
+    pendingStep.current = null;
+    progressRef.current = saved;
     setProgress(saved);
     // eslint-disable-next-line react-hooks/exhaustive-deps -- the parent remounts per lesson
   }, [storageKey, stepCount]);
@@ -209,13 +221,16 @@ export default function GuidedTourCoach({
   const stepDone = done[stepIndex] || step.complete == null;
   const completedCount = done.filter(Boolean).length;
 
+  // Persist synchronously: the click that completes a step (e.g. "Back to
+  // Annotate") often navigates away and unmounts this coach before React
+  // would run a queued state updater, which used to lose the progress.
   const update = useCallback(
     (fn: (prev: Progress) => Progress) => {
-      setProgress((prev) => {
-        const next = fn(prev);
-        writeStorage(storageKey, next);
-        return next;
-      });
+      const next = fn(progressRef.current);
+      if (next === progressRef.current) return;
+      progressRef.current = next;
+      writeStorage(storageKey, next);
+      setProgress(next);
     },
     [storageKey],
   );
@@ -234,6 +249,7 @@ export default function GuidedTourCoach({
 
   const goTo = useCallback(
     (index: number) => {
+      pendingStep.current = null;
       update((prev) => {
         const nextDone = [...prev.done];
         // Leaving a read-only step forward counts as having read it.
@@ -274,8 +290,8 @@ export default function GuidedTourCoach({
   // Status badges advance to the next lesson; hold them back until every
   // earlier step of this lesson is done.
   useEffect(() => {
-    const blocking = lesson.steps.some((s, i) => !isBadgeStep(s) && !done[i]);
-    setGuidedTourLessonBlocking(blocking);
+    const open = lesson.steps.filter((s, i) => !isBadgeStep(s) && !done[i]);
+    setGuidedTourLessonBlocking(open.length > 0, open.map((s) => s.task ?? s.title));
   }, [lesson.steps, done]);
 
   useEffect(() => () => setGuidedTourLessonBlocking(false), []);
@@ -319,10 +335,19 @@ export default function GuidedTourCoach({
 
   // After an action completes a step, move on automatically.
   useEffect(() => {
-    const justCompleted = !wasDone.current && stepDone && step.complete != null;
-    wasDone.current = stepDone;
+    if (step.complete == null) return;
+    if (!stepDone) {
+      pendingStep.current = stepIndex;
+      return;
+    }
+    const justCompleted = pendingStep.current === stepIndex;
     if (!justCompleted || isLast) return;
-    const timer = window.setTimeout(() => goTo(stepIndex + 1), AUTO_ADVANCE_MS);
+    const timer = window.setTimeout(() => {
+      // Back may have been pressed during the delay.
+      if (progressRef.current.stepIndex !== stepIndex) return;
+      pendingStep.current = null;
+      goTo(stepIndex + 1);
+    }, AUTO_ADVANCE_MS);
     return () => window.clearTimeout(timer);
   }, [stepDone, step.complete, isLast, stepIndex, goTo]);
 
@@ -349,8 +374,21 @@ export default function GuidedTourCoach({
   // Dock bottom-right, or bottom-left when that would cover the target.
   const cardRef = useRef<HTMLDivElement>(null);
   const [dockLeft, setDockLeft] = useState(false);
+  // Side panels (spectrogram settings) open on the right and would hide the card.
+  const [panelOpen, setPanelOpen] = useState(false);
+  useEffect(() => {
+    const check = () =>
+      setPanelOpen(document.querySelector('[role="dialog"][data-headlessui-state~="open"]') != null);
+    check();
+    const timer = window.setInterval(check, 400);
+    return () => window.clearInterval(timer);
+  }, []);
   useLayoutEffect(() => {
     const card = cardRef.current;
+    if (panelOpen) {
+      setDockLeft(true);
+      return;
+    }
     if (!card || !targetRect) {
       setDockLeft(false);
       return;
@@ -366,7 +404,7 @@ export default function GuidedTourCoach({
       targetRect.top < top + h;
     // Only move when the target is small enough to fit beside the card.
     setDockLeft(overlaps && targetRect.width < window.innerWidth - w - 2 * MARGIN);
-  }, [targetRect, stepIndex]);
+  }, [targetRect, stepIndex, panelOpen]);
 
   const toggleMinimized = () => {
     setMinimized((prev) => {
@@ -375,6 +413,26 @@ export default function GuidedTourCoach({
     });
   };
 
+  const finishTour = () => {
+    const missing = getUnfinishedLessons?.() ?? [];
+    if (missing.length > 0) {
+      setMissingLessons(missing);
+      return;
+    }
+    setMissingLessons(null);
+    setTourComplete(true);
+  };
+
+  // Target scrolled out of view: point towards it instead of a ring nobody sees.
+  const offscreen =
+    targetRect == null
+      ? null
+      : targetRect.bottom < 0
+        ? "up"
+        : targetRect.top > window.innerHeight
+          ? "down"
+          : null;
+
   const heading =
     lessonNumber != null && lessonCount != null
       ? `Lesson ${lessonNumber} of ${lessonCount} · ${lesson.title}`
@@ -382,10 +440,26 @@ export default function GuidedTourCoach({
 
   return (
     <>
-      {targetRect && (
+      {offscreen && (
+        <button
+          type="button"
+          onMouseDown={noFocus}
+          onClick={() =>
+            findVisibleTarget(step.target)?.scrollIntoView({ behavior: "smooth", block: "center" })
+          }
+          className={classNames(
+            "fixed left-1/2 z-[60] flex -translate-x-1/2 items-center gap-1.5 rounded-full bg-emerald-600 px-3 py-1.5 text-sm font-medium text-white shadow-lg hover:bg-emerald-700",
+            offscreen === "up" ? "top-16" : "bottom-4",
+          )}
+        >
+          {offscreen === "up" ? <ArrowUpIcon className="h-4 w-4" /> : <ArrowDownIcon className="h-4 w-4" />}
+          Show highlighted area
+        </button>
+      )}
+      {targetRect && !offscreen && (
         <div
           aria-hidden
-          className="pointer-events-none fixed z-[60] rounded-lg ring-4 ring-emerald-500/80 transition-all duration-200 motion-safe:animate-pulse"
+          className="pointer-events-none fixed z-[60] rounded-lg ring-4 ring-emerald-500/80 motion-safe:animate-pulse"
           style={{
             top: targetRect.top - 6,
             left: targetRect.left - 6,
@@ -423,8 +497,52 @@ export default function GuidedTourCoach({
           </button>
         </div>
 
-        {!minimized && (
+        {!minimized && tourComplete && (
+          <div className="flex flex-col gap-3 px-4 pb-4 pt-4">
+            <h3 className="text-base font-semibold text-stone-900 dark:text-stone-100">
+              Tour complete 🎉
+            </h3>
+            <p className="text-sm leading-snug text-stone-600 dark:text-stone-300">
+              You finished every lesson. Your annotation project is ready, so head back to the start
+              page and open your own projects.
+            </p>
+            <div className="flex justify-end gap-2">
+              <button
+                type="button"
+                onMouseDown={noFocus}
+                onClick={() => setTourComplete(false)}
+                className="rounded-md px-2 py-1 text-sm text-stone-600 hover:bg-stone-100 dark:text-stone-300 dark:hover:bg-stone-800"
+              >
+                Stay here
+              </button>
+              <button
+                type="button"
+                onMouseDown={noFocus}
+                onClick={onFinish}
+                className="rounded-md bg-emerald-600 px-3 py-1 text-sm font-medium text-white hover:bg-emerald-700"
+              >
+                Leave tour
+              </button>
+            </div>
+          </div>
+        )}
+
+        {!minimized && !tourComplete && (
           <div className="flex flex-col gap-3 px-4 pb-3 pt-3">
+            {missingLessons && (
+              <div
+                role="alert"
+                className="rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:bg-amber-950/40 dark:text-amber-200"
+              >
+                <p className="font-medium">Not quite done yet. Still open:</p>
+                <ul className="mt-1 list-inside list-disc">
+                  {missingLessons.map((title) => (
+                    <li key={title}>{title}</li>
+                  ))}
+                </ul>
+                <p className="mt-1 text-xs">Finish these lessons, then come back and finish the tour.</p>
+              </div>
+            )}
             <div className="flex gap-1" aria-hidden>
               {lesson.steps.map((_, i) => (
                 <span
@@ -516,7 +634,7 @@ export default function GuidedTourCoach({
                   <button
                     type="button"
                     onMouseDown={noFocus}
-                    onClick={onFinish}
+                    onClick={finishTour}
                     disabled={!stepDone}
                     className="rounded-md bg-emerald-600 px-3 py-1 text-sm font-medium text-white hover:bg-emerald-700 disabled:cursor-not-allowed disabled:bg-stone-300 disabled:text-stone-500 dark:disabled:bg-stone-700 dark:disabled:text-stone-400"
                   >

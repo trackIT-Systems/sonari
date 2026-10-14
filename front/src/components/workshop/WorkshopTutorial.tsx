@@ -6,6 +6,7 @@ import { usePathname, useRouter } from "next/navigation";
 import AnnotationProjectContext from "@/app/(base)/annotation_projects/detail/context";
 import GuidedTourCoach, {
   guidedTourStorageKey,
+  isLessonDone,
 } from "@/components/workshop/guidedTour/GuidedTourCoach";
 import {
   getAnnotateLesson,
@@ -76,6 +77,19 @@ export default function WorkshopTutorial({
   const lessonCount = variant ? (getVariantManifest(variant)?.lessons.length ?? 0) : 0;
   const storageKey = guidedTourStorageKey(project.id, lesson.id);
 
+  const getUnfinishedLessons = () => {
+    const manifest = variant ? getVariantManifest(variant) : null;
+    if (!manifest) return [];
+    const missing: string[] = [];
+    if (!isLessonDone(project.id, manifest.tasksTab.id)) {
+      missing.push(`Tasks table (open the Tasks tab)`);
+    }
+    manifest.lessons.forEach((l, i) => {
+      if (!isLessonDone(project.id, l.id)) missing.push(`Lesson ${i + 1}: ${l.title}`);
+    });
+    return missing;
+  };
+
   return (
     <GuidedTourCoach
       key={storageKey}
@@ -84,6 +98,7 @@ export default function WorkshopTutorial({
       storageKey={storageKey}
       lessonNumber={onAnnotateTab ? lessonIndex + 1 : undefined}
       lessonCount={onAnnotateTab ? lessonCount : undefined}
+      getUnfinishedLessons={getUnfinishedLessons}
       onFinish={onAnnotateTab && lessonIndex === lessonCount - 1 ? () => router.push("/") : undefined}
     />
   );

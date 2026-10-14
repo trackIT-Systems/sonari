@@ -54,6 +54,7 @@ export default function AnnotationProgress({
   onNext,
   onPrevious,
   fill = false,
+  pendingFilterOnly = false,
 }: {
   current?: number | null;
   taskCount: number;
@@ -64,7 +65,13 @@ export default function AnnotationProgress({
   onPrevious?: () => void;
   /** Shrink to fit a shared header row (full page view) */
   fill?: boolean;
+  /** Guided tour: other filters would hide the tasks the lessons are built on. */
+  pendingFilterOnly?: boolean;
 }) {
+  const filterDefs = useMemo(
+    () => (pendingFilterOnly ? taskFilterDefs.filter((def) => def.field === "pending") : taskFilterDefs),
+    [pendingFilterOnly],
+  );
 
 
   const filterButtonRef = useRef<HTMLButtonElement>(null);
@@ -144,7 +151,7 @@ export default function AnnotationProgress({
             <div className="shrink-0" data-guided-tour="task-filter">
             <FilterMenu
               filter={filter}
-              filterDef={taskFilterDefs}
+              filterDef={filterDefs}
               className={getButtonClassName({
                 variant: "info",
                 mode: "text",
@@ -154,7 +161,7 @@ export default function AnnotationProgress({
             />
             </div>
           )}
-          {!isLoading && (
+          {!isLoading && !pendingFilterOnly && (
             <div className="shrink-0">
             <FilterPresets
               storageKey="presets:annotation_tasks"
@@ -169,7 +176,7 @@ export default function AnnotationProgress({
             compactSummary
             className="min-w-0 shrink"
             filter={filter}
-            filterDef={taskFilterDefs}
+            filterDef={filterDefs}
           />
         </div>
       </div>

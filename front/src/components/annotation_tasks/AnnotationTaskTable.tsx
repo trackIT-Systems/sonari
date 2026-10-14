@@ -27,6 +27,7 @@ import { getScrollParent } from "@/utils/focus";
 import { PIN_PREVIEW_SHORTCUT, TASK_TABLE_SHORTCUTS, LIST_OVERVIEW_DOWN_SHORTCUT, SEARCH_BAR_LEAVE_SHORTCUT, FILTER_POPOVER_SHORTCUT } from "@/utils/keyboard";
 import AnnotationTaskSpectrogramPreview from "@/components/annotation_tasks/AnnotationTaskSpectrogramPreview";
 import { findTemporallyRelatedTasks } from "@/utils/temporalClusters";
+import { emitGuidedTourEvent } from "@/components/workshop/guidedTour/events";
 import Button from "../Button";
 import { FilterIcon } from "../icons";
 
@@ -396,10 +397,13 @@ export default function AnnotationTaskTable({
       if (cursorRef.current === index) {
         // Clicking the current row closes its preview (pinned or not)
         updatePinned((prev) => prev.filter((id) => id !== task.id));
-        setActiveOpen(!activeOpenRef.current || pinnedRef.current.includes(task.id));
+        const open = !activeOpenRef.current || pinnedRef.current.includes(task.id);
+        setActiveOpen(open);
+        if (open) emitGuidedTourEvent("task-preview-opened");
       } else {
         setFocusedElement(index);
         setActiveOpen(true);
+        emitGuidedTourEvent("task-preview-opened");
       }
     },
     [setFocusedElement, setActiveOpen, updatePinned],

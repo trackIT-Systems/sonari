@@ -31,6 +31,8 @@ export const GUIDED_TOUR_EVENTS = [
   "note-created",
   "playback-started",
   "playback-speed-changed",
+  /** A row of the tasks table opened its spectrogram preview. */
+  "task-preview-opened",
 ] as const;
 
 export type GuidedTourEvent = (typeof GUIDED_TOUR_EVENTS)[number];
@@ -68,9 +70,16 @@ export function useGuidedTourReturnEvent(value: boolean, target: boolean, event:
  * the next lesson).
  */
 let lessonBlocking = false;
+let blockingSteps: string[] = [];
 
-export function setGuidedTourLessonBlocking(blocking: boolean): void {
+export function setGuidedTourLessonBlocking(blocking: boolean, openSteps: string[] = []): void {
   lessonBlocking = blocking;
+  blockingSteps = blocking ? openSteps : [];
+}
+
+/** Titles of the steps still open while the lesson is blocking. */
+export function getGuidedTourOpenSteps(): string[] {
+  return blockingSteps;
 }
 
 export function isGuidedTourLessonBlocking(): boolean {

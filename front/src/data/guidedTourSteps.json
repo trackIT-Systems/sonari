@@ -29,10 +29,11 @@
         {
           "target": "task-table",
           "title": "Open a preview",
-          "hint": "Click a row to open its spectrogram preview. Click again to close it.",
-          "task": "Click a row",
+          "hint": "Click an empty part of a row (not the recording name, which is a link) to open its spectrogram preview. Click again to close it.",
+          "task": "Click an empty part of a row",
           "complete": {
-            "type": "click"
+            "type": "event",
+            "event": "task-preview-opened"
           }
         },
         {
@@ -638,10 +639,11 @@
         {
           "target": "task-table",
           "title": "Open a preview",
-          "hint": "Click a row to open its spectrogram preview. Click again to close it.",
-          "task": "Click a row",
+          "hint": "Click an empty part of a row (not the recording name, which is a link) to open its spectrogram preview. Click again to close it.",
+          "task": "Click an empty part of a row",
           "complete": {
-            "type": "click"
+            "type": "event",
+            "event": "task-preview-opened"
           }
         },
         {
@@ -960,11 +962,11 @@
           {
             "target": "sound-event-tools",
             "title": "Time intervals",
-            "hint": "Bird calls are marked as time intervals: a start and an end time across the full frequency range, not boxes. Pick the time interval shape in the menu next to the create button (e opens it).",
+            "hint": "Bird calls are marked as time intervals: a start and an end time across the full frequency range, not boxes. Press e to open the shape menu next to the create button, then choose “Time interval”.",
             "keys": [
               "e"
             ],
-            "task": "Switch to time intervals",
+            "task": "Press e, then choose Time interval",
             "complete": {
               "type": "event",
               "event": "time-interval-selected"

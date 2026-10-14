@@ -1,4 +1,5 @@
-import { useCallback, useState, useMemo, useEffect, useRef, CSSProperties } from "react";
+import { useCallback, useContext, useState, useMemo, useEffect, useRef, CSSProperties } from "react";
+import AnnotationProjectContext from "@/app/(base)/annotation_projects/detail/context";
 import { useKeyPressEvent } from "react-use";
 import classNames from "classnames";
 
@@ -129,6 +130,7 @@ export default function AnnotateTasks({
   annotationHistory?: AnnotationHistoryControls;
   sourceAnnotationHistory?: AnnotationHistoryControls;
 }) {
+  const isGuidedTour = useContext(AnnotationProjectContext)?.is_guided_tour ?? false;
   const [tagPalette, setTagPalette] = useState<Tag[]>([]);
   const [selectedTag, setSelectedTag] = useState<{ tag: Tag; count: number } | null>(null);
   // The cycle tag (top right of the spectrogram) is per task: close it when
@@ -753,6 +755,7 @@ export default function AnnotateTasks({
         >
           <AnnotationProgress
             fill={fullscreen}
+            pendingFilterOnly={isGuidedTour}
             current={tasks.current}
             taskCount={tasks.tasks.length}
             stats={tasks.stats}
@@ -845,7 +848,8 @@ export default function AnnotateTasks({
                   currentTaskId={annotationTask.id}
                   annotationTaskSources={recordingTasks}
                   sourceTaskId={sourceTaskId}
-                  onSourceTaskChange={onSourceTaskChange}
+                  // Tour projects of other users must not be browsable from here.
+                  onSourceTaskChange={isGuidedTour ? undefined : onSourceTaskChange}
                 />
                 <div className={fullscreen ? "flex min-h-0 min-w-0 flex-1 flex-col" : "min-w-0 grow-0"}>
                   <AnnotationTaskSpectrogram
