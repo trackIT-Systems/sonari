@@ -46,3 +46,7 @@ export const SOUND_EVENT_CANVAS_DIMENSIONS: Dimensions = {height: 224, width: 44
 export const CARD_HORIZONTAL_PADDING = 36;
 /** Container width that accounts for Card padding to achieve 1000px content width */
 export const SPECTROGRAM_CONTAINER_WIDTH = SPECTROGRAM_CANVAS_DIMENSIONS.width + CARD_HORIZONTAL_PADDING;
+
+/** Sonari user documentation in the trackit wiki */
+export const SONARI_WIKI_URL =
+  "https://wiki.trackit.systems/s/11b7bd95-d35a-40a7-bdeb-1972aabe67bb/doc/sonari-interaktive-analyse-von-audiodaten-YJvBjsaINV";

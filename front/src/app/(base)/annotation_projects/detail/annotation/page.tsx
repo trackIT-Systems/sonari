@@ -409,7 +409,14 @@ export default function Page() {
 
   return (
     <div className="w-full">
-      <WorkshopTutorial annotationTask={annotationTask} />
+      <WorkshopTutorial
+        annotationTask={annotationTask}
+        onFinishTour={async () => {
+          // The last lesson ends without a status badge; give it one so the
+          // home page counts every lesson as done.
+          if (!annotationTask?.status_badges?.length) await addBadge.mutateAsync("completed");
+        }}
+      />
       <AnnotateTasks
         taskFilter={filter}
         annotationTask={annotationTask}

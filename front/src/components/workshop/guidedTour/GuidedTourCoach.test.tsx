@@ -75,15 +75,20 @@ describe("GuidedTourCoach", () => {
     expect(isGuidedTourLessonBlocking()).toBe(false);
   });
 
-  it("shows a completion screen on Finish tour, then leaves the tour", () => {
+  it("leaves the tour on Finish tour when every lesson is done", () => {
     const onFinish = vi.fn();
     window.localStorage.setItem("k-finish", JSON.stringify({ stepIndex: 1, done: [true, true] }));
-    render(<GuidedTourCoach lesson={finalLesson} projectId={1} storageKey="k-finish" onFinish={onFinish} />);
+    render(
+      <GuidedTourCoach
+        lesson={finalLesson}
+        projectId={1}
+        storageKey="k-finish"
+        onFinish={onFinish}
+        getUnfinishedLessons={() => []}
+      />,
+    );
 
     fireEvent.click(screen.getByRole("button", { name: "Finish tour" }));
-    expect(onFinish).not.toHaveBeenCalled();
-    expect(screen.getByText(/Tour complete/)).toBeTruthy();
-    fireEvent.click(screen.getByRole("button", { name: "Leave tour" }));
     expect(onFinish).toHaveBeenCalled();
   });
 

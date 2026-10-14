@@ -3,21 +3,18 @@
     "tasksTab": {
       "id": "tasks-table",
       "title": "Tasks table",
+      "intro": "You are on the Tasks tab now. This short lesson shows how to look through recordings before you annotate them. Afterwards it sends you back to Annotate.",
       "steps": [
         {
           "target": "task-table",
           "title": "Tasks table",
-          "hint": "Browse and preview recordings here before you annotate."
+          "hint": "Every recording of the project is one row here, with its status badges."
         },
         {
           "target": "task-table",
           "title": "Move with ↑ ↓",
-          "hint": "The highlighted row moves and the list scrolls with it.",
-          "keys": [
-            "↓",
-            "↑"
-          ],
-          "task": "Press ↓ or ↑",
+          "hint": "`↓` and `↑` move the highlighted row. The list scrolls with it.",
+          "task": "Press `↓` or `↑`",
           "complete": {
             "type": "key",
             "keys": [
@@ -29,7 +26,7 @@
         {
           "target": "task-table",
           "title": "Open a preview",
-          "hint": "Click an empty part of a row (not the recording name, which is a link) to open its spectrogram preview. Click again to close it.",
+          "hint": "Click an empty part of a row (not the recording name, which is a link) to open its spectrogram preview. Click it again to close it.",
           "task": "Click an empty part of a row",
           "complete": {
             "type": "event",
@@ -39,11 +36,8 @@
         {
           "target": "task-table",
           "title": "Pin previews",
-          "hint": "Pin up to 5 previews to compare tasks side by side.",
-          "keys": [
-            "p"
-          ],
-          "task": "Press p",
+          "hint": "Press `p` to pin the open preview. Pinned previews stay open while you move on, up to 5 at once, so you can compare recordings.",
+          "task": "Press `p`",
           "complete": {
             "type": "key",
             "keys": [
@@ -54,11 +48,8 @@
         {
           "target": "task-shortcuts",
           "title": "All shortcuts",
-          "hint": "Shift ticks rows, dragging selects several. Bulk actions and every shortcut are listed here.",
-          "keys": [
-            "?"
-          ],
-          "task": "Press ? to open the list, then close it again",
+          "hint": "Click {icon:help} or press `?` to see every shortcut of this table, then close the list with `Esc`. Tip: `Shift` + click ticks several rows for bulk actions.",
+          "task": "Open the shortcut list with `?`, then close it",
           "complete": {
             "type": "event",
             "event": "shortcuts-closed"
@@ -67,7 +58,7 @@
         {
           "target": "header-tabs",
           "title": "Back to Annotate",
-          "hint": "The lessons continue on the Annotate tab.",
+          "hint": "The lessons continue on the “Annotate” tab at the top of the page. Click it.",
           "task": "Open the Annotate tab",
           "complete": {
             "type": "click"
@@ -78,42 +69,28 @@
     "lessons": [
       {
         "id": "orientation",
-        "title": "Orientation",
+        "title": "Welcome",
         "steps": [
           {
             "target": "progress",
-            "title": "Project progress",
-            "hint": "Total, done and remaining tasks."
-          },
-          {
-            "target": "recording-metadata",
-            "title": "Recording info",
-            "hint": "File, site, date and samplerate of this recording."
+            "title": "Welcome to Sonari",
+            "hint": "This tour teaches you to annotate recordings, in about 30 minutes and at your own pace. You need no prior experience with Sonari. Each recording is one lesson. This card shows the current step and ticks it off when you have done it; collapse it with the arrow at the top any time.",
+            "wiki": "Sonari documentation in the wiki"
           },
           {
             "target": "spectrogram",
-            "title": "Spectrogram",
-            "hint": "You will spend most of your time here."
+            "title": "The spectrogram",
+            "hint": "The picture of the sound: time runs from left to right, frequency from bottom to top, and brighter means louder. Each box on it is a sound event: one call someone marked and tagged with its species. A box spans the call's duration and its frequency range. Annotating means checking these events, correcting them and adding missing ones."
           },
           {
-            "target": "sound-event-detail",
-            "title": "Event details",
-            "hint": "Details of the selected sound event appear here."
-          },
-          {
-            "target": "tag-bars",
-            "title": "Sound event tags",
-            "hint": "All tags used by sound events in this task."
-          },
-          {
-            "target": "task-tags",
-            "title": "Task tags",
-            "hint": "Tags that describe the whole recording."
+            "target": "annotate-toolbar",
+            "title": "The action bar",
+            "hint": "All tools for the spectrogram live here, for example hide {icon:hide-spectrogram}, zoom {icon:zoom}, the sound event tools {icon:create} {icon:select} {icon:delete}, settings {icon:settings} and the player. Hover a button to see its shortcut. The next lessons use them one at a time."
           },
           {
             "target": "header-tabs",
-            "title": "Tasks table",
-            "hint": "The Tasks tab lists every recording. Open it, work through its short lesson, then come back here.",
+            "title": "The Tasks table",
+            "hint": "Click “Tasks” at the top of the page. A short lesson of 6 steps runs there. When it is done, click “Annotate” to come back and continue here.",
             "task": "Finish the Tasks table lesson",
             "complete": {
               "type": "lesson",
@@ -123,13 +100,54 @@
           {
             "target": "status-badges",
             "title": "Status badges",
-            "hint": "A badge finishes the task and opens the next one. In this tour, each task is one lesson.",
-            "keys": [
-              "1",
-              "2",
-              "3",
-              "4"
-            ],
+            "hint": "When you are done with a recording, give it a status badge. It saves your verdict and opens the next recording. In this tour, the next recording is also the next lesson. Any badge works here: click one or press `1`–`4`.",
+            "task": "Give this task any status badge",
+            "complete": {
+              "type": "event",
+              "event": "status-badge-added"
+            }
+          }
+        ]
+      },
+      {
+        "id": "playback",
+        "title": "Listen",
+        "intro": "Bat calls are ultrasonic. Played slowed down, they help you find calls and hear their rhythm. The species itself you identify from the call shape in the spectrogram.",
+        "steps": [
+          {
+            "target": "audio-player",
+            "title": "Play",
+            "hint": "Press `Space` or click {icon:play} to play and pause. Bat calls are ultrasonic, so Sonari plays them slowed down to make them audible.",
+            "task": "Start playback",
+            "complete": {
+              "type": "event",
+              "event": "playback-started"
+            }
+          },
+          {
+            "target": "audio-player",
+            "title": "Speed",
+            "hint": "Change the speed in the {icon:speed} menu. Slower stretches the calls further and lowers their pitch.",
+            "task": "Change the playback speed",
+            "complete": {
+              "type": "event",
+              "event": "playback-speed-changed"
+            }
+          },
+          {
+            "target": "audio-player",
+            "title": "Repeat & autoplay",
+            "hint": "{icon:loop} repeats the visible part. {icon:autoplay} starts playback on every recording you open. A filled, ringed button is switched on."
+          },
+          {
+            "target": "spectrogram",
+            "title": "Seek",
+            "hint": "Double-click the spectrogram where playback should start. A red line shows the current position."
+          },
+          {
+            "target": "status-badges",
+            "title": "Next lesson",
+            "hint": "Done with this recording. Give it any status badge: click one or press `1`–`4`. It opens the next recording and with it the next lesson.",
             "task": "Give this task any status badge",
             "complete": {
               "type": "event",
@@ -141,11 +159,12 @@
       {
         "id": "pan",
         "title": "Moving around",
+        "intro": "Recordings are often longer than the screen. Moving quickly through them lets you check every call.",
         "steps": [
           {
             "target": "spectrogram",
             "title": "Drag to pan",
-            "hint": "Click and drag the spectrogram. Trackpad scroll gestures work too.",
+            "hint": "Click and drag the spectrogram sideways. Trackpad scroll gestures work too.",
             "task": "Drag the spectrogram",
             "complete": {
               "type": "event",
@@ -155,7 +174,7 @@
           {
             "target": "overview-strip",
             "title": "Overview strip",
-            "hint": "The highlighted window marks what you see above. Drag it or click to jump.",
+            "hint": "This strip shows the whole recording. The green window marks the part you see above. Drag the window, or click anywhere in the strip to jump there.",
             "task": "Click or drag in the overview strip",
             "complete": {
               "type": "click"
@@ -164,13 +183,7 @@
           {
             "target": "spectrogram",
             "title": "Arrow keys",
-            "hint": "Arrows move time and frequency. Shift + ← / → switches tasks.",
-            "keys": [
-              "←",
-              "→",
-              "↑",
-              "↓"
-            ],
+            "hint": "`←` and `→` move in time, `↑` and `↓` in frequency. With `Shift` held, `←` and `→` switch to the previous or next recording.",
             "task": "Press an arrow key",
             "complete": {
               "type": "key",
@@ -185,6 +198,7 @@
           {
             "target": "status-badges",
             "title": "Next lesson",
+            "hint": "Done with this recording. Give it any status badge: click one or press `1`–`4`. It opens the next recording and with it the next lesson.",
             "task": "Give this task any status badge",
             "complete": {
               "type": "event",
@@ -196,15 +210,13 @@
       {
         "id": "zoom",
         "title": "Zoom",
+        "intro": "Short and faint calls are easy to miss, and their shape is what tells species apart. Zooming in shows both.",
         "steps": [
           {
             "target": "zoom-tools",
             "title": "Zoom mode",
-            "hint": "Turns on box zoom.",
-            "keys": [
-              "z"
-            ],
-            "task": "Press z",
+            "hint": "Press `z` or click {icon:zoom} to switch on box zoom.",
+            "task": "Press `z`",
             "complete": {
               "type": "key",
               "keys": [
@@ -215,7 +227,7 @@
           {
             "target": "spectrogram",
             "title": "Box zoom",
-            "hint": "With zoom mode on, drag a rectangle around a call.",
+            "hint": "Drag a rectangle around one call. The view zooms to exactly that area: now you see where the call starts and ends in frequency and how steeply it falls.",
             "task": "Zoom into a region",
             "complete": {
               "type": "event",
@@ -225,12 +237,8 @@
           {
             "target": "zoom-tools",
             "title": "Step zoom",
-            "hint": "Zoom time in or out. Add Ctrl to zoom frequency.",
-            "keys": [
-              "+",
-              "-"
-            ],
-            "task": "Press + or -",
+            "hint": "`+` and `-` zoom in and out in time. Hold the Control key as well (Ctrl, also on a Mac) to zoom in frequency.",
+            "task": "Press `+` or `-`",
             "complete": {
               "type": "key",
               "keys": [
@@ -242,11 +250,8 @@
           {
             "target": "zoom-tools",
             "title": "Reset",
-            "hint": "Back to the full task window.",
-            "keys": [
-              "u"
-            ],
-            "task": "Press u",
+            "hint": "Press `u` or click {icon:reset} to see the whole recording again.",
+            "task": "Press `u`",
             "complete": {
               "type": "key",
               "keys": [
@@ -257,86 +262,7 @@
           {
             "target": "status-badges",
             "title": "Next lesson",
-            "task": "Give this task any status badge",
-            "complete": {
-              "type": "event",
-              "event": "status-badge-added"
-            }
-          }
-        ]
-      },
-      {
-        "id": "spectrogram-settings",
-        "title": "View settings",
-        "steps": [
-          {
-            "target": "spec-settings",
-            "title": "Spectrogram settings",
-            "hint": "Colormap, window size, frequency range and more. Save them to use them on every task. Close the panel when you are done.",
-            "keys": [
-              "o"
-            ],
-            "task": "Open the settings, then close them again",
-            "complete": {
-              "type": "event",
-              "event": "settings-closed"
-            }
-          },
-          {
-            "target": "hide-spectrogram",
-            "title": "Hide spectrogram",
-            "hint": "Useful to check where the events are without the image.",
-            "keys": [
-              "h"
-            ],
-            "task": "Press h to hide it, then h again to bring it back",
-            "complete": {
-              "type": "event",
-              "event": "spectrogram-shown"
-            }
-          },
-          {
-            "target": "annotate-toolbar",
-            "title": "Hide sound events",
-            "hint": "Look at the raw spectrogram without events on top. Show them again afterwards: selecting and editing only works on visible events.",
-            "keys": [
-              "Shift+h"
-            ],
-            "task": "Press Shift + h to hide them, then again to show them",
-            "complete": {
-              "type": "event",
-              "event": "sound-events-shown"
-            }
-          },
-          {
-            "target": "spectrogram",
-            "title": "Full page view",
-            "hint": "Only the spectrogram, scaled to the screen.",
-            "keys": [
-              "w"
-            ],
-            "task": "Press w to open it, then w again to close it",
-            "complete": {
-              "type": "event",
-              "event": "fullscreen-exited"
-            }
-          },
-          {
-            "target": "shortcuts-help",
-            "title": "Shortcuts",
-            "hint": "Every shortcut on this page. Close the list with Esc.",
-            "keys": [
-              "?"
-            ],
-            "task": "Press ? to open the list, then close it again",
-            "complete": {
-              "type": "event",
-              "event": "shortcuts-closed"
-            }
-          },
-          {
-            "target": "status-badges",
-            "title": "Next lesson",
+            "hint": "Done with this recording. Give it any status badge: click one or press `1`–`4`. It opens the next recording and with it the next lesson.",
             "task": "Give this task any status badge",
             "complete": {
               "type": "event",
@@ -348,14 +274,12 @@
       {
         "id": "sound-events",
         "title": "Sound events",
+        "intro": "Sound events are the core of annotation: each one marks a call and carries its species.",
         "steps": [
           {
             "target": "sound-event-tools",
             "title": "Create",
-            "hint": "Activate create mode, then draw a box on the spectrogram.",
-            "keys": [
-              "c"
-            ],
+            "hint": "Press `c` or click {icon:create} to switch on create mode. Then drag a box around one call, from its start to its end and from its lowest to its highest frequency. Take the bright call at about 0.9 s: it is boxed already, but drawing your own on top is fine for practice. Zoom in {icon:zoom} first if the call looks tiny. The new event is selected right away.",
             "task": "Draw a new sound event",
             "complete": {
               "type": "event",
@@ -363,12 +287,26 @@
             }
           },
           {
+            "target": "sound-event-detail",
+            "title": "Details",
+            "hint": "This panel shows the selected event: a zoomed preview, its tags and its measurements. Events created by an AI model also show how confident the model was."
+          },
+          {
+            "target": "spectrogram",
+            "title": "Deselect",
+            "hint": "`Esc` clears the selection.",
+            "task": "Press `Esc`",
+            "complete": {
+              "type": "key",
+              "keys": [
+                "Escape"
+              ]
+            }
+          },
+          {
             "target": "sound-event-tools",
             "title": "Select",
-            "hint": "Select mode lets you click an event. Resize it with its handles, Esc deselects.",
-            "keys": [
-              "s"
-            ],
+            "hint": "Press `s` or click {icon:select}, then click an event. Drag its corners to make it fit the call.",
             "task": "Select a sound event",
             "complete": {
               "type": "event",
@@ -376,19 +314,10 @@
             }
           },
           {
-            "target": "sound-event-detail",
-            "title": "Details",
-            "hint": "Tags, measurements and a zoomed view of the selected event."
-          },
-          {
             "target": "shortcuts-help",
             "title": "Jump between events",
-            "hint": "Cycle through events without the mouse.",
-            "keys": [
-              "n",
-              "b"
-            ],
-            "task": "Press n or b",
+            "hint": "`n` jumps to the next event, `b` back to the previous one. No scrolling through long recordings.",
+            "task": "Press `n` or `b`",
             "complete": {
               "type": "key",
               "keys": [
@@ -400,11 +329,8 @@
           {
             "target": "sound-event-tools",
             "title": "Delete",
-            "hint": "One event here is mislabeled. Delete mode removes events, or press x while one is selected.",
-            "keys": [
-              "x"
-            ],
-            "task": "Delete a sound event",
+            "hint": "The event at about 4.9 s, high up at 150 kHz, is tagged “this: is wrong”: it is not a call. Select it (`n` jumps there) and press `x`, or switch on delete mode {icon:delete} and click it.",
+            "task": "Delete the mislabeled event",
             "complete": {
               "type": "event",
               "event": "sound-event-deleted"
@@ -413,10 +339,7 @@
           {
             "target": "spectrogram",
             "title": "Undo",
-            "hint": "Deleted something by mistake? Ctrl + Z (Cmd + Z on Mac) brings it back. Undo works for events and tags.",
-            "keys": [
-              "Ctrl+z"
-            ],
+            "hint": "Deleted the wrong one? `Ctrl+z` brings it back. Undo works for events and tags. Try it now.",
             "task": "Undo the deletion",
             "complete": {
               "type": "event",
@@ -426,10 +349,7 @@
           {
             "target": "spectrogram",
             "title": "Redo",
-            "hint": "Ctrl + Shift + Z redoes it, so the mislabeled event is gone again.",
-            "keys": [
-              "Ctrl+Shift+z"
-            ],
+            "hint": "`Ctrl+Shift+z` or `Ctrl+y` redoes it, so the mislabeled event is gone again.",
             "task": "Redo the deletion",
             "complete": {
               "type": "event",
@@ -439,6 +359,7 @@
           {
             "target": "status-badges",
             "title": "Next lesson",
+            "hint": "Done with this recording. Give it any status badge: click one or press `1`–`4`. It opens the next recording and with it the next lesson.",
             "task": "Give this task any status badge",
             "complete": {
               "type": "event",
@@ -450,12 +371,13 @@
       {
         "id": "tags",
         "title": "Tags",
+        "intro": "Tags say what a sound event is. A wrong or missing species is the error you will fix most often.",
         "steps": [
           {
             "target": "sound-event-detail",
             "title": "Remove a wrong tag",
-            "hint": "Select the event tagged “this: is wrong” and remove that tag. Careful: x and delete mode remove the whole event. If that happens, Ctrl + Z brings it back.",
-            "task": "Remove a tag from a sound event",
+            "hint": "The event at about 1.6 s is tagged “this: is wrong” next to its species. Select it, then click that tag to remove it, or press `d` for a picker. Careful: `x` and delete mode {icon:delete} remove the whole event, `Ctrl+z` brings it back.",
+            "task": "Remove the tag “this: is wrong”",
             "complete": {
               "type": "event",
               "event": "sound-event-tag-removed"
@@ -463,12 +385,9 @@
           },
           {
             "target": "sound-event-detail",
-            "title": "Add a species",
-            "hint": "Add the correct species to the same event.",
-            "keys": [
-              "a"
-            ],
-            "task": "Add a tag to a sound event",
+            "title": "Add the right species",
+            "hint": "This recording is from a Bechstein's bat. Add “species: Myotis bechsteinii” to the same event: press `a` or click “Add tags” and start typing “bechsteinii”.",
+            "task": "Add the species tag",
             "complete": {
               "type": "event",
               "event": "sound-event-tag-added"
@@ -476,13 +395,13 @@
           },
           {
             "target": "tag-bars",
-            "title": "Bulk tag actions",
-            "hint": "Replace a tag on every event at once (r), or tag all untagged events (a)."
+            "title": "All events at once",
+            "hint": "Tag actions work on the selected event. With no event selected (`Esc` deselects), they work on every event of the recording: `r` replaces a tag everywhere, `Shift+a` tags all untagged events. To change only one event, select it first: jump to it with `n`, or press `s` (or click {icon:select}) and then click it."
           },
           {
             "target": "task-tags",
             "title": "Task tags",
-            "hint": "Tags for the whole recording, e.g. noise or recording quality.",
+            "hint": "Task tags describe the whole recording instead of one call, e.g. when a file holds only noise or insects. Add any task tag here.",
             "task": "Add a task tag",
             "complete": {
               "type": "event",
@@ -492,6 +411,7 @@
           {
             "target": "status-badges",
             "title": "Next lesson",
+            "hint": "Done with this recording. Give it any status badge: click one or press `1`–`4`. It opens the next recording and with it the next lesson.",
             "task": "Give this task any status badge",
             "complete": {
               "type": "event",
@@ -501,45 +421,65 @@
         ]
       },
       {
-        "id": "playback",
-        "title": "Playback",
+        "id": "spectrogram-settings",
+        "title": "View settings",
+        "intro": "Every recorder and every species looks different. Adjusting the view makes faint calls stand out.",
         "steps": [
           {
-            "target": "audio-player",
-            "title": "Play",
-            "hint": "Audio is time-expanded according to the speed setting.",
-            "keys": [
-              "Space"
-            ],
-            "task": "Start playback",
+            "target": "spec-settings",
+            "title": "Spectrogram settings",
+            "hint": "Press `o` or click {icon:settings}. Try another colormap or frequency range and watch the spectrogram change. “Save” keeps the settings for every recording and closes the panel; `o` or `Esc` closes it without saving.",
+            "task": "Open the settings, then close them",
             "complete": {
               "type": "event",
-              "event": "playback-started"
+              "event": "settings-closed"
             }
           },
           {
-            "target": "audio-player",
-            "title": "Speed",
-            "hint": "Slower speeds make ultrasonic calls audible.",
-            "task": "Change the playback speed",
+            "target": "hide-spectrogram",
+            "title": "Hide spectrogram",
+            "hint": "`h` or {icon:hide-spectrogram} hides spectrogram and waveform, e.g. to look at the events alone. Press it again to bring them back.",
+            "task": "Press `h` twice",
             "complete": {
               "type": "event",
-              "event": "playback-speed-changed"
+              "event": "spectrogram-shown"
             }
           },
           {
-            "target": "audio-player",
-            "title": "Repeat & autoplay",
-            "hint": "Loop the window, or start playing automatically on every task."
+            "target": "annotate-toolbar",
+            "title": "Hide sound events",
+            "hint": "`Shift+h` or {icon:hide-events} hides the events, so you see the plain spectrogram. Show them again afterwards: only visible events can be selected and edited.",
+            "task": "Press `Shift+h` twice",
+            "complete": {
+              "type": "event",
+              "event": "sound-events-shown"
+            }
           },
           {
             "target": "spectrogram",
-            "title": "Seek",
-            "hint": "Double-click the spectrogram where playback should start."
+            "title": "Full page view",
+            "hint": "`w` or {icon:fullscreen} shows only the spectrogram, scaled to your screen. `w` again closes it.",
+            "task": "Open and close the full page view",
+            "complete": {
+              "type": "event",
+              "event": "fullscreen-exited"
+            }
+          },
+          {
+            "target": "shortcuts-help",
+            "title": "Shortcuts",
+            "hint": "Click {icon:help} or press `?` for every shortcut on this page. `Esc` closes the list.",
+            "wiki": "More in the Sonari wiki",
+            "task": "Open the shortcut list, then close it",
+            "complete": {
+              "type": "event",
+              "event": "shortcuts-closed"
+            }
           },
           {
             "target": "status-badges",
             "title": "Next lesson",
+            "hint": "Done with this recording. Give it any status badge: click one or press `1`–`4`. It opens the next recording and with it the next lesson.",
             "task": "Give this task any status badge",
             "complete": {
               "type": "event",
@@ -551,24 +491,22 @@
       {
         "id": "practice",
         "title": "Practice",
+        "intro": "Time to put it together on your own.",
         "steps": [
           {
             "target": "task-filter",
             "title": "Filters",
-            "hint": "Filter by date, time, station, tag or status badge. Add “Pending” and choose “include”: only tasks without a final badge remain.",
-            "keys": [
-              "f"
-            ],
-            "task": "Filter to pending tasks only",
+            "hint": "Filters narrow down the recordings you work through, e.g. by date, time, station, tag or status badge. Press `f` or click {icon:filter} “Filters” and look through the list, then close it with `Esc`. During the tour, filters are not applied, so the lessons stay in order.",
+            "task": "Open the filter menu",
             "complete": {
               "type": "event",
-              "event": "pending-filter-included"
+              "event": "filter-menu-opened"
             }
           },
           {
             "target": "status-badges",
             "title": "Finish the remaining tasks",
-            "hint": "Annotate and badge each remaining recording on your own.",
+            "hint": "Listen, check every event, fix wrong tags and add missing calls. Then give the recording a status badge.",
             "task": "Give this task any status badge",
             "complete": {
               "type": "event",
@@ -584,16 +522,12 @@
           {
             "target": "task-notes",
             "title": "Notes",
-            "hint": "Every task has notes for questions, remarks or problems, visible to your team. A note can be marked as an issue (shown in red) to flag a problem. Delete your own notes with the trash icon."
+            "hint": "Every recording has notes for questions, remarks or problems, visible to your team. Mark a note as an issue (shown in red) to flag a problem. Delete your own notes with the trash icon."
           },
           {
             "target": "task-notes",
             "title": "Your feedback",
-            "hint": "How was the tour? Unclear steps, missing features, bugs, ideas: all welcome. Press q to jump into the field, Shift + Enter saves the note, Esc leaves the field.",
-            "keys": [
-              "q",
-              "Shift+Enter"
-            ],
+            "hint": "How was the tour? Unclear steps, missing features, bugs, ideas: all welcome. Press `q` to jump into the note field, write your note and save it with `Shift+Enter`. `Esc` leaves the field.",
             "task": "Write a feedback note",
             "complete": {
               "type": "event",
@@ -603,7 +537,8 @@
           {
             "target": "status-badges",
             "title": "Tour complete",
-            "hint": "Well done! Finish the tour to go back to the home page. You can continue or restart it there anytime."
+            "hint": "Well done! Click “Finish tour” to go back to the home page. You can continue or restart the tour there any time.",
+            "wiki": "Read on in the Sonari wiki"
           }
         ]
       }
@@ -613,21 +548,18 @@
     "tasksTab": {
       "id": "tasks-table",
       "title": "Tasks table",
+      "intro": "You are on the Tasks tab now. This short lesson shows how to look through recordings before you annotate them. Afterwards it sends you back to Annotate.",
       "steps": [
         {
           "target": "task-table",
           "title": "Tasks table",
-          "hint": "Browse and preview recordings here before you annotate."
+          "hint": "Every recording of the project is one row here, with its status badges."
         },
         {
           "target": "task-table",
           "title": "Move with ↑ ↓",
-          "hint": "The highlighted row moves and the list scrolls with it.",
-          "keys": [
-            "↓",
-            "↑"
-          ],
-          "task": "Press ↓ or ↑",
+          "hint": "`↓` and `↑` move the highlighted row. The list scrolls with it.",
+          "task": "Press `↓` or `↑`",
           "complete": {
             "type": "key",
             "keys": [
@@ -639,7 +571,7 @@
         {
           "target": "task-table",
           "title": "Open a preview",
-          "hint": "Click an empty part of a row (not the recording name, which is a link) to open its spectrogram preview. Click again to close it.",
+          "hint": "Click an empty part of a row (not the recording name, which is a link) to open its spectrogram preview. Click it again to close it.",
           "task": "Click an empty part of a row",
           "complete": {
             "type": "event",
@@ -649,11 +581,8 @@
         {
           "target": "task-table",
           "title": "Pin previews",
-          "hint": "Pin up to 5 previews to compare tasks side by side.",
-          "keys": [
-            "p"
-          ],
-          "task": "Press p",
+          "hint": "Press `p` to pin the open preview. Pinned previews stay open while you move on, up to 5 at once, so you can compare recordings.",
+          "task": "Press `p`",
           "complete": {
             "type": "key",
             "keys": [
@@ -664,11 +593,8 @@
         {
           "target": "task-shortcuts",
           "title": "All shortcuts",
-          "hint": "Shift ticks rows, dragging selects several. Bulk actions and every shortcut are listed here.",
-          "keys": [
-            "?"
-          ],
-          "task": "Press ? to open the list, then close it again",
+          "hint": "Click {icon:help} or press `?` to see every shortcut of this table, then close the list with `Esc`. Tip: `Shift` + click ticks several rows for bulk actions.",
+          "task": "Open the shortcut list with `?`, then close it",
           "complete": {
             "type": "event",
             "event": "shortcuts-closed"
@@ -677,7 +603,7 @@
         {
           "target": "header-tabs",
           "title": "Back to Annotate",
-          "hint": "The lessons continue on the Annotate tab.",
+          "hint": "The lessons continue on the “Annotate” tab at the top of the page. Click it.",
           "task": "Open the Annotate tab",
           "complete": {
             "type": "click"
@@ -688,42 +614,28 @@
     "lessons": [
       {
         "id": "orientation",
-        "title": "Orientation",
+        "title": "Welcome",
         "steps": [
           {
             "target": "progress",
-            "title": "Project progress",
-            "hint": "Total, done and remaining tasks."
-          },
-          {
-            "target": "recording-metadata",
-            "title": "Recording info",
-            "hint": "File, site, date and samplerate of this recording."
+            "title": "Welcome to Sonari",
+            "hint": "This tour teaches you to annotate recordings, in about 30 minutes and at your own pace. You need no prior experience with Sonari. Each recording is one lesson. This card shows the current step and ticks it off when you have done it; collapse it with the arrow at the top any time.",
+            "wiki": "Sonari documentation in the wiki"
           },
           {
             "target": "spectrogram",
-            "title": "Spectrogram",
-            "hint": "You will spend most of your time here."
+            "title": "The spectrogram",
+            "hint": "The picture of the sound: time runs from left to right, frequency from bottom to top, and brighter means louder. Each coloured band on it is a sound event: a call someone marked and tagged with its species. Bird calls are marked as time intervals across all frequencies. Annotating means checking these events, correcting them and adding missing ones."
           },
           {
-            "target": "sound-event-detail",
-            "title": "Event details",
-            "hint": "Details of the selected sound event appear here."
-          },
-          {
-            "target": "tag-bars",
-            "title": "Sound event tags",
-            "hint": "All tags used by sound events in this task."
-          },
-          {
-            "target": "task-tags",
-            "title": "Task tags",
-            "hint": "Tags that describe the whole recording."
+            "target": "annotate-toolbar",
+            "title": "The action bar",
+            "hint": "All tools for the spectrogram live here, for example hide {icon:hide-spectrogram}, zoom {icon:zoom}, the sound event tools {icon:create} {icon:select} {icon:delete}, settings {icon:settings} and the player. Hover a button to see its shortcut. The next lessons use them one at a time."
           },
           {
             "target": "header-tabs",
-            "title": "Tasks table",
-            "hint": "The Tasks tab lists every recording. Open it, work through its short lesson, then come back here.",
+            "title": "The Tasks table",
+            "hint": "Click “Tasks” at the top of the page. A short lesson of 6 steps runs there. When it is done, click “Annotate” to come back and continue here.",
             "task": "Finish the Tasks table lesson",
             "complete": {
               "type": "lesson",
@@ -733,13 +645,64 @@
           {
             "target": "status-badges",
             "title": "Status badges",
-            "hint": "A badge finishes the task and opens the next one. In this tour, each task is one lesson.",
-            "keys": [
-              "1",
-              "2",
-              "3",
-              "4"
-            ],
+            "hint": "When you are done with a recording, give it a status badge. It saves your verdict and opens the next recording. In this tour, the next recording is also the next lesson. Any badge works here: click one or press `1`–`4`.",
+            "task": "Give this task any status badge",
+            "complete": {
+              "type": "event",
+              "event": "status-badge-added"
+            }
+          }
+        ]
+      },
+      {
+        "id": "playback",
+        "title": "Listen",
+        "intro": "Listening shows you quickly where the calls are, and many birds you recognise by ear. Start every recording by playing it.",
+        "steps": [
+          {
+            "target": "audio-player",
+            "title": "Play",
+            "hint": "Press `Space` or click {icon:play} to play and pause. This recording holds a firecrest (Sommergoldhähnchen) and a wren (Zaunkönig): listen for the thin, high song and the loud, rattling one.",
+            "task": "Start playback",
+            "complete": {
+              "type": "event",
+              "event": "playback-started"
+            }
+          },
+          {
+            "target": "spectrogram",
+            "title": "Seek",
+            "hint": "Double-click the spectrogram where playback should start. A red line shows the current position."
+          },
+          {
+            "target": "audio-player",
+            "title": "Repeat & autoplay",
+            "hint": "{icon:loop} repeats the visible part. {icon:autoplay} starts playback on every recording you open. A filled, ringed button is switched on."
+          },
+          {
+            "target": "sound-event-detail",
+            "title": "Play one event",
+            "hint": "Press `s` or click {icon:select}, then click one of the marked events. While an event is selected, the player plays only that event.",
+            "task": "Select a sound event",
+            "complete": {
+              "type": "event",
+              "event": "sound-event-selected"
+            }
+          },
+          {
+            "target": "audio-player",
+            "title": "Speed",
+            "hint": "Sonari picks the speed from the samplerate: real time for birds, much slower for bats. Change it in the {icon:speed} menu.",
+            "task": "Change the playback speed",
+            "complete": {
+              "type": "event",
+              "event": "playback-speed-changed"
+            }
+          },
+          {
+            "target": "status-badges",
+            "title": "Next lesson",
+            "hint": "Done with this recording. Give it any status badge: click one or press `1`–`4`. It opens the next recording and with it the next lesson.",
             "task": "Give this task any status badge",
             "complete": {
               "type": "event",
@@ -751,11 +714,12 @@
       {
         "id": "pan",
         "title": "Moving around",
+        "intro": "Recordings are often longer than the screen. Moving quickly through them lets you check every call.",
         "steps": [
           {
             "target": "spectrogram",
             "title": "Drag to pan",
-            "hint": "Click and drag the spectrogram. Trackpad scroll gestures work too.",
+            "hint": "Click and drag the spectrogram sideways. Trackpad scroll gestures work too.",
             "task": "Drag the spectrogram",
             "complete": {
               "type": "event",
@@ -765,7 +729,7 @@
           {
             "target": "overview-strip",
             "title": "Overview strip",
-            "hint": "The highlighted window marks what you see above. Drag it or click to jump.",
+            "hint": "This strip shows the whole recording. The green window marks the part you see above. Drag the window, or click anywhere in the strip to jump there.",
             "task": "Click or drag in the overview strip",
             "complete": {
               "type": "click"
@@ -774,13 +738,7 @@
           {
             "target": "spectrogram",
             "title": "Arrow keys",
-            "hint": "Arrows move time and frequency. Shift + ← / → switches tasks.",
-            "keys": [
-              "←",
-              "→",
-              "↑",
-              "↓"
-            ],
+            "hint": "`←` and `→` move in time, `↑` and `↓` in frequency. With `Shift` held, `←` and `→` switch to the previous or next recording.",
             "task": "Press an arrow key",
             "complete": {
               "type": "key",
@@ -795,6 +753,7 @@
           {
             "target": "status-badges",
             "title": "Next lesson",
+            "hint": "Done with this recording. Give it any status badge: click one or press `1`–`4`. It opens the next recording and with it the next lesson.",
             "task": "Give this task any status badge",
             "complete": {
               "type": "event",
@@ -806,15 +765,13 @@
       {
         "id": "zoom",
         "title": "Zoom",
+        "intro": "Short and faint calls are easy to miss, and their shape is what tells species apart. Zooming in shows both.",
         "steps": [
           {
             "target": "zoom-tools",
             "title": "Zoom mode",
-            "hint": "Turns on box zoom.",
-            "keys": [
-              "z"
-            ],
-            "task": "Press z",
+            "hint": "Press `z` or click {icon:zoom} to switch on box zoom.",
+            "task": "Press `z`",
             "complete": {
               "type": "key",
               "keys": [
@@ -825,7 +782,7 @@
           {
             "target": "spectrogram",
             "title": "Box zoom",
-            "hint": "With zoom mode on, drag a rectangle around a call.",
+            "hint": "Drag a rectangle around one of the two pygmy owl (Sperlingskauz) calls. The view zooms to exactly that area.",
             "task": "Zoom into a region",
             "complete": {
               "type": "event",
@@ -835,12 +792,8 @@
           {
             "target": "zoom-tools",
             "title": "Step zoom",
-            "hint": "Zoom time in or out. Add Ctrl to zoom frequency.",
-            "keys": [
-              "+",
-              "-"
-            ],
-            "task": "Press + or -",
+            "hint": "`+` and `-` zoom in and out in time. Hold the Control key as well (Ctrl, also on a Mac) to zoom in frequency.",
+            "task": "Press `+` or `-`",
             "complete": {
               "type": "key",
               "keys": [
@@ -852,11 +805,8 @@
           {
             "target": "zoom-tools",
             "title": "Reset",
-            "hint": "Back to the full task window.",
-            "keys": [
-              "u"
-            ],
-            "task": "Press u",
+            "hint": "Press `u` or click {icon:reset} to see the whole recording again.",
+            "task": "Press `u`",
             "complete": {
               "type": "key",
               "keys": [
@@ -867,86 +817,7 @@
           {
             "target": "status-badges",
             "title": "Next lesson",
-            "task": "Give this task any status badge",
-            "complete": {
-              "type": "event",
-              "event": "status-badge-added"
-            }
-          }
-        ]
-      },
-      {
-        "id": "spectrogram-settings",
-        "title": "View settings",
-        "steps": [
-          {
-            "target": "spec-settings",
-            "title": "Spectrogram settings",
-            "hint": "Colormap, window size, frequency range and more. Save them to use them on every task. Close the panel when you are done.",
-            "keys": [
-              "o"
-            ],
-            "task": "Open the settings, then close them again",
-            "complete": {
-              "type": "event",
-              "event": "settings-closed"
-            }
-          },
-          {
-            "target": "hide-spectrogram",
-            "title": "Hide spectrogram",
-            "hint": "Useful to check where the events are without the image.",
-            "keys": [
-              "h"
-            ],
-            "task": "Press h to hide it, then h again to bring it back",
-            "complete": {
-              "type": "event",
-              "event": "spectrogram-shown"
-            }
-          },
-          {
-            "target": "annotate-toolbar",
-            "title": "Hide sound events",
-            "hint": "Look at the raw spectrogram without events on top. Show them again afterwards: selecting and editing only works on visible events.",
-            "keys": [
-              "Shift+h"
-            ],
-            "task": "Press Shift + h to hide them, then again to show them",
-            "complete": {
-              "type": "event",
-              "event": "sound-events-shown"
-            }
-          },
-          {
-            "target": "spectrogram",
-            "title": "Full page view",
-            "hint": "Only the spectrogram, scaled to the screen.",
-            "keys": [
-              "w"
-            ],
-            "task": "Press w to open it, then w again to close it",
-            "complete": {
-              "type": "event",
-              "event": "fullscreen-exited"
-            }
-          },
-          {
-            "target": "shortcuts-help",
-            "title": "Shortcuts",
-            "hint": "Every shortcut on this page. Close the list with Esc.",
-            "keys": [
-              "?"
-            ],
-            "task": "Press ? to open the list, then close it again",
-            "complete": {
-              "type": "event",
-              "event": "shortcuts-closed"
-            }
-          },
-          {
-            "target": "status-badges",
-            "title": "Next lesson",
+            "hint": "Done with this recording. Give it any status badge: click one or press `1`–`4`. It opens the next recording and with it the next lesson.",
             "task": "Give this task any status badge",
             "complete": {
               "type": "event",
@@ -958,15 +829,13 @@
       {
         "id": "sound-events",
         "title": "Sound events",
+        "intro": "Sound events are the core of annotation: each one marks a call and carries its species.",
         "steps": [
           {
             "target": "sound-event-tools",
             "title": "Time intervals",
-            "hint": "Bird calls are marked as time intervals: a start and an end time across the full frequency range, not boxes. Press e to open the shape menu next to the create button, then choose “Time interval”.",
-            "keys": [
-              "e"
-            ],
-            "task": "Press e, then choose Time interval",
+            "hint": "Bird calls are marked as time intervals: a start and an end time across all frequencies, not boxes. Press `e` to open the shape menu next to {icon:create}, then choose {icon:interval} “Time interval”.",
+            "task": "Press `e`, then choose Time interval",
             "complete": {
               "type": "event",
               "event": "time-interval-selected"
@@ -975,10 +844,7 @@
           {
             "target": "sound-event-tools",
             "title": "Create",
-            "hint": "Activate create mode, then drag across a call from its start to its end. The new event is selected right away.",
-            "keys": [
-              "c"
-            ],
+            "hint": "Press `c` or click {icon:create} to switch on create mode. Then click where a call starts, hold the mouse button and drag to where it ends. Overlapping an existing event is fine here. The new event is selected right away.",
             "task": "Draw a new sound event",
             "complete": {
               "type": "event",
@@ -988,16 +854,13 @@
           {
             "target": "sound-event-detail",
             "title": "Details",
-            "hint": "A preview, tags and technical details of the selected event. Events created by an AI model also show their confidence."
+            "hint": "This panel shows the selected event: a zoomed preview, its tags and its measurements. Events created by an AI model also show how confident the model was."
           },
           {
             "target": "spectrogram",
             "title": "Deselect",
-            "hint": "Escape clears the selection.",
-            "keys": [
-              "Esc"
-            ],
-            "task": "Press Escape",
+            "hint": "`Esc` clears the selection.",
+            "task": "Press `Esc`",
             "complete": {
               "type": "key",
               "keys": [
@@ -1008,10 +871,7 @@
           {
             "target": "sound-event-tools",
             "title": "Select",
-            "hint": "Activate select mode, then click an event.",
-            "keys": [
-              "s"
-            ],
+            "hint": "Press `s` or click {icon:select}, then click an event.",
             "task": "Select a sound event",
             "complete": {
               "type": "event",
@@ -1021,8 +881,8 @@
           {
             "target": "spectrogram",
             "title": "Resize",
-            "hint": "Drag the start or end handle of the selected event.",
-            "task": "Make an event bigger or smaller",
+            "hint": "Drag the start or end edge of the selected event so it fits the call exactly.",
+            "task": "Make an event longer or shorter",
             "complete": {
               "type": "event",
               "event": "sound-event-updated"
@@ -1031,12 +891,8 @@
           {
             "target": "shortcuts-help",
             "title": "Jump between events",
-            "hint": "No scrolling through long files. Cycle through events with the keyboard.",
-            "keys": [
-              "n",
-              "b"
-            ],
-            "task": "Press n or b",
+            "hint": "`n` jumps to the next event, `b` back to the previous one. No scrolling through long recordings.",
+            "task": "Press `n` or `b`",
             "complete": {
               "type": "key",
               "keys": [
@@ -1048,11 +904,8 @@
           {
             "target": "sound-event-tools",
             "title": "Delete",
-            "hint": "One event in this recording is mislabeled “this: is wrong”. Jump to it and delete it: activate delete mode and click it, or press x with it selected. Ctrl + Z undoes a deletion.",
-            "keys": [
-              "x"
-            ],
-            "task": "Delete a sound event",
+            "hint": "The event at about 9.2 s is tagged “this: is wrong”: it is not a call. Select it and press `x`, or switch on delete mode {icon:delete} and click it.",
+            "task": "Delete the mislabeled event",
             "complete": {
               "type": "event",
               "event": "sound-event-deleted"
@@ -1061,10 +914,7 @@
           {
             "target": "spectrogram",
             "title": "Undo",
-            "hint": "Deleted something by mistake? Ctrl + Z (Cmd + Z on Mac) brings it back. Undo works for events and tags.",
-            "keys": [
-              "Ctrl+z"
-            ],
+            "hint": "Deleted the wrong one? `Ctrl+z` brings it back. Undo works for events and tags. Try it now.",
             "task": "Undo the deletion",
             "complete": {
               "type": "event",
@@ -1074,10 +924,7 @@
           {
             "target": "spectrogram",
             "title": "Redo",
-            "hint": "Ctrl + Shift + Z redoes it, so the mislabeled event is gone again.",
-            "keys": [
-              "Ctrl+Shift+z"
-            ],
+            "hint": "`Ctrl+Shift+z` or `Ctrl+y` redoes it, so the mislabeled event is gone again.",
             "task": "Redo the deletion",
             "complete": {
               "type": "event",
@@ -1087,6 +934,7 @@
           {
             "target": "status-badges",
             "title": "Next lesson",
+            "hint": "Done with this recording. Give it any status badge: click one or press `1`–`4`. It opens the next recording and with it the next lesson.",
             "task": "Give this task any status badge",
             "complete": {
               "type": "event",
@@ -1098,15 +946,13 @@
       {
         "id": "tags",
         "title": "Tags",
+        "intro": "Tags say what a sound event is. A wrong or missing species is the error you will fix most often.",
         "steps": [
           {
             "target": "sound-event-detail",
             "title": "Remove a wrong tag",
-            "hint": "One event is tagged “this: is wrong”. Select it and remove that tag: click the tag, or press d for a picker. Careful: x and delete mode remove the whole event. If that happens, Ctrl + Z brings it back.",
-            "keys": [
-              "d"
-            ],
-            "task": "Remove a tag from a sound event",
+            "hint": "The event from 10 to 15 s is tagged “this: is wrong”. Select it, then click that tag to remove it, or press `d` for a picker. Careful: `x` and delete mode {icon:delete} remove the whole event, `Ctrl+z` brings it back.",
+            "task": "Remove the tag “this: is wrong”",
             "complete": {
               "type": "event",
               "event": "sound-event-tag-removed"
@@ -1114,12 +960,9 @@
           },
           {
             "target": "sound-event-detail",
-            "title": "Add the right tag",
-            "hint": "Add a fitting species. Click “Add tags” or the + next to the event. Suggestions appear as you type.",
-            "keys": [
-              "a"
-            ],
-            "task": "Add a tag to a sound event",
+            "title": "Add the right species",
+            "hint": "Add “species: Stockente” (mallard) to the same event: the mallard calls throughout this recording. Press `a` or click “Add tags” and start typing “Stockente”.",
+            "task": "Add the species tag",
             "complete": {
               "type": "event",
               "event": "sound-event-tag-added"
@@ -1128,7 +971,7 @@
           {
             "target": "task-tags",
             "title": "Task tags",
-            "hint": "Tags for the whole recording, e.g. when a file only holds noise or insects.",
+            "hint": "Task tags describe the whole recording instead of one call, e.g. when a file holds only noise or insects. Add any task tag here.",
             "task": "Add a task tag",
             "complete": {
               "type": "event",
@@ -1138,6 +981,7 @@
           {
             "target": "status-badges",
             "title": "Next lesson",
+            "hint": "Done with this recording. Give it any status badge: click one or press `1`–`4`. It opens the next recording and with it the next lesson.",
             "task": "Give this task any status badge",
             "complete": {
               "type": "event",
@@ -1149,14 +993,12 @@
       {
         "id": "replace-tags",
         "title": "Replace tags",
+        "intro": "Sometimes a whole tag is wrong, not just missing. Replace swaps it in one step instead of removing and adding.",
         "steps": [
           {
             "target": "audio-player",
             "title": "Listen first",
-            "hint": "One event is tagged Graureiher (grey heron, Ardea cinerea). Play the recording and see whether you can hear it.",
-            "keys": [
-              "Space"
-            ],
+            "hint": "One event is tagged Graureiher (grey heron). Play the recording with `Space` and listen whether you can hear a heron.",
             "task": "Start playback",
             "complete": {
               "type": "event",
@@ -1166,10 +1008,7 @@
           {
             "target": "tag-bars",
             "title": "Replace a tag",
-            "hint": "Replace combines delete and add. Select the Graureiher event, then replace its tag with “this: is wrong”. Try searching for “replace”.",
-            "keys": [
-              "r"
-            ],
+            "hint": "Select the Graureiher event, then press `r` and replace its tag with “this: is wrong”.",
             "task": "Replace a tag",
             "complete": {
               "type": "event",
@@ -1179,11 +1018,12 @@
           {
             "target": "tag-bars",
             "title": "All events at once",
-            "hint": "Add, delete and replace work on every event of the recording when none is selected. Deselect first when you only mean one. Ctrl + Z undoes it."
+            "hint": "Add, delete and replace work on the selected event. With no event selected (`Esc` deselects), they work on every event of the recording. To change only one event, select it first: jump to it with `n`, or press `s` (or click {icon:select}) and then click it. `Ctrl+z` undoes any of them."
           },
           {
             "target": "status-badges",
             "title": "Next lesson",
+            "hint": "Done with this recording. Give it any status badge: click one or press `1`–`4`. It opens the next recording and with it the next lesson.",
             "task": "Give this task any status badge",
             "complete": {
               "type": "event",
@@ -1193,55 +1033,65 @@
         ]
       },
       {
-        "id": "playback",
-        "title": "Playback",
+        "id": "spectrogram-settings",
+        "title": "View settings",
+        "intro": "Every recorder and every species looks different. Adjusting the view makes faint calls stand out.",
         "steps": [
           {
-            "target": "audio-player",
-            "title": "Play",
-            "hint": "The player has play/pause, repeat, autoplay, a progress bar and the speed.",
-            "keys": [
-              "Space"
-            ],
-            "task": "Start playback",
+            "target": "spec-settings",
+            "title": "Spectrogram settings",
+            "hint": "Press `o` or click {icon:settings}. Try another colormap or frequency range and watch the spectrogram change. “Save” keeps the settings for every recording and closes the panel; `o` or `Esc` closes it without saving.",
+            "task": "Open the settings, then close them",
             "complete": {
               "type": "event",
-              "event": "playback-started"
+              "event": "settings-closed"
+            }
+          },
+          {
+            "target": "hide-spectrogram",
+            "title": "Hide spectrogram",
+            "hint": "`h` or {icon:hide-spectrogram} hides spectrogram and waveform, e.g. to look at the events alone. Press it again to bring them back.",
+            "task": "Press `h` twice",
+            "complete": {
+              "type": "event",
+              "event": "spectrogram-shown"
+            }
+          },
+          {
+            "target": "annotate-toolbar",
+            "title": "Hide sound events",
+            "hint": "`Shift+h` or {icon:hide-events} hides the events, so you see the plain spectrogram. Show them again afterwards: only visible events can be selected and edited.",
+            "task": "Press `Shift+h` twice",
+            "complete": {
+              "type": "event",
+              "event": "sound-events-shown"
             }
           },
           {
             "target": "spectrogram",
-            "title": "Seek",
-            "hint": "Double-click the spectrogram where playback should start. A red marker shows the position."
-          },
-          {
-            "target": "audio-player",
-            "title": "Repeat & autoplay",
-            "hint": "Repeat loops the window. Autoplay starts every task you open."
-          },
-          {
-            "target": "sound-event-detail",
-            "title": "Play one event",
-            "hint": "With a sound event selected, the player plays only that event.",
-            "task": "Select a sound event",
+            "title": "Full page view",
+            "hint": "`w` or {icon:fullscreen} shows only the spectrogram, scaled to your screen. `w` again closes it.",
+            "task": "Open and close the full page view",
             "complete": {
               "type": "event",
-              "event": "sound-event-selected"
+              "event": "fullscreen-exited"
             }
           },
           {
-            "target": "audio-player",
-            "title": "Speed",
-            "hint": "Sonari picks a speed from the samplerate. Real time for birds, much slower for bats. Change it any time.",
-            "task": "Change the playback speed",
+            "target": "shortcuts-help",
+            "title": "Shortcuts",
+            "hint": "Click {icon:help} or press `?` for every shortcut on this page. `Esc` closes the list.",
+            "wiki": "More in the Sonari wiki",
+            "task": "Open the shortcut list, then close it",
             "complete": {
               "type": "event",
-              "event": "playback-speed-changed"
+              "event": "shortcuts-closed"
             }
           },
           {
             "target": "status-badges",
             "title": "Next lesson",
+            "hint": "Done with this recording. Give it any status badge: click one or press `1`–`4`. It opens the next recording and with it the next lesson.",
             "task": "Give this task any status badge",
             "complete": {
               "type": "event",
@@ -1253,24 +1103,22 @@
       {
         "id": "practice",
         "title": "Practice",
+        "intro": "Time to put it together on your own.",
         "steps": [
           {
             "target": "task-filter",
             "title": "Filters",
-            "hint": "Filter by date, time, station, tag or status badge. Add “Pending” and choose “include”: only tasks without a final badge remain.",
-            "keys": [
-              "f"
-            ],
-            "task": "Filter to pending tasks only",
+            "hint": "Filters narrow down the recordings you work through, e.g. by date, time, station, tag or status badge. Press `f` or click {icon:filter} “Filters” and look through the list, then close it with `Esc`. During the tour, filters are not applied, so the lessons stay in order.",
+            "task": "Open the filter menu",
             "complete": {
               "type": "event",
-              "event": "pending-filter-included"
+              "event": "filter-menu-opened"
             }
           },
           {
             "target": "status-badges",
             "title": "Annotate on your own",
-            "hint": "Use everything you learned on the next recording.",
+            "hint": "Listen, check every event, fix wrong tags and add missing calls. Then give the recording a status badge.",
             "task": "Give this task any status badge",
             "complete": {
               "type": "event",
@@ -1286,16 +1134,12 @@
           {
             "target": "task-notes",
             "title": "Notes",
-            "hint": "Every task has notes for questions, remarks or problems, visible to your team. A note can be marked as an issue (shown in red) to flag a problem. Delete your own notes with the trash icon."
+            "hint": "Every recording has notes for questions, remarks or problems, visible to your team. Mark a note as an issue (shown in red) to flag a problem. Delete your own notes with the trash icon."
           },
           {
             "target": "task-notes",
             "title": "Your feedback",
-            "hint": "How was the tour? Unclear steps, missing features, bugs, ideas: all welcome. Press q to jump into the field, Shift + Enter saves the note, Esc leaves the field.",
-            "keys": [
-              "q",
-              "Shift+Enter"
-            ],
+            "hint": "How was the tour? Unclear steps, missing features, bugs, ideas: all welcome. Press `q` to jump into the note field, write your note and save it with `Shift+Enter`. `Esc` leaves the field.",
             "task": "Write a feedback note",
             "complete": {
               "type": "event",
@@ -1305,7 +1149,8 @@
           {
             "target": "status-badges",
             "title": "Tour complete",
-            "hint": "Well done! Finish the tour to go back to the home page. You can continue or restart it there anytime."
+            "hint": "Well done! Click “Finish tour” to go back to the home page. You can continue or restart the tour there any time.",
+            "wiki": "Read on in the Sonari wiki"
           }
         ]
       }

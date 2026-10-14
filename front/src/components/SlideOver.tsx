@@ -21,7 +21,13 @@ export default function SlideOver({
   }, [onClose]);
 
   return (
-    <Transition show={isOpen} as={Fragment}>
+    <Transition
+      show={isOpen}
+      as={Fragment}
+      // The dialog restores focus to whatever opened it; drop it so the page's
+      // keyboard shortcuts work right away.
+      afterLeave={() => requestAnimationFrame(blurActiveElement)}
+    >
       <Dialog as="div" className="relative z-50" onClose={handleClose}>
         <TransitionChild
           as={Fragment}

@@ -151,7 +151,13 @@ const SpectrogramSettings = memo(function SpectrogramSettings({
         }
         placement="bottom"
       >
-        <Button variant="secondary" onClick={() => setOpen(true)}>
+        <Button
+          variant="secondary"
+          // Don't take focus: the panel hands focus back to its trigger on close,
+          // and a focused button blocks the keyboard shortcuts.
+          onMouseDown={(event) => event.preventDefault()}
+          onClick={() => setOpen(true)}
+        >
           <SettingsIcon className="w-5 h-5" />
         </Button>
       </Tooltip>

@@ -28,6 +28,8 @@ export const GUIDED_TOUR_EVENTS = [
   "settings-closed",
   "shortcuts-closed",
   "pending-filter-included",
+  /** The filter menu of the annotate page was opened (button or f). */
+  "filter-menu-opened",
   "note-created",
   "playback-started",
   "playback-speed-changed",

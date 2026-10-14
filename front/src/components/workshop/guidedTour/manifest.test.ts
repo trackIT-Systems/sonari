@@ -10,6 +10,7 @@ import {
   matchesShortcut,
   tourTargetSelector,
 } from "./manifest";
+import { TOUR_ICONS, iconNamesIn } from "./TourText";
 
 function sourceFiles(dir: string): string[] {
   return readdirSync(dir).flatMap((name) => {
@@ -53,18 +54,50 @@ describe("guided tour manifest", () => {
 
   it("has one bird lesson per template task", () => {
     const ids = getVariantManifest("bird")!.lessons.map((l) => l.id);
+    // Position matters: lesson i runs on template task i. Sound events and tags
+    // lessons reference the events of their task (e.g. the "this: is wrong" tag).
     expect(ids).toEqual([
       "orientation",
+      "playback",
       "pan",
       "zoom",
-      "spectrogram-settings",
       "sound-events",
       "tags",
       "replace-tags",
-      "playback",
+      "spectrogram-settings",
       "practice",
       "wrap-up",
     ]);
+  });
+
+  it("has one bat lesson per template task", () => {
+    const ids = getVariantManifest("bat")!.lessons.map((l) => l.id);
+    expect(ids).toEqual([
+      "orientation",
+      "playback",
+      "pan",
+      "zoom",
+      "sound-events",
+      "tags",
+      "spectrogram-settings",
+      "practice",
+      "wrap-up",
+    ]);
+  });
+
+  it("only uses known icons and complete key markup in lesson texts", () => {
+    for (const variant of ["bat", "bird"] as const) {
+      const manifest = getVariantManifest(variant)!;
+      for (const lesson of [manifest.tasksTab, ...manifest.lessons]) {
+        const texts = [lesson.intro ?? "", ...lesson.steps.flatMap((s) => [s.hint ?? "", s.task ?? ""])];
+        for (const text of texts) {
+          for (const name of iconNamesIn(text)) {
+            expect(Object.keys(TOUR_ICONS), `${variant}/${lesson.id}: ${name}`).toContain(name);
+          }
+          expect((text.match(/`/g) ?? []).length % 2, `${variant}/${lesson.id}: ${text}`).toBe(0);
+        }
+      }
+    }
   });
 
   it("only targets anchors that exist in the app", () => {

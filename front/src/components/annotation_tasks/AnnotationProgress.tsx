@@ -13,6 +13,8 @@ import KeyboardKey from "@/components/KeyboardKey";
 import ShortcutHelper from "@/components/ShortcutHelper";
 import Spinner from "@/components/Spinner";
 import { useKeyPressEvent } from "react-use";
+import toast from "react-hot-toast";
+import { emitGuidedTourEvent } from "@/components/workshop/guidedTour/events";
 
 import type { AnnotationTaskFilter } from "@/api/annotation_tasks";
 import type { Filter } from "@/hooks/utils/useFilter";
@@ -54,7 +56,7 @@ export default function AnnotationProgress({
   onNext,
   onPrevious,
   fill = false,
-  pendingFilterOnly = false,
+  filtersPreviewOnly = false,
 }: {
   current?: number | null;
   taskCount: number;
@@ -65,14 +67,24 @@ export default function AnnotationProgress({
   onPrevious?: () => void;
   /** Shrink to fit a shared header row (full page view) */
   fill?: boolean;
-  /** Guided tour: other filters would hide the tasks the lessons are built on. */
-  pendingFilterOnly?: boolean;
+  /**
+   * Guided tour: the menu lists every filter, but choosing one is not applied.
+   * A filter would hide or reorder the tasks the lessons are bound to.
+   */
+  filtersPreviewOnly?: boolean;
 }) {
-  const filterDefs = useMemo(
-    () => (pendingFilterOnly ? taskFilterDefs.filter((def) => def.field === "pending") : taskFilterDefs),
-    [pendingFilterOnly],
+  const menuFilter = useMemo<Filter<AnnotationTaskFilter>>(
+    () =>
+      filtersPreviewOnly
+        ? {
+            ...filter,
+            set: () => {
+              toast("Filters are not applied during the guided tour.", { id: "guided-tour-filter" });
+            },
+          }
+        : filter,
+    [filter, filtersPreviewOnly],
   );
-
 
   const filterButtonRef = useRef<HTMLButtonElement>(null);
 
@@ -82,6 +94,7 @@ export default function AnnotationProgress({
     variant="info"
     autoFocus={false}
     ref={filterButtonRef}
+    onClick={() => emitGuidedTourEvent("filter-menu-opened")}
   >
     <FilterIcon className="inline-block mr-1 w-5 h-5" />
     <span className="text-sm align-middle whitespace-nowrap">
@@ -150,8 +163,8 @@ export default function AnnotationProgress({
           ) : (
             <div className="shrink-0" data-guided-tour="task-filter">
             <FilterMenu
-              filter={filter}
-              filterDef={filterDefs}
+              filter={menuFilter}
+              filterDef={taskFilterDefs}
               className={getButtonClassName({
                 variant: "info",
                 mode: "text",
@@ -161,7 +174,7 @@ export default function AnnotationProgress({
             />
             </div>
           )}
-          {!isLoading && !pendingFilterOnly && (
+          {!isLoading && !filtersPreviewOnly && (
             <div className="shrink-0">
             <FilterPresets
               storageKey="presets:annotation_tasks"
@@ -176,7 +189,7 @@ export default function AnnotationProgress({
             compactSummary
             className="min-w-0 shrink"
             filter={filter}
-            filterDef={filterDefs}
+            filterDef={taskFilterDefs}
           />
         </div>
       </div>

@@ -2,6 +2,7 @@
 
 import { useContext, useMemo } from "react";
 import { usePathname, useRouter } from "next/navigation";
+import toast from "react-hot-toast";
 
 import AnnotationProjectContext from "@/app/(base)/annotation_projects/detail/context";
 import GuidedTourCoach, {
@@ -23,8 +24,11 @@ const emptyTourFilter: AnnotationTaskFilter = {};
 
 export default function WorkshopTutorial({
   annotationTask,
+  onFinishTour,
 }: {
   annotationTask?: AnnotationTask | null;
+  /** Runs before leaving the tour from its last lesson. */
+  onFinishTour?: () => Promise<void>;
 }) {
   const project = useContext(AnnotationProjectContext);
   const pathname = usePathname();
@@ -99,7 +103,18 @@ export default function WorkshopTutorial({
       lessonNumber={onAnnotateTab ? lessonIndex + 1 : undefined}
       lessonCount={onAnnotateTab ? lessonCount : undefined}
       getUnfinishedLessons={getUnfinishedLessons}
-      onFinish={onAnnotateTab && lessonIndex === lessonCount - 1 ? () => router.push("/") : undefined}
+      onFinish={
+        onAnnotateTab && lessonIndex === lessonCount - 1
+          ? async () => {
+              try {
+                await onFinishTour?.();
+              } catch {
+                toast.error("Could not save the last lesson.");
+              }
+              router.push("/");
+            }
+          : undefined
+      }
     />
   );
 }

@@ -755,7 +755,7 @@ export default function AnnotateTasks({
         >
           <AnnotationProgress
             fill={fullscreen}
-            pendingFilterOnly={isGuidedTour}
+            filtersPreviewOnly={isGuidedTour}
             current={tasks.current}
             taskCount={tasks.tasks.length}
             stats={tasks.stats}

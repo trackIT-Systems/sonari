@@ -17,8 +17,12 @@ export const guidedTourCompletionSchema = z.discriminatedUnion("type", [
 export const guidedTourStepSchema = z.object({
   target: z.string(),
   title: z.string(),
+  /** Supports inline markup: `key` for key caps, {icon:name} for button icons (see TourText). */
   hint: z.string().optional(),
+  /** Key caps shown below the hint; prefer inline `key` markup in the hint. */
   keys: z.array(z.string()).optional(),
+  /** Label of a link to the Sonari wiki shown below the hint. */
+  wiki: z.string().optional(),
   /** Short imperative shown as a checklist item, e.g. "Press z". */
   task: z.string().optional(),
   complete: guidedTourCompletionSchema.optional(),
@@ -27,6 +31,8 @@ export const guidedTourStepSchema = z.object({
 export const guidedTourLessonSchema = z.object({
   id: z.string(),
   title: z.string(),
+  /** Why this lesson matters; shown on its first step. Same markup as a step hint. */
+  intro: z.string().optional(),
   steps: z.array(guidedTourStepSchema).min(1),
 });
 
