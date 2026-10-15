@@ -297,6 +297,16 @@
             "hint": "This panel shows the selected event: a zoomed preview, its tags and its measurements. Events created by an AI model also show how confident the model was."
           },
           {
+            "target": "sound-event-detail",
+            "title": "Tag your new event",
+            "hint": "Your new event has no tag yet: the Details panel shows an empty tag list. Press `a` or click “Add tags”, type “Nyctalus leisleri” and choose “species: Nyctalus leisleri”. A sound event without a species is unfinished.",
+            "task": "Add the tag “species: Nyctalus leisleri”",
+            "complete": {
+              "type": "event",
+              "event": "sound-event-tag-added"
+            }
+          },
+          {
             "target": "spectrogram",
             "title": "Deselect",
             "hint": "`Esc` clears the selection.",
@@ -865,6 +875,16 @@
             "target": "sound-event-detail",
             "title": "Details",
             "hint": "This panel shows the selected event: a zoomed preview, its tags and its measurements. Events created by an AI model also show how confident the model was."
+          },
+          {
+            "target": "sound-event-detail",
+            "title": "Tag your new event",
+            "hint": "Your new event has no tag yet: the Details panel shows an empty tag list. Press `a` or click “Add tags”, type “Uhu” and choose “species: Uhu”. A sound event without a species is unfinished.",
+            "task": "Add the tag “species: Uhu”",
+            "complete": {
+              "type": "event",
+              "event": "sound-event-tag-added"
+            }
           },
           {
             "target": "spectrogram",

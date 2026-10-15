@@ -101,6 +101,7 @@ export default function useAnnotateTasks({
     items: indexItems,
     filter,
     isLoading: isLoadingIndex,
+    isFetching: isFetchingIndex,
     isError: isErrorIndex,
     queryKey: indexQueryKey,
   } = useAnnotationTaskIndex({
@@ -227,7 +228,8 @@ export default function useAnnotateTasks({
   const [filterMismatchTaskId, setFilterMismatchTaskId] = useState<number | null>(null);
 
   useEffect(() => {
-    if (mismatchCheckedRef.current || isLoading || initialTask == null) {
+    // Cached index data can be stale (e.g. tour reset recreated the tasks).
+    if (mismatchCheckedRef.current || isLoading || isFetchingIndex || initialTask == null) {
       return;
     }
     if (items.length === 0) {
@@ -238,7 +240,7 @@ export default function useAnnotateTasks({
       heldTaskIdRef.current = initialTask.id;
       setFilterMismatchTaskId(initialTask.id);
     }
-  }, [isLoading, initialTask, items]);
+  }, [isLoading, isFetchingIndex, initialTask, items]);
 
   const applyFilterForMismatch = useCallback(() => {
     heldTaskIdRef.current = null;
