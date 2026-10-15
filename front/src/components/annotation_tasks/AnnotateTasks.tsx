@@ -1099,6 +1099,32 @@ export default function AnnotateTasks({
         </Popover>
       )}
 
+      {tasks.filterMismatchTaskId != null && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-stone-900/30">
+          <div
+            role="dialog"
+            aria-label="Task not in filter"
+            className="w-96 rounded-md bg-stone-50 dark:bg-stone-700 border border-stone-200 dark:border-stone-500 shadow-md p-4"
+          >
+            <div className="mb-2 text-stone-700 dark:text-stone-300 underline underline-offset-2 decoration-amber-500 decoration-2">
+              Task not in current filter
+            </div>
+            <p className="mb-4 text-sm text-stone-600 dark:text-stone-300">
+              The task you opened is not matched by the active filter. Use the
+              filter to continue with its first task, or keep the original task.
+            </p>
+            <div className="flex justify-end gap-2">
+              <Button variant="secondary" onClick={tasks.keepOriginalTask}>
+                Show original task
+              </Button>
+              <Button variant="primary" onClick={tasks.applyFilterForMismatch}>
+                Use filter
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {isTagPopoverOpen && (
         <Popover as="div">
           {({ open, close }) => {

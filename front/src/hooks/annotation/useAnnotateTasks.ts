@@ -28,6 +28,8 @@ type AnnotationState = {
   hasNextTask: boolean;
   /** Whether there is a previous annotation task */
   hasPrevTask: boolean;
+  /** Id of the linked task when it is not matched by the active filter */
+  filterMismatchTaskId: number | null;
   _filter: Filter<AnnotationTaskFilter>;
   handleCurrentSegmentsLoaded: () => void;
 };
@@ -46,6 +48,10 @@ type AnnotationControls = {
   ) => void;
   /** Select a random annotation task */
   getFirstTask: () => void;
+  /** Resolve the filter mismatch by switching to the first filtered task */
+  applyFilterForMismatch: () => void;
+  /** Resolve the filter mismatch by staying on the task from the link */
+  keepOriginalTask: () => void;
 };
 
 const empty = {};
@@ -213,7 +219,43 @@ export default function useAnnotateTasks({
     onChangeTask?.(task);
   }, [items, onChangeTask]);
 
+  // The task from the link is not part of the (persisted) filter results. Ask
+  // the user instead of silently jumping to another task. Checked once.
+  const mismatchCheckedRef = useRef(false);
+  /** Task id the reconcile step must leave alone */
+  const heldTaskIdRef = useRef<number | null>(null);
+  const [filterMismatchTaskId, setFilterMismatchTaskId] = useState<number | null>(null);
+
   useEffect(() => {
+    if (mismatchCheckedRef.current || isLoading || initialTask == null) {
+      return;
+    }
+    if (items.length === 0) {
+      return;
+    }
+    mismatchCheckedRef.current = true;
+    if (!items.some((item) => item.id === initialTask.id)) {
+      heldTaskIdRef.current = initialTask.id;
+      setFilterMismatchTaskId(initialTask.id);
+    }
+  }, [isLoading, initialTask, items]);
+
+  const applyFilterForMismatch = useCallback(() => {
+    heldTaskIdRef.current = null;
+    setFilterMismatchTaskId(null);
+  }, []);
+
+  const keepOriginalTask = useCallback(() => {
+    setFilterMismatchTaskId(null);
+  }, []);
+
+  useEffect(() => {
+    if (
+      heldTaskIdRef.current != null &&
+      heldTaskIdRef.current === currentTask?.id
+    ) {
+      return;
+    }
     const action = reconcileAnnotationTaskIndex({
       currentTaskId: currentTask?.id ?? null,
       itemIds: items.map((item) => item.id),
@@ -234,7 +276,7 @@ export default function useAnnotateTasks({
     }
     pendingReconcileTaskIdRef.current = first.id;
     goToTask(first as unknown as AnnotationTask);
-  }, [currentTask, items, isLoading, goToTask]);
+  }, [currentTask, items, isLoading, goToTask, filterMismatchTaskId]);
 
   return {
     current: index,
@@ -251,6 +293,9 @@ export default function useAnnotateTasks({
     prevTask,
     setFilter,
     getFirstTask,
+    applyFilterForMismatch,
+    keepOriginalTask,
+    filterMismatchTaskId,
     handleCurrentSegmentsLoaded,
     _filter: filter,
   };
