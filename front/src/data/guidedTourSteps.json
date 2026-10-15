@@ -78,6 +78,11 @@
             "wiki": "Sonari documentation in the wiki"
           },
           {
+            "target": "recording-metadata",
+            "title": "The recording",
+            "hint": "This row describes the recording you are working on. From the left: the file name (click it to download the recording); “(1/1)” means this is part 1 of 1 of this file; then the date and time it was recorded, and the place. Click the location to see it on a map. Then the samplerate, 384,000 Hz: how many samples per second the recorder took. A high rate is what captures ultrasonic bat calls. Last comes the number of channels: 1 is mono."
+          },
+          {
             "target": "spectrogram",
             "title": "The spectrogram",
             "hint": "The picture of the sound: time runs from left to right, frequency from bottom to top, and brighter means louder. Each box on it is a sound event: one call someone marked and tagged with its species. A box spans the call's duration and its frequency range. Annotating means checking these events, correcting them and adding missing ones."
@@ -279,8 +284,8 @@
           {
             "target": "sound-event-tools",
             "title": "Create",
-            "hint": "Press `c` or click {icon:create} to switch on create mode. Then drag a box around one call, from its start to its end and from its lowest to its highest frequency. Take the bright call at about 0.9 s: it is boxed already, but drawing your own on top is fine for practice. Zoom in {icon:zoom} first if the call looks tiny. The new event is selected right away.",
-            "task": "Draw a new sound event",
+            "hint": "The bright call at about 0.9 s (around 24–30 kHz) is not marked yet. Zoom in {icon:zoom} on it if it looks tiny. Then press `c` or click {icon:create} to switch on create mode and drag a box around it, from its start to its end and from its lowest to its highest frequency. The new event is selected right away.",
+            "task": "Draw a box around the call at 0.9 s",
             "complete": {
               "type": "event",
               "event": "sound-event-created"
@@ -401,8 +406,8 @@
           {
             "target": "task-tags",
             "title": "Task tags",
-            "hint": "Task tags describe the whole recording instead of one call, e.g. when a file holds only noise or insects. Add any task tag here.",
-            "task": "Add a task tag",
+            "hint": "Task tags describe the whole recording instead of one call, e.g. when a file holds only noise or insects. Add the tag “extra: test” here: click “Add tags” in the task tags, type `extra:test` and choose “Create the tag”. It is only a practice tag.",
+            "task": "Add the task tag “extra: test”",
             "complete": {
               "type": "event",
               "event": "task-tag-added"
@@ -621,6 +626,11 @@
             "title": "Welcome to Sonari",
             "hint": "This tour teaches you to annotate recordings, in about 30 minutes and at your own pace. You need no prior experience with Sonari. Each recording is one lesson. This card shows the current step and ticks it off when you have done it; collapse it with the arrow at the top any time.",
             "wiki": "Sonari documentation in the wiki"
+          },
+          {
+            "target": "recording-metadata",
+            "title": "The recording",
+            "hint": "This row describes the recording you are working on. From the left: the file name (click it to download the recording); “(1/1)” means this is part 1 of 1 of this file; then the date and time it was recorded, and the place. Click the location to see it on a map. Then the samplerate, 48,000 Hz: how many samples per second the recorder took. It sets the highest pitch you can see, here up to 24 kHz. Last comes the number of channels: 2 is stereo, left and right."
           },
           {
             "target": "spectrogram",
@@ -844,8 +854,8 @@
           {
             "target": "sound-event-tools",
             "title": "Create",
-            "hint": "Press `c` or click {icon:create} to switch on create mode. Then click where a call starts, hold the mouse button and drag to where it ends. Overlapping an existing event is fine here. The new event is selected right away.",
-            "task": "Draw a new sound event",
+            "hint": "The first call of this recording is not marked yet. Play the first 5 seconds (`Space`) and listen. Then press `c` or click {icon:create} to switch on create mode, click at the very start (0 s) of the spectrogram, hold the mouse button and drag to 5 s. The new event is selected right away.",
+            "task": "Draw a time interval from 0 s to 5 s",
             "complete": {
               "type": "event",
               "event": "sound-event-created"
@@ -971,8 +981,8 @@
           {
             "target": "task-tags",
             "title": "Task tags",
-            "hint": "Task tags describe the whole recording instead of one call, e.g. when a file holds only noise or insects. Add any task tag here.",
-            "task": "Add a task tag",
+            "hint": "Task tags describe the whole recording instead of one call, e.g. when a file holds only noise or insects. Add the tag “extra: test” here: click “Add tags” in the task tags, type `extra:test` and choose “Create the tag”. It is only a practice tag.",
+            "task": "Add the task tag “extra: test”",
             "complete": {
               "type": "event",
               "event": "task-tag-added"

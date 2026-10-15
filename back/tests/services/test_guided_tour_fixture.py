@@ -270,3 +270,34 @@ async def test_bird_layout_subfolder_without_dates_keeps_task_order(db_session: 
 
     exported = await export_template_fixture(db_session, result.template_id, "bird")
     assert [t.recording_path for t in exported.tasks] == [f"{folder}/{n}" for n in (names[2], names[0], names[1])]
+
+
+_SHIPPED_FIXTURES = Path(__file__).resolve().parents[3] / "scripts" / "guided_tour_fixtures"
+
+
+@pytest.mark.parametrize("variant", ["bird", "bat"])
+def test_shipped_fixture_keeps_lesson_order(variant: str):
+    """Lessons are bound to tasks by position; dating recordings must not reorder them.
+
+    Tasks are sorted by recording date, time, then id, with undated recordings
+    last. So only the first task's recording may carry a date.
+    """
+    path = _SHIPPED_FIXTURES / f"{variant}.json"
+    if not path.exists():
+        pytest.skip("shipped fixtures not available")
+    fixture = GuidedTourFixture.model_validate_json(path.read_text(encoding="utf-8"))
+
+    by_path = {r.path: r for r in fixture.recordings}
+    far_future = (9999, 1, 1)
+    keys = []
+    for position, task in enumerate(fixture.tasks):
+        rec = by_path[task.recording_path]
+        date = (rec.date.year, rec.date.month, rec.date.day) if rec.date else far_future
+        time = (rec.time.hour, rec.time.minute, rec.time.second) if rec.time else (99, 0, 0)
+        keys.append((date, time, position))
+
+    assert keys == sorted(keys), f"{variant}: recording dates would reorder the tour tasks"
+
+    first = by_path[fixture.tasks[0].recording_path]
+    assert first.date is not None and first.time is not None
+    assert first.latitude is not None and first.longitude is not None, "first lesson shows the location map"

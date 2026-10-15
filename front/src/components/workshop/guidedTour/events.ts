@@ -27,7 +27,6 @@ export const GUIDED_TOUR_EVENTS = [
   "fullscreen-exited",
   "settings-closed",
   "shortcuts-closed",
-  "pending-filter-included",
   /** The filter menu of the annotate page was opened (button or f). */
   "filter-menu-opened",
   "note-created",

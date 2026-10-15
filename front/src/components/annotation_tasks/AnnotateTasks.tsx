@@ -256,7 +256,6 @@ export default function AnnotateTasks({
   useGuidedTourReturnEvent(withSpectrogram, true, "spectrogram-shown");
   useGuidedTourReturnEvent(withSoundEvent, true, "sound-events-shown");
   useGuidedTourReturnEvent(fullscreen, false, "fullscreen-exited");
-  useGuidedTourReturnEvent(tasks._filter.filter.pending === true, true, "pending-filter-included");
 
   const { tasks: recordingTasks } =
     useRecordingAnnotationTasks({
