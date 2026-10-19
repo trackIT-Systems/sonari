@@ -10,6 +10,14 @@ export const GUIDED_TOUR_EVENTS = [
   "sound-event-selected",
   "sound-event-updated",
   "tag-replaced",
+  /** Replace with no event selected, i.e. on every event of the recording. */
+  "tag-replaced-on-all",
+  /** A tag deleted from every event of the recording (no event selected). */
+  "tag-deleted-from-all",
+  /** "Add tag to untagged" (Shift + a). */
+  "untagged-events-tagged",
+  /** A cycle tag chosen with m: n / b then only visit events with that tag. */
+  "cycle-tag-selected",
   "sound-event-tag-added",
   "sound-event-tag-removed",
   "task-tag-added",

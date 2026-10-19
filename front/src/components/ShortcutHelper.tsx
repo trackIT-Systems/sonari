@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import { HelpIcon } from "@/components/icons";
 import { DialogOverlay } from "@/components/Dialog";
 import KeyboardKey from "@/components/KeyboardKey";
@@ -24,24 +24,12 @@ export default function ShortcutHelper({
   useKeyPressEvent(useKeyFilter({ key: HELP_SHORTCUT }), () => setShow((v) => !v));
   useGuidedTourReturnEvent(show, false, "shortcuts-closed");
 
-  // The dialog hands focus back to what opened it. A focused button would turn
-  // the next Space (play/pause) into a click that reopens this dialog.
-  const buttonRef = useRef<HTMLButtonElement>(null);
-  useEffect(() => {
-    if (show) return;
-    const frame = requestAnimationFrame(() => {
-      if (document.activeElement === buttonRef.current) buttonRef.current?.blur();
-    });
-    return () => cancelAnimationFrame(frame);
-  }, [show]);
-
   return (
     <>
       <Button
         mode="text"
         variant="info"
         type="button"
-        ref={buttonRef}
         // Don't take focus on click, so nothing is left focused after closing
         onMouseDown={(event) => event.preventDefault()}
         onClick={() => setShow(true)}

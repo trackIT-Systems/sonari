@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
 
 import api from "@/app/api";
@@ -21,6 +22,7 @@ const VARIANT_LABELS: Record<GuidedTourVariant, string> = {
 
 export default function Page() {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const [availableVariants, setAvailableVariants] = useState<GuidedTourVariant[]>(
     [],
   );
@@ -58,6 +60,13 @@ export default function Page() {
       try {
         const result = await api.annotationProjects.ensureGuidedTour({ variant, reset });
         clearAnnotationTaskFilterPersist(result.annotation_project_id);
+        // A reset recreates every task with new ids, but the cached task lists
+        // keep their keys (same project). Drop them, or the annotate page would
+        // open on a stale list that does not contain the new tasks.
+        queryClient.removeQueries({
+          predicate: (query) =>
+            typeof query.queryKey[0] === "string" && query.queryKey[0].startsWith("annotation_task"),
+        });
         if (reset) {
           clearGuidedTourProgress(result.annotation_project_id);
         }
@@ -81,7 +90,7 @@ export default function Page() {
         setTourLoading(null);
       }
     },
-    [router],
+    [router, queryClient],
   );
 
   const showGuidedTourCard =

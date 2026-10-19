@@ -104,6 +104,8 @@ export default function useAnnotateTasks({
     isFetching: isFetchingIndex,
     isError: isErrorIndex,
     queryKey: indexQueryKey,
+    dataUpdatedAt: indexUpdatedAt,
+    refetch: refetchIndex,
   } = useAnnotationTaskIndex({
     pageSize: -1,
     filter: initialFilter,
@@ -226,21 +228,35 @@ export default function useAnnotateTasks({
   /** Task id the reconcile step must leave alone */
   const heldTaskIdRef = useRef<number | null>(null);
   const [filterMismatchTaskId, setFilterMismatchTaskId] = useState<number | null>(null);
+  const mountedAtRef = useRef(Date.now());
+  const revalidatedRef = useRef(false);
 
   useEffect(() => {
-    // Cached index data can be stale (e.g. tour reset recreated the tasks).
     if (mismatchCheckedRef.current || isLoading || isFetchingIndex || initialTask == null) {
       return;
     }
     if (items.length === 0) {
       return;
     }
-    mismatchCheckedRef.current = true;
-    if (!items.some((item) => item.id === initialTask.id)) {
-      heldTaskIdRef.current = initialTask.id;
-      setFilterMismatchTaskId(initialTask.id);
+    if (items.some((item) => item.id === initialTask.id)) {
+      mismatchCheckedRef.current = true;
+      heldTaskIdRef.current = null;
+      return;
     }
-  }, [isLoading, isFetchingIndex, initialTask, items]);
+    // The index may come from the cache, loaded before this page opened: a
+    // tour reset, for example, recreates every task with new ids under the
+    // same query key. Refetch once before blaming the filter, and hold the
+    // task meanwhile so the reconcile step does not jump to a stale task.
+    if (!revalidatedRef.current && indexUpdatedAt < mountedAtRef.current) {
+      revalidatedRef.current = true;
+      heldTaskIdRef.current = initialTask.id;
+      void refetchIndex();
+      return;
+    }
+    mismatchCheckedRef.current = true;
+    heldTaskIdRef.current = initialTask.id;
+    setFilterMismatchTaskId(initialTask.id);
+  }, [isLoading, isFetchingIndex, initialTask, items, indexUpdatedAt, refetchIndex]);
 
   const applyFilterForMismatch = useCallback(() => {
     heldTaskIdRef.current = null;

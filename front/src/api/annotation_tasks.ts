@@ -90,6 +90,8 @@ const AnnotationTaskFilterSchema = z.object({
   completed: z.boolean().optional(),
   assigned_to: UserSchema.optional(),
   search_recordings: z.string().optional(),
+  /** Only these tasks, e.g. the rows ticked in the tasks table ("annotate selection"). */
+  annotation_task_ids: z.array(z.number().int()).optional(),
   sort_by: z.string().optional(),
   date_range: z
     .union([
@@ -256,6 +258,7 @@ export function buildAnnotationTaskFilterQueryParams(
     completed__eq: params.completed,
     assigned_to__eq: params.assigned_to?.id,
     search_recordings: params.search_recordings,
+    id__lst: params.annotation_task_ids?.length ? params.annotation_task_ids.join(",") : undefined,
     date__start_dates: params.date_range
       ? (Array.isArray(params.date_range)
         ? params.date_range.map((d) => formatDateForAPI(d.start_date)).join(",")

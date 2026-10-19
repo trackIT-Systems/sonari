@@ -559,3 +559,32 @@ describe("drag selection", () => {
     expect(checked()).toEqual([]);
   });
 });
+
+describe("select all matching the filter", () => {
+  const pill = () => screen.getByRole("button", { name: /^All \d+/ });
+
+  it("shows the filter total as a pill under the page checkbox", () => {
+    renderTable();
+    expect(pill().textContent).toBe(`All ${tasks.length}`);
+    expect(pill().getAttribute("aria-pressed")).toBe("false");
+  });
+
+  it("the pill selects every filtered task without ticking the page, and clears again", () => {
+    renderTable();
+    fireEvent.click(pill());
+    expect(checked()).toEqual([]);
+    expect(pill().getAttribute("aria-pressed")).toBe("true");
+    expect(screen.getByText(/all \d+ tasks matching the current filter/)).toBeTruthy();
+
+    fireEvent.click(pill());
+    expect(pill().getAttribute("aria-pressed")).toBe("false");
+  });
+
+  it("'Only this page' in the bulk bar switches back to the ticked page", () => {
+    renderTable();
+    fireEvent.click(pill());
+    fireEvent.click(screen.getByRole("button", { name: "Only this page" }));
+    expect(checked()).toEqual(tasks.map((t) => t.id));
+    expect(pill().getAttribute("aria-pressed")).toBe("false");
+  });
+});

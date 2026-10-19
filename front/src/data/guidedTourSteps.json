@@ -3,7 +3,7 @@
     "tasksTab": {
       "id": "tasks-table",
       "title": "Tasks table",
-      "intro": "You are on the Tasks tab now. This short lesson shows how to look through recordings before you annotate them. Afterwards it sends you back to Annotate.",
+      "intro": "The AI already detects many species reliably. Recordings that contain only such a species can be handled quickly here, many at once: the Tasks table is where operations on many tasks live, such as setting a status or replacing tags on all ticked tasks. This short lesson shows how to browse and preview recordings; afterwards it sends you back to Annotate.",
       "steps": [
         {
           "target": "task-table",
@@ -48,7 +48,7 @@
         {
           "target": "task-shortcuts",
           "title": "All shortcuts",
-          "hint": "Click {icon:help} or press `?` to see every shortcut of this table, then close the list with `Esc`. Tip: `Shift` + click ticks several rows for bulk actions.",
+          "hint": "Click {icon:help} or press `?` to see every shortcut of this table, then close the list with `Esc`. Tip: `Shift` + click ticks several rows. With rows ticked, `1`–`4` set Accepted, Unsure, Rejected or Verified on all of them at once.",
           "task": "Open the shortcut list with `?`, then close it",
           "complete": {
             "type": "event",
@@ -58,7 +58,7 @@
         {
           "target": "header-tabs",
           "title": "Back to Annotate",
-          "hint": "The lessons continue on the “Annotate” tab at the top of the page. Click it.",
+          "hint": "Some species need a closer look before you can identify them: listening, zooming in, checking each call. That is what the Annotate tab is for, and the lessons continue there. Click “Annotate” at the top of the page.",
           "task": "Open the Annotate tab",
           "complete": {
             "type": "click"
@@ -74,13 +74,13 @@
           {
             "target": "progress",
             "title": "Welcome to Sonari",
-            "hint": "This tour teaches you to annotate recordings, in about 30 minutes and at your own pace. You need no prior experience with Sonari. Each recording is one lesson. This card shows the current step and ticks it off when you have done it; collapse it with the arrow at the top any time.",
+            "hint": "This tour teaches you to annotate recordings, in about 30 minutes and at your own pace. You need no prior experience with Sonari. Each recording is one lesson. The green frame always marks the part of the page the current step is about. Right now it frames the task bar: the current task, how many tasks remain and how many there are, the filters, and the arrows {icon:prev} {icon:next} to switch to the previous or next task. This card shows the current step and ticks it off when you have done it; collapse it with the arrow at the top any time.",
             "wiki": "Sonari documentation in the wiki"
           },
           {
             "target": "recording-metadata",
             "title": "The recording",
-            "hint": "This row describes the recording you are working on. From the left: the file name (click it to download the recording); “(1/1)” means this is part 1 of 1 of this file; then the date and time it was recorded, and the place. Click the location to see it on a map. Then the samplerate, 384,000 Hz: how many samples per second the recorder took. A high rate is what captures ultrasonic bat calls. Last comes the number of channels: 1 is mono."
+            "hint": "This row describes the recording you are working on. From the left: the file name (click it to download the recording); “(1/1)” counts the tasks of this recording: it is split into 1 task, and this is task 1. Longer recordings are split into several tasks. Then the date and time it was recorded, and its location (latitude and longitude). Click the location to see it on a map. Then the samplerate, 384,000 Hz: how many samples per second the recorder took. A high rate is what captures ultrasonic bat calls. Last comes the number of channels: 1 is mono."
           },
           {
             "target": "spectrogram",
@@ -201,6 +201,19 @@
             }
           },
           {
+            "target": "spectrogram",
+            "title": "Zoom in time",
+            "hint": "`+` and `-` zoom in and out in time, so you see a shorter or longer part of the recording at once. The next lesson shows more ways to zoom.",
+            "task": "Press `+` or `-`",
+            "complete": {
+              "type": "key",
+              "keys": [
+                "+",
+                "-"
+              ]
+            }
+          },
+          {
             "target": "status-badges",
             "title": "Next lesson",
             "hint": "Done with this recording. Give it any status badge: click one or press `1`–`4`. It opens the next recording and with it the next lesson.",
@@ -241,14 +254,14 @@
           },
           {
             "target": "zoom-tools",
-            "title": "Step zoom",
-            "hint": "`+` and `-` zoom in and out in time. Hold the Control key as well (Ctrl, also on a Mac) to zoom in frequency.",
-            "task": "Press `+` or `-`",
+            "title": "Zoom in frequency",
+            "hint": "You know `+` and `-` for time already. Hold the Control key as well (Ctrl, also on a Mac) to zoom in frequency instead.",
+            "task": "Press Ctrl with `+` or `-`",
             "complete": {
               "type": "key",
               "keys": [
-                "+",
-                "-"
+                "Ctrl++",
+                "Ctrl+-"
               ]
             }
           },
@@ -342,9 +355,19 @@
             }
           },
           {
+            "target": "spectrogram",
+            "title": "Jump to a tag",
+            "hint": "`m` only works with no event selected, so press `Esc` first. Then press `m` and choose the tag “this: is wrong”. It now shows at the top right of the spectrogram, and `n` and `b` only visit events with that tag. Press `n` to jump straight to the mislabeled event. Press `m` again later to visit all events again.",
+            "task": "Press `Esc`, then `m`, and choose “this: is wrong”",
+            "complete": {
+              "type": "event",
+              "event": "cycle-tag-selected"
+            }
+          },
+          {
             "target": "sound-event-tools",
             "title": "Delete",
-            "hint": "The event at about 4.9 s, high up at 150 kHz, is tagged “this: is wrong”: it is not a call. Select it (`n` jumps there) and press `x`, or switch on delete mode {icon:delete} and click it.",
+            "hint": "The event at about 4.9 s, high up at 150 kHz, is tagged “this: is wrong”: it is not a call. It is selected after `n`: press `x`, or switch on delete mode {icon:delete} and click it.",
             "task": "Delete the mislabeled event",
             "complete": {
               "type": "event",
@@ -399,19 +422,34 @@
             }
           },
           {
-            "target": "sound-event-detail",
-            "title": "Add the right species",
-            "hint": "This recording is from a Bechstein's bat. Add “species: Myotis bechsteinii” to the same event: press `a` or click “Add tags” and start typing “bechsteinii”.",
-            "task": "Add the species tag",
+            "target": "tag-bars",
+            "title": "Replace on all events",
+            "hint": "This recording is a Bechstein's bat (the file name ends in “Mbec”), and most events are tagged “species: Myotis bechsteinii”. But 16 events are tagged “species: Mbart”. Fix them all at once: press `Esc` so that no event is selected, press `r` and replace “species: Mbart” with “species: Myotis bechsteinii”. With no event selected, tag actions work on every event of the recording; with one selected, only on that one.",
+            "task": "Replace “Mbart” on all events",
             "complete": {
               "type": "event",
-              "event": "sound-event-tag-added"
+              "event": "tag-replaced-on-all"
             }
           },
           {
             "target": "tag-bars",
-            "title": "All events at once",
-            "hint": "Tag actions work on the selected event. With no event selected (`Esc` deselects), they work on every event of the recording: `r` replaces a tag everywhere, `Shift+a` tags all untagged events. To change only one event, select it first: jump to it with `n`, or press `s` (or click {icon:select}) and then click it."
+            "title": "Delete on all events",
+            "hint": "One event is tagged “species: Myotis daubentonii”. A second way to fix many events: with no event selected, press `d` and delete “species: Myotis daubentonii” from all events.",
+            "task": "Delete “Myotis daubentonii” from all events",
+            "complete": {
+              "type": "event",
+              "event": "tag-deleted-from-all"
+            }
+          },
+          {
+            "target": "tag-bars",
+            "title": "Tag all untagged events",
+            "hint": "Now two events have no tag: the one you just cleared and one that never had a tag. Press `Shift+a` and add “species: Myotis bechsteinii” to all untagged events at once. Delete and add like this only when a recording holds a single species, as here.",
+            "task": "Tag all untagged events",
+            "complete": {
+              "type": "event",
+              "event": "untagged-events-tagged"
+            }
           },
           {
             "target": "task-tags",
@@ -520,8 +558,25 @@
           },
           {
             "target": "status-badges",
-            "title": "Finish the remaining tasks",
-            "hint": "Listen, check every event, fix wrong tags and add missing calls. Then give the recording a status badge.",
+            "title": "Annotate on your own",
+            "hint": "All events in this recording are tagged soprano pipistrelle (Pipistrellus pygmaeus). Listen, check the calls, fix wrong tags and add missing calls. Then give the recording a status badge.",
+            "task": "Give this task any status badge",
+            "complete": {
+              "type": "event",
+              "event": "status-badge-added"
+            }
+          }
+        ]
+      },
+      {
+        "id": "practice-2",
+        "title": "More practice",
+        "intro": "One more recording on your own, with two species this time.",
+        "steps": [
+          {
+            "target": "status-badges",
+            "title": "Annotate on your own",
+            "hint": "Most events here are tagged Natterer's bat (Myotis nattereri), one is tagged Plecotus. Tip: `m` with “species: Plecotus” and then `n` jumps straight to it. Check the calls, fix what is wrong, then give the recording a status badge.",
             "task": "Give this task any status badge",
             "complete": {
               "type": "event",
@@ -563,7 +618,7 @@
     "tasksTab": {
       "id": "tasks-table",
       "title": "Tasks table",
-      "intro": "You are on the Tasks tab now. This short lesson shows how to look through recordings before you annotate them. Afterwards it sends you back to Annotate.",
+      "intro": "The AI already detects many species reliably. Recordings that contain only such a species can be handled quickly here, many at once: the Tasks table is where operations on many tasks live, such as setting a status or replacing tags on all ticked tasks. This short lesson shows how to browse and preview recordings; afterwards it sends you back to Annotate.",
       "steps": [
         {
           "target": "task-table",
@@ -608,7 +663,7 @@
         {
           "target": "task-shortcuts",
           "title": "All shortcuts",
-          "hint": "Click {icon:help} or press `?` to see every shortcut of this table, then close the list with `Esc`. Tip: `Shift` + click ticks several rows for bulk actions.",
+          "hint": "Click {icon:help} or press `?` to see every shortcut of this table, then close the list with `Esc`. Tip: `Shift` + click ticks several rows. With rows ticked, `1`–`4` set Accepted, Unsure, Rejected or Verified on all of them at once.",
           "task": "Open the shortcut list with `?`, then close it",
           "complete": {
             "type": "event",
@@ -618,7 +673,7 @@
         {
           "target": "header-tabs",
           "title": "Back to Annotate",
-          "hint": "The lessons continue on the “Annotate” tab at the top of the page. Click it.",
+          "hint": "Some species need a closer look before you can identify them: listening, zooming in, checking each call. That is what the Annotate tab is for, and the lessons continue there. Click “Annotate” at the top of the page.",
           "task": "Open the Annotate tab",
           "complete": {
             "type": "click"
@@ -634,13 +689,13 @@
           {
             "target": "progress",
             "title": "Welcome to Sonari",
-            "hint": "This tour teaches you to annotate recordings, in about 30 minutes and at your own pace. You need no prior experience with Sonari. Each recording is one lesson. This card shows the current step and ticks it off when you have done it; collapse it with the arrow at the top any time.",
+            "hint": "This tour teaches you to annotate recordings, in about 30 minutes and at your own pace. You need no prior experience with Sonari. Each recording is one lesson. The green frame always marks the part of the page the current step is about. Right now it frames the task bar: the current task, how many tasks remain and how many there are, the filters, and the arrows {icon:prev} {icon:next} to switch to the previous or next task. This card shows the current step and ticks it off when you have done it; collapse it with the arrow at the top any time.",
             "wiki": "Sonari documentation in the wiki"
           },
           {
             "target": "recording-metadata",
             "title": "The recording",
-            "hint": "This row describes the recording you are working on. From the left: the file name (click it to download the recording); “(1/1)” means this is part 1 of 1 of this file; then the date and time it was recorded, and the place. Click the location to see it on a map. Then the samplerate, 48,000 Hz: how many samples per second the recorder took. It sets the highest pitch you can see, here up to 24 kHz. Last comes the number of channels: 2 is stereo, left and right."
+            "hint": "This row describes the recording you are working on. From the left: the file name (click it to download the recording); “(1/1)” counts the tasks of this recording: it is split into 1 task, and this is task 1. Longer recordings are split into several tasks. Then the date and time it was recorded, and its location (latitude and longitude). Click the location to see it on a map. Then the samplerate, 48,000 Hz: how many samples per second the recorder took. It sets the highest pitch you can see, here up to 24 kHz. Last comes the number of channels: 2 is stereo, left and right."
           },
           {
             "target": "spectrogram",
@@ -771,6 +826,19 @@
             }
           },
           {
+            "target": "spectrogram",
+            "title": "Zoom in time",
+            "hint": "`+` and `-` zoom in and out in time, so you see a shorter or longer part of the recording at once. The next lesson shows more ways to zoom.",
+            "task": "Press `+` or `-`",
+            "complete": {
+              "type": "key",
+              "keys": [
+                "+",
+                "-"
+              ]
+            }
+          },
+          {
             "target": "status-badges",
             "title": "Next lesson",
             "hint": "Done with this recording. Give it any status badge: click one or press `1`–`4`. It opens the next recording and with it the next lesson.",
@@ -811,14 +879,14 @@
           },
           {
             "target": "zoom-tools",
-            "title": "Step zoom",
-            "hint": "`+` and `-` zoom in and out in time. Hold the Control key as well (Ctrl, also on a Mac) to zoom in frequency.",
-            "task": "Press `+` or `-`",
+            "title": "Zoom in frequency",
+            "hint": "You know `+` and `-` for time already. Hold the Control key as well (Ctrl, also on a Mac) to zoom in frequency instead.",
+            "task": "Press Ctrl with `+` or `-`",
             "complete": {
               "type": "key",
               "keys": [
-                "+",
-                "-"
+                "Ctrl++",
+                "Ctrl+-"
               ]
             }
           },
@@ -932,9 +1000,19 @@
             }
           },
           {
+            "target": "spectrogram",
+            "title": "Jump to a tag",
+            "hint": "`m` only works with no event selected, so press `Esc` first. Then press `m` and choose the tag “this: is wrong”. It now shows at the top right of the spectrogram, and `n` and `b` only visit events with that tag. Press `n` to jump straight to the mislabeled event. Press `m` again later to visit all events again.",
+            "task": "Press `Esc`, then `m`, and choose “this: is wrong”",
+            "complete": {
+              "type": "event",
+              "event": "cycle-tag-selected"
+            }
+          },
+          {
             "target": "sound-event-tools",
             "title": "Delete",
-            "hint": "The event at about 9.2 s is tagged “this: is wrong”: it is not a call. Select it and press `x`, or switch on delete mode {icon:delete} and click it.",
+            "hint": "The event at about 9.2 s is tagged “this: is wrong”: it is not a call. It is selected after `n`: press `x`, or switch on delete mode {icon:delete} and click it.",
             "task": "Delete the mislabeled event",
             "complete": {
               "type": "event",

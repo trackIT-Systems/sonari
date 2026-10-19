@@ -22,3 +22,22 @@ export function clearAnnotationTaskFilterPersist(
     // ignore
   }
 }
+
+/**
+ * Write the persisted task filter right away. The filter hook persists with a
+ * debounce, which is too late when a new tab or page reads it immediately.
+ */
+export function writeAnnotationTaskFilterPersist(
+  annotationProjectId: number | undefined | null,
+  filter: object,
+): void {
+  const key = annotationTaskFilterPersistKey(annotationProjectId);
+  if (!key || typeof window === "undefined") {
+    return;
+  }
+  try {
+    window.localStorage.setItem(key, JSON.stringify(filter));
+  } catch {
+    // ignore
+  }
+}

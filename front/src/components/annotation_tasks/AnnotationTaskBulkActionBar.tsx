@@ -59,9 +59,9 @@ type ConfirmContent = {
 };
 
 const STATUS_LABELS: Record<AnnotationStatus, string> = {
-  completed: "Completed",
+  completed: "Accepted",
   assigned: "Unsure",
-  rejected: "Needs review",
+  rejected: "Rejected",
   verified: "Verified",
 };
 
@@ -149,7 +149,7 @@ function buildTargetLabel({
     && allCurrentPageRowsSelected
     && filterTotal > selectedTaskIds.length
   ) {
-    return `all ${selectedTaskIds.length} on this page (${filterTotal} match filters — use “All ${filterTotal} filtered” in the table)`;
+    return `all ${selectedTaskIds.length} tasks on this page`;
   }
 
   if (selectedTaskIds.some((id) => !currentPageIdSet.has(id))) {
@@ -171,6 +171,8 @@ export default function AnnotationTaskBulkActionBar({
   bulkReplaceSoundEventTags,
   bulkDeleteSoundEventsByTag,
   onClearSelection,
+  onSelectAllMatchingFilter,
+  onSelectPageOnly,
   onTagBulkPanelOpenChange,
 }: {
   targetMode: "selected" | "filter_all";
@@ -197,6 +199,10 @@ export default function AnnotationTaskBulkActionBar({
     tag: Pick<Tag, "key" | "value">;
   }>;
   onClearSelection: () => void;
+  /** Switch from "this page" to every task matching the filter. */
+  onSelectAllMatchingFilter?: () => void;
+  /** Switch back from "all matching the filter" to the current page. */
+  onSelectPageOnly?: () => void;
   onTagBulkPanelOpenChange?: (panel: TagBulkPanel, open: boolean) => void;
 }) {
   const [confirmOpen, setConfirmOpen] = useState(false);
@@ -231,6 +237,13 @@ export default function AnnotationTaskBulkActionBar({
 
   const taskIds =
     targetMode === "selected" ? selectedTaskIds : undefined;
+
+  // Whole page ticked while the filter matches more: offer the rest (Gmail style).
+  const wholePageSelected =
+    targetMode === "selected"
+    && currentPageTaskIds.length > 0
+    && currentPageTaskIds.every((id) => selectedTaskIds.includes(id))
+    && filterTotal > selectedTaskIds.length;
 
   const targetCount =
     targetMode === "selected" ? selectedTaskIds.length : filterTotal;
@@ -458,19 +471,45 @@ export default function AnnotationTaskBulkActionBar({
       <div className="flex flex-row flex-wrap items-center justify-between gap-2">
         <span className="text-sm text-stone-700 dark:text-stone-300">
           Bulk actions on {targetLabel}
+          {wholePageSelected && onSelectAllMatchingFilter && (
+            <>
+              {" · "}
+              <button
+                type="button"
+                className="font-medium text-emerald-700 underline underline-offset-2 hover:text-emerald-900 dark:text-emerald-400 dark:hover:text-emerald-300"
+                onClick={onSelectAllMatchingFilter}
+                disabled={isBusy}
+              >
+                Select all {filterTotal} matching the filter
+              </button>
+            </>
+          )}
+          {targetMode === "filter_all" && onSelectPageOnly && (
+            <>
+              {" (every page) · "}
+              <button
+                type="button"
+                className="font-medium text-emerald-700 underline underline-offset-2 hover:text-emerald-900 dark:text-emerald-400 dark:hover:text-emerald-300"
+                onClick={onSelectPageOnly}
+                disabled={isBusy}
+              >
+                Only this page
+              </button>
+            </>
+          )}
         </span>
         <Button mode="text" variant="secondary" onClick={onClearSelection} disabled={isBusy}>
           Clear
         </Button>
       </div>
       <div className="flex flex-row flex-wrap items-center gap-2">
-        <Button mode="text" variant="primary" onClick={() => handleStatus("completed")} disabled={isBusy} title={`Completed (${ACCEPT_TASK_SHORTCUT})`}>
+        <Button mode="text" variant="primary" onClick={() => handleStatus("completed")} disabled={isBusy} title={`Accepted (${ACCEPT_TASK_SHORTCUT})`}>
           <CompleteIcon className="h-6 w-6" />
         </Button>
         <Button mode="text" variant="warning" onClick={() => handleStatus("assigned")} disabled={isBusy} title={`Unsure (${UNSURE_TASK_SHORTCUT})`}>
           <HelpIcon className="h-6 w-6" />
         </Button>
-        <Button mode="text" variant="danger" onClick={() => handleStatus("rejected")} disabled={isBusy} title={`Needs review (${REJECT_TASK_SHORTCUT})`}>
+        <Button mode="text" variant="danger" onClick={() => handleStatus("rejected")} disabled={isBusy} title={`Rejected (${REJECT_TASK_SHORTCUT})`}>
           <NeedsReviewIcon className="h-6 w-6" />
         </Button>
         <Button mode="text" variant="primary" onClick={() => handleStatus("verified")} disabled={isBusy} title={`Verified (${VERIFY_TASK_SHORTCUT})`}>

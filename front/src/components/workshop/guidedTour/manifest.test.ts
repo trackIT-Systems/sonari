@@ -39,10 +39,11 @@ describe("guided tour manifest", () => {
 
     const practice = getAnnotateLesson("bat", 7);
     expect(practice?.id).toBe("practice");
+    expect(getAnnotateLesson("bat", 9)?.id).toBe("wrap-up");
   });
 
   it.each([
-    ["bat", 8],
+    ["bat", 9],
     ["bird", 9],
   ] as const)("ends every %s lesson except the last with a status badge step", (variant, count) => {
     const lessons = Array.from({ length: count }, (_, i) => getAnnotateLesson(variant, i)!);
@@ -71,6 +72,8 @@ describe("guided tour manifest", () => {
   });
 
   it("has one bat lesson per template task", () => {
+    // 10 template tasks: a task without a lesson leaves the user without
+    // instructions and without "Finish tour" (resume lands there).
     const ids = getVariantManifest("bat")!.lessons.map((l) => l.id);
     expect(ids).toEqual([
       "orientation",
@@ -81,6 +84,7 @@ describe("guided tour manifest", () => {
       "tags",
       "spectrogram-settings",
       "practice",
+      "practice-2",
       "wrap-up",
     ]);
   });
@@ -137,6 +141,9 @@ describe("guided tour manifest", () => {
     expect(matchesShortcut("Space", key({ key: " " }))).toBe(true);
     expect(matchesShortcut("ArrowLeft", key({ key: "ArrowLeft" }))).toBe(true);
     expect(matchesShortcut("?", key({ key: "?", shiftKey: true }))).toBe(true);
+    expect(matchesShortcut("Ctrl++", key({ key: "+", ctrlKey: true }))).toBe(true);
+    expect(matchesShortcut("Ctrl++", key({ key: "+" }))).toBe(false);
+    expect(matchesShortcut("Ctrl+-", key({ key: "-", ctrlKey: true }))).toBe(true);
     expect(matchesShortcut("ArrowDown", key({ key: "ArrowDown", shiftKey: true }))).toBe(false);
   });
 

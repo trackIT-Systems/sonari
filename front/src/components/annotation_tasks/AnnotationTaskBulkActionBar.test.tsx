@@ -38,15 +38,15 @@ describe("AnnotationTaskBulkActionBar confirmation", () => {
     const { bulkAddBadge } = renderBar({ targetMode: "filter_all" });
 
     await act(async () => {
-      fireEvent.click(screen.getByTitle("Completed (1)"));
+      fireEvent.click(screen.getByTitle("Accepted (1)"));
     });
 
     expect(
       await screen.findByText(
-        'Set the status "Completed" on all 25 tasks matching the current filter.',
+        'Set the status "Accepted" on all 25 tasks matching the current filter.',
       ),
     ).toBeTruthy();
-    const confirm = screen.getByRole("button", { name: "Set Completed" }) as HTMLButtonElement;
+    const confirm = screen.getByRole("button", { name: "Set Accepted" }) as HTMLButtonElement;
     const input = screen.getByLabelText("Number of tasks");
 
     fireEvent.change(input, { target: { value: "24" } });
@@ -67,7 +67,7 @@ describe("AnnotationTaskBulkActionBar confirmation", () => {
   it("runs small selections without asking", () => {
     const { bulkAddBadge } = renderBar({ targetMode: "selected", selectedTaskIds: [1, 2] });
 
-    fireEvent.click(screen.getByTitle("Completed (1)"));
+    fireEvent.click(screen.getByTitle("Accepted (1)"));
 
     expect(bulkAddBadge.mutate).toHaveBeenCalledTimes(1);
     expect(screen.queryByLabelText("Number of tasks")).toBeNull();

@@ -968,6 +968,20 @@ const tasksFilterDefs: FilterDef<AnnotationTaskFilter>[] = [
     ),
   },
   {
+    // Set by "annotate selection" in the tasks table, not from this menu.
+    field: "annotation_task_ids",
+    name: "Selected tasks",
+    hideInMenu: true,
+    selector: () => null,
+    render: ({ value, clear }) => (
+      <FilterBadge
+        field="Selected tasks"
+        value={`${(value as number[] | undefined)?.length ?? 0}`}
+        onRemove={clear}
+      />
+    ),
+  },
+  {
     field: "search_recordings",
     name: "Search Recordings",
     render: ({ value, clear }) => (

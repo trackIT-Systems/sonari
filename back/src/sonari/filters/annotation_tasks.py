@@ -4,7 +4,7 @@ from datetime import datetime, timedelta, time
 from typing import Literal
 
 from soundevent import data
-from sqlalchemy import Float, Select, and_, case, exists, func, literal, not_, or_, select, union_all
+from sqlalchemy import Float, Select, and_, case, exists, false, func, literal, not_, or_, select, union_all
 from sqlalchemy.ext.compiler import compiles
 from sqlalchemy.sql.expression import FunctionElement
 
@@ -13,6 +13,7 @@ from sonari.filters import base
 
 __all__ = [
     "AnnotationProjectFilter",
+    "AnnotationTaskIdsFilter",
     "StationFilter",
     "AnnotationTaskFilter",
     "SearchRecordingsFilter",
@@ -202,6 +203,21 @@ class RecordingFilter(base.Filter):
         return query.where(
             models.AnnotationTask.recording_id == self.eq,
         )
+
+
+class AnnotationTaskIdsFilter(base.Filter):
+    """Filter for a given set of tasks, e.g. the rows ticked in the tasks table."""
+
+    lst: str | None = None
+
+    def filter(self, query: Select) -> Select:
+        if not self.lst:
+            return query
+        ids = [int(part) for part in self.lst.split(",") if part.strip().isdigit()]
+        if not ids:
+            # Only invalid ids: match nothing instead of silently matching all.
+            return query.where(false())
+        return query.where(models.AnnotationTask.id.in_(ids))
 
 
 class StationFilter(base.Filter):
@@ -1058,6 +1074,7 @@ _AnnotationTaskFilterCombined = base.combine(
     assigned=IsAssignedFilter,
     annotation_project=AnnotationProjectFilter,
     recording=RecordingFilter,
+    id=AnnotationTaskIdsFilter,
     dataset=StationFilter,
     sound_event_annotation_tag=SoundEventAnnotationTagFilter,
     sound_event_annotation_tag_count=SoundEventAnnotationTagCountFilter,

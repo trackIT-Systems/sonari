@@ -7,7 +7,12 @@ import useKeyFilter from "@/hooks/utils/useKeyFilter";
 import type { AnnotationTaskFilter } from "@/api/annotation_tasks";
 import type { AnnotationTask } from "@/types";
 import useAnnotationTasks from "@/hooks/api/useAnnotationTasks";
-import { annotationTaskFilterPersistKey } from "@/hooks/utils/annotationTaskFilterPersistKey";
+import {
+  annotationTaskFilterPersistKey,
+  writeAnnotationTaskFilterPersist,
+} from "@/hooks/utils/annotationTaskFilterPersistKey";
+import { useRouter } from "next/navigation";
+import toast from "react-hot-toast";
 import useAnnotationTaskTable from "@/hooks/useAnnotationTaskTable";
 import useAnnotationTaskBulkActions from "@/hooks/api/useAnnotationTaskBulkActions";
 import AnnotationTaskBulkActionBar from "@/components/annotation_tasks/AnnotationTaskBulkActionBar";
@@ -24,7 +29,7 @@ import Table from "@/components/tables/Table";
 import Pagination from "@/components/lists/Pagination";
 import ShortcutHelper from "@/components/ShortcutHelper";
 import { getScrollParent } from "@/utils/focus";
-import { PIN_PREVIEW_SHORTCUT, TASK_TABLE_SHORTCUTS, LIST_OVERVIEW_DOWN_SHORTCUT, SEARCH_BAR_LEAVE_SHORTCUT, FILTER_POPOVER_SHORTCUT } from "@/utils/keyboard";
+import { ANNOTATE_SELECTION_SHORTCUT, PIN_PREVIEW_SHORTCUT, TASK_TABLE_SHORTCUTS, LIST_OVERVIEW_DOWN_SHORTCUT, SEARCH_BAR_LEAVE_SHORTCUT, FILTER_POPOVER_SHORTCUT } from "@/utils/keyboard";
 import AnnotationTaskSpectrogramPreview from "@/components/annotation_tasks/AnnotationTaskSpectrogramPreview";
 import { findTemporallyRelatedTasks } from "@/utils/temporalClusters";
 import { emitGuidedTourEvent } from "@/components/workshop/guidedTour/events";
@@ -139,6 +144,13 @@ export default function AnnotationTaskTable({
     setRowSelection({});
   }, []);
 
+  const handleSelectPageOnly = useCallback(() => {
+    setTargetMode("selected");
+    setRowSelection(
+      Object.fromEntries(annotationTasks.items.map((task) => [String(task.id), true])),
+    );
+  }, [annotationTasks.items]);
+
   const handleClearBulkSelection = useCallback(() => {
     setTargetMode("selected");
     setRowSelection({});
@@ -209,6 +221,10 @@ export default function AnnotationTaskTable({
     annotationTasks.filter.set("sort_by", sortBy);
   }, [annotationTasks.filter]);
 
+  // Set below, once the selection helpers exist; the table only needs a stable callback.
+  const openTaskRef = useRef<(task: AnnotationTask) => void>(() => {});
+  const onOpenTask = useCallback((task: AnnotationTask) => openTaskRef.current(task), []);
+
   const table = useAnnotationTaskTable({
     data: annotationTasks.items,
     getAnnotationTaskLink: getAnnotationTaskLink,
@@ -221,7 +237,9 @@ export default function AnnotationTaskTable({
     onRowSelectionChange: handleRowSelectionChange,
     filterTotal: annotationTasks.total,
     onSelectAllMatchingFilter: handleSelectAllMatchingFilter,
+    onClearSelection: handleClearBulkSelection,
     targetMode,
+    onOpenTask,
   });
 
   useKeyPressEvent(useKeyFilter({ key: SEARCH_BAR_LEAVE_SHORTCUT }), (event) => {
@@ -241,7 +259,64 @@ export default function AnnotationTaskTable({
     }
   }, [setFocusedElement, searchInputRef]);
 
+  const router = useRouter();
+
+  /**
+   * Make the ticked rows the task filter of the project, which the annotate
+   * view shares, and return the task to open first. With "all matching the
+   * filter" ticked, the current filter already describes the selection.
+   */
+  const applySelectionFilter = useCallback(
+    (preferredTaskId?: number): number | null => {
+      if (targetMode === "filter_all") {
+        return preferredTaskId ?? annotationTasks.items[0]?.id ?? null;
+      }
+      if (selectedTaskIds.length === 0) return null;
+      const projectId = activeFilter.annotation_project?.id;
+      // Write it now: the filter hook persists with a debounce, and the
+      // annotate view (new tab or next page) reads it right away.
+      writeAnnotationTaskFilterPersist(projectId, {
+        ...activeFilter,
+        annotation_task_ids: selectedTaskIds,
+      });
+      annotationTasks.filter.set("annotation_task_ids", selectedTaskIds);
+      if (preferredTaskId != null && selectedTaskIds.includes(preferredTaskId)) return preferredTaskId;
+      const selected = new Set(selectedTaskIds);
+      const order = allTasks ?? annotationTasks.items;
+      return order.find((t) => selected.has(t.id))?.id ?? selectedTaskIds[0];
+    },
+    [targetMode, selectedTaskIds, activeFilter, annotationTasks.filter, annotationTasks.items, allTasks],
+  );
+
+  const isTicked = useCallback(
+    (task: AnnotationTask) => targetMode === "selected" && Boolean(rowSelection[String(task.id)]),
+    [targetMode, rowSelection],
+  );
+
+  // Opening a ticked task annotates the ticked tasks: they become the filter.
+  const handleOpenTask = useCallback(
+    (task: AnnotationTask) => {
+      if (isTicked(task)) applySelectionFilter(task.id);
+    },
+    [isTicked, applySelectionFilter],
+  );
+  openTaskRef.current = handleOpenTask;
+
+  // 8: annotate the ticked tasks in this tab (7 opens Annotate as usual).
+  useKeyPressEvent(useKeyFilter({ key: ANNOTATE_SELECTION_SHORTCUT }), (event: KeyboardEvent) => {
+    if (event.ctrlKey || event.metaKey || event.altKey) return;
+    if (document.querySelector('[role="dialog"]')) return;
+    const projectId = activeFilter.annotation_project?.id;
+    const taskId = applySelectionFilter();
+    if (taskId == null || projectId == null) {
+      toast("Tick the tasks you want to annotate first.", { id: "annotate-selection" });
+      return;
+    }
+    router.push(`/annotation_projects/${getAnnotationTaskLink(projectId, taskId)}`);
+  });
+
   const handleSelect = useCallback((task: AnnotationTask) => {
+    handleOpenTask(task);
     const link = getAnnotationTaskLink(task.annotation_project_id, task.id);
     if (link) {
       // Open the annotate view in a new tab so the table (filters, selection,
@@ -249,7 +324,7 @@ export default function AnnotationTaskTable({
       const basePath = process.env.NEXT_PUBLIC_SONARI_FOLDER ?? "";
       window.open(`${basePath}/annotation_projects/${link}`, "_blank", "noopener");
     }
-  }, [getAnnotationTaskLink]);
+  }, [getAnnotationTaskLink, handleOpenTask]);
 
   const btn = <Button
     mode="outline"
@@ -561,6 +636,8 @@ export default function AnnotationTaskTable({
           bulkReplaceSoundEventTags={bulkActions.bulkReplaceSoundEventTags}
           bulkDeleteSoundEventsByTag={bulkActions.bulkDeleteSoundEventsByTag}
           onClearSelection={handleClearBulkSelection}
+          onSelectAllMatchingFilter={handleSelectAllMatchingFilter}
+          onSelectPageOnly={handleSelectPageOnly}
           onTagBulkPanelOpenChange={handleTagBulkPanelOpenChange}
         />
         </div>

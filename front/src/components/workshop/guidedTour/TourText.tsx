@@ -12,8 +12,10 @@ import {
   HelpIcon,
   LockOpenIcon,
   LoopIcon,
+  NextIcon,
   PlayIcon,
   PlayPauseIcon,
+  PreviousIcon,
   SearchIcon,
   SelectIcon,
   SettingsIcon,
@@ -47,6 +49,8 @@ export const TOUR_ICONS: Record<string, IconComponent> = {
   fullscreen: EnterFullscreenIcon as IconComponent,
   filter: FilterIcon as IconComponent,
   help: HelpIcon as IconComponent,
+  prev: PreviousIcon as IconComponent,
+  next: NextIcon as IconComponent,
 };
 
 export function Kbd({ children }: { children: string }) {

@@ -558,6 +558,7 @@ export default function AnnotateTasks({
         } else {
           // Otherwise, remove from all sound event annotations
           await handleRemoveTagFromSoundEventAnnotations(tagWithCount.tag);
+          emitGuidedTourEvent("tag-deleted-from-all");
         }
       }
       setIsDeletePopoverOpen(false);
@@ -618,6 +619,7 @@ export default function AnnotateTasks({
         await Promise.all(promises);
       });
       emitGuidedTourEvent("tag-replaced");
+      if (!currentAnnotation) emitGuidedTourEvent("tag-replaced-on-all");
     },
     [displayedSoundEventAnnotations, activeRemoveTagFromSoundEventAnnotation, activeAddTagToSoundEventAnnotation, activeHistory],
   );
@@ -674,6 +676,7 @@ export default function AnnotateTasks({
           ),
         );
       });
+      emitGuidedTourEvent("untagged-events-tagged");
     },
     [displayedSoundEventAnnotations, activeAddTagToSoundEventAnnotation, activeHistory],
   );
@@ -1163,6 +1166,7 @@ export default function AnnotateTasks({
                             if (menuRef.current?.contains(document.activeElement)) {
                               setSelectedTag(tagWithCount)
                               setIsTagPopoverOpen(false);
+                              emitGuidedTourEvent("cycle-tag-selected");
                             }
                           }}
                           empty={<div className="text-stone-500 text-center w-full">No tags found</div>}
