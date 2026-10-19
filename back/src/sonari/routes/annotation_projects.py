@@ -146,6 +146,17 @@ async def update_annotation_project(
         session,
         annotation_project_id,
     )
+    if data.tag_group_id is not None:
+        await api.tag_management.get_group(session, data.tag_group_id)
+    if data.tag_preset_id is not None:
+        await api.tag_management.get_preset_model(session, data.tag_preset_id)
+    scope = data.tag_scope or annotation_project.tag_scope
+    group_id = data.tag_group_id if "tag_group_id" in data.model_fields_set else annotation_project.tag_group_id
+    preset_id = data.tag_preset_id if "tag_preset_id" in data.model_fields_set else annotation_project.tag_preset_id
+    if scope == "group" and group_id is None:
+        raise HTTPException(status_code=422, detail="Select a tag group.")
+    if scope == "preset" and preset_id is None:
+        raise HTTPException(status_code=422, detail="Select a tag preset.")
     annotation_project = await api.annotation_projects.update(
         session,
         annotation_project,
@@ -153,6 +164,19 @@ async def update_annotation_project(
     )
     await session.commit()
     return annotation_project
+
+
+@annotation_projects_router.get(
+    "/detail/tag_scope/",
+    response_model=schemas.ProjectTagScope,
+)
+async def get_annotation_project_tag_scope(
+    session: Session,
+    annotation_project_id: int,
+):
+    """Get the tag group or preset that an annotation project uses."""
+    annotation_project = await api.annotation_projects.get(session, annotation_project_id)
+    return await api.tag_management.get_project_tag_scope(session, annotation_project)
 
 
 @annotation_projects_router.delete(

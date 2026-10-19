@@ -2,9 +2,9 @@ import { AxiosInstance } from "axios";
 import { z } from "zod";
 
 import { GetManySchema, Page } from "@/api/common";
-import { AnnotationProjectSchema } from "@/schemas";
+import { AnnotationProjectSchema, ProjectTagScopeSchema } from "@/schemas";
 
-import type { AnnotationProject } from "@/types";
+import type { AnnotationProject, ProjectTagScope, TagScope } from "@/types";
 
 const AnnotationProjectProgressSchema = z.object({
   total: z.number(),
@@ -62,11 +62,18 @@ export type GuidedTourAvailableResponse = z.infer<
   typeof GuidedTourAvailableResponseSchema
 >;
 
+export type AnnotationProjectUpdate = {
+  tag_scope?: TagScope;
+  tag_group_id?: number | null;
+  tag_preset_id?: number | null;
+};
+
 const DEFAULT_ENDPOINTS = {
   getMany: "/api/v1/annotation_projects/",
   get: "/api/v1/annotation_projects/detail/",
   getProgress: "/api/v1/annotation_projects/detail/progress/",
   getSpeciesCounts: "/api/v1/annotation_projects/detail/species_counts/",
+  getTagScope: "/api/v1/annotation_projects/detail/tag_scope/",
   ensureGuidedTour: "/api/v1/annotation_projects/guided_tour/",
 };
 
@@ -124,6 +131,23 @@ export function registerAnnotationProjectAPI(
     return z.array(SpeciesTagCountSchema).parse(data);
   }
 
+  async function update(
+    id: number,
+    data: AnnotationProjectUpdate,
+  ): Promise<AnnotationProject> {
+    const { data: updated } = await instance.patch(endpoints.get, data, {
+      params: { annotation_project_id: id },
+    });
+    return AnnotationProjectSchema.parse(updated);
+  }
+
+  async function getTagScope(id: number): Promise<ProjectTagScope> {
+    const { data } = await instance.get(endpoints.getTagScope, {
+      params: { annotation_project_id: id },
+    });
+    return ProjectTagScopeSchema.parse(data);
+  }
+
   async function getGuidedTourAvailable(): Promise<GuidedTourAvailableResponse> {
     const { data } = await instance.get(endpoints.ensureGuidedTour);
     return GuidedTourAvailableResponseSchema.parse(data);
@@ -144,6 +168,8 @@ export function registerAnnotationProjectAPI(
     get,
     getProgress,
     getSpeciesCounts,
+    update,
+    getTagScope,
     getGuidedTourAvailable,
     ensureGuidedTour,
   } as const;

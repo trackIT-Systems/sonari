@@ -24,6 +24,7 @@ import {
   AnnotationProjectIcon,
   SonariIcon,
   DownloadIcon,
+  TagIcon,
   UserIcon,
 } from "@/components/icons";
 import Button from "@/components/Button";
@@ -148,6 +149,15 @@ function MainNavigation({ pathname }: { pathname?: string }) {
           keyboardKeys={[`${getSpecialKeyLabel("Shift")}`, `${getMetaKeyLabel()}`, "2"]}
         >
           <DownloadIcon className="w-6 h-6 text-stone-400" />
+        </SideMenuLink>
+      </li>
+      <li className="px-3">
+        <SideMenuLink
+          isActive={pathname?.startsWith("/tags")}
+          tooltip={"Tags"}
+          href="/tags"
+        >
+          <TagIcon className="w-6 h-6 text-stone-400" />
         </SideMenuLink>
       </li>
     </ul>

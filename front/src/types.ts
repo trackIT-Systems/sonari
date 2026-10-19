@@ -26,6 +26,13 @@ import {
   SpectrogramParametersSchema,
   SpectrogramWindowSchema,
   TagSchema,
+  TagDetailSchema,
+  SpeciesInfoSchema,
+  SpeciesTagsSchema,
+  TagGroupSchema,
+  TagPresetSchema,
+  TagScopeSchema,
+  ProjectTagScopeSchema,
   TimeIntervalSchema,
   TimeStampSchema,
   UserSchema,
@@ -34,6 +41,20 @@ import {
 export type User = z.infer<typeof UserSchema>;
 
 export type Tag = z.infer<typeof TagSchema>;
+
+export type TagDetail = z.infer<typeof TagDetailSchema>;
+
+export type SpeciesInfo = z.infer<typeof SpeciesInfoSchema>;
+
+export type SpeciesTags = z.infer<typeof SpeciesTagsSchema>;
+
+export type TagGroup = z.infer<typeof TagGroupSchema>;
+
+export type TagPreset = z.infer<typeof TagPresetSchema>;
+
+export type TagScope = z.infer<typeof TagScopeSchema>;
+
+export type ProjectTagScope = z.infer<typeof ProjectTagScopeSchema>;
 
 export type Feature = z.infer<typeof FeatureSchema>;
 export type SoundEventTagStats = z.infer<typeof SoundEventTagStatsSchema>;

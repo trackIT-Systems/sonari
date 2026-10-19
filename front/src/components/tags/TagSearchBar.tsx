@@ -1,11 +1,17 @@
 import { Combobox, ComboboxButton, ComboboxOption, ComboboxOptions } from "@headlessui/react";
 import { ChevronUpDownIcon } from "@heroicons/react/20/solid";
-import { forwardRef, useEffect, useState } from "react";
+import { forwardRef, useContext, useEffect, useState } from "react";
 
 import { Input } from "@/components/inputs/index";
 import KeyboardKey from "@/components/KeyboardKey";
 import Tag from "@/components/tags/Tag";
+import TagScopeContext from "@/components/tags/TagScopeContext";
 import useTags from "@/hooks/api/useTags";
+import {
+  tagScopeLabel,
+  useProjectTagScope,
+  useTagShortcuts,
+} from "@/hooks/api/useTagManagement";
 
 import type { TagCreate, TagFilter } from "@/api/tags";
 import type { Tag as TagType } from "@/types";
@@ -41,6 +47,73 @@ function CreateNewTag({ tag: { key, value } }: { tag: TagCreate }) {
         <KeyboardKey code={`${getSpecialKeyLabel("Shift")}`} /><KeyboardKey code={`${getSpecialKeyLabel(ACCEPT_SHORTCUT)}`} />
       </div>
     </ComboBoxSection>
+  );
+}
+
+function TagScopeToggle({
+  label,
+  showAll,
+  onToggle,
+}: {
+  label: string;
+  showAll: boolean;
+  onToggle: () => void;
+}) {
+  return (
+    <ComboBoxSection>
+      <div className="flex items-center justify-between gap-2 py-1.5 px-4 text-xs text-stone-500 dark:text-stone-400">
+        <span>
+          {showAll ? (
+            "Showing all tags"
+          ) : (
+            <>
+              Showing <span className="font-semibold">{label}</span> and
+              general tags
+            </>
+          )}
+        </span>
+        <button
+          type="button"
+          className="shrink-0 font-medium text-emerald-600 hover:underline dark:text-emerald-400"
+          // Keep focus in the input so the dropdown stays open.
+          onMouseDown={(event) => event.preventDefault()}
+          onClick={onToggle}
+        >
+          {showAll ? `Only ${label}` : "Show all tags"}
+        </button>
+      </div>
+    </ComboBoxSection>
+  );
+}
+
+/**
+ * The shortcut digit of a key press: a plain digit while the search is
+ * still empty, or Alt+digit at any time. `event.code` is used because
+ * Alt+digit types other characters on macOS.
+ */
+export function shortcutDigit(
+  event: Pick<
+    KeyboardEvent<HTMLInputElement>,
+    "code" | "altKey" | "ctrlKey" | "metaKey" | "shiftKey"
+  >,
+  query: string,
+): string | null {
+  if (event.ctrlKey || event.metaKey || event.shiftKey) return null;
+  const digit = /^(?:Digit|Numpad)(\d)$/.exec(event.code)?.[1];
+  if (digit == null) return null;
+  return event.altKey || query === "" ? digit : null;
+}
+
+function ShortcutHint({ shortcuts }: { shortcuts: TagType[] }) {
+  return (
+    <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-stone-500 dark:text-stone-400">
+      {shortcuts.map((tag) => (
+        <span key={tag.shortcut} className="inline-flex items-center gap-0.5">
+          <KeyboardKey code={tag.shortcut!} />
+          {tag.value}
+        </span>
+      ))}
+    </div>
   );
 }
 
@@ -85,8 +158,18 @@ export default forwardRef<HTMLInputElement, TagSearchBarProps>(
     ref,
   ) {
     const [query, setQuery] = useState("");
+    const [showAll, setShowAll] = useState(false);
 
-    const tags = useTags({ filter: initialFilter });
+    const annotationProjectId = useContext(TagScopeContext);
+    const scope = useProjectTagScope(annotationProjectId);
+    const scopeLabel = tagScopeLabel(scope.data);
+
+    const tags = useTags({
+      filter: initialFilter,
+      annotationProjectId,
+      scoped: !showAll,
+    });
+    const shortcuts = useTagShortcuts();
 
     const key = query.split(":")[0];
     const value = query.split(":")[1];
@@ -108,9 +191,10 @@ export default forwardRef<HTMLInputElement, TagSearchBarProps>(
     }, [query]);
 
     // Filter out excluded tags
-    const filteredTags = tags.items.filter(
-      tag => !excludeTags.some(excluded => excluded.key === tag.key && excluded.value === tag.value)
-    );
+    const isExcluded = (tag: TagType) =>
+      excludeTags.some(excluded => excluded.key === tag.key && excluded.value === tag.value);
+    const filteredTags = tags.items.filter((tag) => !isExcluded(tag));
+    const shortcutTags = (shortcuts.data ?? []).filter((tag) => !isExcluded(tag));
 
     return (
       <div className="relative">
@@ -128,6 +212,13 @@ export default forwardRef<HTMLInputElement, TagSearchBarProps>(
               autoFocus={autoFocus}
               onChange={(event) => setQuery(event.target.value)}
               onKeyDown={(event) => {
+                const digit = shortcutDigit(event, query);
+                const shortcutTag = shortcutTags.find((tag) => tag.shortcut === digit);
+                if (shortcutTag != null) {
+                  event.preventDefault();
+                  onSelect?.(shortcutTag);
+                  return;
+                }
                 if (event.key === ACCEPT_SHORTCUT && event.shiftKey && canCreate) {
                   event.preventDefault();
                   if (key && value) {
@@ -151,6 +242,9 @@ export default forwardRef<HTMLInputElement, TagSearchBarProps>(
               <ChevronUpDownIcon className="w-5 h-5" aria-hidden="true" />
             </ComboboxButton>
           </div>
+          {query === "" && shortcutTags.length > 0 && (
+            <ShortcutHint shortcuts={shortcutTags} />
+          )}
           <ComboboxOptions className="absolute top-full mt-2 z-50 overflow-y-auto py-1 max-h-60 w-full text-base rounded-md divide-y ring-1 ring-opacity-5 shadow-lg sm:text-sm focus:outline-none divide-stone-200 bg-stone-50 ring-stone-300 dark:divide-stone-600 dark:bg-stone-700 dark:ring-stone-600 transition duration-200 ease-out data-[closed]:scale-95 data-[closed]:opacity-0 data-[enter]:duration-200 data-[leave]:duration-150 data-[enter]:ease-out data-[leave]:ease-in">
             {filteredTags.length === 0 ? (
               <NoTagsFound />
@@ -165,15 +259,25 @@ export default forwardRef<HTMLInputElement, TagSearchBarProps>(
                     }
                     value={tag}
                   >
-                    <Tag
-                      disabled
-                      className="pointer-events-none"
-                      tag={tag}
-                      count={null}
-                    />
+                    <span className="flex items-center gap-2">
+                      <Tag
+                        disabled
+                        className="pointer-events-none"
+                        tag={tag}
+                        count={null}
+                      />
+                      {tag.shortcut && <KeyboardKey code={tag.shortcut} />}
+                    </span>
                   </ComboboxOption>
                 ))}
               </ComboBoxSection>
+            )}
+            {scopeLabel != null && (
+              <TagScopeToggle
+                label={scopeLabel}
+                showAll={showAll}
+                onToggle={() => setShowAll((value) => !value)}
+              />
             )}
             {canCreate && <CreateNewTag tag={{ key, value }} />}
           </ComboboxOptions>

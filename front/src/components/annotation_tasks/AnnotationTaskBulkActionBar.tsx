@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Popover, PopoverButton, PopoverPanel } from "@headlessui/react";
 import Button from "@/components/Button";
 import { DialogOverlay } from "@/components/Dialog";
+import { Input } from "@/components/inputs";
 import {
   TagAddToTaggedPanel,
   TagDeleteSoundEventsPanel,
@@ -51,10 +52,22 @@ export const SOUND_EVENT_TAG_PANELS: TagBulkPanel[] = [
 
 type ConfirmContent = {
   title: string;
+  /** What exactly will happen, e.g. 'Replace "a" with "b" on …'. */
   message: string;
   confirmLabel: string;
   destructive: boolean;
 };
+
+const STATUS_LABELS: Record<AnnotationStatus, string> = {
+  completed: "Completed",
+  assigned: "Unsure",
+  rejected: "Needs review",
+  verified: "Verified",
+};
+
+function tagLabel(tag: Pick<Tag, "key" | "value">): string {
+  return `"${tag.key}: ${tag.value}"`;
+}
 
 /** Replacing tags on more than this many tasks asks for confirmation. */
 const REPLACE_CONFIRM_THRESHOLD = 10;
@@ -222,21 +235,18 @@ export default function AnnotationTaskBulkActionBar({
   const targetCount =
     targetMode === "selected" ? selectedTaskIds.length : filterTotal;
 
-  const replaceConfirmContent: ConfirmContent | undefined =
-    targetCount > REPLACE_CONFIRM_THRESHOLD
-      ? {
-          title: "Replace tags?",
-          message: `Are you sure you want to replace tags on ${targetLabel}? This cannot be undone in one step.`,
-          confirmLabel: "Replace",
-          destructive: false,
-        }
-      : undefined;
+  const [confirmText, setConfirmText] = useState("");
 
+  /**
+   * Run `action`, asking first when it targets all filtered tasks or when
+   * `always` is set. The user confirms by typing the number of tasks.
+   */
   const runWithConfirm = useCallback(
-    (action: () => void, content?: ConfirmContent) => {
-      if (content || targetMode === "filter_all") {
+    (action: () => void, content: ConfirmContent, always = false) => {
+      if (always || targetMode === "filter_all") {
         setPendingAction(() => action);
-        setConfirmContent(content ?? null);
+        setConfirmContent(content);
+        setConfirmText("");
         setConfirmOpen(true);
       } else {
         action();
@@ -245,6 +255,8 @@ export default function AnnotationTaskBulkActionBar({
     [targetMode],
   );
 
+  const confirmMatches = confirmText.trim() === String(targetCount);
+
   const handleConfirm = useCallback(() => {
     pendingAction?.();
     setPendingAction(null);
@@ -252,28 +264,46 @@ export default function AnnotationTaskBulkActionBar({
     setConfirmOpen(false);
   }, [pendingAction]);
 
+  const confirmReplace = targetCount > REPLACE_CONFIRM_THRESHOLD;
+
   const handleStatus = useCallback(
     (state: AnnotationStatus) => {
-      runWithConfirm(() => {
-        bulkAddBadge.mutate(
-          { annotation_task_ids: taskIds, state },
-          { onSuccess: () => onClearSelection() },
-        );
-      });
+      runWithConfirm(
+        () => {
+          bulkAddBadge.mutate(
+            { annotation_task_ids: taskIds, state },
+            { onSuccess: () => onClearSelection() },
+          );
+        },
+        {
+          title: "Set task status?",
+          message: `Set the status "${STATUS_LABELS[state]}" on ${targetLabel}.`,
+          confirmLabel: `Set ${STATUS_LABELS[state]}`,
+          destructive: false,
+        },
+      );
     },
-    [bulkAddBadge, onClearSelection, runWithConfirm, taskIds],
+    [bulkAddBadge, onClearSelection, runWithConfirm, targetLabel, taskIds],
   );
 
   const handleAddTaskTag = useCallback(
     (tag: Tag) => {
-      runWithConfirm(() => {
-        bulkAddTag.mutate(
-          { annotation_task_ids: taskIds, tag },
-          { onSuccess: () => onClearSelection() },
-        );
-      });
+      runWithConfirm(
+        () => {
+          bulkAddTag.mutate(
+            { annotation_task_ids: taskIds, tag },
+            { onSuccess: () => onClearSelection() },
+          );
+        },
+        {
+          title: "Add task tag?",
+          message: `Add the task tag ${tagLabel(tag)} to ${targetLabel}.`,
+          confirmLabel: "Add tag",
+          destructive: false,
+        },
+      );
     },
-    [bulkAddTag, onClearSelection, runWithConfirm, taskIds],
+    [bulkAddTag, onClearSelection, runWithConfirm, targetLabel, taskIds],
   );
 
   const tagCountsForPanel = soundEventTagCounts.map(({ key, value, count }) => ({
@@ -283,6 +313,14 @@ export default function AnnotationTaskBulkActionBar({
 
   const handleReplaceTag = useCallback(
     (oldTag: Tag | null, newTag: Tag, options?: { add_to_tagged?: boolean }) => {
+      let message: string;
+      if (isReplaceAllTag(oldTag)) {
+        message = `Replace all tags of every tagged sound event with ${tagLabel(newTag)} in ${targetLabel}.`;
+      } else if (oldTag == null) {
+        message = `Add ${tagLabel(newTag)} to every sound event in ${targetLabel}.`;
+      } else {
+        message = `Replace ${tagLabel(oldTag)} with ${tagLabel(newTag)} on sound events in ${targetLabel}.`;
+      }
       runWithConfirm(() => {
         bulkReplaceSoundEventTags.mutate(
           {
@@ -294,9 +332,14 @@ export default function AnnotationTaskBulkActionBar({
           },
           { onSuccess: () => onClearSelection() },
         );
-      }, replaceConfirmContent);
+      }, {
+        title: "Replace sound event tags?",
+        message: `${message} This cannot be undone in one step.`,
+        confirmLabel: "Replace",
+        destructive: false,
+      }, confirmReplace);
     },
-    [bulkReplaceSoundEventTags, onClearSelection, replaceConfirmContent, runWithConfirm, taskIds],
+    [bulkReplaceSoundEventTags, confirmReplace, onClearSelection, runWithConfirm, targetLabel, taskIds],
   );
 
   const handleReplaceGroup = useCallback(
@@ -306,9 +349,14 @@ export default function AnnotationTaskBulkActionBar({
           { annotation_task_ids: taskIds, replace_group: group },
           { onSuccess: () => onClearSelection() },
         );
-      }, replaceConfirmContent);
+      }, {
+        title: "Replace with group tag?",
+        message: `Replace every ${group} species tag with the group tag "group: ${group}" on sound events in ${targetLabel}. This cannot be undone in one step.`,
+        confirmLabel: "Replace",
+        destructive: false,
+      }, confirmReplace);
     },
-    [bulkReplaceSoundEventTags, onClearSelection, replaceConfirmContent, runWithConfirm, taskIds],
+    [bulkReplaceSoundEventTags, confirmReplace, onClearSelection, runWithConfirm, targetLabel, taskIds],
   );
 
   const handleAddTagToTagged = useCallback(
@@ -323,9 +371,14 @@ export default function AnnotationTaskBulkActionBar({
           },
           { onSuccess: () => onClearSelection() },
         );
+      }, {
+        title: "Add tag to tagged sound events?",
+        message: `Add ${tagLabel(newTag)} to every sound event tagged ${tagLabel(filterTag)} in ${targetLabel}.`,
+        confirmLabel: "Add tag",
+        destructive: false,
       });
     },
-    [bulkReplaceSoundEventTags, onClearSelection, runWithConfirm, taskIds],
+    [bulkReplaceSoundEventTags, onClearSelection, runWithConfirm, targetLabel, taskIds],
   );
 
   const handleDeleteSoundEvents = useCallback(
@@ -339,10 +392,11 @@ export default function AnnotationTaskBulkActionBar({
         },
         {
           title: "Delete sound events?",
-          message: `This will permanently delete every sound event whose only tag is "${tag.key}: ${tag.value}" across ${targetLabel}. ${count} sound event(s) carry this tag; those that also have other tags are skipped. This cannot be undone.`,
+          message: `Permanently delete every sound event whose only tag is ${tagLabel(tag)} in ${targetLabel}. ${count} sound event(s) carry this tag; those that also have other tags are kept. This cannot be undone.`,
           confirmLabel: "Delete",
           destructive: true,
         },
+        true,
       );
     },
     [bulkDeleteSoundEventsByTag, onClearSelection, runWithConfirm, targetLabel, taskIds],
@@ -576,32 +630,48 @@ export default function AnnotationTaskBulkActionBar({
           setPendingAction(null);
           setConfirmContent(null);
         }}
-        title={confirmContent?.title ?? "Apply to all matching tasks?"}
+        title={confirmContent?.title}
       >
         {({ close }) => (
-          <div className="flex flex-col gap-4 p-4">
-            <p className="text-sm">
-              {confirmContent?.message
-                ?? `This will update ${filterTotal} annotation tasks that match your current filters. This cannot be undone in one step.`}
-            </p>
+          <form
+            className="flex max-w-md flex-col gap-4 p-4"
+            onSubmit={(event) => {
+              event.preventDefault();
+              if (!confirmMatches) return;
+              handleConfirm();
+              close();
+            }}
+          >
+            <p className="text-sm">{confirmContent?.message}</p>
+            <label className="flex flex-col gap-1 text-sm">
+              <span>
+                Type <span className="font-semibold tabular-nums">{targetCount}</span>{" "}
+                (the number of tasks) to confirm:
+              </span>
+              <Input
+                autoFocus
+                data-autofocus
+                inputMode="numeric"
+                autoComplete="off"
+                aria-label="Number of tasks"
+                value={confirmText}
+                onChange={(event) => setConfirmText(event.target.value)}
+              />
+            </label>
             <div className="flex flex-row justify-end gap-2">
-              <Button mode="outline" variant="secondary" onClick={close}>
+              <Button type="button" mode="outline" variant="secondary" onClick={close}>
                 Cancel
               </Button>
               <Button
+                type="submit"
                 mode="filled"
                 variant={confirmContent?.destructive ? "danger" : "primary"}
-                autoFocus
-                data-autofocus
-                onClick={() => {
-                  handleConfirm();
-                  close();
-                }}
+                disabled={!confirmMatches}
               >
-                {confirmContent?.confirmLabel ?? "Apply"}
+                {confirmContent?.confirmLabel}
               </Button>
             </div>
-          </div>
+          </form>
         )}
       </DialogOverlay>
     </div>

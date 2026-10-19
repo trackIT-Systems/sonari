@@ -11,6 +11,7 @@ from sonari.api.recordings import recordings
 from sonari.api.sessions import create_session
 from sonari.api.sound_event_annotations import sound_event_annotations
 from sonari.api.spectrograms import compute_spectrogram, compute_waveform
+from sonari.api import species_catalog, tag_management
 from sonari.api.tags import find_tag, find_tag_value, tags
 from sonari.api.users import users
 
@@ -31,6 +32,8 @@ __all__ = [
     "notes",
     "recordings",
     "sound_event_annotations",
+    "species_catalog",
+    "tag_management",
     "tags",
     "users",
 ]

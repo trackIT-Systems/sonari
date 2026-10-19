@@ -29,6 +29,7 @@ from sonari.models.sound_event_annotation import (
     SoundEventAnnotationTag,
 )
 from sonari.models.tag import Tag
+from sonari.models.tag_group import Species, SpeciesName, TagGroup, TagPreset, TagPresetTag
 from sonari.models.user import User
 
 __all__ = [
@@ -48,6 +49,11 @@ __all__ = [
     "SoundEventAnnotation",
     "SoundEventAnnotationFeature",
     "SoundEventAnnotationTag",
+    "Species",
+    "SpeciesName",
     "Tag",
+    "TagGroup",
+    "TagPreset",
+    "TagPresetTag",
     "User",
 ]

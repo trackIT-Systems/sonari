@@ -1,0 +1,2562 @@
+{
+ "version": 1,
+ "description": "Species catalog used to assign tags to tag groups and to relate tags that name the same species (e.g. species:Amsel and species:Turdus merula). Tag values are matched case-insensitively against scientific, de and aliases.",
+ "sources": [
+  "Birds: ecohub/processors/audio/taxonomy_birds.py (BirdEdge German names)",
+  "Bat short codes: ecohub/processors/audio/taxonomy.py (YOLOBat)",
+  "Bats, amphibians and Orthoptera of Germany: curated"
+ ],
+ "species": [
+  {
+   "scientific": "Alytes obstetricans",
+   "de": "Geburtshelferkröte",
+   "group": "Amphibian",
+   "aliases": []
+  },
+  {
+   "scientific": "Bombina bombina",
+   "de": "Rotbauchunke",
+   "group": "Amphibian",
+   "aliases": []
+  },
+  {
+   "scientific": "Bombina variegata",
+   "de": "Gelbbauchunke",
+   "group": "Amphibian",
+   "aliases": []
+  },
+  {
+   "scientific": "Bufo bufo",
+   "de": "Erdkröte",
+   "group": "Amphibian",
+   "aliases": []
+  },
+  {
+   "scientific": "Bufotes viridis",
+   "de": "Wechselkröte",
+   "group": "Amphibian",
+   "aliases": [
+    "Bufo viridis"
+   ]
+  },
+  {
+   "scientific": "Epidalea calamita",
+   "de": "Kreuzkröte",
+   "group": "Amphibian",
+   "aliases": [
+    "Bufo calamita"
+   ]
+  },
+  {
+   "scientific": "Hyla arborea",
+   "de": "Europäischer Laubfrosch",
+   "group": "Amphibian",
+   "aliases": [
+    "Laubfrosch"
+   ]
+  },
+  {
+   "scientific": "Ichthyosaura alpestris",
+   "de": "Bergmolch",
+   "group": "Amphibian",
+   "aliases": [
+    "Triturus alpestris",
+    "Mesotriton alpestris"
+   ]
+  },
+  {
+   "scientific": "Lissotriton helveticus",
+   "de": "Fadenmolch",
+   "group": "Amphibian",
+   "aliases": [
+    "Triturus helveticus"
+   ]
+  },
+  {
+   "scientific": "Lissotriton vulgaris",
+   "de": "Teichmolch",
+   "group": "Amphibian",
+   "aliases": [
+    "Triturus vulgaris"
+   ]
+  },
+  {
+   "scientific": "Pelobates fuscus",
+   "de": "Knoblauchkröte",
+   "group": "Amphibian",
+   "aliases": []
+  },
+  {
+   "scientific": "Pelophylax esculentus",
+   "de": "Teichfrosch",
+   "group": "Amphibian",
+   "aliases": [
+    "Pelophylax kl. esculentus",
+    "Rana esculenta"
+   ]
+  },
+  {
+   "scientific": "Pelophylax lessonae",
+   "de": "Kleiner Wasserfrosch",
+   "group": "Amphibian",
+   "aliases": [
+    "Rana lessonae"
+   ]
+  },
+  {
+   "scientific": "Pelophylax ridibundus",
+   "de": "Seefrosch",
+   "group": "Amphibian",
+   "aliases": [
+    "Rana ridibunda"
+   ]
+  },
+  {
+   "scientific": "Pelophylax spec.",
+   "de": "Wasserfrösche (unbestimmt)",
+   "group": "Amphibian",
+   "aliases": [
+    "Pelophylax",
+    "Wasserfrosch"
+   ]
+  },
+  {
+   "scientific": "Rana arvalis",
+   "de": "Moorfrosch",
+   "group": "Amphibian",
+   "aliases": []
+  },
+  {
+   "scientific": "Rana dalmatina",
+   "de": "Springfrosch",
+   "group": "Amphibian",
+   "aliases": []
+  },
+  {
+   "scientific": "Rana temporaria",
+   "de": "Grasfrosch",
+   "group": "Amphibian",
+   "aliases": []
+  },
+  {
+   "scientific": "Salamandra atra",
+   "de": "Alpensalamander",
+   "group": "Amphibian",
+   "aliases": []
+  },
+  {
+   "scientific": "Salamandra salamandra",
+   "de": "Feuersalamander",
+   "group": "Amphibian",
+   "aliases": []
+  },
+  {
+   "scientific": "Triturus cristatus",
+   "de": "Kammmolch",
+   "group": "Amphibian",
+   "aliases": []
+  },
+  {
+   "scientific": "Barbastella barbastellus",
+   "de": "Mopsfledermaus",
+   "group": "Bat",
+   "aliases": [
+    "Bbar",
+    "Barbastellus barbastellus"
+   ]
+  },
+  {
+   "scientific": "Eptesicus nilssonii",
+   "de": "Nordfledermaus",
+   "group": "Bat",
+   "aliases": [
+    "Enil",
+    "Eptesicus nilsonii"
+   ]
+  },
+  {
+   "scientific": "Eptesicus serotinus",
+   "de": "Breitflügelfledermaus",
+   "group": "Bat",
+   "aliases": [
+    "Eser"
+   ]
+  },
+  {
+   "scientific": "Hypsugo savii",
+   "de": "Alpenfledermaus",
+   "group": "Bat",
+   "aliases": []
+  },
+  {
+   "scientific": "Miniopterus schreibersii",
+   "de": "Langflügelfledermaus",
+   "group": "Bat",
+   "aliases": []
+  },
+  {
+   "scientific": "Myotini",
+   "de": "Myotis-Rufgruppe",
+   "group": "Bat",
+   "aliases": []
+  },
+  {
+   "scientific": "Myotis alcathoe",
+   "de": "Nymphenfledermaus",
+   "group": "Bat",
+   "aliases": [
+    "Malc"
+   ]
+  },
+  {
+   "scientific": "Myotis bechsteinii",
+   "de": "Bechsteinfledermaus",
+   "group": "Bat",
+   "aliases": [
+    "Mbec"
+   ]
+  },
+  {
+   "scientific": "Myotis brandtii",
+   "de": "Große Bartfledermaus",
+   "group": "Bat",
+   "aliases": [
+    "Brandtfledermaus",
+    "Mbra"
+   ]
+  },
+  {
+   "scientific": "Myotis dasycneme",
+   "de": "Teichfledermaus",
+   "group": "Bat",
+   "aliases": [
+    "Mdas"
+   ]
+  },
+  {
+   "scientific": "Myotis daubentonii",
+   "de": "Wasserfledermaus",
+   "group": "Bat",
+   "aliases": [
+    "Mdau"
+   ]
+  },
+  {
+   "scientific": "Myotis emarginatus",
+   "de": "Wimperfledermaus",
+   "group": "Bat",
+   "aliases": [
+    "Mema"
+   ]
+  },
+  {
+   "scientific": "Myotis myotis",
+   "de": "Großes Mausohr",
+   "group": "Bat",
+   "aliases": [
+    "Mmyo"
+   ]
+  },
+  {
+   "scientific": "Myotis mystacinus",
+   "de": "Kleine Bartfledermaus",
+   "group": "Bat",
+   "aliases": [
+    "Mmys"
+   ]
+  },
+  {
+   "scientific": "Myotis mystacinus/brandtii",
+   "de": "Bartfledermäuse",
+   "group": "Bat",
+   "aliases": [
+    "Myotis brandtii/mystacinus",
+    "Mbart",
+    "Mmysbra"
+   ]
+  },
+  {
+   "scientific": "Myotis nattereri",
+   "de": "Fransenfledermaus",
+   "group": "Bat",
+   "aliases": [
+    "Mnat"
+   ]
+  },
+  {
+   "scientific": "Myotis spec.",
+   "de": "Mausohrfledermäuse (unbestimmt)",
+   "group": "Bat",
+   "aliases": [
+    "Myotis",
+    "Myotis sp."
+   ]
+  },
+  {
+   "scientific": "Nyctaloid",
+   "de": "Nyctaloide Rufgruppe",
+   "group": "Bat",
+   "aliases": [
+    "Nyctaloide"
+   ]
+  },
+  {
+   "scientific": "Nyctalus lasiopterus",
+   "de": "Riesenabendsegler",
+   "group": "Bat",
+   "aliases": []
+  },
+  {
+   "scientific": "Nyctalus leisleri",
+   "de": "Kleiner Abendsegler",
+   "group": "Bat",
+   "aliases": [
+    "Nlei"
+   ]
+  },
+  {
+   "scientific": "Nyctalus noctula",
+   "de": "Großer Abendsegler",
+   "group": "Bat",
+   "aliases": [
+    "Nnoc"
+   ]
+  },
+  {
+   "scientific": "Nyctalus spec.",
+   "de": "Abendsegler (unbestimmt)",
+   "group": "Bat",
+   "aliases": [
+    "Nyctalus",
+    "Nyctalus sp."
+   ]
+  },
+  {
+   "scientific": "Pipistrelloid",
+   "de": "Pipistrelloide Rufgruppe",
+   "group": "Bat",
+   "aliases": [
+    "Pipistrelloide"
+   ]
+  },
+  {
+   "scientific": "Pipistrellus kuhlii",
+   "de": "Weißrandfledermaus",
+   "group": "Bat",
+   "aliases": []
+  },
+  {
+   "scientific": "Pipistrellus nathusii",
+   "de": "Rauhautfledermaus",
+   "group": "Bat",
+   "aliases": [
+    "Pnat"
+   ]
+  },
+  {
+   "scientific": "Pipistrellus pipistrellus",
+   "de": "Zwergfledermaus",
+   "group": "Bat",
+   "aliases": [
+    "Ppip"
+   ]
+  },
+  {
+   "scientific": "Pipistrellus pygmaeus",
+   "de": "Mückenfledermaus",
+   "group": "Bat",
+   "aliases": [
+    "Ppyg"
+   ]
+  },
+  {
+   "scientific": "Pipistrellus spec.",
+   "de": "Zwergfledermäuse (unbestimmt)",
+   "group": "Bat",
+   "aliases": [
+    "Pipistrellus",
+    "Pipistrellus sp."
+   ]
+  },
+  {
+   "scientific": "Plecotus auritus",
+   "de": "Braunes Langohr",
+   "group": "Bat",
+   "aliases": [
+    "Paur"
+   ]
+  },
+  {
+   "scientific": "Plecotus auritus/austriacus",
+   "de": "Langohren",
+   "group": "Bat",
+   "aliases": [
+    "Plecotus spec.",
+    "Plecotus sp.",
+    "Plecotus"
+   ]
+  },
+  {
+   "scientific": "Plecotus austriacus",
+   "de": "Graues Langohr",
+   "group": "Bat",
+   "aliases": [
+    "Paus"
+   ]
+  },
+  {
+   "scientific": "Plecotus macrobullaris",
+   "de": "Alpenlangohr",
+   "group": "Bat",
+   "aliases": []
+  },
+  {
+   "scientific": "Rhinolophus ferrumequinum",
+   "de": "Große Hufeisennase",
+   "group": "Bat",
+   "aliases": [
+    "Rfer"
+   ]
+  },
+  {
+   "scientific": "Rhinolophus hipposideros",
+   "de": "Kleine Hufeisennase",
+   "group": "Bat",
+   "aliases": [
+    "Rhip"
+   ]
+  },
+  {
+   "scientific": "Tadarida teniotis",
+   "de": "Bulldoggfledermaus",
+   "group": "Bat",
+   "aliases": []
+  },
+  {
+   "scientific": "Vespertilio murinus",
+   "de": "Zweifarbfledermaus",
+   "group": "Bat",
+   "aliases": [
+    "Vmur"
+   ]
+  },
+  {
+   "scientific": "Acanthis cabaret",
+   "de": "Alpenbirkenzeisig",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Acanthis hornemanni",
+   "de": "Polarbirkenzeisig",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Accipiter gentilis",
+   "de": "Habicht",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Accipiter nisus",
+   "de": "Sperber",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Acrocephalus arundinaceus",
+   "de": "Drosselrohrsänger",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Acrocephalus paludicola",
+   "de": "Seggenrohrsänger",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Acrocephalus palustris",
+   "de": "Sumpfrohrsänger",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Acrocephalus schoenobaenus",
+   "de": "Schilfrohrsänger",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Acrocephalus scirpaceus",
+   "de": "Teichrohrsänger",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Actitis hypoleucos",
+   "de": "Flussuferläufer",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Aegithalos caudatus",
+   "de": "Schwanzmeise",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Aegolius funereus",
+   "de": "Raufußkauz",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Aix galericulata",
+   "de": "Mandarinente",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Aix sponsa",
+   "de": "Brautente",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Alauda arvensis",
+   "de": "Feldlerche",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Alca torda",
+   "de": "Tordalk",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Alcedo atthis",
+   "de": "Eisvogel",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Alectoris graeca",
+   "de": "Steinhuhn",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Alle alle",
+   "de": "Krabbentaucher",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Alopochen aegyptiaca",
+   "de": "Nilgans",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Anas acuta",
+   "de": "Spießente",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Anas crecca",
+   "de": "Krickente",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Anas platyrhynchos",
+   "de": "Stockente",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Anser albifrons",
+   "de": "Blässgans",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Anser anser",
+   "de": "Graugans",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Anser brachyrhynchus",
+   "de": "Kurzschnabelgans",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Anser erythropus",
+   "de": "Zwerggans",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Anser fabalis",
+   "de": "Waldsaatgans",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Anser serrirostris",
+   "de": "Tundrasaatgans",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Anthus campestris",
+   "de": "Brachpieper",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Anthus cervinus",
+   "de": "Rotkehlpieper",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Anthus petrosus",
+   "de": "Strandpieper",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Anthus pratensis",
+   "de": "Wiesenpieper",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Anthus richardi",
+   "de": "Spornpieper",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Anthus spinoletta",
+   "de": "Bergpieper",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Anthus trivialis",
+   "de": "Baumpieper",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Apus apus",
+   "de": "Mauersegler",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Apus melba",
+   "de": "Alpensegler",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Aquila chrysaetos",
+   "de": "Steinadler",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Ardea alba",
+   "de": "Silberreiher",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Ardea cinerea",
+   "de": "Graureiher",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Ardea purpurea",
+   "de": "Purpurreiher",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Ardenna grisea",
+   "de": "Dunkelsturmtaucher",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Arenaria interpres",
+   "de": "Steinwälzer",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Asio flammeus",
+   "de": "Sumpfohreule",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Asio otus",
+   "de": "Waldohreule",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Athene noctua",
+   "de": "Steinkauz",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Aythya ferina",
+   "de": "Tafelente",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Aythya fuligula",
+   "de": "Reiherente",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Aythya marila",
+   "de": "Bergente",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Aythya nyroca",
+   "de": "Moorente",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Bombycilla garrulus",
+   "de": "Seidenschwanz",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Botaurus stellaris",
+   "de": "Rohrdommel",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Branta bernicla",
+   "de": "Ringelgans",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Branta canadensis",
+   "de": "Kanadagans",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Branta leucopsis",
+   "de": "Weißwangengans",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Branta ruficollis",
+   "de": "Rothalsgans",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Bubo bubo",
+   "de": "Uhu",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Bucephala clangula",
+   "de": "Schellente",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Burhinus oedicnemus",
+   "de": "Triel",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Buteo buteo",
+   "de": "Mäusebussard",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Buteo lagopus",
+   "de": "Raufußbussard",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Calcarius lapponicus",
+   "de": "Spornammer",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Calidris alba",
+   "de": "Sanderling",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Calidris alpina",
+   "de": "Alpenstrandläufer",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Calidris canutus",
+   "de": "Knutt",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Calidris falcinellus",
+   "de": "Sumpfläufer",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Calidris ferruginea",
+   "de": "Sichelstrandläufer",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Calidris maritima",
+   "de": "Meerstrandläufer",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Calidris minuta",
+   "de": "Zwergstrandläufer",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Calidris pugnax",
+   "de": "Kampfläufer",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Calidris temminckii",
+   "de": "Temminckstrandläufer",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Caprimulgus europaeus",
+   "de": "Nachtschwalbe",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Carduelis carduelis",
+   "de": "Stieglitz",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Carduelis citrinella",
+   "de": "Zitronenzeisig",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Carpodacus erythrinus",
+   "de": "Karmingimpel",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Cepphus grylle",
+   "de": "Gryllteiste",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Certhia brachydactyla",
+   "de": "Gartenbaumläufer",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Certhia familiaris",
+   "de": "Waldbaumläufer",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Charadrius alexandrinus",
+   "de": "Seeregenpfeifer",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Charadrius dubius",
+   "de": "Flussregenpfeifer",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Charadrius hiaticula",
+   "de": "Sandregenpfeifer",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Charadrius morinellus",
+   "de": "Mornellregenpfeifer",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Chlidonias hybrida",
+   "de": "Weißbart-Seeschwalbe",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Chlidonias leucopterus",
+   "de": "Weißflügel-Seeschwalbe",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Chlidonias niger",
+   "de": "Trauerseeschwalbe",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Chloris chloris",
+   "de": "Grünfink",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Chroicocephalus ridibundus",
+   "de": "Lachmöwe",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Ciconia ciconia",
+   "de": "Weißstorch",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Ciconia nigra",
+   "de": "Schwarzstorch",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Cinclus cinclus",
+   "de": "Wasseramsel",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Circus aeruginosus",
+   "de": "Rohrweihe",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Circus cyaneus",
+   "de": "Kornweihe",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Circus pygargus",
+   "de": "Wiesenweihe",
+   "group": "Bird",
+   "aliases": [
+    "Circus pyargus"
+   ]
+  },
+  {
+   "scientific": "Clanga pomarina",
+   "de": "Schreiadler",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Clangula hyemalis",
+   "de": "Eisente",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Coccothraustes coccothraustes",
+   "de": "Kernbeißer",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Columba livia",
+   "de": "Felsentaube",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Columba oenas",
+   "de": "Hohltaube",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Columba palumbus",
+   "de": "Ringeltaube",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Corvus corax",
+   "de": "Kolkrabe",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Corvus cornix",
+   "de": "Nebelkrähe",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Corvus corone",
+   "de": "Rabenkrähe",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Corvus frugilegus",
+   "de": "Saatkrähe",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Corvus monedula",
+   "de": "Dohle",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Coturnix coturnix",
+   "de": "Wachtel",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Crex crex",
+   "de": "Wachtelkönig",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Cuculus canorus",
+   "de": "Kuckuck",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Curruca communis",
+   "de": "Dorngrasmücke",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Curruca curruca",
+   "de": "Klappergrasmücke",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Curruca nisoria",
+   "de": "Sperbergrasmücke",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Cyanistes caeruleus",
+   "de": "Blaumeise",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Cygnus atratus",
+   "de": "Schwarzschwan",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Cygnus columbianus",
+   "de": "Zwergschwan",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Cygnus cygnus",
+   "de": "Singschwan",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Cygnus olor",
+   "de": "Höckerschwan",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Delichon urbicum",
+   "de": "Mehlschwalbe",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Dendrocopos leucotos",
+   "de": "Weißrückenspecht",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Dendrocopos major",
+   "de": "Buntspecht",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Dendrocoptes medius",
+   "de": "Mittelspecht",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Dryobates minor",
+   "de": "Kleinspecht",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Dryocopus martius",
+   "de": "Schwarzspecht",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Egretta garzetta",
+   "de": "Seidenreiher",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Emberiza calandra",
+   "de": "Grauammer",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Emberiza cia",
+   "de": "Zippammer",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Emberiza cirlus",
+   "de": "Zaunammer",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Emberiza citrinella",
+   "de": "Goldammer",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Emberiza hortulana",
+   "de": "Ortolan",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Emberiza schoeniclus",
+   "de": "Rohrammer",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Eremophila alpestris",
+   "de": "Ohrenlerche",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Erithacus rubecula",
+   "de": "Rotkehlchen",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Falco columbarius",
+   "de": "Merlin",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Falco peregrinus",
+   "de": "Wanderfalke",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Falco subbuteo",
+   "de": "Baumfalke",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Falco tinnunculus",
+   "de": "Turmfalke",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Falco vespertinus",
+   "de": "Rotfußfalke",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Ficedula albicollis",
+   "de": "Halsbandschnäpper",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Ficedula hypoleuca",
+   "de": "Trauerschnäpper",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Ficedula parva",
+   "de": "Zwergschnäpper",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Fringilla coelebs",
+   "de": "Buchfink",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Fringilla montifringilla",
+   "de": "Bergfink",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Fulica atra",
+   "de": "Blässhuhn",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Fulmarus glacialis",
+   "de": "Eissturmvogel",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Galerida cristata",
+   "de": "Haubenlerche",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Gallinago gallinago",
+   "de": "Bekassine",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Gallinula chloropus",
+   "de": "Teichhuhn",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Garrulus glandarius",
+   "de": "Eichelhäher",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Gavia arctica",
+   "de": "Prachttaucher",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Gavia immer",
+   "de": "Eistaucher",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Gavia stellata",
+   "de": "Sterntaucher",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Gelochelidon nilotica",
+   "de": "Lachseeschwalbe",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Geronticus eremita",
+   "de": "Waldrapp",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Glaucidium passerinum",
+   "de": "Sperlingskauz",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Grus grus",
+   "de": "Kranich",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Gypaetus barbatus",
+   "de": "Bartgeier",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Haematopus ostralegus",
+   "de": "Austernfischer",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Haliaeetus albicilla",
+   "de": "Seeadler",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Himantopus himantopus",
+   "de": "Stelzenläufer",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Hippolais icterina",
+   "de": "Gelbspötter",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Hippolais polyglotta",
+   "de": "Orpheusspötter",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Hirundo rustica",
+   "de": "Rauchschwalbe",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Hydrobates leucorhous",
+   "de": "Wellenläufer",
+   "group": "Bird",
+   "aliases": [
+    "Hydrobates leucorohus"
+   ]
+  },
+  {
+   "scientific": "Hydrocoloeus minutus",
+   "de": "Zwergmöwe",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Hydroprogne caspia",
+   "de": "Raubseeschwalbe",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Ichthyaetus melanocephalus",
+   "de": "Schwarzkopfmöwe",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Ixobrychus minutus",
+   "de": "Zwergdommel",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Jynx torquilla",
+   "de": "Wendehals",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Lagopus muta",
+   "de": "Alpenschneehuhn",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Lanius collurio",
+   "de": "Neuntöter",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Lanius excubitor",
+   "de": "Raubwürger",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Lanius senator",
+   "de": "Rotkopfwürger",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Larus argentatus",
+   "de": "Silbermöwe",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Larus cachinnans",
+   "de": "Steppenmöwe",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Larus canus",
+   "de": "Sturmmöwe",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Larus fuscus",
+   "de": "Heringsmöwe",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Larus marinus",
+   "de": "Mantelmöwe",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Larus michahellis",
+   "de": "Mittelmeermöwe",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Limosa lapponica",
+   "de": "Pfuhlschnepfe",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Limosa limosa",
+   "de": "Uferschnepfe",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Linaria cannabina",
+   "de": "Bluthänfling",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Linaria flavirostris",
+   "de": "Berghänfling",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Locustella fluviatilis",
+   "de": "Schlagschwirl",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Locustella luscinioides",
+   "de": "Rohrschwirl",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Locustella naevia",
+   "de": "Feldschwirl",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Lophophanes cristatus",
+   "de": "Haubenmeise",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Loxia curvirostra",
+   "de": "Fichtenkreuzschnabel",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Lullula arborea",
+   "de": "Heidelerche",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Luscinia luscinia",
+   "de": "Sprosser",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Luscinia megarhynchos",
+   "de": "Nachtigall",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Luscinia svecica",
+   "de": "Blaukehlchen",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Lymnocryptes minimus",
+   "de": "Zwergschnepfe",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Lyrurus tetrix",
+   "de": "Birkhuhn",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Mareca penelope",
+   "de": "Pfeifente",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Mareca strepera",
+   "de": "Schnatterente",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Melanitta fusca",
+   "de": "Samtente",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Melanitta nigra",
+   "de": "Trauerente",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Mergellus albellus",
+   "de": "Zwergsäger",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Mergus merganser",
+   "de": "Gänsesäger",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Mergus serrator",
+   "de": "Mittelsäger",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Merops apiaster",
+   "de": "Bienenfresser",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Milvus migrans",
+   "de": "Schwarzmilan",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Milvus milvus",
+   "de": "Rotmilan",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Monticola saxatilis",
+   "de": "Steinrötel",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Montifringilla nivalis",
+   "de": "Schneesperling",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Morus bassanus",
+   "de": "Basstölpel",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Motacilla alba",
+   "de": "Bachstelze",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Motacilla cinerea",
+   "de": "Gebirgsstelze",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Motacilla flava",
+   "de": "Schafstelze",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Muscicapa striata",
+   "de": "Grauschnäpper",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Netta rufina",
+   "de": "Kolbenente",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Nucifraga caryocatactes",
+   "de": "Tannenhäher",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Numenius arquata",
+   "de": "Brachvogel",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Numenius phaeopus",
+   "de": "Regenbrachvogel",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Nycticorax nycticorax",
+   "de": "Nachtreiher",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Oenanthe oenanthe",
+   "de": "Steinschmätzer",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Oriolus oriolus",
+   "de": "Pirol",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Otis tarda",
+   "de": "Großtrappe",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Pandion haliaetus",
+   "de": "Fischadler",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Panurus biarmicus",
+   "de": "Bartmeise",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Parus major",
+   "de": "Kohlmeise",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Passer domesticus",
+   "de": "Haussperling",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Passer montanus",
+   "de": "Feldsperling",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Perdix perdix",
+   "de": "Rebhuhn",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Periparus ater",
+   "de": "Tannenmeise",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Pernis apivorus",
+   "de": "Wespenbussard",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Phalacrocorax carbo",
+   "de": "Kormoran",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Phalaropus fulicarius",
+   "de": "Thorshühnchen",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Phalaropus lobatus",
+   "de": "Odinshühnchen",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Phasianus colchicus",
+   "de": "Jagdfasan",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Phoenicurus ochruros",
+   "de": "Hausrotschwanz",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Phoenicurus phoenicurus",
+   "de": "Gartenrotschwanz",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Phylloscopus bonelli",
+   "de": "Berglaubsänger",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Phylloscopus collybita",
+   "de": "Zilpzalp",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Phylloscopus inornatus",
+   "de": "Gelbbrauen-Laubsänger",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Phylloscopus sibilatrix",
+   "de": "Waldlaubsänger",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Phylloscopus trochiloides",
+   "de": "Grünlaubsänger",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Phylloscopus trochilus",
+   "de": "Fitis",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Pica pica",
+   "de": "Elster",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Picoides tridactylus",
+   "de": "Dreizehenspecht",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Picus canus",
+   "de": "Grauspecht",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Picus viridis",
+   "de": "Grünspecht",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Platalea leucorodia",
+   "de": "Löffler",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Plectrophenax nivalis",
+   "de": "Schneeammer",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Pluvialis apricaria",
+   "de": "Goldregenpfeifer",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Pluvialis squatarola",
+   "de": "Kiebitzregenpfeifer",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Podiceps auritus",
+   "de": "Ohrentaucher",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Podiceps cristatus",
+   "de": "Haubentaucher",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Podiceps grisegena",
+   "de": "Rothalstaucher",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Podiceps nigricollis",
+   "de": "Schwarzhalstaucher",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Poecile montanus",
+   "de": "Weidenmeise",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Poecile palustris",
+   "de": "Sumpfmeise",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Porzana porzana",
+   "de": "Tüpfelsumpfhuhn",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Prunella collaris",
+   "de": "Alpenbraunelle",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Prunella modularis",
+   "de": "Heckenbraunelle",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Psittacula krameri",
+   "de": "Halsbandsittich",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Ptyonoprogne rupestris",
+   "de": "Felsenschwalbe",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Pyrrhocorax graculus",
+   "de": "Alpendohle",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Pyrrhula pyrrhula",
+   "de": "Gimpel",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Rallus aquaticus",
+   "de": "Wasserralle",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Recurvirostra avosetta",
+   "de": "Säbelschnäbler",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Regulus ignicapilla",
+   "de": "Sommergoldhähnchen",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Regulus regulus",
+   "de": "Wintergoldhähnchen",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Remiz pendulinus",
+   "de": "Beutelmeise",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Rhea americana",
+   "de": "Nandu",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Riparia riparia",
+   "de": "Uferschwalbe",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Rissa tridactyla",
+   "de": "Dreizehenmöwe",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Saxicola rubetra",
+   "de": "Braunkehlchen",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Saxicola rubicola",
+   "de": "Schwarzkehlchen",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Scolopax rusticola",
+   "de": "Waldschnepfe",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Serinus serinus",
+   "de": "Girlitz",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Sitta europaea",
+   "de": "Kleiber",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Somateria mollissima",
+   "de": "Eiderente",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Spatula clypeata",
+   "de": "Löffelente",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Spatula querquedula",
+   "de": "Knäkente",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Spinus spinus",
+   "de": "Erlenzeisig",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Stercorarius longicaudus",
+   "de": "Falkenraubmöwe",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Stercorarius parasiticus",
+   "de": "Schmarotzerraubmöwe",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Stercorarius pomarinus",
+   "de": "Spatelraubmöwe",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Stercorarius skua",
+   "de": "Skua",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Sterna hirundo",
+   "de": "Flussseeschwalbe",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Sterna paradisaea",
+   "de": "Küstenseeschwalbe",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Sternula albifrons",
+   "de": "Zwergseeschwalbe",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Streptopelia decaocto",
+   "de": "Türkentaube",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Streptopelia turtur",
+   "de": "Turteltaube",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Strix aluco",
+   "de": "Waldkauz",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Strix uralensis",
+   "de": "Habichtskauz",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Sturnus vulgaris",
+   "de": "Star",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Sylvia atricapilla",
+   "de": "Mönchsgrasmücke",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Sylvia borin",
+   "de": "Gartengrasmücke",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Tachybaptus ruficollis",
+   "de": "Zwergtaucher",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Tadorna ferruginea",
+   "de": "Rostgans",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Tadorna tadorna",
+   "de": "Brandgans",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Tetrao urogallus",
+   "de": "Auerhuhn",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Tetrastes bonasia",
+   "de": "Haselhuhn",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Thalasseus sandvicensis",
+   "de": "Brandseeschwalbe",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Tichodroma muraria",
+   "de": "Mauerläufer",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Tringa erythropus",
+   "de": "Dunkelwasserläufer",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Tringa glareola",
+   "de": "Bruchwasserläufer",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Tringa nebularia",
+   "de": "Grünschenkel",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Tringa ochropus",
+   "de": "Waldwasserläufer",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Tringa stagnatilis",
+   "de": "Teichwasserläufer",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Tringa totanus",
+   "de": "Rotschenkel",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Troglodytes troglodytes",
+   "de": "Zaunkönig",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Turdus iliacus",
+   "de": "Rotdrossel",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Turdus merula",
+   "de": "Amsel",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Turdus philomelos",
+   "de": "Singdrossel",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Turdus pilaris",
+   "de": "Wacholderdrossel",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Turdus torquatus",
+   "de": "Ringdrossel",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Turdus viscivorus",
+   "de": "Misteldrossel",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Tyto alba",
+   "de": "Schleiereule",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Upupa epops",
+   "de": "Wiedehopf",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Uria aalge",
+   "de": "Trottellumme",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Vanellus vanellus",
+   "de": "Kiebitz",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Zapornia parva",
+   "de": "Kleinsumpfhuhn",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Zapornia pusilla",
+   "de": "Zwergsumpfhuhn",
+   "group": "Bird",
+   "aliases": []
+  },
+  {
+   "scientific": "Acheta domesticus",
+   "de": "Heimchen",
+   "group": "Cricket",
+   "aliases": []
+  },
+  {
+   "scientific": "Chorthippus albomarginatus",
+   "de": "Weißrandiger Grashüpfer",
+   "group": "Cricket",
+   "aliases": []
+  },
+  {
+   "scientific": "Chorthippus apricarius",
+   "de": "Feldgrashüpfer",
+   "group": "Cricket",
+   "aliases": []
+  },
+  {
+   "scientific": "Chorthippus biguttulus",
+   "de": "Nachtigall-Grashüpfer",
+   "group": "Cricket",
+   "aliases": []
+  },
+  {
+   "scientific": "Chorthippus brunneus",
+   "de": "Brauner Grashüpfer",
+   "group": "Cricket",
+   "aliases": []
+  },
+  {
+   "scientific": "Chorthippus dorsatus",
+   "de": "Wiesengrashüpfer",
+   "group": "Cricket",
+   "aliases": []
+  },
+  {
+   "scientific": "Chorthippus mollis",
+   "de": "Verkannter Grashüpfer",
+   "group": "Cricket",
+   "aliases": []
+  },
+  {
+   "scientific": "Chrysochraon dispar",
+   "de": "Große Goldschrecke",
+   "group": "Cricket",
+   "aliases": []
+  },
+  {
+   "scientific": "Conocephalus dorsalis",
+   "de": "Kurzflügelige Schwertschrecke",
+   "group": "Cricket",
+   "aliases": []
+  },
+  {
+   "scientific": "Conocephalus fuscus",
+   "de": "Langflügelige Schwertschrecke",
+   "group": "Cricket",
+   "aliases": [
+    "Conocephalus discolor"
+   ]
+  },
+  {
+   "scientific": "Decticus verrucivorus",
+   "de": "Warzenbeißer",
+   "group": "Cricket",
+   "aliases": []
+  },
+  {
+   "scientific": "Ephippiger diurnus",
+   "de": "Steppen-Sattelschrecke",
+   "group": "Cricket",
+   "aliases": [
+    "Ephippiger ephippiger"
+   ]
+  },
+  {
+   "scientific": "Euthystira brachyptera",
+   "de": "Kleine Goldschrecke",
+   "group": "Cricket",
+   "aliases": []
+  },
+  {
+   "scientific": "Gomphocerippus rufus",
+   "de": "Rote Keulenschrecke",
+   "group": "Cricket",
+   "aliases": []
+  },
+  {
+   "scientific": "Gryllotalpa gryllotalpa",
+   "de": "Maulwurfsgrille",
+   "group": "Cricket",
+   "aliases": []
+  },
+  {
+   "scientific": "Gryllus campestris",
+   "de": "Feldgrille",
+   "group": "Cricket",
+   "aliases": []
+  },
+  {
+   "scientific": "Leptophyes punctatissima",
+   "de": "Punktierte Zartschrecke",
+   "group": "Cricket",
+   "aliases": []
+  },
+  {
+   "scientific": "Meconema thalassinum",
+   "de": "Gemeine Eichenschrecke",
+   "group": "Cricket",
+   "aliases": []
+  },
+  {
+   "scientific": "Mecostethus parapleurus",
+   "de": "Lauchschrecke",
+   "group": "Cricket",
+   "aliases": []
+  },
+  {
+   "scientific": "Metrioptera brachyptera",
+   "de": "Kurzflügelige Beißschrecke",
+   "group": "Cricket",
+   "aliases": []
+  },
+  {
+   "scientific": "Myrmeleotettix maculatus",
+   "de": "Gefleckte Keulenschrecke",
+   "group": "Cricket",
+   "aliases": []
+  },
+  {
+   "scientific": "Nemobius sylvestris",
+   "de": "Waldgrille",
+   "group": "Cricket",
+   "aliases": []
+  },
+  {
+   "scientific": "Oecanthus pellucens",
+   "de": "Weinhähnchen",
+   "group": "Cricket",
+   "aliases": []
+  },
+  {
+   "scientific": "Oedipoda caerulescens",
+   "de": "Blauflügelige Ödlandschrecke",
+   "group": "Cricket",
+   "aliases": []
+  },
+  {
+   "scientific": "Omocestus haemorrhoidalis",
+   "de": "Rotleibiger Grashüpfer",
+   "group": "Cricket",
+   "aliases": []
+  },
+  {
+   "scientific": "Omocestus viridulus",
+   "de": "Bunter Grashüpfer",
+   "group": "Cricket",
+   "aliases": []
+  },
+  {
+   "scientific": "Phaneroptera falcata",
+   "de": "Gemeine Sichelschrecke",
+   "group": "Cricket",
+   "aliases": []
+  },
+  {
+   "scientific": "Pholidoptera griseoaptera",
+   "de": "Gewöhnliche Strauchschrecke",
+   "group": "Cricket",
+   "aliases": []
+  },
+  {
+   "scientific": "Platycleis albopunctata",
+   "de": "Westliche Beißschrecke",
+   "group": "Cricket",
+   "aliases": []
+  },
+  {
+   "scientific": "Pseudochorthippus parallelus",
+   "de": "Gemeiner Grashüpfer",
+   "group": "Cricket",
+   "aliases": [
+    "Chorthippus parallelus"
+   ]
+  },
+  {
+   "scientific": "Pteronemobius heydenii",
+   "de": "Sumpfgrille",
+   "group": "Cricket",
+   "aliases": []
+  },
+  {
+   "scientific": "Roeseliana roeselii",
+   "de": "Roesels Beißschrecke",
+   "group": "Cricket",
+   "aliases": [
+    "Metrioptera roeselii"
+   ]
+  },
+  {
+   "scientific": "Stenobothrus lineatus",
+   "de": "Heidegrashüpfer",
+   "group": "Cricket",
+   "aliases": []
+  },
+  {
+   "scientific": "Stethophyma grossum",
+   "de": "Sumpfschrecke",
+   "group": "Cricket",
+   "aliases": []
+  },
+  {
+   "scientific": "Tettigonia cantans",
+   "de": "Zwitscherschrecke",
+   "group": "Cricket",
+   "aliases": []
+  },
+  {
+   "scientific": "Tettigonia viridissima",
+   "de": "Grünes Heupferd",
+   "group": "Cricket",
+   "aliases": []
+  }
+ ]
+}

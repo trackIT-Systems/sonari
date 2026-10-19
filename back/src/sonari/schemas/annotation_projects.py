@@ -6,7 +6,7 @@ from uuid import UUID
 from pydantic import BaseModel
 
 from sonari.schemas.base import BaseSchema
-from sonari.schemas.tags import Tag
+from sonari.schemas.tags import Tag, TagScope
 
 if TYPE_CHECKING:
     from sonari.schemas.annotation_tasks import AnnotationTask
@@ -64,6 +64,15 @@ class AnnotationProject(BaseSchema):
     guided_tour_variant: GuidedTourVariant | None = None
     """bird or bat for guided tour templates and personal clones."""
 
+    tag_scope: TagScope = "auto"
+    """Which tags the project shows in the tag search."""
+
+    tag_group_id: int | None = None
+    """Tag group used when tag_scope is "group"."""
+
+    tag_preset_id: int | None = None
+    """Tag preset used when tag_scope is "preset"."""
+
     tags: Optional[list[Tag]] = None
     """Tags to be used throughout the annotation project."""
 
@@ -82,6 +91,15 @@ class AnnotationProjectUpdate(BaseModel):
 
     annotation_instructions: str | None = None
     """Project instructions for annotating."""
+
+    tag_scope: TagScope | None = None
+    """Which tags the project shows in the tag search."""
+
+    tag_group_id: int | None = None
+    """Tag group used when tag_scope is "group"."""
+
+    tag_preset_id: int | None = None
+    """Tag preset used when tag_scope is "preset"."""
 
 
 class GuidedTourEnsureRequest(BaseModel):

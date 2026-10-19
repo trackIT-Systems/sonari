@@ -69,6 +69,22 @@ class AnnotationProject(Base):
         index=True,
     )
 
+    tag_scope: orm.Mapped[str] = orm.mapped_column(default="auto")
+    """Which tags the project shows: "auto" (group detected from the
+    project name), "group", "preset" or "all"."""
+    tag_group_id: orm.Mapped[Optional[int]] = orm.mapped_column(
+        ForeignKey("tag_group.id", ondelete="SET NULL"),
+        default=None,
+        nullable=True,
+        index=True,
+    )
+    tag_preset_id: orm.Mapped[Optional[int]] = orm.mapped_column(
+        ForeignKey("tag_preset.id", ondelete="SET NULL"),
+        default=None,
+        nullable=True,
+        index=True,
+    )
+
     guided_tour_owner: orm.Mapped[Optional["User"]] = orm.relationship(
         init=False,
         repr=False,
