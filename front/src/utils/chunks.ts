@@ -27,12 +27,14 @@ function calculateChunksFromPixels({
   overlap,
   samplerate,
   chunkPixels,
+  decimation = 1,
 }: {
   duration: number;
   windowSize: number;
   overlap: number;
   samplerate: number;
   chunkPixels: number;
+  decimation?: number;
 }): Chunk[] {
   // Height of spectrogram = number of frequency bins
   const freqBins = windowSize / 2;
@@ -40,8 +42,8 @@ function calculateChunksFromPixels({
   // Calculate how many time bins we need to achieve target pixel count
   const timeBins = chunkPixels / freqBins;
   
-  // Duration of each hop between STFT windows
-  const hopSize = (1 - overlap) * (windowSize / samplerate);
+  // Duration of each image column (one STFT hop, times the decimation)
+  const hopSize = (1 - overlap) * (windowSize / samplerate) * decimation;
   
   // Duration covered by one chunk
   const chunkDuration = timeBins * hopSize;
@@ -88,9 +90,31 @@ export function calculateSpectrogramChunks(params: {
   windowSize: number;
   overlap: number;
   samplerate: number;
+  /** Each image column spans this many STFT hops (see `getDetailLevel`) */
+  decimation?: number;
 }): Chunk[] {
   const chunkPixels = SPECTROGRAM_CANVAS_DIMENSIONS.height * SPECTROGRAM_CANVAS_DIMENSIONS.height;
   return calculateChunksFromPixels({ ...params, chunkPixels });
+}
+
+/**
+ * Level of detail for a viewport: the image is loaded with 2^level STFT hops
+ * per column, the coarsest level that still gives at least one column per
+ * canvas pixel. Powers of two keep the level (and thus the chunk layout and
+ * cache) stable while zooming within a factor of two.
+ */
+export function getDetailLevel(params: {
+  viewportDuration: number;
+  canvasWidth: number;
+  windowSize: number;
+  overlap: number;
+  samplerate: number;
+}): number {
+  const { viewportDuration, canvasWidth, windowSize, overlap, samplerate } = params;
+  const hopSize = (1 - overlap) * (windowSize / samplerate);
+  if (!(hopSize > 0) || !(viewportDuration > 0) || !(canvasWidth > 0)) return 0;
+  const nativeColumns = viewportDuration / hopSize;
+  return Math.max(0, Math.floor(Math.log2(nativeColumns / canvasWidth)));
 }
 
 /**
@@ -136,6 +160,8 @@ export function calculateWaveformChunks(params: {
   windowSize: number;
   overlap: number;
   samplerate: number;
+  /** Each image column spans this many STFT hops (see `getDetailLevel`) */
+  decimation?: number;
 }): Chunk[] {
   // For waveforms, target ~2/3 canvas width chunks
   // Balance between progressive loading and minimizing HTTP request overhead

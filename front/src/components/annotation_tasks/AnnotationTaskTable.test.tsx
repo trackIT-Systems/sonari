@@ -2,6 +2,7 @@ import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-libra
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import useStore from "@/store";
 import AnnotationTaskTable from "@/components/annotation_tasks/AnnotationTaskTable";
 
 const push = vi.fn();
@@ -25,19 +26,26 @@ vi.mock("@/components/filters/FilterMenu", () => ({ default: () => null }));
 vi.mock("@/components/filters/FilterPresets", () => ({ default: () => null }));
 vi.mock("@/components/filters/FilterBar", () => ({ default: () => null }));
 vi.mock("@/components/lists/Pagination", () => ({ default: () => null }));
-vi.mock("@/components/annotation_tasks/AnnotationTaskSpectrogramPreview", () => ({
+vi.mock("@/components/annotation_tasks/AnnotationTaskSpectrogramPreview", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/components/annotation_tasks/AnnotationTaskSpectrogramPreview")>()),
   default: ({
     task,
     pinned,
     deferred,
     onTogglePin,
+    channel,
   }: {
     task: { id: number };
     pinned?: boolean;
     deferred?: boolean;
     onTogglePin?: () => void;
+    channel?: number | "mix" | null;
   }) => (
-    <div data-testid={`preview-${task.id}`} data-deferred={String(Boolean(deferred))}>
+    <div
+      data-testid={`preview-${task.id}`}
+      data-deferred={String(Boolean(deferred))}
+      data-channel={String(channel)}
+    >
       preview {task.id}
       <button type="button" onClick={onTogglePin}>
         {pinned ? "Pinned" : "Pin"}
@@ -53,7 +61,8 @@ const tasks = Array.from({ length: N }, (_, i) => ({
   recording_id: i + 1,
   start_time: 0,
   end_time: 1,
-  recording: { id: i + 1, path: `rec_${i + 1}.wav`, channels: 1, samplerate: 384000, duration: 10 },
+  // The last recording is mono, the others stereo
+  recording: { id: i + 1, path: `rec_${i + 1}.wav`, channels: i === N - 1 ? 1 : 2, samplerate: 384000, duration: 10 },
   tags: [],
   sound_event_tags: [],
   notes: [],
@@ -254,6 +263,66 @@ describe("loading the active preview", () => {
     press("p");
     press("ArrowDown");
     expect(preview(1)!.getAttribute("data-deferred")).toBe("false");
+  });
+});
+
+describe("preview channel", () => {
+  const channelOf = (id: number) => preview(id)!.getAttribute("data-channel");
+
+  it("c cycles the channel of all previews, starting from the saved one", () => {
+    renderTable();
+    clickRow(1);
+    press("p");
+    press("ArrowDown");
+    // null: the previews use the saved spectrogram channel (0)
+    expect(channelOf(2)).toBe("null");
+
+    press("c");
+    expect(channelOf(2)).toBe("1");
+    expect(channelOf(1)).toBe("1"); // the pinned preview follows
+
+    press("c");
+    expect(channelOf(2)).toBe("mix");
+
+    press("c");
+    expect(channelOf(2)).toBe("0");
+  });
+
+  it("c continues from Mix when the saved settings mix the channels", () => {
+    const before = useStore.getState().spectrogramSettings;
+    useStore.getState().setSpectrogramSettings({ ...before, channel: 0, mix_channels: true });
+    try {
+      renderTable();
+      clickRow(1);
+      press("c");
+      expect(channelOf(1)).toBe("0");
+    } finally {
+      useStore.getState().setSpectrogramSettings(before);
+    }
+  });
+
+  it("c does nothing without an open preview", () => {
+    renderTable();
+    clickRow(1);
+    clickRow(1); // closes the current row's preview
+    press("c");
+    clickRow(1);
+    expect(channelOf(1)).toBe("null");
+  });
+
+  it("c does nothing on a mono recording", () => {
+    renderTable();
+    clickRow(N);
+    press("c");
+    expect(channelOf(N)).toBe("null");
+  });
+
+  it("does not change the saved spectrogram settings", () => {
+    const before = useStore.getState().spectrogramSettings;
+    renderTable();
+    clickRow(1);
+    press("c");
+    expect(useStore.getState().spectrogramSettings).toBe(before);
   });
 });
 

@@ -8,6 +8,9 @@ const RETRY_BASE_DELAY_MS = 500;
 
 type ChunkStatus = "loading" | "ready" | "error";
 
+const NO_IMAGES = new Map<number, HTMLImageElement>();
+const NO_STATUSES = new Map<number, ChunkStatus>();
+
 export interface ChunkWithImage {
   chunk: Chunk;
   image: HTMLImageElement | null;
@@ -55,6 +58,10 @@ export default function useChunkImageLoader({
   const [statuses, setStatuses] = useState<Map<number, ChunkStatus>>(
     () => new Map(),
   );
+  // Layout and key the state above belongs to. Until the reset effect has run
+  // for a new layout, the state is keyed by indices of the old one and must
+  // not be read (it would draw old images at new positions).
+  const [stateFor, setStateFor] = useState({ allChunks, resetKey });
 
   const loadRef = useRef(load);
   loadRef.current = load;
@@ -180,6 +187,7 @@ export default function useChunkImageLoader({
     failuresRef.current = new Map();
     setImages(new Map());
     setStatuses(new Map());
+    setStateFor({ allChunks, resetKey });
   }, [resetKey, allChunks, cancelChunk, pendingIndices]);
 
   // Re-prioritise the queue whenever the viewport changes.
@@ -220,9 +228,14 @@ export default function useChunkImageLoader({
     };
   }, []);
 
+  const isCurrent =
+    stateFor.allChunks === allChunks && Object.is(stateFor.resetKey, resetKey);
+  const currentImages = isCurrent ? images : NO_IMAGES;
+  const currentStatuses = isCurrent ? statuses : NO_STATUSES;
+
   const allVisibleLoaded =
     visibleChunks.length > 0 &&
-    visibleChunks.every((chunk) => statuses.get(chunk.index) === "ready");
+    visibleChunks.every((chunk) => currentStatuses.get(chunk.index) === "ready");
 
   useEffect(() => {
     if (allVisibleLoaded) onAllVisibleLoaded?.();
@@ -233,22 +246,65 @@ export default function useChunkImageLoader({
   const chunksWithImages: ChunkWithImage[] = useMemo(
     () =>
       allChunks
-        .filter((chunk) => images.has(chunk.index))
+        .filter((chunk) => currentImages.has(chunk.index))
         .map((chunk) => ({
           chunk,
-          image: images.get(chunk.index) ?? null,
+          image: currentImages.get(chunk.index) ?? null,
           isLoading: false,
           isError: false,
         })),
-    [allChunks, images],
+    [allChunks, currentImages],
   );
 
   return {
     chunks: chunksWithImages,
     /** True while any visible chunk is still missing. */
     isLoading: enabled && visibleChunks.length > 0 && !allVisibleLoaded,
-    isError: visibleChunks.some((chunk) => statuses.get(chunk.index) === "error"),
+    isError: visibleChunks.some((chunk) => currentStatuses.get(chunk.index) === "error"),
   };
+}
+
+/**
+ * Images of earlier detail levels kept on screen (underneath) until the
+ * current level has loaded. Bounded to cap the decoded image memory.
+ */
+const MAX_FALLBACK_CHUNKS = 48;
+
+/**
+ * Keeps the chunks of earlier detail levels as a backdrop while the current
+ * level loads, so zooming never shows blank chunks. The backdrop is dropped as
+ * soon as the current level is complete, or when `resetKey` changes (images
+ * rendered with old parameters must not be shown).
+ */
+export function useDetailLevelFallback({
+  level,
+  resetKey,
+  chunks,
+  isLoading,
+}: {
+  level: number;
+  resetKey: unknown;
+  chunks: ChunkWithImage[];
+  isLoading: boolean;
+}): ChunkWithImage[] {
+  const fallbackRef = useRef<ChunkWithImage[]>([]);
+  const previousRef = useRef({ level, resetKey, chunks });
+  const previous = previousRef.current;
+  if (!Object.is(previous.resetKey, resetKey)) {
+    fallbackRef.current = [];
+  } else if (previous.level !== level) {
+    fallbackRef.current = [...fallbackRef.current, ...previous.chunks].slice(
+      -MAX_FALLBACK_CHUNKS,
+    );
+  }
+  previousRef.current = { level, resetKey, chunks };
+  if (!isLoading) fallbackRef.current = [];
+
+  const fallback = fallbackRef.current;
+  return useMemo(
+    () => (fallback.length > 0 ? [...fallback, ...chunks] : chunks),
+    [fallback, chunks],
+  );
 }
 
 /** Visible chunks first, each group ordered by distance to the viewport centre. */

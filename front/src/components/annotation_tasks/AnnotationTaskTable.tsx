@@ -29,8 +29,12 @@ import Table from "@/components/tables/Table";
 import Pagination from "@/components/lists/Pagination";
 import ShortcutHelper from "@/components/ShortcutHelper";
 import { getScrollParent } from "@/utils/focus";
-import { ANNOTATE_SELECTION_SHORTCUT, PIN_PREVIEW_SHORTCUT, TASK_TABLE_SHORTCUTS, LIST_OVERVIEW_DOWN_SHORTCUT, SEARCH_BAR_LEAVE_SHORTCUT, FILTER_POPOVER_SHORTCUT } from "@/utils/keyboard";
-import AnnotationTaskSpectrogramPreview from "@/components/annotation_tasks/AnnotationTaskSpectrogramPreview";
+import { ANNOTATE_SELECTION_SHORTCUT, PIN_PREVIEW_SHORTCUT, PREVIEW_CHANNEL_SHORTCUT, TASK_TABLE_SHORTCUTS, LIST_OVERVIEW_DOWN_SHORTCUT, SEARCH_BAR_LEAVE_SHORTCUT, FILTER_POPOVER_SHORTCUT } from "@/utils/keyboard";
+import AnnotationTaskSpectrogramPreview, {
+  nextPreviewChannel,
+  type PreviewChannel,
+} from "@/components/annotation_tasks/AnnotationTaskSpectrogramPreview";
+import useStore from "@/store";
 import { findTemporallyRelatedTasks } from "@/utils/temporalClusters";
 import { emitGuidedTourEvent } from "@/components/workshop/guidedTour/events";
 import Button from "../Button";
@@ -423,6 +427,18 @@ export default function AnnotationTaskTable({
     [updatePinned],
   );
 
+  // Channel shown in all previews (null: the saved spectrogram channel). Kept
+  // apart from the spectrogram settings, so switching it here changes nothing else.
+  const [previewChannel, setPreviewChannelState] = useState<PreviewChannel | null>(null);
+  const previewChannelRef = useRef<PreviewChannel | null>(null);
+  const setPreviewChannel = useCallback((channel: PreviewChannel) => {
+    previewChannelRef.current = channel;
+    setPreviewChannelState(channel);
+  }, []);
+  const savedSettings = useStore((state) => state.spectrogramSettings);
+  const savedChannelRef = useRef<PreviewChannel>(0);
+  savedChannelRef.current = savedSettings.mix_channels ? "mix" : savedSettings.channel;
+
   const activeTaskId =
     activeOpen && typeof focusedElement === "number" && focusedElement >= 0
       ? annotationTasks.items[focusedElement]?.id ?? null
@@ -488,6 +504,7 @@ export default function AnnotationTaskTable({
   // current row. It only reads refs, so it is registered once and never stale.
   //   ArrowUp / ArrowDown  move the cursor (its preview follows, the page scrolls)
   //   p                    pin / unpin the current row's preview
+  //   c                    cycle the channel shown in the previews
   //   Shift (tap)          tick / untick the checkbox of the current row
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
@@ -526,6 +543,16 @@ export default function AnnotationTaskTable({
         return;
       }
 
+      if (event.key === PREVIEW_CHANNEL_SHORTCUT && !event.shiftKey) {
+        const previewOpen = activeOpenRef.current || pinnedRef.current.includes(current.id);
+        const channels = current.recording?.channels ?? 1;
+        if (!previewOpen || channels < 2) return;
+        // Continue from the channel the current row's preview shows
+        const shown = previewChannelRef.current ?? savedChannelRef.current;
+        setPreviewChannel(nextPreviewChannel(shown, channels));
+        return;
+      }
+
       if (event.key === "Shift" && !event.repeat) {
         const previewOpen = activeOpenRef.current || pinnedRef.current.includes(current.id);
         if (!previewOpen) return;
@@ -540,7 +567,7 @@ export default function AnnotationTaskTable({
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [moveCursorTo, setFocusedElement, togglePin, handleRowSelectionChange]);
+  }, [moveCursorTo, setFocusedElement, togglePin, handleRowSelectionChange, setPreviewChannel]);
 
   const renderExpandedRow = useCallback(
     (task: AnnotationTask) => {
@@ -552,10 +579,12 @@ export default function AnnotationTaskTable({
           pinned={pinned}
           deferred={!pinned && !activeSettled}
           onTogglePin={() => togglePin(task.id)}
+          channel={previewChannel}
+          onChannelChange={setPreviewChannel}
         />
       );
     },
-    [pinnedIds, activeTaskId, activeSettled, togglePin],
+    [pinnedIds, activeTaskId, activeSettled, togglePin, previewChannel, setPreviewChannel],
   );
 
   if (annotationTasks.isLoading || annotationTasks.data == null) {

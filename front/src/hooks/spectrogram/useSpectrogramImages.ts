@@ -1,13 +1,18 @@
 import { useCallback, useMemo } from "react";
 import api from "@/app/api";
+import { SPECTROGRAM_CANVAS_DIMENSIONS } from "@/constants";
 import { spectrogramCache } from "@/utils/spectrogram_cache";
 import {
   calculateSpectrogramChunks,
   getVisibleChunks,
   getChunksToLoad,
+  getDetailLevel,
   type Chunk,
 } from "@/utils/chunks";
-import useChunkImageLoader, { blobToImage } from "./useChunkImageLoader";
+import useChunkImageLoader, {
+  blobToImage,
+  useDetailLevelFallback,
+} from "./useChunkImageLoader";
 
 import type {
   AnnotationTask,
@@ -23,7 +28,12 @@ import type {
 const MAX_CONCURRENT_SPECTROGRAM_REQUESTS = 3;
 
 /**
- * Hook to manage loading of multiple spectrogram chunks with viewport-aware lazy loading
+ * Hook to manage loading of multiple spectrogram chunks with viewport-aware lazy loading.
+ *
+ * Chunks are loaded at a level of detail matching the viewport: zoomed out,
+ * each image column spans several STFT hops (pooled on the backend), so the
+ * number of requests stays proportional to the canvas width rather than the
+ * visible duration.
  */
 export default function useSpectrogramImages({
   task,
@@ -32,6 +42,7 @@ export default function useSpectrogramImages({
   parameters,
   withSpectrogram,
   onAllSegmentsLoaded,
+  canvasWidth = SPECTROGRAM_CANVAS_DIMENSIONS.width,
 }: {
   task: AnnotationTask;
   samplerate: number;
@@ -39,27 +50,38 @@ export default function useSpectrogramImages({
   parameters: SpectrogramParameters;
   withSpectrogram: boolean;
   onAllSegmentsLoaded?: () => void;
+  canvasWidth?: number;
 }) {
-  // Calculate all chunks for this recording
+  const windowSize = parameters.window_size_samples;
+  const overlap = parameters.overlap_percent / 100;
+
+  const level = getDetailLevel({
+    viewportDuration: window.time.max - window.time.min,
+    canvasWidth,
+    windowSize,
+    overlap,
+    samplerate,
+  });
+  const decimation = 2 ** level;
+
+  // Calculate all chunks for this recording at the current level of detail
   const allChunks = useMemo(() => {
     if (!withSpectrogram) return [];
 
-    const duration = task.end_time - task.start_time;
-    const windowSize = parameters.window_size_samples;
-    const overlap = parameters.overlap_percent / 100;
-
     return calculateSpectrogramChunks({
-      duration,
+      duration: task.end_time - task.start_time,
       windowSize,
       overlap,
       samplerate,
+      decimation,
     });
   }, [
     task.start_time,
     task.end_time,
-    parameters.window_size_samples,
-    parameters.overlap_percent,
+    windowSize,
+    overlap,
     samplerate,
+    decimation,
     withSpectrogram,
   ]);
 
@@ -88,26 +110,38 @@ export default function useSpectrogramImages({
         min: chunk.buffer.min + taskStartTime,
         max: chunk.buffer.max + taskStartTime,
       };
+      // At coarser levels let the backend reduce the columns to what is drawn.
+      const columnDuration = (1 - overlap) * (windowSize / samplerate) * decimation;
+      const requestParameters =
+        decimation > 1
+          ? {
+              ...parameters,
+              max_columns: Math.max(
+                1,
+                Math.round((segment.max - segment.min) / columnDuration),
+              ),
+            }
+          : parameters;
       return spectrogramCache.getOrLoad(
         recordingId,
         { time: segment, freq: { min: 0, max: samplerate / 2 } },
-        parameters,
+        requestParameters,
         async () =>
           blobToImage(
             await api.spectrograms.getBlob({
               recording_id: recordingId,
               segment,
-              parameters,
+              parameters: requestParameters,
               signal,
             }),
           ),
         signal,
       );
     },
-    [recordingId, taskStartTime, samplerate, parameters],
+    [recordingId, taskStartTime, samplerate, parameters, windowSize, overlap, decimation],
   );
 
-  return useChunkImageLoader({
+  const loaded = useChunkImageLoader({
     allChunks,
     visibleChunks,
     chunksToLoad,
@@ -117,4 +151,14 @@ export default function useSpectrogramImages({
     maxConcurrent: MAX_CONCURRENT_SPECTROGRAM_REQUESTS,
     onAllVisibleLoaded: onAllSegmentsLoaded,
   });
+
+  // Keep what was on screen until the new level of detail has loaded
+  const chunks = useDetailLevelFallback({
+    level,
+    resetKey: parameters,
+    chunks: loaded.chunks,
+    isLoading: loaded.isLoading,
+  });
+
+  return { ...loaded, chunks };
 }

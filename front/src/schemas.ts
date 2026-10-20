@@ -440,6 +440,8 @@ export const SpectrogramParametersSchema = z
       .positive()
       .default(DEFAULT_OVERLAP_PERCENT),
     window: z.string().default(DEFAULT_WINDOW),
+    /** Caps the time columns by widening the hop; used by small previews */
+    max_columns: z.coerce.number().int().positive().optional(),
     scale: z.enum(["amplitude", "power", "dB"]).default(DEFAULT_SCALE),
     clamp: z.boolean().default(true),
     min_dB: z.coerce.number().nonpositive().gte(MIN_DB).default(-140),
@@ -450,6 +452,10 @@ export const SpectrogramParametersSchema = z
     pcen: z.boolean().default(false),
     cmap: z.string().default(DEFAULT_CMAP),
     gamma: z.coerce.number().positive().default(2),
+    /** Caps the image height (downscaled server side); used by small previews */
+    max_rows: z.coerce.number().int().positive().optional(),
+    /** Request a lossy (JPEG) image: much smaller, fine for previews */
+    lossy: z.boolean().optional(),
     freqLines: z
       .array(z.coerce.number().int().nonnegative())
       .default([]),

@@ -1,4 +1,4 @@
-import { act, renderHook, waitFor } from "@testing-library/react";
+import { act, cleanup, renderHook, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { DEFAULT_SPECTROGRAM_PARAMETERS } from "@/api/spectrograms";
@@ -123,6 +123,9 @@ beforeEach(() => {
 });
 
 afterEach(async () => {
+  // Unmount the previous test's hooks: they share the request mock and the
+  // cache, and their pending loads would be joined by the next test.
+  cleanup();
   // Settle leftovers so in-flight cache entries don't leak between tests.
   for (const r of pending.splice(0)) {
     r.reject(new Error("test cleanup"));
@@ -202,6 +205,53 @@ describe("useSpectrogramImages", () => {
     await waitFor(() =>
       expect(result.current.chunks.map((c) => c.chunk.index)).toContain(0),
     );
+  });
+
+  it("loads coarser chunks when zoomed out, so a few requests cover the view", async () => {
+    // 60 s at 1 ms hops is 60000 columns for a 1000 px canvas: level 5 (32 hops per column).
+    renderImages(win(0, 60));
+    await waitFor(() => expect(pending.length).toBeGreaterThan(0));
+    const requests = [...pending];
+    for (const r of requests) {
+      const columns = (r.segment.max - r.segment.min) / 0.032;
+      expect(r.parameters.max_columns).toBe(Math.round(columns));
+    }
+    // Each chunk spans 32x the time of a full resolution chunk (0.576 s).
+    expect(requests[0].segment.max - requests[0].segment.min).toBeGreaterThan(16);
+  });
+
+  it("requests full resolution chunks when zoomed in", async () => {
+    renderImages(win(0, 1));
+    await waitFor(() => expect(pending.length).toBeGreaterThan(0));
+    for (const r of pending) {
+      expect(r.parameters.max_columns).toBeUndefined();
+    }
+  });
+
+  it("keeps the previous level on screen until the new level has loaded", async () => {
+    const { result, rerender } = renderImages(win(0, 1));
+    await waitFor(() => expect(pending.length).toBeGreaterThan(0));
+    await act(async () => {
+      resolveAll();
+    });
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+    const before = result.current.chunks.map((c) => c.image);
+    expect(before.length).toBeGreaterThan(0);
+
+    rerender({ window: win(0, 60), parameters: PARAMS });
+    await waitFor(() => expect(pending.length).toBeGreaterThan(0));
+    expect(result.current.isLoading).toBe(true);
+    const shown = result.current.chunks.map((c) => c.image);
+    expect(shown).toEqual(expect.arrayContaining(before));
+
+    // Once the coarse level is in, the backdrop is dropped.
+    await waitFor(() => {
+      resolveAll();
+      expect(result.current.isLoading).toBe(false);
+    });
+    for (const image of before) {
+      expect(result.current.chunks.map((c) => c.image)).not.toContain(image);
+    }
   });
 
   it("does not show images rendered with old parameters after a parameter change", async () => {

@@ -1,10 +1,13 @@
 """REST API routes for spectrograms."""
 
 import base64
+from pathlib import Path
 from typing import Annotated
 
+import anyio
 from fastapi import Depends, Query, Response
 from fastapi.responses import JSONResponse
+from PIL.Image import Resampling
 
 from sonari import api, schemas
 from sonari.core import images
@@ -14,6 +17,44 @@ from sonari.routes.dependencies.auth import create_authenticated_router
 __all__ = ["spectrograms_router"]
 
 spectrograms_router = create_authenticated_router()
+
+
+def _render_spectrogram(
+    recording: schemas.Recording,
+    start_time: float,
+    end_time: float,
+    audio_parameters: schemas.AudioParameters,
+    spectrogram_parameters: schemas.SpectrogramParameters,
+    audio_dir: Path,
+) -> tuple[bytes, int, str]:
+    """Compute a spectrogram and encode it as image bytes."""
+    data = api.compute_spectrogram(
+        recording,
+        start_time,
+        end_time,
+        audio_parameters,
+        spectrogram_parameters,
+        audio_dir=audio_dir,
+    )
+
+    image = images.array_to_image(
+        data,
+        cmap=spectrogram_parameters.cmap,
+        gamma=spectrogram_parameters.gamma,
+    )
+
+    if spectrogram_parameters.overlap_percent == 1:
+        image = image.resize((1000, image.height))
+
+    max_rows = spectrogram_parameters.max_rows
+    if max_rows is not None and image.height > max_rows:
+        image = image.resize((image.width, max_rows), Resampling.BOX)
+
+    buffer, buffer_size, fmt = images.image_to_buffer(
+        image,
+        fmt="jpeg" if spectrogram_parameters.lossy else "webp",
+    )
+    return buffer.read(), buffer_size, fmt
 
 
 @spectrograms_router.get(
@@ -70,26 +111,17 @@ async def get_spectrogram(
     # Close session BEFORE expensive computation
     await session.close()
 
-    data = api.compute_spectrogram(
+    # The computation is CPU bound and synchronous: run it in a worker thread so
+    # it does not block the event loop (and every other request on this worker).
+    raw, buffer_size, fmt = await anyio.to_thread.run_sync(
+        _render_spectrogram,
         recording,
         start_time,
         end_time,
         audio_parameters,
         spectrogram_parameters,
-        audio_dir=settings.audio_dir,
+        settings.audio_dir,
     )
-
-    image = images.array_to_image(
-        data,
-        cmap=spectrogram_parameters.cmap,
-        gamma=spectrogram_parameters.gamma,
-    )
-
-    if spectrogram_parameters.overlap_percent == 1:
-        image = image.resize((1000, image.height))
-
-    buffer, buffer_size, fmt = images.image_to_buffer(image)
-    raw = buffer.read()
     media_type = f"image/{fmt}"
 
     if grafana_json:

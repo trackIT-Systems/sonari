@@ -141,6 +141,8 @@ export const NAVIGATE_FTH_ELEMENT_SHORTCUT = "9";
 export const NAVIGATE_STH_ELEMENT_SHORTCUT = "0";
 export const FILTER_POPOVER_SHORTCUT = "f";
 export const PIN_PREVIEW_SHORTCUT = "p";
+/** Tasks table: cycle the channel shown in the spectrogram previews */
+export const PREVIEW_CHANNEL_SHORTCUT = "c";
 /** Tasks table: annotate the ticked tasks (7 opens Annotate for the whole filter). */
 export const ANNOTATE_SELECTION_SHORTCUT = NAVIGATE_FOT_ELEMENT_SHORTCUT;
 
@@ -454,6 +456,11 @@ export const TASK_TABLE_SHORTCUTS: KeyShortcut[] = [
         label: "Pin preview",
         shortcut: PIN_PREVIEW_SHORTCUT,
         description: "Keep the current row's preview open while you move on, to compare tasks. Press again (or click the pin) to unpin. Up to 5 pins; the oldest is dropped.",
+    },
+    {
+        label: "Preview channel",
+        shortcut: PREVIEW_CHANNEL_SHORTCUT,
+        description: "Cycle the channel shown in the spectrogram previews of multi-channel recordings: each channel, then all mixed (Mix). Or click a button on the preview. Applies to all previews; your spectrogram settings stay unchanged.",
     },
     {
         label: "Select by dragging",

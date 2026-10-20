@@ -111,7 +111,8 @@ def select_audio_channel(
         if spectrogram_parameters.channel < available_channels
         else 0
     )
-    return wav[dict(channel=[channel_to_use])]
+    # A slice returns a view; indexing with a list would copy the whole clip.
+    return wav.isel({channel_dim: slice(channel_to_use, channel_to_use + 1)})
 
 
 BIT_DEPTH_MAP: dict[str, int] = {
