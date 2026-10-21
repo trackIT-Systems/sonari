@@ -73,6 +73,13 @@ def _fixture_dict(folder: str, wrong_tag: str) -> dict:
     }
 
 
+def _without_hashes(data: dict) -> dict:
+    """Export adds each recording's md5; the hand-written fixtures have none."""
+    for rec in data["recordings"]:
+        assert rec.pop("hash")
+    return data
+
+
 def _setup_audio(audio_root: Path) -> str:
     folder = f"tour-{uuid.uuid4().hex[:8]}"
     _write_wav(audio_root / folder / "a.wav")
@@ -94,7 +101,10 @@ async def test_import_then_export_round_trips(db_session: AsyncSession, audio_ro
     assert result.warnings == []
 
     exported = await export_template_fixture(db_session, result.template_id, "bat")
-    assert exported.model_dump(mode="json") == fixture.model_dump(mode="json")
+    expected = fixture.model_dump(mode="json")
+    for rec in expected["recordings"]:
+        del rec["hash"]
+    assert _without_hashes(exported.model_dump(mode="json")) == expected
 
 
 @pytest.mark.asyncio
@@ -173,6 +183,54 @@ async def test_import_reuses_recording_registered_under_other_path(db_session: A
 
 
 @pytest.mark.asyncio
+async def test_import_finds_recording_by_fixture_hash_when_audio_lives_elsewhere(
+    db_session: AsyncSession, audio_root: Path
+):
+    folder = f"tour-{uuid.uuid4().hex[:8]}"
+    elsewhere = audio_root / f"elsewhere-{uuid.uuid4().hex[:8]}"
+    _write_wav(elsewhere / "a.wav")
+    _write_wav(elsewhere / "b.wav")
+    existing = [
+        await api.recordings.create(db_session, path=elsewhere / name, audio_dir=audio_root)
+        for name in ("a.wav", "b.wav")
+    ]
+    await db_session.commit()
+
+    data = _fixture_dict(folder, "is wrong")
+    for rec, recording in zip(data["recordings"], existing):
+        rec["hash"] = recording.hash
+    fixture = GuidedTourFixture.model_validate(data)
+    assert not (audio_root / folder).exists()
+
+    result = await import_template_fixture(db_session, fixture, audio_dir=audio_root)
+    await db_session.commit()
+
+    assert (result.tasks, result.registered_recordings) == (3, 0)
+    assert sum("is already registered as" in w for w in result.warnings) == 2
+    recording_ids = (
+        await db_session.execute(
+            select(models.AnnotationTask.recording_id)
+            .where(models.AnnotationTask.annotation_project_id == result.template_id)
+            .order_by(models.AnnotationTask.id),
+        )
+    ).scalars().all()
+    assert recording_ids == [existing[0].id, existing[0].id, existing[1].id]
+
+
+@pytest.mark.asyncio
+async def test_import_fails_when_audio_is_missing_and_hash_is_unknown(db_session: AsyncSession, audio_root: Path):
+    folder = f"tour-{uuid.uuid4().hex[:8]}"
+    _write_wav(audio_root / folder / "a.wav")
+    data = _fixture_dict(folder, "is wrong")
+    data["recordings"][1]["hash"] = uuid.uuid4().hex
+    fixture = GuidedTourFixture.model_validate(data)
+
+    with pytest.raises(ValueError, match="b.wav"):
+        await import_template_fixture(db_session, fixture, audio_dir=audio_root)
+    await db_session.rollback()
+
+
+@pytest.mark.asyncio
 async def test_import_reuses_dataset_with_same_name_and_other_audio_dir(db_session: AsyncSession, audio_root: Path):
     folder = _setup_audio(audio_root)
     other_dir = audio_root / f"elsewhere-{uuid.uuid4().hex[:8]}"
@@ -231,7 +289,10 @@ async def test_cli_import_dry_run_then_import_then_export(
         test_settings, parse_args(["export", "--template", "--variant", "bat", "-o", str(out_path)])
     ) == 0
     exported = json.loads(out_path.read_text())
-    assert exported == GuidedTourFixture.model_validate_json(fixture_path.read_text()).model_dump(mode="json")
+    expected = GuidedTourFixture.model_validate_json(fixture_path.read_text()).model_dump(mode="json")
+    for rec in expected["recordings"]:
+        del rec["hash"]
+    assert _without_hashes(exported) == expected
 
 
 @pytest.mark.asyncio

@@ -114,9 +114,14 @@
             }
           },
           {
+            "target": "task-table",
+            "title": "Tick rows yourself",
+            "hint": "“All N” takes every filtered recording. To take only some, tick them: click a row's checkbox, or move through the rows with `↓` and `↑` (the preview opens) and tap `Shift` to tick or untick the current row. Dragging over several rows ticks them all at once. `Esc` clears the selection."
+          },
+          {
             "target": "tasks-bulk-bar",
             "title": "Social calls",
-            "hint": "Now the same for social calls: include “type: social-call” instead of the feeding buzz (7 recordings). Click “All 7”, or tick only the recordings without a badge yet: one of them holds a feeding buzz too and is accepted already. Use “Add tag to tagged” (`t`) with “type: social-call” and “species: Pipistrellus pipistrellus”, then press `1` (Accepted). The selection stays after a tag action, so the status goes to the same recordings. Recordings that are accepted already are skipped.",
+            "hint": "Now the same for social calls: include “type: social-call” instead of the feeding buzz (7 recordings). Tick the 6 recordings without a badge yet (one holds a feeding buzz too and is accepted already), or simply click “All 7”: accepted recordings are skipped. Use “Add tag to tagged” (`t`) with “type: social-call” and “species: Pipistrellus pipistrellus”, then press `1` (Accepted). The selection stays after a tag action, so the status goes to the same recordings.",
             "task": "Tag and accept the social call recordings",
             "complete": {
               "type": "event",

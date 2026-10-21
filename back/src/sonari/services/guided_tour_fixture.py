@@ -66,6 +66,9 @@ class FixtureRecording(BaseModel):
     latitude: float | None = None
     longitude: float | None = None
     time_expansion: float = 1.0
+    hash: str | None = None
+    """md5 of the audio (``Recording.hash``). Finds the recording on servers
+    that registered the same file under another path."""
 
 
 class FixtureTask(BaseModel):
@@ -99,7 +102,12 @@ class GuidedTourFixture(BaseModel):
 
 
 def fixture_checksum(fixture: GuidedTourFixture) -> str:
-    canonical = json.dumps(fixture.model_dump(mode="json"), sort_keys=True, separators=(",", ":"))
+    data = fixture.model_dump(mode="json")
+    # Fixtures exported before ``hash`` existed keep their checksum.
+    for rec in data["recordings"]:
+        if rec["hash"] is None:
+            del rec["hash"]
+    canonical = json.dumps(data, sort_keys=True, separators=(",", ":"))
     return hashlib.sha256(canonical.encode()).hexdigest()
 
 
@@ -144,6 +152,7 @@ async def export_template_fixture(
                 rec_t.c.latitude,
                 rec_t.c.longitude,
                 rec_t.c.time_expansion,
+                rec_t.c.hash,
             )
             .join(rec_t, rec_t.c.id == task_t.c.recording_id)
             .where(task_t.c.annotation_project_id == project_id)
@@ -251,6 +260,7 @@ async def export_template_fixture(
                 latitude=r.latitude,
                 longitude=r.longitude,
                 time_expansion=r.time_expansion,
+                hash=r.hash,
             ),
         )
         tasks.append(
@@ -328,7 +338,9 @@ async def _register_recordings(
 
     Recordings are matched by path first, then by audio hash: the same file
     registered under another path is reused instead of inserted again
-    (``Recording.hash`` is unique).
+    (``Recording.hash`` is unique). The hash comes from the file at the
+    fixture path or, when the server keeps the audio elsewhere, from the
+    fixture, so the file only has to exist for recordings that are new.
     """
     rec_t = models.Recording.__table__
     dr_t = models.DatasetRecording.__table__
@@ -342,16 +354,23 @@ async def _register_recordings(
     missing = [r for r in fixture.recordings if r.path not in existing]
 
     if missing:
-        absent = [r.path for r in missing if not (audio_dir / r.path).is_file()]
-        if absent:
-            raise ValueError(f"Audio files missing under {audio_dir}: {absent}")
-
         # Same md5 as recordings.create computes for Recording.hash.
-        hashes = {r.path: compute_md5_checksum(audio_dir / r.path) for r in missing}
+        on_disk = {r.path for r in missing if (audio_dir / r.path).is_file()}
+        hashes = {
+            r.path: compute_md5_checksum(audio_dir / r.path) if r.path in on_disk else r.hash
+            for r in missing
+        }
         by_hash = {
             r.hash: r
-            for r in await session.execute(select(*columns).where(rec_t.c.hash.in_(set(hashes.values()))))
+            for r in await session.execute(
+                select(*columns).where(rec_t.c.hash.in_({h for h in hashes.values() if h is not None})),
+            )
         }
+        absent = [r.path for r in missing if r.path not in on_disk and hashes[r.path] not in by_hash]
+        if absent:
+            raise ValueError(
+                f"Audio files missing under {audio_dir} and not registered under another path: {absent}",
+            )
 
         dataset = await _get_or_create_dataset(session, fixture, audio_dir, result)
         linked = set(
