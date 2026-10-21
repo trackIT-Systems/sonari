@@ -28,6 +28,8 @@ type AnnotationState = {
   hasNextTask: boolean;
   /** Whether there is a previous annotation task */
   hasPrevTask: boolean;
+  /** Id of the linked task when it is not matched by the active filter */
+  filterMismatchTaskId: number | null;
   _filter: Filter<AnnotationTaskFilter>;
   handleCurrentSegmentsLoaded: () => void;
 };
@@ -46,6 +48,10 @@ type AnnotationControls = {
   ) => void;
   /** Select a random annotation task */
   getFirstTask: () => void;
+  /** Resolve the filter mismatch by switching to the first filtered task */
+  applyFilterForMismatch: () => void;
+  /** Resolve the filter mismatch by staying on the task from the link */
+  keepOriginalTask: () => void;
 };
 
 const empty = {};
@@ -55,9 +61,16 @@ export default function useAnnotateTasks({
   annotationTask: initialTask,
   onChangeTask,
   onDeselectSoundEventAnnotation,
+  persistFilter = true,
 }: {
   /** Initial filter to select which annotation tasks to show */
   filter?: AnnotationTaskFilter;
+  /**
+   * Share the project's saved filter with the tasks table (default). Off in
+   * guided tours: a table filter from the bulk lesson must not change which
+   * task comes next in the lessons.
+   */
+  persistFilter?: boolean;
   /** Optional, initial annotation task to select */
   annotationTask?: AnnotationTask;
   /** Callback when the selected annotation task changes */
@@ -86,8 +99,8 @@ export default function useAnnotateTasks({
   }, [initialTask?.id]);
 
   const filterPersistKey = useMemo(
-    () => annotationTaskFilterPersistKey(initialFilter.annotation_project?.id),
-    [initialFilter.annotation_project?.id],
+    () => (persistFilter ? annotationTaskFilterPersistKey(initialFilter.annotation_project?.id) : undefined),
+    [persistFilter, initialFilter.annotation_project?.id],
   );
 
   // Fetch minimal task index for navigation
@@ -95,8 +108,11 @@ export default function useAnnotateTasks({
     items: indexItems,
     filter,
     isLoading: isLoadingIndex,
+    isFetching: isFetchingIndex,
     isError: isErrorIndex,
     queryKey: indexQueryKey,
+    dataUpdatedAt: indexUpdatedAt,
+    refetch: refetchIndex,
   } = useAnnotationTaskIndex({
     pageSize: -1,
     filter: initialFilter,
@@ -140,6 +156,37 @@ export default function useAnnotateTasks({
     return items.findIndex((item) => item.id === currentTask.id);
   }, [currentTask, items]);
 
+  // Where the open task last sat in the settled index. A tag or status edit
+  // can filter the open task out; it then stays open, and next/prev continue
+  // from this slot. Only settled data counts, so a filter change (new key)
+  // still jumps to the first match.
+  const filterKey = JSON.stringify(filter.filter);
+  const [lastPosition, setLastPosition] = useState<{
+    taskId: number;
+    index: number;
+    filterKey: string;
+  } | null>(null);
+
+  useEffect(() => {
+    if (index === -1 || currentTask == null || isLoading || isFetchingIndex) {
+      return;
+    }
+    setLastPosition((prev) =>
+      prev?.taskId === currentTask.id && prev.index === index && prev.filterKey === filterKey
+        ? prev
+        : { taskId: currentTask.id, index, filterKey },
+    );
+  }, [index, currentTask, isLoading, isFetchingIndex, filterKey]);
+
+  /** Slot of the open task after an edit filtered it out of the index */
+  const filteredOutIndex =
+    index === -1 &&
+    currentTask != null &&
+    lastPosition?.taskId === currentTask.id &&
+    lastPosition.filterKey === filterKey
+      ? lastPosition.index
+      : null;
+
   const goToTask = useCallback(
     (task: AnnotationTask) => {
       setCurrentTask(task);
@@ -153,33 +200,45 @@ export default function useAnnotateTasks({
     if (index !== -1) {
       return index < items.length - 1;
     }
+    if (filteredOutIndex != null) {
+      return filteredOutIndex < items.length;
+    }
     return items.length > 0;
-  }, [index, items.length]);
+  }, [index, items.length, filteredOutIndex]);
 
   const nextTask = useCallback(() => {
     if (!hasNextTask) return;
-    const nextIndex = index === -1 ? 0 : index + 1;
+    // The task after a filtered-out one has moved up into its slot
+    const nextIndex = index !== -1 ? index + 1 : filteredOutIndex ?? 0;
     const nextTaskIndex = items[nextIndex];
     // Cast minimal index to AnnotationTask for navigation
     // Only id is actually used by onChangeTask
     goToTask(nextTaskIndex as unknown as AnnotationTask);
-  }, [index, items, hasNextTask, goToTask]);
+  }, [index, items, hasNextTask, goToTask, filteredOutIndex]);
 
   const hasPrevTask = useMemo(() => {
     if (index !== -1) {
       return index > 0;
     }
+    if (filteredOutIndex != null) {
+      return filteredOutIndex > 0 && items.length > 0;
+    }
     return items.length > 0;
-  }, [index, items.length]);
+  }, [index, items.length, filteredOutIndex]);
 
   const prevTask = useCallback(() => {
     if (!hasPrevTask) return;
-    const prevIndex = index === -1 ? 0 : index - 1;
+    const prevIndex =
+      index !== -1
+        ? index - 1
+        : filteredOutIndex != null
+          ? Math.min(filteredOutIndex, items.length) - 1
+          : 0;
     const prevTaskIndex = items[prevIndex];
     // Cast minimal index to AnnotationTask for navigation
     // Only id is actually used by onChangeTask
     goToTask(prevTaskIndex as unknown as AnnotationTask);
-  }, [index, items, hasPrevTask, goToTask]);
+  }, [index, items, hasPrevTask, goToTask, filteredOutIndex]);
 
   const loadedTasksRef = useRef<Set<number>>(new Set());
   //const handleCurrentSegmentsLoaded = useCallback(() => {}, []);
@@ -213,11 +272,63 @@ export default function useAnnotateTasks({
     onChangeTask?.(task);
   }, [items, onChangeTask]);
 
+  // The task from the link is not part of the (persisted) filter results. Ask
+  // the user instead of silently jumping to another task. Checked once.
+  const mismatchCheckedRef = useRef(false);
+  /** Task id the reconcile step must leave alone */
+  const heldTaskIdRef = useRef<number | null>(null);
+  const [filterMismatchTaskId, setFilterMismatchTaskId] = useState<number | null>(null);
+  const mountedAtRef = useRef(Date.now());
+  const revalidatedRef = useRef(false);
+
   useEffect(() => {
+    if (mismatchCheckedRef.current || isLoading || isFetchingIndex || initialTask == null) {
+      return;
+    }
+    if (items.length === 0) {
+      return;
+    }
+    if (items.some((item) => item.id === initialTask.id)) {
+      mismatchCheckedRef.current = true;
+      heldTaskIdRef.current = null;
+      return;
+    }
+    // The index may come from the cache, loaded before this page opened: a
+    // tour reset, for example, recreates every task with new ids under the
+    // same query key. Refetch once before blaming the filter, and hold the
+    // task meanwhile so the reconcile step does not jump to a stale task.
+    if (!revalidatedRef.current && indexUpdatedAt < mountedAtRef.current) {
+      revalidatedRef.current = true;
+      heldTaskIdRef.current = initialTask.id;
+      void refetchIndex();
+      return;
+    }
+    mismatchCheckedRef.current = true;
+    heldTaskIdRef.current = initialTask.id;
+    setFilterMismatchTaskId(initialTask.id);
+  }, [isLoading, isFetchingIndex, initialTask, items, indexUpdatedAt, refetchIndex]);
+
+  const applyFilterForMismatch = useCallback(() => {
+    heldTaskIdRef.current = null;
+    setFilterMismatchTaskId(null);
+  }, []);
+
+  const keepOriginalTask = useCallback(() => {
+    setFilterMismatchTaskId(null);
+  }, []);
+
+  useEffect(() => {
+    if (
+      heldTaskIdRef.current != null &&
+      heldTaskIdRef.current === currentTask?.id
+    ) {
+      return;
+    }
     const action = reconcileAnnotationTaskIndex({
       currentTaskId: currentTask?.id ?? null,
       itemIds: items.map((item) => item.id),
       isLoading,
+      wasListed: filteredOutIndex != null,
     });
     if (action !== "go_to_first") {
       return;
@@ -234,7 +345,7 @@ export default function useAnnotateTasks({
     }
     pendingReconcileTaskIdRef.current = first.id;
     goToTask(first as unknown as AnnotationTask);
-  }, [currentTask, items, isLoading, goToTask]);
+  }, [currentTask, items, isLoading, goToTask, filterMismatchTaskId, filteredOutIndex]);
 
   return {
     current: index,
@@ -251,6 +362,9 @@ export default function useAnnotateTasks({
     prevTask,
     setFilter,
     getFirstTask,
+    applyFilterForMismatch,
+    keepOriginalTask,
+    filterMismatchTaskId,
     handleCurrentSegmentsLoaded,
     _filter: filter,
   };

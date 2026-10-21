@@ -35,22 +35,33 @@ export default function AnnotationProjectHeader({
     }
     setIsLoadingFirstTask(true);
     try {
-      const response = await api.annotationTasks.getMany({
-        annotation_project: annotationProject,
-        limit: 1,
-        offset: 0,
-      });
+      const projectId = params.get("annotation_project_id");
+      // A guided tour continues where the user is (the first lesson without a
+      // badge), not at lesson 1: e.g. back from a lesson on the Tasks tab.
+      let taskId: number | null = null;
+      if (annotationProject.is_guided_tour) {
+        const { tours } = await api.annotationProjects.getGuidedTourAvailable();
+        taskId =
+          tours.find((tour) => tour.annotation_project_id === annotationProject.id)
+            ?.resume_annotation_task_id ?? null;
+      }
+      if (taskId == null) {
+        const response = await api.annotationTasks.getMany({
+          annotation_project: annotationProject,
+          limit: 1,
+          offset: 0,
+        });
 
-      if (response.items.length === 0) {
-        toast.error("No annotation tasks found in this project.");
-        return;
+        if (response.items.length === 0) {
+          toast.error("No annotation tasks found in this project.");
+          return;
+        }
+        taskId = response.items[0].id;
       }
 
-      const firstTask = response.items[0];
-      const projectId = params.get("annotation_project_id");
       blurActiveElement();
       router.push(
-        `/annotation_projects/detail/annotation/?annotation_project_id=${projectId}&annotation_task_id=${firstTask.id}`,
+        `/annotation_projects/detail/annotation/?annotation_project_id=${projectId}&annotation_task_id=${taskId}`,
       );
     } catch (error) {
       toast.error("Failed to load annotation tasks.");
@@ -66,7 +77,7 @@ export default function AnnotationProjectHeader({
         <H1 className="min-w-0 break-words text-balance sm:max-w-[min(100%,60rem)] sm:shrink">
           {annotationProject.name}
         </H1>
-        <div className="shrink-0">
+        <div className="shrink-0" data-guided-tour="header-tabs">
         <Tabs
           tabs={[
             {

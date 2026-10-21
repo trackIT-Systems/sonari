@@ -1,0 +1,872 @@
+{
+  "format_version": 1,
+  "variant": "bird",
+  "audio_folder": "workshop-awst26-bird01",
+  "recordings": [
+    {
+      "path": "workshop-awst26-bird01/Birds/hlnug-eulen-brgwldka03_2024-09-17T111214_Lcur.flac",
+      "date": "2024-09-17",
+      "time": "11:12:14",
+      "latitude": 50.6,
+      "longitude": 8.9,
+      "time_expansion": 1.0
+    },
+    {
+      "path": "workshop-awst26-bird01/Birds/hlnug-eulen-brgwldka03_2024-09-17T111254_Rign-Ttro.flac",
+      "date": null,
+      "time": null,
+      "latitude": null,
+      "longitude": null,
+      "time_expansion": 1.0
+    },
+    {
+      "path": "workshop-awst26-bird01/Birds/hlnug-eulen-brgwldka01_2024-09-17T164111_Pcol.flac",
+      "date": null,
+      "time": null,
+      "latitude": null,
+      "longitude": null,
+      "time_expansion": 1.0
+    },
+    {
+      "path": "workshop-awst26-bird01/Birds/hlnug-eulen-brgwldka01_2024-09-21T011128_Gpas.flac",
+      "date": null,
+      "time": null,
+      "latitude": null,
+      "longitude": null,
+      "time_expansion": 1.0
+    },
+    {
+      "path": "workshop-awst26-bird01/Birds/hlnug-eulen-brgwldka01_2024-09-28T045243_Bbub-Aotu-Cpal.flac",
+      "date": null,
+      "time": null,
+      "latitude": null,
+      "longitude": null,
+      "time_expansion": 1.0
+    },
+    {
+      "path": "workshop-awst26-bird01/Birds/hlnug-wiebrue-04_2025-05-07T192422_Aplatyr-Tphilom-Mstrepe.flac",
+      "date": null,
+      "time": null,
+      "latitude": null,
+      "longitude": null,
+      "time_expansion": 1.0
+    },
+    {
+      "path": "workshop-awst26-bird01/Birds/hlnug-wiebrue-03a_2025-05-07T192422_Acinere.flac",
+      "date": null,
+      "time": null,
+      "latitude": null,
+      "longitude": null,
+      "time_expansion": 1.0
+    },
+    {
+      "path": "workshop-awst26-bird01/Birds/hlnug-wiebrue-02_2025-05-07T202259_Bbubo-Aotus.flac",
+      "date": null,
+      "time": null,
+      "latitude": null,
+      "longitude": null,
+      "time_expansion": 1.0
+    },
+    {
+      "path": "workshop-awst26-bird01/Birds/hlnug-wiebrue-02_2025-05-07T211310_Gchloro.flac",
+      "date": null,
+      "time": null,
+      "latitude": null,
+      "longitude": null,
+      "time_expansion": 1.0
+    },
+    {
+      "path": "workshop-awst26-bird01/Birds/hlnug-wiebrue-03b_2025-05-27T110842_Tmerula-Aarvens.flac",
+      "date": null,
+      "time": null,
+      "latitude": null,
+      "longitude": null,
+      "time_expansion": 1.0
+    }
+  ],
+  "tasks": [
+    {
+      "recording_path": "workshop-awst26-bird01/Birds/hlnug-eulen-brgwldka03_2024-09-17T111214_Lcur.flac",
+      "start_time": 0.0,
+      "end_time": 15.0,
+      "tags": [],
+      "features": [
+        {
+          "name": "duration",
+          "value": 15.0
+        }
+      ],
+      "sound_event_annotations": [
+        {
+          "geometry": {
+            "type": "TimeInterval",
+            "coordinates": [
+              0.0,
+              5.0
+            ]
+          },
+          "tags": [
+            {
+              "key": "species",
+              "value": "Fichtenkreuzschnabel"
+            }
+          ],
+          "features": [
+            {
+              "name": "detection_confidence",
+              "value": 0.9999949932098389
+            },
+            {
+              "name": "species_confidence",
+              "value": 0.354962021112442
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "recording_path": "workshop-awst26-bird01/Birds/hlnug-eulen-brgwldka03_2024-09-17T111254_Rign-Ttro.flac",
+      "start_time": 0.0,
+      "end_time": 30.0,
+      "tags": [],
+      "features": [
+        {
+          "name": "duration",
+          "value": 30.0
+        }
+      ],
+      "sound_event_annotations": [
+        {
+          "geometry": {
+            "type": "TimeInterval",
+            "coordinates": [
+              0.0,
+              5.0
+            ]
+          },
+          "tags": [
+            {
+              "key": "species",
+              "value": "Sommergoldhähnchen"
+            }
+          ],
+          "features": [
+            {
+              "name": "detection_confidence",
+              "value": 0.6453639268875122
+            },
+            {
+              "name": "species_confidence",
+              "value": 0.38517001271247864
+            }
+          ]
+        },
+        {
+          "geometry": {
+            "type": "TimeInterval",
+            "coordinates": [
+              5.0,
+              10.0
+            ]
+          },
+          "tags": [
+            {
+              "key": "species",
+              "value": "Sommergoldhähnchen"
+            }
+          ],
+          "features": [
+            {
+              "name": "detection_confidence",
+              "value": 0.9979075193405151
+            },
+            {
+              "name": "species_confidence",
+              "value": 0.668663501739502
+            }
+          ]
+        },
+        {
+          "geometry": {
+            "type": "TimeInterval",
+            "coordinates": [
+              15.0,
+              20.0
+            ]
+          },
+          "tags": [
+            {
+              "key": "species",
+              "value": "Sommergoldhähnchen"
+            }
+          ],
+          "features": [
+            {
+              "name": "detection_confidence",
+              "value": 0.9954960346221924
+            },
+            {
+              "name": "species_confidence",
+              "value": 0.3261528015136719
+            }
+          ]
+        },
+        {
+          "geometry": {
+            "type": "TimeInterval",
+            "coordinates": [
+              20.0,
+              25.0
+            ]
+          },
+          "tags": [
+            {
+              "key": "species",
+              "value": "Zaunkönig"
+            }
+          ],
+          "features": [
+            {
+              "name": "detection_confidence",
+              "value": 0.9968340992927551
+            },
+            {
+              "name": "species_confidence",
+              "value": 0.4353000521659851
+            }
+          ]
+        },
+        {
+          "geometry": {
+            "type": "TimeInterval",
+            "coordinates": [
+              25.0,
+              30.0
+            ]
+          },
+          "tags": [
+            {
+              "key": "species",
+              "value": "Zaunkönig"
+            }
+          ],
+          "features": [
+            {
+              "name": "detection_confidence",
+              "value": 0.9964723587036133
+            },
+            {
+              "name": "species_confidence",
+              "value": 0.4376612603664398
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "recording_path": "workshop-awst26-bird01/Birds/hlnug-eulen-brgwldka01_2024-09-17T164111_Pcol.flac",
+      "start_time": 0.0,
+      "end_time": 15.0,
+      "tags": [],
+      "features": [
+        {
+          "name": "duration",
+          "value": 15.0
+        }
+      ],
+      "sound_event_annotations": []
+    },
+    {
+      "recording_path": "workshop-awst26-bird01/Birds/hlnug-eulen-brgwldka01_2024-09-21T011128_Gpas.flac",
+      "start_time": 0.0,
+      "end_time": 20.0,
+      "tags": [],
+      "features": [
+        {
+          "name": "duration",
+          "value": 20.0
+        }
+      ],
+      "sound_event_annotations": [
+        {
+          "geometry": {
+            "type": "TimeInterval",
+            "coordinates": [
+              0.0,
+              5.0
+            ]
+          },
+          "tags": [
+            {
+              "key": "species",
+              "value": "Sperlingskauz"
+            }
+          ],
+          "features": [
+            {
+              "name": "detection_confidence",
+              "value": 0.9999440908432007
+            },
+            {
+              "name": "species_confidence",
+              "value": 0.9064737558364868
+            }
+          ]
+        },
+        {
+          "geometry": {
+            "type": "TimeInterval",
+            "coordinates": [
+              5.0,
+              10.0
+            ]
+          },
+          "tags": [
+            {
+              "key": "species",
+              "value": "Sperlingskauz"
+            }
+          ],
+          "features": [
+            {
+              "name": "detection_confidence",
+              "value": 0.9997586607933044
+            },
+            {
+              "name": "species_confidence",
+              "value": 0.9822498559951782
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "recording_path": "workshop-awst26-bird01/Birds/hlnug-eulen-brgwldka01_2024-09-28T045243_Bbub-Aotu-Cpal.flac",
+      "start_time": 0.0,
+      "end_time": 15.0,
+      "tags": [],
+      "features": [
+        {
+          "name": "duration",
+          "value": 15.0
+        }
+      ],
+      "sound_event_annotations": [
+        {
+          "geometry": {
+            "type": "TimeInterval",
+            "coordinates": [
+              10.0,
+              15.0
+            ]
+          },
+          "tags": [
+            {
+              "key": "species",
+              "value": "Ringeltaube"
+            }
+          ],
+          "features": [
+            {
+              "name": "detection_confidence",
+              "value": 0.9875702261924744
+            },
+            {
+              "name": "species_confidence",
+              "value": 0.8207216262817383
+            }
+          ]
+        },
+        {
+          "geometry": {
+            "type": "TimeInterval",
+            "coordinates": [
+              9.162022891716566,
+              9.446960391716566
+            ]
+          },
+          "tags": [
+            {
+              "key": "this",
+              "value": "is wrong"
+            }
+          ],
+          "features": []
+        }
+      ]
+    },
+    {
+      "recording_path": "workshop-awst26-bird01/Birds/hlnug-wiebrue-04_2025-05-07T192422_Aplatyr-Tphilom-Mstrepe.flac",
+      "start_time": 0.0,
+      "end_time": 30.0,
+      "tags": [],
+      "features": [
+        {
+          "name": "duration",
+          "value": 30.0
+        }
+      ],
+      "sound_event_annotations": [
+        {
+          "geometry": {
+            "type": "TimeInterval",
+            "coordinates": [
+              0.0,
+              5.0
+            ]
+          },
+          "tags": [
+            {
+              "key": "species",
+              "value": "Stockente"
+            }
+          ],
+          "features": [
+            {
+              "name": "detection_confidence",
+              "value": 0.9979648590087891
+            },
+            {
+              "name": "species_confidence",
+              "value": 0.5855433344841003
+            }
+          ]
+        },
+        {
+          "geometry": {
+            "type": "TimeInterval",
+            "coordinates": [
+              5.0,
+              10.0
+            ]
+          },
+          "tags": [
+            {
+              "key": "species",
+              "value": "Singdrossel"
+            },
+            {
+              "key": "species",
+              "value": "Stockente"
+            }
+          ],
+          "features": [
+            {
+              "name": "detection_confidence",
+              "value": 1.0
+            },
+            {
+              "name": "species_confidence",
+              "value": 0.7000337839126587
+            }
+          ]
+        },
+        {
+          "geometry": {
+            "type": "TimeInterval",
+            "coordinates": [
+              15.0,
+              20.0
+            ]
+          },
+          "tags": [
+            {
+              "key": "species",
+              "value": "Stockente"
+            }
+          ],
+          "features": [
+            {
+              "name": "detection_confidence",
+              "value": 0.9999620914459229
+            },
+            {
+              "name": "species_confidence",
+              "value": 0.30079343914985657
+            }
+          ]
+        },
+        {
+          "geometry": {
+            "type": "TimeInterval",
+            "coordinates": [
+              20.0,
+              25.0
+            ]
+          },
+          "tags": [
+            {
+              "key": "species",
+              "value": "Stockente"
+            }
+          ],
+          "features": [
+            {
+              "name": "detection_confidence",
+              "value": 0.9998394250869751
+            },
+            {
+              "name": "species_confidence",
+              "value": 0.42932483553886414
+            }
+          ]
+        },
+        {
+          "geometry": {
+            "type": "TimeInterval",
+            "coordinates": [
+              25.0,
+              30.0
+            ]
+          },
+          "tags": [
+            {
+              "key": "species",
+              "value": "Schnatterente"
+            }
+          ],
+          "features": [
+            {
+              "name": "detection_confidence",
+              "value": 0.9999918937683105
+            },
+            {
+              "name": "species_confidence",
+              "value": 0.6570442318916321
+            }
+          ]
+        },
+        {
+          "geometry": {
+            "type": "TimeInterval",
+            "coordinates": [
+              10.0,
+              15.0
+            ]
+          },
+          "tags": [
+            {
+              "key": "this",
+              "value": "is wrong"
+            }
+          ],
+          "features": [
+            {
+              "name": "detection_confidence",
+              "value": 0.9999791383743286
+            },
+            {
+              "name": "species_confidence",
+              "value": 0.9107068777084351
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "recording_path": "workshop-awst26-bird01/Birds/hlnug-wiebrue-03a_2025-05-07T192422_Acinere.flac",
+      "start_time": 0.0,
+      "end_time": 0.90928125,
+      "tags": [],
+      "features": [
+        {
+          "name": "duration",
+          "value": 0.90928125
+        }
+      ],
+      "sound_event_annotations": [
+        {
+          "geometry": {
+            "type": "TimeInterval",
+            "coordinates": [
+              0.0829434990234375,
+              0.7736065422363281
+            ]
+          },
+          "tags": [
+            {
+              "key": "species",
+              "value": "Graureiher"
+            }
+          ],
+          "features": []
+        }
+      ]
+    },
+    {
+      "recording_path": "workshop-awst26-bird01/Birds/hlnug-wiebrue-02_2025-05-07T202259_Bbubo-Aotus.flac",
+      "start_time": 0.0,
+      "end_time": 30.0,
+      "tags": [],
+      "features": [
+        {
+          "name": "duration",
+          "value": 30.0
+        }
+      ],
+      "sound_event_annotations": [
+        {
+          "geometry": {
+            "type": "TimeInterval",
+            "coordinates": [
+              0.0,
+              5.0
+            ]
+          },
+          "tags": [
+            {
+              "key": "species",
+              "value": "Waldohreule"
+            }
+          ],
+          "features": [
+            {
+              "name": "detection_confidence",
+              "value": 0.9823828935623169
+            },
+            {
+              "name": "species_confidence",
+              "value": 0.9747002124786377
+            }
+          ]
+        },
+        {
+          "geometry": {
+            "type": "TimeInterval",
+            "coordinates": [
+              5.0,
+              10.0
+            ]
+          },
+          "tags": [
+            {
+              "key": "species",
+              "value": "Waldohreule"
+            }
+          ],
+          "features": [
+            {
+              "name": "detection_confidence",
+              "value": 0.9791019558906555
+            },
+            {
+              "name": "species_confidence",
+              "value": 0.9500429630279541
+            }
+          ]
+        },
+        {
+          "geometry": {
+            "type": "TimeInterval",
+            "coordinates": [
+              10.0,
+              15.0
+            ]
+          },
+          "tags": [
+            {
+              "key": "species",
+              "value": "Waldohreule"
+            }
+          ],
+          "features": [
+            {
+              "name": "detection_confidence",
+              "value": 0.9901118874549866
+            },
+            {
+              "name": "species_confidence",
+              "value": 0.9417855143547058
+            }
+          ]
+        },
+        {
+          "geometry": {
+            "type": "TimeInterval",
+            "coordinates": [
+              15.0,
+              20.0
+            ]
+          },
+          "tags": [
+            {
+              "key": "species",
+              "value": "Waldohreule"
+            }
+          ],
+          "features": [
+            {
+              "name": "detection_confidence",
+              "value": 0.9968891739845276
+            },
+            {
+              "name": "species_confidence",
+              "value": 0.9619565010070801
+            }
+          ]
+        },
+        {
+          "geometry": {
+            "type": "TimeInterval",
+            "coordinates": [
+              20.0,
+              25.0
+            ]
+          },
+          "tags": [
+            {
+              "key": "species",
+              "value": "Uhu"
+            },
+            {
+              "key": "species",
+              "value": "Waldohreule"
+            }
+          ],
+          "features": [
+            {
+              "name": "detection_confidence",
+              "value": 0.9798780679702759
+            },
+            {
+              "name": "species_confidence",
+              "value": 0.6090582013130188
+            }
+          ]
+        },
+        {
+          "geometry": {
+            "type": "TimeInterval",
+            "coordinates": [
+              25.0,
+              30.0
+            ]
+          },
+          "tags": [
+            {
+              "key": "species",
+              "value": "Waldohreule"
+            }
+          ],
+          "features": [
+            {
+              "name": "detection_confidence",
+              "value": 0.9994099140167236
+            },
+            {
+              "name": "species_confidence",
+              "value": 0.8490063548088074
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "recording_path": "workshop-awst26-bird01/Birds/hlnug-wiebrue-02_2025-05-07T211310_Gchloro.flac",
+      "start_time": 0.0,
+      "end_time": 25.0,
+      "tags": [],
+      "features": [
+        {
+          "name": "duration",
+          "value": 25.0
+        }
+      ],
+      "sound_event_annotations": [
+        {
+          "geometry": {
+            "type": "TimeInterval",
+            "coordinates": [
+              0.0,
+              5.0
+            ]
+          },
+          "tags": [
+            {
+              "key": "species",
+              "value": "Teichhuhn"
+            }
+          ],
+          "features": [
+            {
+              "name": "detection_confidence",
+              "value": 0.9721689820289612
+            },
+            {
+              "name": "species_confidence",
+              "value": 0.853162407875061
+            }
+          ]
+        },
+        {
+          "geometry": {
+            "type": "TimeInterval",
+            "coordinates": [
+              5.0,
+              10.0
+            ]
+          },
+          "tags": [
+            {
+              "key": "species",
+              "value": "Teichhuhn"
+            }
+          ],
+          "features": [
+            {
+              "name": "detection_confidence",
+              "value": 0.9239994883537292
+            },
+            {
+              "name": "species_confidence",
+              "value": 0.9291050434112549
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "recording_path": "workshop-awst26-bird01/Birds/hlnug-wiebrue-03b_2025-05-27T110842_Tmerula-Aarvens.flac",
+      "start_time": 0.0,
+      "end_time": 20.0,
+      "tags": [],
+      "features": [
+        {
+          "name": "duration",
+          "value": 20.0
+        }
+      ],
+      "sound_event_annotations": [
+        {
+          "geometry": {
+            "type": "TimeInterval",
+            "coordinates": [
+              0.0,
+              5.0
+            ]
+          },
+          "tags": [
+            {
+              "key": "species",
+              "value": "Amsel"
+            },
+            {
+              "key": "species",
+              "value": "Feldlerche"
+            }
+          ],
+          "features": [
+            {
+              "name": "detection_confidence",
+              "value": 0.9873601794242859
+            },
+            {
+              "name": "species_confidence",
+              "value": 0.333285927772522
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

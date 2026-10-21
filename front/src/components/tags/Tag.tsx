@@ -32,7 +32,9 @@ const COLOR_NAMES = [
   "rose",
 ];
 
-const LEVELS = [1, 2, 3, 4, 5, 6];
+// Light shades only (100-300; 900-700 in dark mode). Darker backgrounds made the
+// fixed 900 / 100 text hard to read.
+const LEVELS = [1, 2, 3];
 
 export function getTagKey(tag: Tag): string {
   return `${tag.key}-${tag.value}`;

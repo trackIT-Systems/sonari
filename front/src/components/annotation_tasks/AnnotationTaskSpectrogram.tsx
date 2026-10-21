@@ -1,4 +1,6 @@
 import { useCallback, useMemo, useRef, useState, useEffect } from "react";
+import HideSoundEventsButton from "@/components/spectrograms/HideSoundEventsButton";
+import { emitGuidedTourEvent } from "@/components/workshop/guidedTour/events";
 import { useMeasure } from "react-use";
 import classNames from "classnames";
 
@@ -172,30 +174,20 @@ export default function AnnotationTaskSpectrogram({
   }, [taskStartTime, taskEndTime, effectiveParameters, recordingSamplerate]);
 
   /**
-   * Initial window - Determines the starting view when component mounts.
-   * If spectrogram is enabled, calculates an optimal initial zoom level based on
-   * canvas dimensions. Otherwise, shows the full task range.
+   * Initial window - Determines the starting view when component mounts, based
+   * on the canvas dimensions. It must not depend on whether the spectrogram is
+   * shown: hiding it (h) used to reset the view to the full task, so showing it
+   * again came back at a different zoom level.
    */
   const initial = useMemo(
-    () => {
-      const samplerate = clampSamplerate(effectiveParameters, recordingSamplerate!)
-      if (withSpectrogram) {
-        
-        const _initial = getInitialViewingWindow({
-          startTime: taskStartTime,
-          endTime: taskEndTime,
-          samplerate: samplerate,
-          parameters: effectiveParameters,
-        })
-        return _initial
-      } else {
-        return {
-          time: { min: taskStartTime, max: taskEndTime },
-          freq: { min: 0, max: samplerate / 2 },
-        }
-      }
-    },
-    [recordingSamplerate, taskStartTime, taskEndTime, withSpectrogram, effectiveParameters],
+    () =>
+      getInitialViewingWindow({
+        startTime: taskStartTime,
+        endTime: taskEndTime,
+        samplerate: clampSamplerate(effectiveParameters, recordingSamplerate!),
+        parameters: effectiveParameters,
+      }),
+    [recordingSamplerate, taskStartTime, taskEndTime, effectiveParameters],
   );
 
   const getPlaybackBounds = useCallback(() => {
@@ -500,17 +492,24 @@ export default function AnnotationTaskSpectrogram({
   }
 
   return (
-    <Card className={fullscreen ? "min-h-0 flex-1" : undefined}>
+    <Card className={fullscreen ? "min-h-0 flex-1" : undefined} data-guided-tour="spectrogram">
       {toolsVisible && (
-        <div className="flex flex-row gap-4">
+        <div className="flex flex-row flex-wrap items-stretch gap-2 [&>div]:flex" data-guided-tour="annotate-toolbar">
+          <div data-guided-tour="hide-spectrogram">
           <DisableSpectrogramButton
             withSpectrogram={withSpectrogram}
             onWithSpectrogramChange={onWithSpectrogramChange}
+          />
+          </div>
+          <HideSoundEventsButton
+            withSoundEvent={withSoundEvent}
+            onWithSoundEventChange={onWithSoundEventChange}
           />
           {onToggleFullscreen && (
             <FullscreenButton fullscreen={fullscreen} onToggle={onToggleFullscreen} />
           )}
           {withControls && (
+            <div data-guided-tour="zoom-tools">
             <SpectrogramControls
               canZoom={spectrogram.canZoom}
               fixedAspectRatio={fixedAspectRatio}
@@ -518,6 +517,7 @@ export default function AnnotationTaskSpectrogram({
               onZoom={spectrogram.enableZoom}
               onToggleAspectRatio={toggleFixedAspectRatio}
             />
+            </div>
           )}
 
           {!disabled && withControls && withSpectrogram && annotate && (
@@ -527,6 +527,7 @@ export default function AnnotationTaskSpectrogram({
             />
           )}
           {!disabled && withControls && withSpectrogram && withSoundEvent && annotate && (
+            <div data-guided-tour="sound-event-tools">
             <AnnotationControls
               disabled={disabled}
               isDrawing={annotate.isDrawing}
@@ -537,10 +538,16 @@ export default function AnnotationTaskSpectrogram({
               onDraw={annotate.enableDraw}
               onDelete={annotate.enableDelete}
               onSelect={annotate.enableSelect}
-              onSelectGeometryType={annotate.setGeometryType}
+              onSelectGeometryType={(type) => {
+                annotate.setGeometryType(type);
+                // Also when it was already selected: choosing it is the user action.
+                if (type === "TimeInterval") emitGuidedTourEvent("time-interval-selected");
+              }}
             />
+            </div>
           )}
           {withSettings && withSpectrogram && withSoundEvent && (
+            <div data-guided-tour="spec-settings">
             <SpectrogramSettings
               samplerate={recording.samplerate}
               maxChannels={recording.channels}
@@ -551,8 +558,13 @@ export default function AnnotationTaskSpectrogram({
               currentTimeDurationSeconds={currentTimeDurationSeconds}
               onUseCurrentZoom={handleUseCurrentZoom}
             />
+            </div>
           )}
-          {withPlayer && <Player {...audio} />}
+          {withPlayer && (
+            <div data-guided-tour="audio-player">
+              <Player {...audio} />
+            </div>
+          )}
         </div>
       )}
       {toolsVisible && withSoundEvent && (
@@ -663,6 +675,7 @@ export default function AnnotationTaskSpectrogram({
       </div>
       </div>
       {withBar && !fullscreen && (
+        <div data-guided-tour="overview-strip">
         <SpectrogramBar
           recordingId={recording.id}
           bounds={taskBounds}
@@ -672,6 +685,7 @@ export default function AnnotationTaskSpectrogram({
           parameters={spectrogram.parameters}
           withSpectrogram={withSpectrogram}
         />
+        </div>
       )}
     </Card>
   );

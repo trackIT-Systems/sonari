@@ -76,6 +76,11 @@ export function registerWaveformsAPI(
       overlap_percent,
     };
 
+    // Zoomed out views ask for fewer columns than the full resolution
+    if (parsed_params.max_columns != null) {
+      query.max_columns = parsed_params.max_columns;
+    }
+
     // Add segment parameters if provided, otherwise use full recording
     if (segment) {
       const parsed_segment = IntervalSchema.parse(segment);

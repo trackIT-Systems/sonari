@@ -1,5 +1,6 @@
 """Pytest configuration and fixtures for API endpoint tests."""
 
+import os
 import tempfile
 import tomllib
 import uuid
@@ -99,7 +100,7 @@ def _get_test_db_name() -> str:
     return f"sonari_test_{uuid.uuid4().hex}"
 
 
-def _get_test_settings_sqlite(db_path: Path) -> Settings:
+def _get_test_settings_sqlite(db_path: Path, audio_dir: Path) -> Settings:
     """Create test settings for SQLite. Uses dev=False so db_name is respected."""
     return Settings(
         db_name=str(db_path),
@@ -109,11 +110,11 @@ def _get_test_settings_sqlite(db_path: Path) -> Settings:
         log_to_file=False,
         open_on_startup=False,
         domain="localhost",
-        audio_dir=Path.home(),
+        audio_dir=audio_dir,
     )
 
 
-def _get_test_settings_postgres(db_name: str) -> Settings:
+def _get_test_settings_postgres(db_name: str, audio_dir: Path) -> Settings:
     """Create test settings for PostgreSQL. Uses URL.create() when separate fields set."""
     url = _build_postgres_url(db_name, use_async=True)
     # Settings expects db_url as string; URL.create() produces correct encoding
@@ -126,7 +127,7 @@ def _get_test_settings_postgres(db_name: str) -> Settings:
         log_to_file=False,
         open_on_startup=False,
         domain="localhost",
-        audio_dir=Path.home(),
+        audio_dir=audio_dir,
     )
 
 
@@ -142,12 +143,33 @@ def test_db_name():
     return _get_test_db_name()
 
 
+@pytest.fixture(scope="session", autouse=True)
+def test_audio_dir():
+    """Temporary audio root for this session; removed (with everything tests created in it) afterwards.
+
+    Also exported as SONARI_AUDIO_DIR so code that falls back to the global
+    ``get_settings()`` resolves the same root.
+    """
+    previous = os.environ.get("SONARI_AUDIO_DIR")
+    with tempfile.TemporaryDirectory(prefix="sonari_test_audio_") as tmp:
+        os.environ["SONARI_AUDIO_DIR"] = tmp
+        get_settings.cache_clear()
+        try:
+            yield Path(tmp)
+        finally:
+            if previous is None:
+                os.environ.pop("SONARI_AUDIO_DIR", None)
+            else:
+                os.environ["SONARI_AUDIO_DIR"] = previous
+            get_settings.cache_clear()
+
+
 @pytest.fixture(scope="session")
-def test_settings(test_db_path, test_db_name):
+def test_settings(test_db_path, test_db_name, test_audio_dir):
     """Create test settings with a test database (SQLite or PostgreSQL)."""
     if _is_postgres_test():
-        return _get_test_settings_postgres(test_db_name)
-    return _get_test_settings_sqlite(test_db_path)
+        return _get_test_settings_postgres(test_db_name, test_audio_dir)
+    return _get_test_settings_sqlite(test_db_path, test_audio_dir)
 
 
 @pytest.fixture(scope="session")

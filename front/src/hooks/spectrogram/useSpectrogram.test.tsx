@@ -9,8 +9,13 @@ import type {
   SpectrogramWindow,
 } from "@/types";
 
+const useSpectrogramImagesMock = vi.fn();
+
 vi.mock("@/hooks/spectrogram/useSpectrogramImages", () => ({
-  default: () => ({ chunks: [], isLoading: false, isError: false }),
+  default: (args: unknown) => {
+    useSpectrogramImagesMock(args);
+    return { chunks: [], isLoading: false, isError: false };
+  },
 }));
 
 const SAMPLERATE = 256000;
@@ -131,5 +136,30 @@ describe("useSpectrogram window", () => {
     act(() => result.current.zoom(win(10, 10.25)));
     rerender({ bounds: win(0, 60), initial: win(0, 2), parameters: PARAMS });
     expect(result.current.window).toEqual(win(0, 2));
+  });
+});
+
+describe("useSpectrogram detail", () => {
+  it.each([
+    [undefined, 448],
+    [2, 896],
+  ])("loads detail for the canvas pixels at pixel ratio %s", (pixelRatio, canvasWidth) => {
+    renderHook(() =>
+      useSpectrogram({
+        task,
+        samplerate: SAMPLERATE,
+        bounds: win(0, 60),
+        initial: win(0, 1),
+        parameters: PARAMS,
+        dimensions: { width: 448, height: 224 },
+        pixelRatio,
+        withSpectrogram: true,
+        fixedAspectRatio: false,
+        toggleFixedAspectRatio: () => undefined,
+        onSegmentsLoaded: () => undefined,
+        withShortcuts: false,
+      }),
+    );
+    expect(useSpectrogramImagesMock.mock.calls.at(-1)![0]).toMatchObject({ canvasWidth });
   });
 });

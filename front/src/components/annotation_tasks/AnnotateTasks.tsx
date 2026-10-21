@@ -1,4 +1,5 @@
-import { useCallback, useState, useMemo, useEffect, useRef, CSSProperties } from "react";
+import { useCallback, useContext, useState, useMemo, useEffect, useRef, CSSProperties } from "react";
+import AnnotationProjectContext from "@/app/(base)/annotation_projects/detail/context";
 import { useKeyPressEvent } from "react-use";
 import classNames from "classnames";
 
@@ -26,6 +27,7 @@ import SearchMenu from "@/components/search/SearchMenu";
 import TagComponent, { getTagKey } from "@/components/tags/Tag";
 
 import { blurActiveElement } from "@/utils/focus";
+import { emitGuidedTourEvent, useGuidedTourReturnEvent } from "@/components/workshop/guidedTour/events";
 import {
   GROUP_TAG_KEY,
   isReplaceAllTag,
@@ -128,8 +130,15 @@ export default function AnnotateTasks({
   annotationHistory?: AnnotationHistoryControls;
   sourceAnnotationHistory?: AnnotationHistoryControls;
 }) {
+  const isGuidedTour = useContext(AnnotationProjectContext)?.is_guided_tour ?? false;
   const [tagPalette, setTagPalette] = useState<Tag[]>([]);
   const [selectedTag, setSelectedTag] = useState<{ tag: Tag; count: number } | null>(null);
+  // The cycle tag (top right of the spectrogram) is per task: close it when
+  // the next task opens instead of carrying a stale tag preview over.
+  const currentTaskId = annotationTask?.id;
+  useEffect(() => {
+    setSelectedTag(null);
+  }, [currentTaskId]);
   const [tagVisibility, setTagVisibility] = useState<TagVisibilityFilter>(DEFAULT_TAG_VISIBILITY);
   const [liveParameters, setLiveParameters] = useState<SpectrogramParameters>(parameters);
 
@@ -195,6 +204,22 @@ export default function AnnotateTasks({
     });
   }, []);
 
+  // Report user pan/zoom to the guided tour. The first window of each task is
+  // the initial view, not a user action.
+  const lastWindowRef = useRef<{ taskId?: number; window: SpectrogramWindow } | null>(null);
+  useEffect(() => {
+    if (mainSpectrogramWindow == null) return;
+    const last = lastWindowRef.current;
+    lastWindowRef.current = { taskId: annotationTask?.id, window: mainSpectrogramWindow };
+    if (last == null || last.taskId !== annotationTask?.id) return;
+    const span = (w: SpectrogramWindow) => [w.time.max - w.time.min, w.freq.max - w.freq.min];
+    const [prevT, prevF] = span(last.window);
+    const [nextT, nextF] = span(mainSpectrogramWindow);
+    const resized = Math.abs(prevT - nextT) > 1e-9 || Math.abs(prevF - nextF) > 1e-6;
+    emitGuidedTourEvent(resized ? "view-zoomed" : "view-panned");
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- only window changes are user actions
+  }, [mainSpectrogramWindow]);
+
   // Full page view: only the spectrogram, scaled up to fill the page. Panels
   // are hidden or swapped for headless versions, never remounted elsewhere, so
   // playback, zoom and drafts survive toggling.
@@ -217,6 +242,7 @@ export default function AnnotateTasks({
 
   const tasks = useAnnotateTasks({
     filter: taskFilter,
+    persistFilter: !isGuidedTour,
     annotationTask,
     onChangeTask,
     onCompleteTask,
@@ -225,6 +251,12 @@ export default function AnnotateTasks({
     onVerifyTask,
     onDeselectSoundEventAnnotation,
   });
+
+  // The guided tour asks users to undo what they toggled (hidden spectrogram or
+  // events, full page view), so report the way back, not the first toggle.
+  useGuidedTourReturnEvent(withSpectrogram, true, "spectrogram-shown");
+  useGuidedTourReturnEvent(withSoundEvent, true, "sound-events-shown");
+  useGuidedTourReturnEvent(fullscreen, false, "fullscreen-exited");
 
   const { tasks: recordingTasks } =
     useRecordingAnnotationTasks({
@@ -290,6 +322,7 @@ export default function AnnotateTasks({
     }
     const events = await activeHistory.undo();
     applyHistoryReplayEvents(events);
+    emitGuidedTourEvent("undo");
   }, [activeHistory, applyHistoryReplayEvents]);
 
   const handleRedo = useCallback(async () => {
@@ -298,6 +331,7 @@ export default function AnnotateTasks({
     }
     const events = await activeHistory.redo();
     applyHistoryReplayEvents(events);
+    emitGuidedTourEvent("redo");
   }, [activeHistory, applyHistoryReplayEvents]);
 
   useAnnotationUndoKeyShortcuts({
@@ -331,6 +365,11 @@ export default function AnnotateTasks({
   useEffect(() => {
     setSelectedSoundEventAnnotation(null);
   }, [sourceTaskId]);
+
+  const selectedSoundEventAnnotationId = selectedSoundEventAnnotation?.id;
+  useEffect(() => {
+    if (selectedSoundEventAnnotationId != null) emitGuidedTourEvent("sound-event-selected");
+  }, [selectedSoundEventAnnotationId]);
 
   useEffect(() => {
     setSelectedSoundEventAnnotation((current) => {
@@ -520,6 +559,7 @@ export default function AnnotateTasks({
         } else {
           // Otherwise, remove from all sound event annotations
           await handleRemoveTagFromSoundEventAnnotations(tagWithCount.tag);
+          emitGuidedTourEvent("tag-deleted-from-all");
         }
       }
       setIsDeletePopoverOpen(false);
@@ -579,6 +619,8 @@ export default function AnnotateTasks({
 
         await Promise.all(promises);
       });
+      emitGuidedTourEvent("tag-replaced");
+      if (!currentAnnotation) emitGuidedTourEvent("tag-replaced-on-all");
     },
     [displayedSoundEventAnnotations, activeRemoveTagFromSoundEventAnnotation, activeAddTagToSoundEventAnnotation, activeHistory],
   );
@@ -635,6 +677,7 @@ export default function AnnotateTasks({
           ),
         );
       });
+      emitGuidedTourEvent("untagged-events-tagged");
     },
     [displayedSoundEventAnnotations, activeAddTagToSoundEventAnnotation, activeHistory],
   );
@@ -715,6 +758,7 @@ export default function AnnotateTasks({
         >
           <AnnotationProgress
             fill={fullscreen}
+            filtersPreviewOnly={isGuidedTour}
             current={tasks.current}
             taskCount={tasks.tasks.length}
             stats={tasks.stats}
@@ -807,7 +851,8 @@ export default function AnnotateTasks({
                   currentTaskId={annotationTask.id}
                   annotationTaskSources={recordingTasks}
                   sourceTaskId={sourceTaskId}
-                  onSourceTaskChange={onSourceTaskChange}
+                  // Tour projects of other users must not be browsable from here.
+                  onSourceTaskChange={isGuidedTour ? undefined : onSourceTaskChange}
                 />
                 <div className={fullscreen ? "flex min-h-0 min-w-0 flex-1 flex-col" : "min-w-0 grow-0"}>
                   <AnnotationTaskSpectrogram
@@ -861,6 +906,7 @@ export default function AnnotateTasks({
           {!fullscreen && (
           <div
             data-annotate-stacked-sidebar
+            data-guided-tour="sound-event-detail"
             className="flex min-w-0 w-full shrink-0 flex-col gap-4 2xl:w-[35rem] 2xl:flex-none"
             style={
               {
@@ -932,19 +978,23 @@ export default function AnnotateTasks({
                 className="flex max-w-full shrink-0 flex-col gap-4"
                 style={{ width: `${SPECTROGRAM_CONTAINER_WIDTH}px` }}
               >
+                <div data-guided-tour="task-tags">
                 <AnnotationTaskTagBar
                   annotationTask={annotationTask}
                   onAddTag={onAddTag}
                   onRemoveTag={onRemoveTag}
                 />
+                </div>
+                <div data-guided-tour="task-notes">
                 <AnnotationTaskNotes
                   onCreateNote={onAddNote}
                   onDeleteNote={onRemoveNote}
                   annotationTask={annotationTask}
                   currentUser={currentUser}
                 />
+                </div>
               </div>
-              <div className="min-w-0 w-[35rem] max-w-full shrink-0">
+              <div className="min-w-0 w-[35rem] max-w-full shrink-0" data-guided-tour="tag-bars">
                 {!fullscreen && (
                 <AnnotationTaskTags
                   annotationTask={displayAnnotationTask!}
@@ -965,17 +1015,21 @@ export default function AnnotateTasks({
               )}
               style={{ width: `${SPECTROGRAM_CONTAINER_WIDTH}px` }}
             >
+              <div data-guided-tour="task-tags">
               <AnnotationTaskTagBar
                 annotationTask={annotationTask}
                 onAddTag={onAddTag}
                 onRemoveTag={onRemoveTag}
               />
+              </div>
+              <div data-guided-tour="task-notes">
               <AnnotationTaskNotes
                 onCreateNote={onAddNote}
                 onDeleteNote={onRemoveNote}
                 annotationTask={annotationTask}
                 currentUser={currentUser}
               />
+              </div>
             </div>
           </>
         )}
@@ -1049,6 +1103,32 @@ export default function AnnotateTasks({
         </Popover>
       )}
 
+      {tasks.filterMismatchTaskId != null && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-stone-900/30">
+          <div
+            role="dialog"
+            aria-label="Task not in filter"
+            className="w-96 rounded-md bg-stone-50 dark:bg-stone-700 border border-stone-200 dark:border-stone-500 shadow-md p-4"
+          >
+            <div className="mb-2 text-stone-700 dark:text-stone-300 underline underline-offset-2 decoration-amber-500 decoration-2">
+              Task not in current filter
+            </div>
+            <p className="mb-4 text-sm text-stone-600 dark:text-stone-300">
+              The task you opened is not matched by the active filter. Use the
+              filter to continue with its first task, or keep the original task.
+            </p>
+            <div className="flex justify-end gap-2">
+              <Button variant="secondary" onClick={tasks.keepOriginalTask}>
+                Show original task
+              </Button>
+              <Button variant="primary" onClick={tasks.applyFilterForMismatch}>
+                Use filter
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {isTagPopoverOpen && (
         <Popover as="div">
           {({ open, close }) => {
@@ -1087,6 +1167,7 @@ export default function AnnotateTasks({
                             if (menuRef.current?.contains(document.activeElement)) {
                               setSelectedTag(tagWithCount)
                               setIsTagPopoverOpen(false);
+                              emitGuidedTourEvent("cycle-tag-selected");
                             }
                           }}
                           empty={<div className="text-stone-500 text-center w-full">No tags found</div>}

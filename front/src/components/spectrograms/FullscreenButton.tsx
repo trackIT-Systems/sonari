@@ -25,6 +25,7 @@ export default function FullscreenButton({
     >
       <Button
         variant={fullscreen ? "primary" : "secondary"}
+        pressed={fullscreen}
         // Don't take focus: a focused button swallows the shortcut that leaves
         onMouseDown={(event) => event.preventDefault()}
         onClick={onToggle}

@@ -14,7 +14,7 @@ import StatusBadge from "@/components/StatusBadge";
 import TagComponent, { TagCount, getTagKey } from "@/components/tags/Tag";
 import Tooltip from "@/components/Tooltip";
 import Link from "next/link";
-import { NoteIcon } from "@/components/icons";
+import { CloseIcon, NoteIcon } from "@/components/icons";
 
 const defaultPathFormatter = (path: string) => path;
 
@@ -82,7 +82,9 @@ export default function useAnnotationTaskTable({
   onRowSelectionChange,
   filterTotal,
   onSelectAllMatchingFilter,
+  onClearSelection,
   targetMode,
+  onOpenTask,
 }: {
   data: AnnotationTask[];
   pathFormatter?: (path: string) => string;
@@ -95,7 +97,11 @@ export default function useAnnotationTaskTable({
   onRowSelectionChange?: OnChangeFn<RowSelectionState>;
   filterTotal?: number;
   onSelectAllMatchingFilter?: () => void;
+  /** Back to an empty selection, from either mode. */
+  onClearSelection?: () => void;
   targetMode?: "selected" | "filter_all";
+  /** Called right before a task link opens (the link itself still navigates). */
+  onOpenTask?: (task: AnnotationTask) => void;
 }) {
 
   const allPageSelected =
@@ -107,49 +113,68 @@ export default function useAnnotationTaskTable({
     () => [
       {
         id: "select",
-        header: () => (
-          <TableHeader>
-            <div className="flex flex-col items-start gap-1">
-              <Checkbox
-                checked={allPageSelected}
-                indeterminate={somePageSelected && !allPageSelected}
-                onChange={(event) => {
-                  const checked = event.target.checked;
-                  onRowSelectionChange?.((prev) => {
-                    const next = { ...prev };
-                    for (const task of data) {
-                      const id = String(task.id);
-                      if (checked) {
-                        next[id] = true;
-                      } else {
-                        delete next[id];
-                      }
+        header: () => {
+          const selectPage = (checked: boolean) => {
+            onRowSelectionChange?.((prev) => {
+              const next = { ...prev };
+              for (const task of data) {
+                const id = String(task.id);
+                if (checked) {
+                  next[id] = true;
+                } else {
+                  delete next[id];
+                }
+              }
+              return next;
+            });
+          };
+          const allFiltered = targetMode === "filter_all";
+          return (
+            <TableHeader>
+              <div className="flex flex-col items-start gap-1">
+                <Checkbox
+                  title={`Select the ${data.length} tasks on this page`}
+                  aria-label={`Select the ${data.length} tasks on this page`}
+                  checked={allPageSelected}
+                  indeterminate={somePageSelected && !allPageSelected}
+                  onChange={(event) => selectPage(event.target.checked)}
+                  onClick={(event) => event.stopPropagation()}
+                />
+                {filterTotal != null && onSelectAllMatchingFilter && (
+                  // A pill, not text: it must read as a control. Filled = active.
+                  <button
+                    type="button"
+                    title={
+                      allFiltered
+                        ? `All ${filterTotal} tasks matching the filter are selected (every page). Click to clear.`
+                        : `Select all ${filterTotal} tasks matching the filter, on every page`
                     }
-                    return next;
-                  });
-                }}
-                onClick={(event) => event.stopPropagation()}
-              />
-              {filterTotal != null && onSelectAllMatchingFilter && (
-                <button
-                  type="button"
-                  className={`text-left text-xs leading-tight wrap-break-word max-w-[4.5rem] ${targetMode === "filter_all" ? "font-semibold text-emerald-600" : "text-emerald-600 hover:underline"}`}
-                  onClick={(event) => {
-                    event.stopPropagation();
-                    onSelectAllMatchingFilter();
-                  }}
-                >
-                  All {filterTotal} filtered
-                </button>
-              )}
-            </div>
-          </TableHeader>
-        ),
+                    aria-pressed={allFiltered}
+                    data-guided-tour="tasks-select-all"
+                    className={
+                      allFiltered
+                        ? "inline-flex items-center gap-0.5 whitespace-nowrap rounded-full border border-emerald-600 bg-emerald-600 px-1.5 text-[11px] font-medium leading-4 text-white hover:bg-emerald-700"
+                        : "inline-flex items-center whitespace-nowrap rounded-full border border-emerald-600 px-1.5 text-[11px] font-medium leading-4 text-emerald-700 hover:bg-emerald-50 dark:text-emerald-400 dark:hover:bg-emerald-950"
+                    }
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      if (allFiltered) onClearSelection?.();
+                      else onSelectAllMatchingFilter();
+                    }}
+                  >
+                    All {filterTotal}
+                    {allFiltered && <CloseIcon className="h-3 w-3" />}
+                  </button>
+                )}
+              </div>
+            </TableHeader>
+          );
+        },
         enableResizing: false,
         size: 3,
         meta: {
-          width: "3rem",
-          minWidth: "2.75rem",
+          width: "4.5rem",
+          minWidth: "4rem",
           maxWidth: "5rem",
         },
         cell: ({ row }) => (
@@ -214,6 +239,7 @@ export default function useAnnotationTaskTable({
                 href={fullHref}
                 target="_blank"
                 rel="noopener noreferrer"
+                onClick={() => onOpenTask?.(row.original)}
               >
                 {pathFormatter(recording.path)}
               </Link>
@@ -420,6 +446,7 @@ export default function useAnnotationTaskTable({
     ],
     [
       getAnnotationTaskLink,
+      onOpenTask,
       pathFormatter,
       pagination,
       data,
@@ -431,6 +458,7 @@ export default function useAnnotationTaskTable({
       onRowSelectionChange,
       filterTotal,
       onSelectAllMatchingFilter,
+      onClearSelection,
       targetMode,
     ],
   );

@@ -38,11 +38,16 @@ export const ZOOM_FACTOR = 0.2;
 export const SPECTROGRAM_CANVAS_DIMENSIONS: Dimensions = {height: 384, width: 1000}
 export const WAVEFORM_CANVAS_DIMENSIONS: Dimensions = {height: SPECTROGRAM_CANVAS_DIMENSIONS.height / 6, width: SPECTROGRAM_CANVAS_DIMENSIONS.width}
 
-/** Canvas used by the selected sound event panel. The backing store matches the
- * rendered size so that pointer deltas map 1:1 onto canvas pixels. */
+/** Canvas used by the selected sound event panel, in CSS pixels. Drawing and
+ * pointer positions use this size, so pointer deltas map 1:1 onto drawing
+ * units; the backing store is scaled up by the device pixel ratio. */
 export const SOUND_EVENT_CANVAS_DIMENSIONS: Dimensions = {height: 224, width: 448}
 
 /** Card padding is p-4 which equals 16px on each side (32px total horizontal padding) */
 export const CARD_HORIZONTAL_PADDING = 36;
 /** Container width that accounts for Card padding to achieve 1000px content width */
 export const SPECTROGRAM_CONTAINER_WIDTH = SPECTROGRAM_CANVAS_DIMENSIONS.width + CARD_HORIZONTAL_PADDING;
+
+/** Sonari user documentation in the trackit wiki */
+export const SONARI_WIKI_URL =
+  "https://wiki.trackit.systems/s/11b7bd95-d35a-40a7-bdeb-1972aabe67bb/doc/sonari-interaktive-analyse-von-audiodaten-YJvBjsaINV";

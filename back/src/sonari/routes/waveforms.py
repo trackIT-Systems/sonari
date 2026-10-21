@@ -2,6 +2,7 @@
 
 from typing import Annotated
 
+import anyio
 from fastapi import Depends, Response
 
 from sonari import api, schemas
@@ -56,28 +57,33 @@ async def get_waveform(
     # Close session BEFORE expensive computation
     await session.close()
 
-    # Compute waveform array
-    data = api.compute_waveform(
-        recording,
-        start_time,
-        end_time,
-        audio_parameters=audio_parameters,
-        spectrogram_parameters=spectrogram_parameters,
-        audio_dir=settings.audio_dir,
-    )
+    def render() -> tuple[bytes, int, str]:
+        # Compute waveform array
+        data = api.compute_waveform(
+            recording,
+            start_time,
+            end_time,
+            audio_parameters=audio_parameters,
+            spectrogram_parameters=spectrogram_parameters,
+            audio_dir=settings.audio_dir,
+        )
 
-    # Convert array to image with colormap and gamma
-    image = images.array_to_image(
-        data,
-        cmap=cmap,
-        gamma=gamma,
-    )
+        # Convert array to image with colormap and gamma
+        image = images.array_to_image(
+            data,
+            cmap=cmap,
+            gamma=gamma,
+        )
 
-    # Convert image to buffer
-    buffer, buffer_size, fmt = images.image_to_buffer(image)
+        # Convert image to buffer
+        buffer, buffer_size, fmt = images.image_to_buffer(image)
+        return buffer.read(), buffer_size, fmt
+
+    # CPU bound: run in a worker thread so the event loop stays responsive.
+    content, buffer_size, fmt = await anyio.to_thread.run_sync(render)
 
     return Response(
-        content=buffer.read(),
+        content=content,
         media_type=f"image/{fmt}",
         headers={
             "content-length": str(buffer_size),

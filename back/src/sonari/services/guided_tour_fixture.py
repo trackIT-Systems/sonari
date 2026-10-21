@@ -1,0 +1,565 @@
+"""Guided tour templates as portable JSON fixtures.
+
+A fixture holds everything a template needs except the audio itself:
+recordings (by path relative to the audio dir, with the metadata that decides
+lesson order), tasks, sound events, tags and features. Servers load it with
+``sonari-guided-tour import``; nothing is copied between servers at runtime.
+"""
+
+from __future__ import annotations
+
+import datetime
+import hashlib
+import json
+import re
+from dataclasses import dataclass, field
+from pathlib import Path, PurePosixPath
+from typing import Literal
+from uuid import UUID
+
+from pydantic import BaseModel, Field, model_validator
+from soundevent import Geometry
+from soundevent.audio import compute_md5_checksum
+from sqlalchemy import insert, select, tuple_
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from sonari import api, exceptions, models, schemas
+from sonari.schemas.annotation_projects import GuidedTourVariant
+from sonari.services.guided_tour import (
+    _delete_project_tasks,
+    _get_or_create_template,
+)
+
+__all__ = [
+    "GuidedTourFixture",
+    "ImportResult",
+    "export_template_fixture",
+    "fixture_checksum",
+    "import_template_fixture",
+]
+
+FORMAT_VERSION = 1
+_CHECKSUM_RE = re.compile(r"fixture-sha256=([0-9a-f]{64})")
+
+
+class FixtureTag(BaseModel):
+    key: str
+    value: str
+
+
+class FixtureFeature(BaseModel):
+    name: str
+    value: float
+
+
+class FixtureSoundEvent(BaseModel):
+    geometry: Geometry = Field(..., discriminator="type")
+    tags: list[FixtureTag] = Field(default_factory=list)
+    features: list[FixtureFeature] = Field(default_factory=list)
+
+
+class FixtureRecording(BaseModel):
+    path: str
+    """Relative to the audio dir, e.g. ``workshop-awst25-bat09/foo.flac``."""
+    date: datetime.date | None = None
+    time: datetime.time | None = None
+    latitude: float | None = None
+    longitude: float | None = None
+    time_expansion: float = 1.0
+    hash: str | None = None
+    """md5 of the audio (``Recording.hash``). Finds the recording on servers
+    that registered the same file under another path."""
+
+
+class FixtureTask(BaseModel):
+    recording_path: str
+    start_time: float
+    end_time: float
+    tags: list[FixtureTag] = Field(default_factory=list)
+    features: list[FixtureFeature] = Field(default_factory=list)
+    sound_event_annotations: list[FixtureSoundEvent] = Field(default_factory=list)
+
+
+class GuidedTourFixture(BaseModel):
+    format_version: Literal[1] = FORMAT_VERSION
+    variant: GuidedTourVariant
+    audio_folder: str
+    """Folder under the audio dir holding all recordings of this tour."""
+    recordings: list[FixtureRecording]
+    tasks: list[FixtureTask]
+    """In lesson order (recording date, time, then position here)."""
+
+    @model_validator(mode="after")
+    def _check_paths(self) -> GuidedTourFixture:
+        known = {r.path for r in self.recordings}
+        missing = sorted({t.recording_path for t in self.tasks} - known)
+        if missing:
+            raise ValueError(f"Tasks reference recordings not listed in 'recordings': {missing}")
+        outside = sorted(p for p in known if Path(p).parts[:1] != (self.audio_folder,))
+        if outside:
+            raise ValueError(f"Recordings outside audio_folder {self.audio_folder!r}: {outside}")
+        return self
+
+
+def fixture_checksum(fixture: GuidedTourFixture) -> str:
+    data = fixture.model_dump(mode="json")
+    # Fixtures exported before ``hash`` existed keep their checksum.
+    for rec in data["recordings"]:
+        if rec["hash"] is None:
+            del rec["hash"]
+    canonical = json.dumps(data, sort_keys=True, separators=(",", ":"))
+    return hashlib.sha256(canonical.encode()).hexdigest()
+
+
+def _template_description(checksum: str) -> str:
+    return f"Hidden template for guided user tours. fixture-sha256={checksum}"
+
+
+# ---------------------------------------------------------------------------
+# Export
+# ---------------------------------------------------------------------------
+
+
+async def export_template_fixture(
+    session: AsyncSession,
+    project_id: int,
+    variant: GuidedTourVariant,
+    *,
+    relocate: str | None = None,
+    path_map: dict[str, str] | None = None,
+) -> GuidedTourFixture:
+    """Read any annotation project into a fixture (notes and badges are skipped).
+
+    ``relocate`` (e.g. ``"workshop-awst25-bat09/bulk"``) stores every recording
+    as ``<relocate>/<file name>`` instead of its server path, so recordings from
+    several top-level folders fit one tour audio folder. ``path_map`` is then
+    filled with server path -> fixture path, to copy the audio accordingly.
+    """
+    task_t = models.AnnotationTask.__table__
+    rec_t = models.Recording.__table__
+    tag_t = models.Tag.__table__
+    sea_t = models.SoundEventAnnotation.__table__
+
+    rows = (
+        await session.execute(
+            select(
+                task_t.c.id,
+                task_t.c.start_time,
+                task_t.c.end_time,
+                rec_t.c.path,
+                rec_t.c.date,
+                rec_t.c.time,
+                rec_t.c.latitude,
+                rec_t.c.longitude,
+                rec_t.c.time_expansion,
+                rec_t.c.hash,
+            )
+            .join(rec_t, rec_t.c.id == task_t.c.recording_id)
+            .where(task_t.c.annotation_project_id == project_id)
+            .order_by(rec_t.c.date, rec_t.c.time, task_t.c.id),
+        )
+    ).all()
+    if not rows:
+        raise ValueError(f"Annotation project {project_id} has no tasks.")
+
+    fixture_paths: dict[str, str] = {}
+    if relocate is not None:
+        target = PurePosixPath(relocate.strip("/"))
+        if not target.parts:
+            raise ValueError("--relocate needs a folder, e.g. workshop-awst25-bat09/bulk")
+        by_name: dict[str, str] = {}
+        for r in rows:
+            source = Path(r.path).as_posix()
+            name = PurePosixPath(source).name
+            if by_name.setdefault(name, source) != source:
+                raise ValueError(f"Two recordings share the file name {name!r}: {by_name[name]} and {source}")
+            fixture_paths[source] = (target / name).as_posix()
+        folders = [target.parts[0]]
+    else:
+        folders = sorted({Path(r.path).parts[0] for r in rows})
+        if len(folders) != 1:
+            raise ValueError(
+                f"Recordings must share one top-level folder, found: {folders}. "
+                "Use --relocate to put them into one folder.",
+            )
+    if path_map is not None:
+        path_map.update(fixture_paths)
+
+    task_ids = [r.id for r in rows]
+
+    task_tags: dict[int, list[FixtureTag]] = {}
+    for r in await session.execute(
+        select(models.AnnotationTaskTag.annotation_task_id, tag_t.c.key, tag_t.c.value)
+        .join(tag_t, tag_t.c.id == models.AnnotationTaskTag.tag_id)
+        .where(models.AnnotationTaskTag.annotation_task_id.in_(task_ids))
+        .distinct()
+        .order_by(tag_t.c.key, tag_t.c.value),
+    ):
+        task_tags.setdefault(r.annotation_task_id, []).append(FixtureTag(key=r.key, value=r.value))
+
+    task_features: dict[int, list[FixtureFeature]] = {}
+    for r in await session.execute(
+        select(models.AnnotationTaskFeature)
+        .where(models.AnnotationTaskFeature.annotation_task_id.in_(task_ids))
+        .order_by(models.AnnotationTaskFeature.name),
+    ):
+        f = r[0]
+        task_features.setdefault(f.annotation_task_id, []).append(FixtureFeature(name=f.name, value=f.value))
+
+    events = (
+        await session.execute(
+            select(sea_t.c.id, sea_t.c.annotation_task_id, sea_t.c.geometry)
+            .where(sea_t.c.annotation_task_id.in_(task_ids))
+            .order_by(sea_t.c.id),
+        )
+    ).all()
+    event_ids = [e.id for e in events]
+
+    event_tags: dict[int, list[FixtureTag]] = {}
+    event_features: dict[int, list[FixtureFeature]] = {}
+    if event_ids:
+        for r in await session.execute(
+            select(models.SoundEventAnnotationTag.sound_event_annotation_id, tag_t.c.key, tag_t.c.value)
+            .join(tag_t, tag_t.c.id == models.SoundEventAnnotationTag.tag_id)
+            .where(models.SoundEventAnnotationTag.sound_event_annotation_id.in_(event_ids))
+            .distinct()
+            .order_by(tag_t.c.key, tag_t.c.value),
+        ):
+            event_tags.setdefault(r.sound_event_annotation_id, []).append(FixtureTag(key=r.key, value=r.value))
+        for r in await session.execute(
+            select(models.SoundEventAnnotationFeature)
+            .where(models.SoundEventAnnotationFeature.sound_event_annotation_id.in_(event_ids))
+            .order_by(models.SoundEventAnnotationFeature.name),
+        ):
+            f = r[0]
+            event_features.setdefault(f.sound_event_annotation_id, []).append(
+                FixtureFeature(name=f.name, value=f.value),
+            )
+
+    events_by_task: dict[int, list[FixtureSoundEvent]] = {}
+    for e in events:
+        events_by_task.setdefault(e.annotation_task_id, []).append(
+            FixtureSoundEvent(
+                geometry=e.geometry,
+                tags=event_tags.get(e.id, []),
+                features=event_features.get(e.id, []),
+            ),
+        )
+
+    recordings: dict[str, FixtureRecording] = {}
+    tasks: list[FixtureTask] = []
+    for r in rows:
+        path = Path(r.path).as_posix()
+        path = fixture_paths.get(path, path)
+        recordings.setdefault(
+            path,
+            FixtureRecording(
+                path=path,
+                date=r.date,
+                time=r.time,
+                latitude=r.latitude,
+                longitude=r.longitude,
+                time_expansion=r.time_expansion,
+                hash=r.hash,
+            ),
+        )
+        tasks.append(
+            FixtureTask(
+                recording_path=path,
+                start_time=r.start_time,
+                end_time=r.end_time,
+                tags=task_tags.get(r.id, []),
+                features=task_features.get(r.id, []),
+                sound_event_annotations=events_by_task.get(r.id, []),
+            ),
+        )
+
+    return GuidedTourFixture(
+        variant=variant,
+        audio_folder=folders[0],
+        recordings=list(recordings.values()),
+        tasks=tasks,
+    )
+
+
+# ---------------------------------------------------------------------------
+# Import
+# ---------------------------------------------------------------------------
+
+
+@dataclass
+class ImportResult:
+    status: Literal["imported", "unchanged"]
+    checksum: str
+    template_id: int
+    tasks: int = 0
+    sound_events: int = 0
+    registered_recordings: int = 0
+    created_tags: int = 0
+    warnings: list[str] = field(default_factory=list)
+
+
+async def _get_or_create_dataset(
+    session: AsyncSession,
+    fixture: GuidedTourFixture,
+    audio_dir: Path,
+    result: ImportResult,
+) -> schemas.Dataset:
+    try:
+        return await api.datasets.get_by_audio_dir(session, Path(fixture.audio_folder))
+    except exceptions.NotFoundError:
+        pass
+    try:
+        dataset = await api.datasets.get_by_name(session, fixture.audio_folder)
+    except exceptions.NotFoundError:
+        return await api.datasets.create_from_data(
+            session,
+            schemas.DatasetCreate(
+                name=fixture.audio_folder,
+                description="Audio for the Sonari guided tour.",
+                audio_dir=audio_dir / fixture.audio_folder,
+            ),
+            audio_dir=audio_dir,
+        )
+    result.warnings.append(
+        f"Dataset {dataset.name!r} already exists with audio_dir {Path(dataset.audio_dir).as_posix()}; "
+        "reusing it.",
+    )
+    return dataset
+
+
+async def _register_recordings(
+    session: AsyncSession,
+    fixture: GuidedTourFixture,
+    audio_dir: Path,
+    result: ImportResult,
+) -> dict[str, int]:
+    """Make sure every fixture recording has a DB row; return path → id.
+
+    Recordings are matched by path first, then by audio hash: the same file
+    registered under another path is reused instead of inserted again
+    (``Recording.hash`` is unique). The hash comes from the file at the
+    fixture path or, when the server keeps the audio elsewhere, from the
+    fixture, so the file only has to exist for recordings that are new.
+    """
+    rec_t = models.Recording.__table__
+    dr_t = models.DatasetRecording.__table__
+    columns = (rec_t.c.id, rec_t.c.path, rec_t.c.date, rec_t.c.time, rec_t.c.hash)
+
+    async def by_path(paths: list[str]) -> dict:
+        query = select(*columns).where(rec_t.c.path.in_([Path(p) for p in paths]))
+        return {Path(r.path).as_posix(): r for r in await session.execute(query)}
+
+    existing = await by_path([r.path for r in fixture.recordings])
+    missing = [r for r in fixture.recordings if r.path not in existing]
+
+    if missing:
+        # Same md5 as recordings.create computes for Recording.hash.
+        on_disk = {r.path for r in missing if (audio_dir / r.path).is_file()}
+        hashes = {
+            r.path: compute_md5_checksum(audio_dir / r.path) if r.path in on_disk else r.hash
+            for r in missing
+        }
+        by_hash = {
+            r.hash: r
+            for r in await session.execute(
+                select(*columns).where(rec_t.c.hash.in_({h for h in hashes.values() if h is not None})),
+            )
+        }
+        absent = [r.path for r in missing if r.path not in on_disk and hashes[r.path] not in by_hash]
+        if absent:
+            raise ValueError(
+                f"Audio files missing under {audio_dir} and not registered under another path: {absent}",
+            )
+
+        dataset = await _get_or_create_dataset(session, fixture, audio_dir, result)
+        linked = set(
+            (await session.execute(select(dr_t.c.recording_id).where(dr_t.c.dataset_id == dataset.id))).scalars(),
+        )
+
+        for rec in missing:
+            row = by_hash.get(hashes[rec.path])
+            if row is None:
+                await api.datasets.add_file(
+                    session,
+                    dataset,
+                    audio_dir / rec.path,
+                    date=rec.date,
+                    time=rec.time,
+                    latitude=rec.latitude,
+                    longitude=rec.longitude,
+                    time_expansion=rec.time_expansion,
+                    audio_dir=audio_dir,
+                )
+                result.registered_recordings += 1
+                row = (await by_path([rec.path]))[rec.path]
+                by_hash[row.hash] = row
+                linked.add(row.id)
+            else:
+                result.warnings.append(
+                    f"{rec.path} is already registered as {Path(row.path).as_posix()}; reusing it.",
+                )
+                if row.id not in linked:
+                    recording = await api.recordings.get(session, row.id)
+                    await api.datasets.add_recording(session, dataset, recording)
+                    linked.add(row.id)
+            existing[rec.path] = row
+
+    # Lesson order follows recording date/time; flag rows registered earlier
+    # with different values.
+    for rec in fixture.recordings:
+        row = existing[rec.path]
+        if (row.date, row.time) != (rec.date, rec.time):
+            result.warnings.append(
+                f"{rec.path}: database has date/time {row.date} {row.time}, "
+                f"fixture has {rec.date} {rec.time}; lesson order may differ.",
+            )
+    return {path: row.id for path, row in existing.items()}
+
+
+async def _resolve_tags(
+    session: AsyncSession,
+    fixture: GuidedTourFixture,
+    created_by_id: UUID | None,
+    result: ImportResult,
+) -> dict[tuple[str, str], int]:
+    tag_t = models.Tag.__table__
+    wanted = {
+        (t.key, t.value)
+        for task in fixture.tasks
+        for t in [*task.tags, *(tag for e in task.sound_event_annotations for tag in e.tags)]
+    }
+    if not wanted:
+        return {}
+
+    def lookup_query():
+        return select(tag_t.c.id, tag_t.c.key, tag_t.c.value).where(
+            tuple_(tag_t.c.key, tag_t.c.value).in_(sorted(wanted)),
+        )
+
+    found = {(r.key, r.value): r.id for r in await session.execute(lookup_query())}
+    missing = sorted(wanted - found.keys())
+    if missing:
+        now = datetime.datetime.now(datetime.timezone.utc)
+        await session.execute(
+            insert(tag_t),
+            [{"key": k, "value": v, "created_by_id": created_by_id, "created_on": now} for k, v in missing],
+        )
+        result.created_tags = len(missing)
+        found = {(r.key, r.value): r.id for r in await session.execute(lookup_query())}
+    return found
+
+
+async def import_template_fixture(
+    session: AsyncSession,
+    fixture: GuidedTourFixture,
+    *,
+    audio_dir: Path,
+    created_by_id: UUID | None = None,
+    force: bool = False,
+) -> ImportResult:
+    """Replace the variant's template with the fixture content.
+
+    Does not commit. Returns ``status="unchanged"`` without touching the
+    database when the template was already imported from an identical fixture.
+    """
+    checksum = fixture_checksum(fixture)
+    template = await _get_or_create_template(session, fixture.variant)
+    result = ImportResult(status="imported", checksum=checksum, template_id=template.id)
+
+    current = _CHECKSUM_RE.search(template.description or "")
+    if not force and current and current.group(1) == checksum:
+        result.status = "unchanged"
+        return result
+
+    recording_ids = await _register_recordings(session, fixture, audio_dir, result)
+    tag_ids = await _resolve_tags(session, fixture, created_by_id, result)
+
+    await _delete_project_tasks(session, template)
+
+    task_t = models.AnnotationTask.__table__
+    sea_t = models.SoundEventAnnotation.__table__
+    now = datetime.datetime.now(datetime.timezone.utc)
+
+    new_task_ids = (
+        await session.execute(
+            insert(task_t).returning(task_t.c.id, sort_by_parameter_order=True),
+            [
+                {
+                    "annotation_project_id": template.id,
+                    "recording_id": recording_ids[t.recording_path],
+                    "start_time": t.start_time,
+                    "end_time": t.end_time,
+                    "created_on": now,
+                }
+                for t in fixture.tasks
+            ],
+        )
+    ).scalars().all()
+
+    task_tag_rows = []
+    task_feature_rows = []
+    event_rows = []
+    event_specs: list[FixtureSoundEvent] = []
+    for task, task_id in zip(fixture.tasks, new_task_ids, strict=True):
+        for t in {(t.key, t.value) for t in task.tags}:
+            task_tag_rows.append(
+                {"annotation_task_id": task_id, "tag_id": tag_ids[t], "created_by_id": created_by_id, "created_on": now},
+            )
+        for f in task.features:
+            task_feature_rows.append({"annotation_task_id": task_id, "name": f.name, "value": f.value, "created_on": now})
+        for event in task.sound_event_annotations:
+            event_rows.append(
+                {
+                    "annotation_task_id": task_id,
+                    "recording_id": recording_ids[task.recording_path],
+                    "geometry_type": event.geometry.type,
+                    "geometry": event.geometry,
+                    "created_by_id": created_by_id,
+                    "created_on": now,
+                },
+            )
+            event_specs.append(event)
+
+    if task_tag_rows:
+        await session.execute(insert(models.AnnotationTaskTag.__table__), task_tag_rows)
+    if task_feature_rows:
+        await session.execute(insert(models.AnnotationTaskFeature.__table__), task_feature_rows)
+
+    if event_rows:
+        new_event_ids = (
+            await session.execute(
+                insert(sea_t).returning(sea_t.c.id, sort_by_parameter_order=True),
+                event_rows,
+            )
+        ).scalars().all()
+        event_tag_rows = []
+        event_feature_rows = []
+        for event, event_id in zip(event_specs, new_event_ids, strict=True):
+            for t in {(t.key, t.value) for t in event.tags}:
+                event_tag_rows.append(
+                    {
+                        "sound_event_annotation_id": event_id,
+                        "tag_id": tag_ids[t],
+                        "created_by_id": created_by_id,
+                        "created_on": now,
+                    },
+                )
+            for f in event.features:
+                event_feature_rows.append(
+                    {"sound_event_annotation_id": event_id, "name": f.name, "value": f.value, "created_on": now},
+                )
+        if event_tag_rows:
+            await session.execute(insert(models.SoundEventAnnotationTag.__table__), event_tag_rows)
+        if event_feature_rows:
+            await session.execute(insert(models.SoundEventAnnotationFeature.__table__), event_feature_rows)
+
+    await session.execute(
+        models.AnnotationProject.__table__.update()
+        .where(models.AnnotationProject.id == template.id)
+        .values(description=_template_description(checksum)),
+    )
+
+    result.tasks = len(new_task_ids)
+    result.sound_events = len(event_rows)
+    return result

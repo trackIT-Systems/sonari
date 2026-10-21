@@ -4,7 +4,7 @@ from datetime import datetime, timedelta, time
 from typing import Literal
 
 from soundevent import data
-from sqlalchemy import Float, Select, and_, case, exists, func, literal, not_, or_, select, union_all
+from sqlalchemy import Float, Select, and_, case, exists, false, func, literal, not_, or_, select, union_all
 from sqlalchemy.ext.compiler import compiles
 from sqlalchemy.sql.expression import FunctionElement
 
@@ -13,6 +13,8 @@ from sonari.filters import base
 
 __all__ = [
     "AnnotationProjectFilter",
+    "AnnotationTaskIdsFilter",
+    "AnnotationTaskTagFilter",
     "StationFilter",
     "AnnotationTaskFilter",
     "SearchRecordingsFilter",
@@ -204,6 +206,45 @@ class RecordingFilter(base.Filter):
         )
 
 
+class AnnotationTaskTagFilter(base.Filter):
+    """Filter for tasks carrying a task-level tag (e.g. ``tour: bulk``)."""
+
+    key: str | None = None
+    value: str | None = None
+
+    def filter(self, query: Select) -> Select:
+        if self.key is None or self.value is None:
+            return query
+        return query.where(
+            exists(
+                select(1)
+                .select_from(models.AnnotationTaskTag)
+                .join(models.Tag, models.Tag.id == models.AnnotationTaskTag.tag_id)
+                .where(
+                    models.AnnotationTaskTag.annotation_task_id == models.AnnotationTask.id,
+                    models.Tag.key == self.key,
+                    models.Tag.value == self.value,
+                )
+                .correlate(models.AnnotationTask)
+            )
+        )
+
+
+class AnnotationTaskIdsFilter(base.Filter):
+    """Filter for a given set of tasks, e.g. the rows ticked in the tasks table."""
+
+    lst: str | None = None
+
+    def filter(self, query: Select) -> Select:
+        if not self.lst:
+            return query
+        ids = [int(part) for part in self.lst.split(",") if part.strip().isdigit()]
+        if not ids:
+            # Only invalid ids: match nothing instead of silently matching all.
+            return query.where(false())
+        return query.where(models.AnnotationTask.id.in_(ids))
+
+
 class StationFilter(base.Filter):
     """Filter for tasks by stations, which is the external name for datasets."""
 
@@ -266,11 +307,16 @@ def _tag_id_subquery(key: str, value: str):
 
 
 def _task_tag_pairs(candidate_task_ids: Select):
-    """(task_id, tag_id) rows for candidate tasks: sound-event tags and task-level tags."""
+    """(task_id, tag_id, is_event) rows for candidate tasks.
+
+    Sound-event tags (``is_event`` 1) and task-level tags (``is_event`` 0): tag
+    include/exclude matches both, the distinct tag count only sound-event tags.
+    """
     sound_event_level = (
         select(
             models.SoundEventAnnotation.annotation_task_id.label("task_id"),
             models.SoundEventAnnotationTag.tag_id.label("tag_id"),
+            literal(1).label("is_event"),
         )
         .select_from(models.SoundEventAnnotation)
         .join(
@@ -283,6 +329,7 @@ def _task_tag_pairs(candidate_task_ids: Select):
     task_level = select(
         models.AnnotationTaskTag.annotation_task_id.label("task_id"),
         models.AnnotationTaskTag.tag_id.label("tag_id"),
+        literal(0).label("is_event"),
     ).where(models.AnnotationTaskTag.annotation_task_id.in_(candidate_task_ids))
     return union_all(sound_event_level, task_level).subquery("task_tag_pairs")
 
@@ -349,8 +396,11 @@ def _grouped_tag_condition(
         conditions.extend(not_(_pairs_have_tag(pairs, k, v)) for k, v in exclude_pairs)
     if count_active:
         assert count_filter is not None
+        # Task tags (e.g. "tour: bulk", recording quality) are not part of the
+        # "distinct tag amount": only tags on sound events count.
+        event_tag_id = case((pairs.c.is_event == 1, pairs.c.tag_id), else_=None)
         conditions.extend(
-            _count_bound_conditions(func.count(pairs.c.tag_id.distinct()), count_filter)
+            _count_bound_conditions(func.count(event_tag_id.distinct()), count_filter)
         )
 
     grouped = select(pairs.c.task_id).group_by(pairs.c.task_id)
@@ -1058,6 +1108,8 @@ _AnnotationTaskFilterCombined = base.combine(
     assigned=IsAssignedFilter,
     annotation_project=AnnotationProjectFilter,
     recording=RecordingFilter,
+    id=AnnotationTaskIdsFilter,
+    annotation_task_tag=AnnotationTaskTagFilter,
     dataset=StationFilter,
     sound_event_annotation_tag=SoundEventAnnotationTagFilter,
     sound_event_annotation_tag_count=SoundEventAnnotationTagCountFilter,

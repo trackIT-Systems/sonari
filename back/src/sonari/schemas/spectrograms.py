@@ -41,6 +41,17 @@ class STFTParameters(BaseModel):
     window: Window = "hann"
     """Window function."""
 
+    max_columns: int | None = Field(default=None, ge=1)
+    """Limit on the number of time columns.
+
+    When the window size and overlap would produce more columns, the hop size
+    is increased up to half the window size; beyond that, neighbouring columns
+    are max-pooled so no audio is left out. Used by previews and zoomed out
+    views that are downscaled for display. Spectrograms may get one column
+    more than this, from the frames at the padded edges; waveforms get exactly
+    this many.
+    """
+
 
 Scale = Literal["amplitude", "power", "dB"]
 
@@ -112,6 +123,15 @@ class SpectrogramParameters(STFTParameters, AmplitudeParameters):
 
     gamma: float = 1.0
     """Gamma of the resulting spectrogram."""
+
+    max_rows: int | None = Field(default=None, ge=1)
+    """Upper bound on the image height; taller images are downscaled.
+
+    Intended for small previews, together with `max_columns`.
+    """
+
+    lossy: bool = False
+    """Encode the image lossy (JPEG): much smaller and faster than lossless WebP."""
 
     time_zoom_automatic: bool = True
     """If True, initial time window duration is computed automatically; if False, use time_zoom_duration_seconds."""

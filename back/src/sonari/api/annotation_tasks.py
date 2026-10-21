@@ -697,8 +697,11 @@ class AnnotationTaskAPI(
         schemas.AnnotationTask
             Task with the new status badge.
         """
+        # Compare ids: the user may be an ORM object (request user) or a schema.
+        user_id = user.id if user is not None else None
         for b in obj.status_badges:
-            if b.user == user and b.state == state:
+            badge_user_id = b.user.id if b.user is not None else getattr(b, "user_id", None)
+            if badge_user_id == user_id and b.state == state:
                 raise exceptions.DuplicateObjectError(f"Status badge {b} already exists in task {obj.id}")
 
         badge = await common.create_object(
@@ -1176,6 +1179,11 @@ class AnnotationTaskAPI(
     ) -> schemas.AnnotationTaskBulkResult:
         """Add a status badge to many tasks; skip duplicates."""
         from sonari.api import annotation_projects
+
+        # A plain snapshot: a skipped duplicate rolls back its savepoint, which
+        # expires ORM objects of this session, e.g. the request user. Reading
+        # user.id afterwards would need a (sync) reload and fail every later task.
+        user = schemas.SimpleUser.model_validate(user)
 
         tasks_targeted = len(task_ids)
         tasks_updated = 0

@@ -21,7 +21,13 @@ export default function SlideOver({
   }, [onClose]);
 
   return (
-    <Transition show={isOpen} as={Fragment}>
+    <Transition
+      show={isOpen}
+      as={Fragment}
+      // The dialog restores focus to whatever opened it; drop it so the page's
+      // keyboard shortcuts work right away.
+      afterLeave={() => requestAnimationFrame(blurActiveElement)}
+    >
       <Dialog as="div" className="relative z-50" onClose={handleClose}>
         <TransitionChild
           as={Fragment}
@@ -32,7 +38,8 @@ export default function SlideOver({
           leaveFrom="opacity-100"
           leaveTo="opacity-0"
         >
-          <div className="fixed inset-0 bg-black/20 backdrop-blur-sm transition-opacity" />
+          {/* No dimming or blur: settings change the spectrogram and the effect must stay visible. */}
+          <div className="fixed inset-0 transition-opacity" />
         </TransitionChild>
 
         <div className="fixed inset-0 overflow-hidden">

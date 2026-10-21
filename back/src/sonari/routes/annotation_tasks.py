@@ -369,6 +369,9 @@ def get_annotation_tasks_router(settings: SonariSettings):
             created_by=user,
             annotation_task_id=annotation_task.id,
         )
+        # The created note does not carry its author. Without it the note is
+        # cached on the task (and shown) as "anonymous" until the next reload.
+        note_obj = note_obj.model_copy(update={"created_by": schemas.SimpleUser.model_validate(user)})
         updated = await api.annotation_tasks.add_note(
             session,
             annotation_task,

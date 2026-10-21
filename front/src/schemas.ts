@@ -17,6 +17,7 @@ export const UserSchema = z.object({
   username: z.string(),
   email: z.string().email().optional(),
   name: z.string().nullable().optional(),
+  is_superuser: z.boolean().nullish(),
 });
 
 export const AuthConfigSchema = z.object({
@@ -52,6 +53,61 @@ export const AppTokenCreateSchema = z.object({
 export const TagSchema = z.object({
   key: z.string(),
   value: z.string(),
+  /** Keyboard key (0-9) that picks the tag in the tag search. */
+  shortcut: z.string().nullish(),
+});
+
+/** A species from the species catalog. */
+export const SpeciesInfoSchema = z.object({
+  id: z.number().int(),
+  scientific_name: z.string(),
+  name_de: z.string().default(""),
+  group_id: z.number().int().nullish(),
+});
+
+/** Tag with database id and usage counts, used for tag management. */
+export const TagDetailSchema = z.object({
+  id: z.number().int(),
+  key: z.string(),
+  value: z.string(),
+  group_id: z.number().int().nullish(),
+  species: SpeciesInfoSchema.nullish(),
+  shortcut: z.string().nullish(),
+  sound_event_count: z.number().int().default(0),
+  task_count: z.number().int().default(0),
+});
+
+/** A taxon group of tags, e.g. Bat or Bird. */
+export const TagGroupSchema = z.object({
+  id: z.number().int(),
+  name: z.string(),
+  project_keywords: z.array(z.string()).default([]),
+  tag_count: z.number().int().default(0),
+});
+
+/** A curated, named list of tags, e.g. "German Bats". */
+export const TagPresetSchema = z.object({
+  id: z.number().int(),
+  name: z.string(),
+  description: z.string().default(""),
+  group_id: z.number().int().nullish(),
+  created_by_id: z.string().uuid().nullish(),
+  tags: z.array(TagDetailSchema).default([]),
+});
+
+/** A species named by several tags, e.g. in German and in Latin. */
+export const SpeciesTagsSchema = z.object({
+  species: SpeciesInfoSchema,
+  tags: z.array(TagDetailSchema),
+});
+
+export const TagScopeSchema = z.enum(["auto", "group", "preset", "all"]);
+
+/** The group or preset that decides which tags a project shows. */
+export const ProjectTagScopeSchema = z.object({
+  scope: TagScopeSchema,
+  group: TagGroupSchema.nullish(),
+  preset: TagPresetSchema.nullish(),
 });
 
 type Tag = z.infer<typeof TagSchema>;
@@ -289,6 +345,12 @@ export const AnnotationProjectSchema = z.object({
   name: z.string(),
   description: z.string(),
   annotation_instructions: z.string().nullish(),
+  is_guided_tour: z.boolean().optional().default(false),
+  guided_tour_owner_user_id: z.string().uuid().nullish(),
+  guided_tour_variant: z.enum(["bird", "bat"]).nullish(),
+  tag_scope: TagScopeSchema.optional().default("auto"),
+  tag_group_id: z.number().int().nullish(),
+  tag_preset_id: z.number().int().nullish(),
   created_on: z.coerce.date(),
 });
 
@@ -378,6 +440,8 @@ export const SpectrogramParametersSchema = z
       .positive()
       .default(DEFAULT_OVERLAP_PERCENT),
     window: z.string().default(DEFAULT_WINDOW),
+    /** Caps the time columns by widening the hop; used by small previews */
+    max_columns: z.coerce.number().int().positive().optional(),
     scale: z.enum(["amplitude", "power", "dB"]).default(DEFAULT_SCALE),
     clamp: z.boolean().default(true),
     min_dB: z.coerce.number().nonpositive().gte(MIN_DB).default(-140),
@@ -388,6 +452,10 @@ export const SpectrogramParametersSchema = z
     pcen: z.boolean().default(false),
     cmap: z.string().default(DEFAULT_CMAP),
     gamma: z.coerce.number().positive().default(2),
+    /** Caps the image height (downscaled server side); used by small previews */
+    max_rows: z.coerce.number().int().positive().optional(),
+    /** Request a lossy (JPEG) image: much smaller, fine for previews */
+    lossy: z.boolean().optional(),
     freqLines: z
       .array(z.coerce.number().int().nonnegative())
       .default([]),

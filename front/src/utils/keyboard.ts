@@ -141,6 +141,10 @@ export const NAVIGATE_FTH_ELEMENT_SHORTCUT = "9";
 export const NAVIGATE_STH_ELEMENT_SHORTCUT = "0";
 export const FILTER_POPOVER_SHORTCUT = "f";
 export const PIN_PREVIEW_SHORTCUT = "p";
+/** Tasks table: cycle the channel shown in the spectrogram previews */
+export const PREVIEW_CHANNEL_SHORTCUT = "c";
+/** Tasks table: annotate the ticked tasks (7 opens Annotate for the whole filter). */
+export const ANNOTATE_SELECTION_SHORTCUT = NAVIGATE_FOT_ELEMENT_SHORTCUT;
 
 export const ROOT_NAVIGATION_SHORTCUTS: KeyShortcut[] = [
     {
@@ -361,7 +365,7 @@ export const ANNOTATION_KEY_SHORTCUTS: KeyShortcut[] = [
     },
     {
         label: "Redo",
-        shortcut: `${getMetaKeyLabel()} ${getSpecialKeyLabel("Shift")} ${UNDO_SHORTCUT.toUpperCase()}`,
+        shortcut: `${getMetaKeyLabel()} ${getSpecialKeyLabel("Shift")} ${UNDO_SHORTCUT.toUpperCase()} / ${getMetaKeyLabel()} ${REDO_SHORTCUT.toUpperCase()}`,
         description: "Redo the last undone annotation change",
     },
 ]
@@ -434,6 +438,11 @@ export const TASK_TABLE_SHORTCUTS: KeyShortcut[] = [
         description: "Open the highlighted task for annotation in a new tab.",
     },
     {
+        label: "Annotate ticked tasks",
+        shortcut: ANNOTATE_SELECTION_SHORTCUT,
+        description: "Open Annotate with only the ticked tasks as filter. Opening a ticked task (Enter or its name) does the same in a new tab. The filter shows as “Selected tasks” and can be removed there.",
+    },
+    {
         label: "Open task by position",
         shortcut: `${SELECT_FST_ELEMENT_SHORTCUT} – ${SELECT_FRT_ELEMENT_SHORTCUT}`,
         description: "With no rows selected: open the 1st to 4th task of the page in a new tab.",
@@ -447,6 +456,11 @@ export const TASK_TABLE_SHORTCUTS: KeyShortcut[] = [
         label: "Pin preview",
         shortcut: PIN_PREVIEW_SHORTCUT,
         description: "Keep the current row's preview open while you move on, to compare tasks. Press again (or click the pin) to unpin. Up to 5 pins; the oldest is dropped.",
+    },
+    {
+        label: "Preview channel",
+        shortcut: PREVIEW_CHANNEL_SHORTCUT,
+        description: "Cycle the channel shown in the spectrogram previews of multi-channel recordings: each channel, then all mixed (Mix). Or click a button on the preview. Applies to all previews; your spectrogram settings stay unchanged.",
     },
     {
         label: "Select by dragging",
@@ -464,9 +478,9 @@ export const TASK_TABLE_SHORTCUTS: KeyShortcut[] = [
         description: "Untick all selected rows and close the bulk action bar.",
     },
     {
-        label: "Status: completed",
+        label: "Status: accepted",
         shortcut: ACCEPT_TASK_SHORTCUT,
-        description: "With rows selected: mark them completed.",
+        description: "With rows selected: mark them accepted.",
     },
     {
         label: "Status: unsure",
@@ -474,9 +488,9 @@ export const TASK_TABLE_SHORTCUTS: KeyShortcut[] = [
         description: "With rows selected: mark them unsure.",
     },
     {
-        label: "Status: needs review",
+        label: "Status: rejected",
         shortcut: REJECT_TASK_SHORTCUT,
-        description: "With rows selected: mark them as needing review.",
+        description: "With rows selected: mark them rejected.",
     },
     {
         label: "Status: verified",

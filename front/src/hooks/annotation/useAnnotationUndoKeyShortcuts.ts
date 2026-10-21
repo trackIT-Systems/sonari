@@ -68,7 +68,11 @@ export default function useAnnotationUndoKeyShortcuts({
         return true;
       }
 
-      if (event.key.toLowerCase() === "z" && event.shiftKey) {
+      // Ctrl+Shift+Z and Ctrl+Y both redo.
+      const isRedo =
+        (event.key.toLowerCase() === "z" && event.shiftKey) ||
+        (event.key.toLowerCase() === "y" && !event.shiftKey && !event.altKey);
+      if (isRedo) {
         if (!canRedoRef.current) {
           return false;
         }

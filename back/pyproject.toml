@@ -35,6 +35,7 @@ Documentation = "https://github.com/trackIT-Systems/sonari"
 
 [project.scripts]
 sonari-create_app_token = "sonari.cli.create_app_token:main"
+sonari-guided-tour = "sonari.cli.guided_tour:main"
 
 [build-system]
 requires = ["hatchling"]

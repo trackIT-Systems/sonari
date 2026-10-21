@@ -178,9 +178,9 @@ function SoundEventAnnotationTagSelector({
           </div>
         ) : null}
         <p className="text-xs text-stone-500 dark:text-stone-400">
-          Number of different tags on the task. With one included tag, amount
-          2 means that tag is present and the task has exactly two distinct
-          tags in total.
+          Number of different tags on the task&apos;s sound events (task tags
+          do not count). With one included tag, amount 2 means that tag is
+          present and the sound events carry exactly two distinct tags in total.
         </p>
       </div>
       <div className="flex flex-col gap-1">
@@ -965,6 +965,20 @@ const tasksFilterDefs: FilterDef<AnnotationTaskFilter>[] = [
     description: "Filter by the maximum frequency of sound events. Only show tasks containing sound events with a maximum frequency within the specified range.",
     icon: (
       <SpectrogramIcon className="h-5 w-5 inline-block text-stone-500 mr-1 align-middle" />
+    ),
+  },
+  {
+    // Set by "annotate selection" in the tasks table, not from this menu.
+    field: "annotation_task_ids",
+    name: "Selected tasks",
+    hideInMenu: true,
+    selector: () => null,
+    render: ({ value, clear }) => (
+      <FilterBadge
+        field="Selected tasks"
+        value={`${(value as number[] | undefined)?.length ?? 0}`}
+        onRemove={clear}
+      />
     ),
   },
   {

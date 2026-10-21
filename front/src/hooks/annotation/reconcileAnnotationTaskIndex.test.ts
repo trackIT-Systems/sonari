@@ -52,4 +52,15 @@ describe("reconcileAnnotationTaskIndex", () => {
       }),
     ).toBe("none");
   });
+
+  it("keeps the current task when an edit filtered it out", () => {
+    expect(
+      reconcileAnnotationTaskIndex({
+        currentTaskId: 99,
+        itemIds: [10, 11],
+        isLoading: false,
+        wasListed: true,
+      }),
+    ).toBe("none");
+  });
 });

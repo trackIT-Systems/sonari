@@ -1,8 +1,12 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import api from "@/app/api";
 import { spectrogramCache } from "@/utils/spectrogram_cache";
 
 import type { SpectrogramParameters, SpectrogramWindow } from "@/types";
+
+/** A failed load is retried this many times before the error is shown */
+const MAX_AUTO_RETRIES = 2;
+const RETRY_DELAY_MS = 1500;
 
 /**
  * Loads the whole segment as one spectrogram image (no chunking).
@@ -21,11 +25,15 @@ export default function useSpectrogramPreviewImage({
 }) {
   const [image, setImage] = useState<HTMLImageElement | null>(null);
   const [isError, setIsError] = useState(false);
+  // Bumped to load again after a failure (automatic or via `retry`).
+  const [attempt, setAttempt] = useState(0);
+  const retry = useCallback(() => setAttempt((n) => n + 1), []);
 
   useEffect(() => {
     if (!enabled) return;
 
     let cancelled = false;
+    let retryTimer: number | undefined;
     setImage(null);
     setIsError(false);
 
@@ -56,13 +64,20 @@ export default function useSpectrogramPreviewImage({
       })
       .catch((error) => {
         console.error("Failed to load spectrogram preview:", error);
-        if (!cancelled) setIsError(true);
+        if (cancelled) return;
+        if (attempt < MAX_AUTO_RETRIES) {
+          retryTimer = window.setTimeout(() => setAttempt((n) => n + 1), RETRY_DELAY_MS);
+        } else {
+          setIsError(true);
+        }
       });
 
     return () => {
       cancelled = true;
+      window.clearTimeout(retryTimer);
     };
-  }, [recording_id, segment, parameters, enabled]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- `attempt` only re-triggers the load
+  }, [recording_id, segment, parameters, enabled, attempt]);
 
-  return { image, isError, isLoading: enabled && image == null && !isError };
+  return { image, isError, isLoading: enabled && image == null && !isError, retry };
 }

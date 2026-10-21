@@ -46,6 +46,11 @@ export default function Dialog({
   );
 }
 
+function blurFocusedControl() {
+  const el = document.activeElement;
+  if (el instanceof HTMLButtonElement || el instanceof HTMLAnchorElement) el.blur();
+}
+
 export function DialogOverlay({
   title,
   children,
@@ -66,7 +71,15 @@ export function DialogOverlay({
   const isPanel = variant === "panel";
 
   return (
-    <Transition appear show={isOpen} as={Fragment}>
+    <Transition
+      appear
+      show={isOpen}
+      as={Fragment}
+      // The dialog hands focus back to the button that opened it once the
+      // close animation ends. The app ignores keyboard shortcuts while a
+      // button has focus, so drop that focus again.
+      afterLeave={() => requestAnimationFrame(blurFocusedControl)}
+    >
       <HeadlessDialog
         as="div"
         className="relative z-50"

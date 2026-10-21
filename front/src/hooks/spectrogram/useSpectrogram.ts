@@ -25,6 +25,7 @@ import type {
 } from "@/types";
 import { SPECTROGRAM_CANVAS_DIMENSIONS, ZOOM_FACTOR } from "@/constants";
 import { drawAllFrequencyLines } from "@/draw/freqLines";
+import { getCanvasSize } from "@/draw/canvas";
 
 
 /**
@@ -80,6 +81,7 @@ export default function useSpectrogram({
   parameters: initialParameters,
   canvasRef,
   dimensions = SPECTROGRAM_CANVAS_DIMENSIONS,
+  pixelRatio = 1,
   onParameterChange,
   onModeChange,
   onDoubleClick,
@@ -101,6 +103,8 @@ export default function useSpectrogram({
   canvasRef?: RefObject<HTMLCanvasElement | null>;
   /** Size of the canvas the spectrogram is rendered on. */
   dimensions?: Dimensions;
+  /** Canvas pixels per CSS pixel, for canvases drawn at screen resolution */
+  pixelRatio?: number;
   onParameterChange?: (parameters: SpectrogramParameters) => void;
   onModeChange?: (mode: MotionMode) => void;
   onDoubleClick?: (dblClickProps: { position: Position }) => void;
@@ -227,6 +231,7 @@ export default function useSpectrogram({
     parameters,
     withSpectrogram,
     onAllSegmentsLoaded: onSegmentsLoaded,
+    canvasWidth: dimensions.width * pixelRatio,
   });
 
   const handleZoomDrag = useCallback(
@@ -434,7 +439,8 @@ export default function useSpectrogram({
       } else {
         // Clear canvas if spectrogram is disabled
         ctx.fillStyle = "rgb(156 163 175)";
-        ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+        const { width, height } = getCanvasSize(ctx);
+        ctx.fillRect(0, 0, width, height);
       }
       
       if (withSpectrogram && withAxes) {

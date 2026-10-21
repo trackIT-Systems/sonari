@@ -10,6 +10,8 @@ import {
   GO_EXPORT_SHORTCUT,
   getSpecialKeyLabel
 } from "@/utils/keyboard";
+import { BookOpenIcon } from "@heroicons/react/24/outline";
+import { SONARI_WIKI_URL } from "@/constants";
 import { useReleaseNotesContext } from "@/components/ReleaseNotesProvider";
 import {
   getAppVersion,
@@ -22,6 +24,7 @@ import {
   AnnotationProjectIcon,
   SonariIcon,
   DownloadIcon,
+  TagIcon,
   UserIcon,
 } from "@/components/icons";
 import Button from "@/components/Button";
@@ -148,6 +151,15 @@ function MainNavigation({ pathname }: { pathname?: string }) {
           <DownloadIcon className="w-6 h-6 text-stone-400" />
         </SideMenuLink>
       </li>
+      <li className="px-3">
+        <SideMenuLink
+          isActive={pathname?.startsWith("/tags")}
+          tooltip={"Tags"}
+          href="/tags"
+        >
+          <TagIcon className="w-6 h-6 text-stone-400" />
+        </SideMenuLink>
+      </li>
     </ul>
   );
 }
@@ -193,6 +205,26 @@ export function SideMenu() {
           <MainNavigation pathname={pathname || undefined} />
         </div>
         <ul className="flex flex-col items-center pb-4">
+          <li className="px-3 pb-3">
+            <Tooltip
+              portal={true}
+              tooltip={
+                <p className="whitespace-nowrap text-stone-700 dark:text-stone-300">
+                  Documentation (wiki)
+                </p>
+              }
+            >
+              <a
+                href={SONARI_WIKI_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label="Documentation (wiki)"
+                className="group flex flex-row items-center rounded-lg p-2.5 text-stone-400 hover:bg-stone-200 hover:text-stone-700 hover:dark:bg-stone-900 hover:dark:text-stone-300"
+              >
+                <BookOpenIcon className="w-6 h-6" />
+              </a>
+            </Tooltip>
+          </li>
           <li className="px-3">
             <SideMenuLink
               isActive={pathname?.startsWith("/settings")}

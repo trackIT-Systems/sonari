@@ -4,6 +4,7 @@ import useCanvas from "@/hooks/draw/useCanvas";
 import useSpectrogram from "@/hooks/spectrogram/useSpectrogram";
 import useCreateLineString from "@/hooks/draw/useCreateLineString";
 import useKeyFilter from "@/hooks/utils/useKeyFilter";
+import useDevicePixelRatio from "@/hooks/utils/useDevicePixelRatio";
 import { applyAutoSTFT } from "@/api/spectrograms";
 import type {
   AnnotationTask,
@@ -188,6 +189,9 @@ export default function SoundEventAnnotationSpectrogramView({
 }) {
     const dimensions = canvasDimensions ?? SOUND_EVENT_CANVAS_DIMENSIONS;
     const canvasRef = useRef<HTMLCanvasElement>(null);
+    // The canvas is drawn at screen resolution: drawing code keeps working in
+    // CSS pixels (`dimensions`) through a scale transform, see drawCanvas.
+    const pixelRatio = useDevicePixelRatio();
     const showPSD = useStore((s) => s.showPSD);
     const setShowPSD = useStore((s) => s.setShowPSD);
 
@@ -282,6 +286,7 @@ export default function SoundEventAnnotationSpectrogramView({
         parameters: selectedParameters,
         canvasRef,
         dimensions,
+        pixelRatio,
         enabled: !isMeasuring,
         withSpectrogram,
         withShortcuts: false,
@@ -330,12 +335,27 @@ export default function SoundEventAnnotationSpectrogramView({
 
     const drawCanvas = useCallback(
         (ctx: CanvasRenderingContext2D) => {
+            // Set on every draw: resizing the canvas resets the context state.
+            // Draw in CSS pixels onto the screen resolution backing store.
+            ctx.setTransform(
+                ctx.canvas.width / dimensions.width,
+                0,
+                0,
+                ctx.canvas.height / dimensions.height,
+                0,
+                0,
+            );
+            // This view is usually zoomed in far, enlarging the spectrogram:
+            // interpolate instead of drawing blocky pixels.
+            ctx.imageSmoothingEnabled = true;
+            ctx.imageSmoothingQuality = "high";
             // Frequency lines belong to the main spectrogram; they would only
             // clutter this zoomed in view.
             draw(ctx, { withAxes: false, withFreqLines: false });
             drawMeasurement(ctx);
         },
-        [draw, drawMeasurement],
+        // pixelRatio: the backing store size changes with it
+        [draw, drawMeasurement, dimensions, pixelRatio],
     );
 
     useCanvas({
@@ -353,8 +373,8 @@ export default function SoundEventAnnotationSpectrogramView({
         >
             <canvas
                 ref={canvasRef}
-                width={dimensions.width}
-                height={dimensions.height}
+                width={Math.round(dimensions.width * pixelRatio)}
+                height={Math.round(dimensions.height * pixelRatio)}
                 style={{
                     width: dimensions.width,
                     height: dimensions.height,

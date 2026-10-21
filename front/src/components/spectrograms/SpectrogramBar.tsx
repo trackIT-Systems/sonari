@@ -94,9 +94,41 @@ export default function SpectrogramBar({
     onMoveEnd: () => setInitialWindow(window),
   });
 
+  const windowRef = useRef<HTMLDivElement>(null);
+
+  // Clicking the bar outside the current window centres the window there.
+  const jumpTo = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (!onMove || width === 0 || height === 0) return;
+    if (windowRef.current?.contains(e.target as Node)) return;
+    const rect = e.currentTarget.getBoundingClientRect();
+    const fx = Math.min(1, Math.max(0, (e.clientX - rect.left) / rect.width));
+    const fy = Math.min(1, Math.max(0, (e.clientY - rect.top) / rect.height));
+    const clampedCentre = (min: number, max: number, size: number, centre: number) => {
+      const start = Math.min(max - size, Math.max(min, centre - size / 2));
+      return { min: start, max: start + size };
+    };
+    const timeSize = window.time.max - window.time.min;
+    const freqSize = window.freq.max - window.freq.min;
+    onMove({
+      time: clampedCentre(
+        bounds.time.min,
+        bounds.time.max,
+        timeSize,
+        bounds.time.min + fx * (bounds.time.max - bounds.time.min),
+      ),
+      freq: clampedCentre(
+        bounds.freq.min,
+        bounds.freq.max,
+        freqSize,
+        bounds.freq.max - fy * (bounds.freq.max - bounds.freq.min),
+      ),
+    });
+  };
+
   return (
     <div
       draggable={false}
+      onClick={jumpTo}
       className="flex relative flex-row items-center w-full h-8 rounded-md cursor-pointer select-none group outline outline-1 outline-stone-300 bg-stone-200 dark:bg-stone-800 dark:outline-stone-700"
       ref={setBarRef}
     >
@@ -107,6 +139,7 @@ export default function SpectrogramBar({
         className="absolute w-full h-full rounded-md"
       />
       <div
+        ref={windowRef}
         draggable={false}
         tabIndex={0}
         className="absolute bg-emerald-300/50 rounded-md border border-emerald-500 cursor-pointer dark:bg-emerald-700/50 focus:ring-4 focus:outline-none group-hover:bg-emerald-500/50 hover:bg-emerald-500/50 focus:ring-emerald-500/50"
