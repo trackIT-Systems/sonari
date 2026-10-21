@@ -6,6 +6,8 @@ import {
   formatKeyLabel,
   getAnnotateLesson,
   getTasksTabLesson,
+  getTasksTabLessons,
+  pickTasksTabLesson,
   getVariantManifest,
   matchesShortcut,
   tourTargetSelector,
@@ -92,7 +94,7 @@ describe("guided tour manifest", () => {
   it("only uses known icons and complete key markup in lesson texts", () => {
     for (const variant of ["bat", "bird"] as const) {
       const manifest = getVariantManifest(variant)!;
-      for (const lesson of [manifest.tasksTab, ...manifest.lessons]) {
+      for (const lesson of [...getTasksTabLessons(variant), ...manifest.lessons]) {
         const texts = [lesson.intro ?? "", ...lesson.steps.flatMap((s) => [s.hint ?? "", s.task ?? ""])];
         for (const text of texts) {
           for (const name of iconNamesIn(text)) {
@@ -115,7 +117,7 @@ describe("guided tour manifest", () => {
     }
     for (const variant of ["bat", "bird"] as const) {
       const manifest = getVariantManifest(variant)!;
-      for (const lesson of [manifest.tasksTab, ...manifest.lessons]) {
+      for (const lesson of [...getTasksTabLessons(variant), ...manifest.lessons]) {
         for (const step of lesson.steps) {
           expect(anchors, `${variant}/${lesson.id}: ${step.title}`).toContain(step.target);
         }
@@ -131,6 +133,34 @@ describe("guided tour manifest", () => {
       const steps = manifest.lessons[0].steps;
       expect(steps.indexOf(required!)).toBeLessThan(steps.length - 1);
     }
+  });
+
+  it("hands over to every later Tasks-tab lesson from an annotate lesson step", () => {
+    for (const variant of ["bat", "bird"] as const) {
+      const manifest = getVariantManifest(variant)!;
+      const lessonIds = manifest.lessons.map((l) => l.id);
+      for (const tasksLesson of manifest.tasksTabLessons ?? []) {
+        // Offered only after an existing annotate lesson ...
+        expect(lessonIds, `${variant}/${tasksLesson.id}`).toContain(tasksLesson.availableAfter);
+        // ... and required by a later one, before its status badge step.
+        const owner = manifest.lessons.find((l) =>
+          l.steps.some((s) => s.complete?.type === "lesson" && s.complete.lesson === tasksLesson.id),
+        );
+        expect(owner, `${variant}/${tasksLesson.id} is never required`).toBeTruthy();
+        expect(lessonIds.indexOf(owner!.id)).toBeGreaterThan(lessonIds.indexOf(tasksLesson.availableAfter!));
+      }
+    }
+    expect(getTasksTabLessons("bat").map((l) => l.id)).toEqual(["tasks-table", "tasks-bulk"]);
+  });
+
+  it("picks the first available, unfinished Tasks-tab lesson", () => {
+    const lessons = getTasksTabLessons("bat");
+    const pick = (done: string[]) => pickTasksTabLesson(lessons, (id) => done.includes(id))?.id;
+    expect(pick([])).toBe("tasks-table");
+    // Table lesson done, bulk lesson not yet offered: the table lesson stays.
+    expect(pick(["tasks-table"])).toBe("tasks-table");
+    expect(pick(["tasks-table", "sound-events"])).toBe("tasks-bulk");
+    expect(pick(["tasks-table", "sound-events", "tasks-bulk"])).toBe("tasks-bulk");
   });
 
   it("matches shortcuts", () => {

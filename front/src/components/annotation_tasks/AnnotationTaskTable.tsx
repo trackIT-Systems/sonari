@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
+import AnnotationProjectContext from "@/app/(base)/annotation_projects/detail/context";
 import type { RowSelectionState, OnChangeFn } from "@tanstack/react-table";
 import { useKeyPressEvent } from "react-use";
 import { useQuery } from "@tanstack/react-query";
@@ -77,6 +78,9 @@ const MAX_PINNED_PREVIEWS = 5;
 /** The active preview only loads once the cursor has rested this long (holding an arrow key) */
 const PREVIEW_SETTLE_MS = 150;
 
+/** Task tag of the guided tour's bulk-lesson material. */
+const TOUR_BULK_TAG = { key: "tour", value: "bulk" };
+
 export default function AnnotationTaskTable({
   filter,
   fixed,
@@ -125,8 +129,17 @@ export default function AnnotationTaskTable({
 
   const activeFilter = annotationTasks.filter.filter;
 
+  // Guided tour: bulk actions may only touch the bulk-lesson material, never a
+  // lesson task (a badge there would skip the lesson). The server intersects
+  // ticked ids with this filter, so it guards both selection modes.
+  const isGuidedTour = useContext(AnnotationProjectContext)?.is_guided_tour ?? false;
+  const bulkFilter = useMemo(
+    () => (isGuidedTour ? { ...activeFilter, annotation_task_tag: TOUR_BULK_TAG } : activeFilter),
+    [isGuidedTour, activeFilter],
+  );
+
   const bulkActions = useAnnotationTaskBulkActions({
-    filter: activeFilter,
+    filter: bulkFilter,
   });
 
   const selectedTaskIds = useMemo(() => {
@@ -182,7 +195,7 @@ export default function AnnotationTaskTable({
     ],
     queryFn: () =>
       api.annotationTasks.bulkSoundEventTagSummary({
-        filter: activeFilter,
+        filter: bulkFilter,
         annotation_task_ids:
           targetMode === "selected" ? selectedTaskIds : undefined,
       }),
@@ -607,11 +620,13 @@ export default function AnnotationTaskTable({
               isHighlighted={focusedElement === 'search'}
             />
           </div>
-          <FilterPopover
-            filter={annotationTasks.filter}
-            filterDef={tasksFilterDefs}
-            button={btn}
-          />
+          <div data-guided-tour="tasks-filter">
+            <FilterPopover
+              filter={annotationTasks.filter}
+              filterDef={tasksFilterDefs}
+              button={btn}
+            />
+          </div>
           <FilterPresets
             storageKey="presets:annotation_tasks"
             filter={annotationTasks.filter}
@@ -652,7 +667,7 @@ export default function AnnotationTaskTable({
         filterDef={tasksFilterDefs}
       />
       {showBulkBar && (
-        <div ref={bulkBarRef} className="sticky top-0 z-30 rounded-md bg-stone-100 shadow-md dark:bg-stone-900">
+        <div ref={bulkBarRef} className="sticky top-0 z-30 rounded-md bg-stone-100 shadow-md dark:bg-stone-900" data-guided-tour="tasks-bulk-bar">
         <AnnotationTaskBulkActionBar
           targetMode={targetMode}
           selectedTaskIds={selectedTaskIds}

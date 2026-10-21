@@ -33,11 +33,18 @@ export const guidedTourLessonSchema = z.object({
   title: z.string(),
   /** Why this lesson matters; shown on its first step. Same markup as a step hint. */
   intro: z.string().optional(),
+  /**
+   * Tasks-tab lessons only: offered once this annotate lesson is finished, so a
+   * later Tasks-tab lesson does not show up when the Tasks tab is opened early.
+   */
+  availableAfter: z.string().optional(),
   steps: z.array(guidedTourStepSchema).min(1),
 });
 
 export const guidedTourVariantManifestSchema = z.object({
   tasksTab: guidedTourLessonSchema,
+  /** Later lessons on the Tasks tab, in order (e.g. bulk actions). */
+  tasksTabLessons: z.array(guidedTourLessonSchema).optional(),
   lessons: z.array(guidedTourLessonSchema),
 });
 

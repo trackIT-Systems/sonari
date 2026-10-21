@@ -23,6 +23,10 @@ __all__ = [
 GUIDED_TOUR_VARIANTS: tuple[GuidedTourVariant, ...] = ("bird", "bat")
 
 
+#: Task tag of bulk-lesson material in a tour (not a lesson of its own).
+BULK_TASK_TAG = ("tour", "bulk")
+
+
 def guided_tour_template_name(variant: GuidedTourVariant) -> str:
     return f"Sonari guided tour template — {variant}"
 
@@ -342,21 +346,35 @@ async def get_guided_tour_progress(
     session: AsyncSession,
     project_id: int,
 ) -> tuple[int, int, int | None]:
-    """Return (total tasks, tasks with a status badge, task to resume at).
+    """Return (lesson tasks, lesson tasks with a status badge, task to resume at).
 
     The resume task is the first task without a badge in lesson order, or the
-    last task once everything is badged.
+    last task once everything is badged. Tasks tagged ``tour: bulk`` are
+    material for the bulk lesson on the Tasks tab, not lessons: they are not
+    counted and never resumed at.
     """
     task_t = models.AnnotationTask.__table__
     badge_t = models.AnnotationStatusBadge.__table__
+    task_tag_t = models.AnnotationTaskTag.__table__
+    tag_t = models.Tag.__table__
     has_badge = (
         select(badge_t.c.id).where(badge_t.c.annotation_task_id == task_t.c.id).exists()
+    )
+    is_bulk = (
+        select(task_tag_t.c.annotation_task_id)
+        .join(tag_t, tag_t.c.id == task_tag_t.c.tag_id)
+        .where(
+            task_tag_t.c.annotation_task_id == task_t.c.id,
+            tag_t.c.key == BULK_TASK_TAG[0],
+            tag_t.c.value == BULK_TASK_TAG[1],
+        )
+        .exists()
     )
     rows = (
         await session.execute(
             select(task_t.c.id, has_badge.label("done"))
             .join(models.Recording.__table__, models.Recording.id == task_t.c.recording_id)
-            .where(task_t.c.annotation_project_id == project_id)
+            .where(task_t.c.annotation_project_id == project_id, ~is_bulk)
             .order_by(models.Recording.date, models.Recording.time, task_t.c.id),
         )
     ).all()

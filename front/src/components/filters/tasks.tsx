@@ -178,9 +178,9 @@ function SoundEventAnnotationTagSelector({
           </div>
         ) : null}
         <p className="text-xs text-stone-500 dark:text-stone-400">
-          Number of different tags on the task. With one included tag, amount
-          2 means that tag is present and the task has exactly two distinct
-          tags in total.
+          Number of different tags on the task&apos;s sound events (task tags
+          do not count). With one included tag, amount 2 means that tag is
+          present and the sound events carry exactly two distinct tags in total.
         </p>
       </div>
       <div className="flex flex-col gap-1">

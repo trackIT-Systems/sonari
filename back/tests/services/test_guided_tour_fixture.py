@@ -1,5 +1,6 @@
 """Tests for guided tour fixture export/import and the sonari-guided-tour CLI."""
 
+import datetime
 import json
 import shutil
 import uuid
@@ -301,3 +302,39 @@ def test_shipped_fixture_keeps_lesson_order(variant: str):
     first = by_path[fixture.tasks[0].recording_path]
     assert first.date is not None and first.time is not None
     assert first.latitude is not None and first.longitude is not None, "first lesson shows the location map"
+
+
+@pytest.mark.asyncio
+async def test_export_relocates_recordings_from_several_folders(db_session: AsyncSession, audio_root: Path):
+    """--relocate puts recordings of several top-level folders into one tour folder."""
+    folder_a, folder_b = _setup_audio(audio_root), _setup_audio(audio_root)
+    for variant, folder in (("bat", folder_a), ("bird", folder_b)):
+        data = _fixture_dict(folder, f"is wrong {folder}")
+        data["variant"] = variant
+        await import_template_fixture(db_session, GuidedTourFixture.model_validate(data), audio_dir=audio_root)
+    await db_session.commit()
+
+    rec_t = models.Recording.__table__
+    rec_a = (await db_session.execute(select(rec_t.c.id).where(rec_t.c.path == Path(f"{folder_a}/a.wav")))).scalar_one()
+    rec_b = (await db_session.execute(select(rec_t.c.id).where(rec_t.c.path == Path(f"{folder_b}/b.wav")))).scalar_one()
+    project = await api.annotation_projects.create(db_session, name=f"mixed {folder_a}", description="mixed")
+    for rec_id in (rec_a, rec_b):
+        await db_session.execute(
+            models.AnnotationTask.__table__.insert().values(
+                annotation_project_id=project.id, recording_id=rec_id, start_time=0.0, end_time=1.0,
+                created_on=datetime.datetime.now(),
+            ),
+        )
+    await db_session.commit()
+
+    with pytest.raises(ValueError, match="one top-level folder"):
+        await export_template_fixture(db_session, project.id, "bat")
+
+    path_map: dict[str, str] = {}
+    fixture = await export_template_fixture(
+        db_session, project.id, "bat", relocate="workshop-x/bulk", path_map=path_map,
+    )
+    assert fixture.audio_folder == "workshop-x"
+    assert sorted(r.path for r in fixture.recordings) == ["workshop-x/bulk/a.wav", "workshop-x/bulk/b.wav"]
+    assert sorted(t.recording_path for t in fixture.tasks) == ["workshop-x/bulk/a.wav", "workshop-x/bulk/b.wav"]
+    assert path_map == {f"{folder_a}/a.wav": "workshop-x/bulk/a.wav", f"{folder_b}/b.wav": "workshop-x/bulk/b.wav"}

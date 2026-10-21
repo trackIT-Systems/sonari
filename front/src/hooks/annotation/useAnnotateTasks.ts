@@ -61,9 +61,16 @@ export default function useAnnotateTasks({
   annotationTask: initialTask,
   onChangeTask,
   onDeselectSoundEventAnnotation,
+  persistFilter = true,
 }: {
   /** Initial filter to select which annotation tasks to show */
   filter?: AnnotationTaskFilter;
+  /**
+   * Share the project's saved filter with the tasks table (default). Off in
+   * guided tours: a table filter from the bulk lesson must not change which
+   * task comes next in the lessons.
+   */
+  persistFilter?: boolean;
   /** Optional, initial annotation task to select */
   annotationTask?: AnnotationTask;
   /** Callback when the selected annotation task changes */
@@ -92,8 +99,8 @@ export default function useAnnotateTasks({
   }, [initialTask?.id]);
 
   const filterPersistKey = useMemo(
-    () => annotationTaskFilterPersistKey(initialFilter.annotation_project?.id),
-    [initialFilter.annotation_project?.id],
+    () => (persistFilter ? annotationTaskFilterPersistKey(initialFilter.annotation_project?.id) : undefined),
+    [persistFilter, initialFilter.annotation_project?.id],
   );
 
   // Fetch minimal task index for navigation

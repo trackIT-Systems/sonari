@@ -18,6 +18,12 @@ export const GUIDED_TOUR_EVENTS = [
   "untagged-events-tagged",
   /** A cycle tag chosen with m: n / b then only visit events with that tag. */
   "cycle-tag-selected",
+  /** Tasks table bulk bar: a status set on the selected / filtered tasks. */
+  "bulk-status-set",
+  /** Tasks table bulk bar: a sound event tag replaced on many tasks. */
+  "bulk-tag-replaced",
+  /** Tasks table bulk bar: a tag added to every event carrying another tag. */
+  "bulk-tag-added-to-tagged",
   "sound-event-tag-added",
   "sound-event-tag-removed",
   "task-tag-added",

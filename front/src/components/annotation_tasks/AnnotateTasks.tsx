@@ -242,6 +242,7 @@ export default function AnnotateTasks({
 
   const tasks = useAnnotateTasks({
     filter: taskFilter,
+    persistFilter: !isGuidedTour,
     annotationTask,
     onChangeTask,
     onCompleteTask,

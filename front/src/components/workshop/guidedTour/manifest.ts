@@ -24,6 +24,24 @@ export function getTasksTabLesson(variant: GuidedTourVariant): GuidedTourLesson 
   return getVariantManifest(variant)?.tasksTab ?? null;
 }
 
+/** All Tasks-tab lessons in order: the table lesson first, then later ones. */
+export function getTasksTabLessons(variant: GuidedTourVariant): GuidedTourLesson[] {
+  const manifest = getVariantManifest(variant);
+  return manifest ? [manifest.tasksTab, ...(manifest.tasksTabLessons ?? [])] : [];
+}
+
+/**
+ * The Tasks-tab lesson to show: the first available one that is not finished,
+ * or the last available one once all are done.
+ */
+export function pickTasksTabLesson(
+  lessons: GuidedTourLesson[],
+  isDone: (lessonId: string) => boolean,
+): GuidedTourLesson | null {
+  const available = lessons.filter((l) => l.availableAfter == null || isDone(l.availableAfter));
+  return available.find((l) => !isDone(l.id)) ?? available[available.length - 1] ?? null;
+}
+
 export function getAnnotateLesson(
   variant: GuidedTourVariant,
   lessonIndex: number,

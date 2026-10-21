@@ -176,3 +176,30 @@ async def test_filter_annotation_tasks_by_ids(
         invalid = await auth_client.get(path, params={"annotation_project__eq": project, "id__lst": "abc", "limit": -1})
         assert invalid.status_code == 200
         assert invalid.json()["items"] == []
+
+
+@pytest.mark.asyncio
+async def test_filter_annotation_tasks_by_task_tag(
+    auth_client: AsyncClient,
+    db_session,
+    test_annotation_task: schemas.AnnotationTask,
+):
+    """annotation_task_tag__key/value keeps only tasks with that task-level tag."""
+    from sonari import api
+
+    project = test_annotation_task.annotation_project_id
+    params = {"annotation_project__eq": project, "limit": -1,
+              "annotation_task_tag__key": "tour", "annotation_task_tag__value": "bulk"}
+    before = await auth_client.get("/api/v1/annotation_tasks/", params=params)
+    assert before.status_code == 200
+    assert before.json()["items"] == []
+
+    admin = await api.users.get_by_username(db_session, "admin")
+    task = await api.annotation_tasks.get(db_session, test_annotation_task.id, include_tags=True)
+    await api.annotation_tasks.add_tag(
+        db_session, task, await api.tags.get_or_create(db_session, "tour", "bulk", admin), user=admin,
+    )
+    await db_session.commit()
+
+    after = await auth_client.get("/api/v1/annotation_tasks/", params=params)
+    assert [t["id"] for t in after.json()["items"]] == [test_annotation_task.id]

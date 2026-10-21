@@ -54,6 +54,18 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     )
     exp.add_argument("--variant", required=True, choices=["bird", "bat"])
     exp.add_argument("-o", "--output", type=Path, help="Output file (default: stdout)")
+    exp.add_argument(
+        "--relocate",
+        metavar="FOLDER",
+        help="Store every recording as FOLDER/<file name>, e.g. workshop-awst25-bat09/bulk "
+        "(for recordings from several top-level folders)",
+    )
+    exp.add_argument(
+        "--path-map",
+        type=Path,
+        metavar="FILE",
+        help="With --relocate: write 'server path<TAB>fixture path' lines, to copy the audio",
+    )
 
     imp = sub.add_parser("import", help="Replace a guided tour template from a fixture")
     imp.add_argument("fixture", type=Path, help="Fixture JSON file")
@@ -92,7 +104,15 @@ async def _find_project_id(session, args: argparse.Namespace) -> int:
 
 async def _export(session, args: argparse.Namespace) -> int:
     project_id = await _find_project_id(session, args)
-    fixture = await export_template_fixture(session, project_id, args.variant)
+    if args.path_map and not args.relocate:
+        raise ValueError("--path-map needs --relocate")
+    path_map: dict[str, str] = {}
+    fixture = await export_template_fixture(
+        session, project_id, args.variant, relocate=args.relocate, path_map=path_map,
+    )
+    if args.path_map:
+        args.path_map.write_text("".join(f"{src}\t{dst}\n" for src, dst in sorted(path_map.items())), encoding="utf-8")
+        print(f"Wrote {args.path_map}: {len(path_map)} recordings", file=sys.stderr)
     text = json.dumps(fixture.model_dump(mode="json"), indent=2, ensure_ascii=False) + "\n"
     if args.output:
         args.output.write_text(text, encoding="utf-8")

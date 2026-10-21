@@ -33,6 +33,7 @@ import type { AnnotationStatus, Tag } from "@/types";
 import type { UseMutationResult } from "@tanstack/react-query";
 import type { AnnotationTaskBulkResult } from "@/api/annotation_tasks";
 import type { AxiosError } from "axios";
+import { emitGuidedTourEvent } from "@/components/workshop/guidedTour/events";
 
 type BulkMutation<T> = UseMutationResult<
   AnnotationTaskBulkResult,
@@ -285,7 +286,12 @@ export default function AnnotationTaskBulkActionBar({
         () => {
           bulkAddBadge.mutate(
             { annotation_task_ids: taskIds, state },
-            { onSuccess: () => onClearSelection() },
+            {
+              onSuccess: () => {
+                onClearSelection();
+                emitGuidedTourEvent("bulk-status-set");
+              },
+            },
           );
         },
         {
@@ -343,7 +349,12 @@ export default function AnnotationTaskBulkActionBar({
             replace_all: isReplaceAllTag(oldTag),
             add_to_tagged: options?.add_to_tagged ?? false,
           },
-          { onSuccess: () => onClearSelection() },
+          {
+            onSuccess: () => {
+              onClearSelection();
+              emitGuidedTourEvent(options?.add_to_tagged ? "bulk-tag-added-to-tagged" : "bulk-tag-replaced");
+            },
+          },
         );
       }, {
         title: "Replace sound event tags?",
@@ -382,7 +393,12 @@ export default function AnnotationTaskBulkActionBar({
             new_tag: newTag,
             add_to_tagged: true,
           },
-          { onSuccess: () => onClearSelection() },
+          {
+            onSuccess: () => {
+              onClearSelection();
+              emitGuidedTourEvent("bulk-tag-added-to-tagged");
+            },
+          },
         );
       }, {
         title: "Add tag to tagged sound events?",

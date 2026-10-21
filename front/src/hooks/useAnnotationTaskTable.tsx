@@ -150,6 +150,7 @@ export default function useAnnotationTaskTable({
                         : `Select all ${filterTotal} tasks matching the filter, on every page`
                     }
                     aria-pressed={allFiltered}
+                    data-guided-tour="tasks-select-all"
                     className={
                       allFiltered
                         ? "inline-flex items-center gap-0.5 whitespace-nowrap rounded-full border border-emerald-600 bg-emerald-600 px-1.5 text-[11px] font-medium leading-4 text-white hover:bg-emerald-700"

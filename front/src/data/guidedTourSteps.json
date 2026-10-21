@@ -66,6 +66,115 @@
         }
       ]
     },
+    "tasksTabLessons": [
+      {
+        "id": "tasks-bulk",
+        "title": "Bulk actions",
+        "availableAfter": "sound-events",
+        "intro": "The AI already recognises the common pipistrelle (Pipistrellus pipistrellus) very reliably. Recordings with only this species don't need to be opened one by one: here you check and process many at once. 20 such recordings were added to your tour for this (task tag “tour: bulk”).",
+        "steps": [
+          {
+            "target": "tasks-filter",
+            "title": "Only the clear cases",
+            "hint": "Click {icon:filter} “Filters” and choose “Tag”. Under “Include”, add “species: Pipistrellus pipistrellus”. Then set “Distinct tags on task” to 1 and click “Done”. Only recordings whose sound events carry nothing but this species remain: 7."
+          },
+          {
+            "target": "tasks-select-all",
+            "title": "Accept them all",
+            "hint": "Open a few previews (click a row) to check the calls. Then click the “All 7” pill under the header checkbox: it selects every filtered recording, not only this page. Press `1` (Accepted) and confirm.",
+            "task": "Accept all filtered recordings",
+            "complete": {
+              "type": "event",
+              "event": "bulk-status-set"
+            }
+          },
+          {
+            "target": "tasks-filter",
+            "title": "Feeding buzzes",
+            "hint": "Change the filter: remove the species and the amount, and include “type: feeding-buzz” instead. 5 recordings remain. Their feeding buzzes are tagged with the call type, but not with the species yet."
+          },
+          {
+            "target": "tasks-bulk-bar",
+            "title": "Add the species to the buzzes",
+            "hint": "Click “All 5”, then “Add tag to tagged” (`t`). Pick “type: feeding-buzz” as the tag to look for and add “species: Pipistrellus pipistrellus”. Every feeding buzz now carries the species, the other events stay as they are.",
+            "task": "Add the species to all feeding buzzes",
+            "complete": {
+              "type": "event",
+              "event": "bulk-tag-added-to-tagged"
+            }
+          },
+          {
+            "target": "tasks-select-all",
+            "title": "Accept the buzz recordings",
+            "hint": "Still filtered to feeding buzzes: click “All 5” and press `1` (Accepted).",
+            "task": "Accept the 5 recordings",
+            "complete": {
+              "type": "event",
+              "event": "bulk-status-set"
+            }
+          },
+          {
+            "target": "tasks-bulk-bar",
+            "title": "Social calls",
+            "hint": "Now the same for social calls: include “type: social-call” instead of the feeding buzz (7 recordings), click “All 7”, use “Add tag to tagged” (`t`) with “type: social-call” and “species: Pipistrellus pipistrellus”, then press `1` (Accepted). Most social calls carry the species already; the others get it now.",
+            "task": "Tag and accept the social call recordings",
+            "complete": {
+              "type": "event",
+              "event": "bulk-status-set"
+            }
+          },
+          {
+            "target": "tasks-filter",
+            "title": "A second species",
+            "hint": "Two recordings also hold a few calls tagged as another species, which are pipistrelle calls in fact. Include “species: Pipistrellus pipistrellus” and “species: Pipistrellus nathusii”, and choose “AND” under “Combine included tags with”. One recording remains: AND keeps out lesson recordings with only Nathusius' pipistrelle."
+          },
+          {
+            "target": "tasks-bulk-bar",
+            "title": "Replace the wrong species",
+            "hint": "Click “All 1”, then “Replace sound event tags” (`r`). Replace “species: Pipistrellus nathusii” with “species: Pipistrellus pipistrellus”.",
+            "task": "Replace Pipistrellus nathusii",
+            "complete": {
+              "type": "event",
+              "event": "bulk-tag-replaced"
+            }
+          },
+          {
+            "target": "tasks-bulk-bar",
+            "title": "And the other one",
+            "hint": "In the filter, swap “species: Pipistrellus nathusii” for “species: Nyctalus leisleri” (still AND with “species: Pipistrellus pipistrellus”). Click “All 1”, then replace “species: Nyctalus leisleri” with “species: Pipistrellus pipistrellus”.",
+            "task": "Replace Nyctalus leisleri",
+            "complete": {
+              "type": "event",
+              "event": "bulk-tag-replaced"
+            }
+          },
+          {
+            "target": "tasks-select-all",
+            "title": "Accept the last two",
+            "hint": "Both recordings now carry only the pipistrelle. Filter again: include “species: Pipistrellus pipistrellus”, “Distinct tags on task” 1. The two appear next to the 7 accepted earlier. Click “All”, press `1` (Accepted).",
+            "task": "Accept them",
+            "complete": {
+              "type": "event",
+              "event": "bulk-status-set"
+            }
+          },
+          {
+            "target": "tasks-filter",
+            "title": "Clear the filters",
+            "hint": "Every bulk recording has a status badge now. Remove the filters again (the ✕ on each filter badge), so the table shows all recordings."
+          },
+          {
+            "target": "header-tabs",
+            "title": "Back to Annotate",
+            "hint": "Done: 20 recordings checked and processed without opening one of them. Click “Annotate” at the top to finish the Tags lesson.",
+            "task": "Open the Annotate tab",
+            "complete": {
+              "type": "click"
+            }
+          }
+        ]
+      }
+    ],
     "lessons": [
       {
         "id": "orientation",
@@ -459,6 +568,16 @@
             "complete": {
               "type": "event",
               "event": "task-tag-added"
+            }
+          },
+          {
+            "target": "header-tabs",
+            "title": "Bulk actions on the Tasks tab",
+            "hint": "Fixing tags event by event is fine for a few recordings. For many, the Tasks table does it all at once. Click “Tasks” at the top: a lesson about bulk actions runs there. When it is done, click “Annotate” to come back here.",
+            "task": "Finish the bulk actions lesson",
+            "complete": {
+              "type": "lesson",
+              "lesson": "tasks-bulk"
             }
           },
           {

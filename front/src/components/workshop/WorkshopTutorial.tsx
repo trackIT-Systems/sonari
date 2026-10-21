@@ -11,16 +11,33 @@ import GuidedTourCoach, {
 } from "@/components/workshop/guidedTour/GuidedTourCoach";
 import {
   getAnnotateLesson,
-  getTasksTabLesson,
+  getTasksTabLessons,
   getVariantManifest,
+  pickTasksTabLesson,
 } from "@/components/workshop/guidedTour/manifest";
-import type { GuidedTourVariant } from "@/components/workshop/guidedTour/types";
+import type { GuidedTourLesson, GuidedTourVariant } from "@/components/workshop/guidedTour/types";
 import useAnnotationTaskIndex from "@/hooks/api/useAnnotationTaskIndex";
 
 import type { AnnotationTask } from "@/types";
 import type { AnnotationTaskFilter } from "@/api/annotation_tasks";
 
 const emptyTourFilter: AnnotationTaskFilter = {};
+
+/**
+ * Shown on tasks after the last lesson: the bulk-lesson material ("tour: bulk"
+ * task tag), which the tour works on from the Tasks tab, not one by one.
+ */
+const BULK_MATERIAL_LESSON: GuidedTourLesson = {
+  id: "bulk-material",
+  title: "Bulk exercise",
+  steps: [
+    {
+      target: "header-tabs",
+      title: "Material for the bulk lesson",
+      hint: "This recording is one of many for the bulk lesson. They are handled all at once on the Tasks tab, not one by one here. Click “Tasks” at the top to work on them there.",
+    },
+  ],
+};
 
 export default function WorkshopTutorial({
   annotationTask,
@@ -61,15 +78,15 @@ export default function WorkshopTutorial({
   }, [annotationTask?.id, taskIndexQuery.items]);
 
   const lesson = useMemo(() => {
-    if (!variant || !hasManifest) return null;
+    if (!variant || !hasManifest || projectId == null) return null;
     if (onTasksTab) {
-      return getTasksTabLesson(variant);
+      return pickTasksTabLesson(getTasksTabLessons(variant), (id) => isLessonDone(projectId, id));
     }
     if (onAnnotateTab && lessonIndex >= 0) {
-      return getAnnotateLesson(variant, lessonIndex);
+      return getAnnotateLesson(variant, lessonIndex) ?? BULK_MATERIAL_LESSON;
     }
     return null;
-  }, [variant, hasManifest, onTasksTab, onAnnotateTab, lessonIndex]);
+  }, [variant, hasManifest, projectId, onTasksTab, onAnnotateTab, lessonIndex]);
 
   if (!project?.is_guided_tour || !hasManifest || lesson == null) {
     return null;
@@ -79,14 +96,17 @@ export default function WorkshopTutorial({
   }
 
   const lessonCount = variant ? (getVariantManifest(variant)?.lessons.length ?? 0) : 0;
+  const isLessonTask = onAnnotateTab && lessonIndex < lessonCount;
   const storageKey = guidedTourStorageKey(project.id, lesson.id);
 
   const getUnfinishedLessons = () => {
     const manifest = variant ? getVariantManifest(variant) : null;
     if (!manifest) return [];
     const missing: string[] = [];
-    if (!isLessonDone(project.id, manifest.tasksTab.id)) {
-      missing.push(`Tasks table (open the Tasks tab)`);
+    for (const tasksLesson of getTasksTabLessons(variant!)) {
+      if (!isLessonDone(project.id, tasksLesson.id)) {
+        missing.push(`${tasksLesson.title} (open the Tasks tab)`);
+      }
     }
     manifest.lessons.forEach((l, i) => {
       if (!isLessonDone(project.id, l.id)) missing.push(`Lesson ${i + 1}: ${l.title}`);
@@ -100,8 +120,8 @@ export default function WorkshopTutorial({
       lesson={lesson}
       projectId={project.id}
       storageKey={storageKey}
-      lessonNumber={onAnnotateTab ? lessonIndex + 1 : undefined}
-      lessonCount={onAnnotateTab ? lessonCount : undefined}
+      lessonNumber={isLessonTask ? lessonIndex + 1 : undefined}
+      lessonCount={isLessonTask ? lessonCount : undefined}
       getUnfinishedLessons={getUnfinishedLessons}
       onFinish={
         onAnnotateTab && lessonIndex === lessonCount - 1

@@ -308,3 +308,38 @@ async def test_guided_tour_reset_rolls_back_user_changes(
     progress = await auth_client.get("/api/v1/annotation_projects/guided_tour/")
     [tour] = [t for t in progress.json()["tours"] if t["variant"] == "bat"]
     assert tour["done_tasks"] == 0
+
+
+@pytest.mark.asyncio
+async def test_guided_tour_progress_ignores_bulk_tasks(
+    db_session: AsyncSession,
+    test_recording_id: int,
+):
+    """Tasks tagged tour:bulk are bulk-lesson material: not counted, never resumed at."""
+    from sonari.services.guided_tour import get_guided_tour_progress
+
+    project = await api.annotation_projects.create(
+        db_session, name="tour progress bulk", description="test",
+    )
+    recording = await api.recordings.get(db_session, test_recording_id)
+    lesson = await api.annotation_tasks.create(
+        db_session, annotation_project=project, recording=recording, start_time=0.0, end_time=0.1,
+    )
+    bulk = await api.annotation_tasks.create(
+        db_session, annotation_project=project, recording=recording, start_time=0.1, end_time=0.2,
+    )
+    admin = await api.users.get_by_username(db_session, "admin")
+    bulk = await api.annotation_tasks.get(db_session, bulk.id, include_tags=True)
+    await api.annotation_tasks.add_tag(
+        db_session, bulk, await api.tags.get_or_create(db_session, "tour", "bulk", admin), user=admin,
+    )
+    await db_session.commit()
+
+    assert await get_guided_tour_progress(db_session, project.id) == (1, 0, lesson.id)
+
+    lesson = await api.annotation_tasks.get(db_session, lesson.id, include_status_badges=True)
+    await api.annotation_tasks.add_status_badge(db_session, lesson, data.AnnotationState.completed, user=admin)
+    await db_session.commit()
+
+    # The unbadged bulk task is not where the tour resumes.
+    assert await get_guided_tour_progress(db_session, project.id) == (1, 1, lesson.id)

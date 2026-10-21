@@ -13,7 +13,7 @@ import hashlib
 import json
 import re
 from dataclasses import dataclass, field
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 from typing import Literal
 from uuid import UUID
 
@@ -116,8 +116,17 @@ async def export_template_fixture(
     session: AsyncSession,
     project_id: int,
     variant: GuidedTourVariant,
+    *,
+    relocate: str | None = None,
+    path_map: dict[str, str] | None = None,
 ) -> GuidedTourFixture:
-    """Read any annotation project into a fixture (notes and badges are skipped)."""
+    """Read any annotation project into a fixture (notes and badges are skipped).
+
+    ``relocate`` (e.g. ``"workshop-awst25-bat09/bulk"``) stores every recording
+    as ``<relocate>/<file name>`` instead of its server path, so recordings from
+    several top-level folders fit one tour audio folder. ``path_map`` is then
+    filled with server path -> fixture path, to copy the audio accordingly.
+    """
     task_t = models.AnnotationTask.__table__
     rec_t = models.Recording.__table__
     tag_t = models.Tag.__table__
@@ -144,9 +153,28 @@ async def export_template_fixture(
     if not rows:
         raise ValueError(f"Annotation project {project_id} has no tasks.")
 
-    folders = sorted({Path(r.path).parts[0] for r in rows})
-    if len(folders) != 1:
-        raise ValueError(f"Recordings must share one top-level folder, found: {folders}")
+    fixture_paths: dict[str, str] = {}
+    if relocate is not None:
+        target = PurePosixPath(relocate.strip("/"))
+        if not target.parts:
+            raise ValueError("--relocate needs a folder, e.g. workshop-awst25-bat09/bulk")
+        by_name: dict[str, str] = {}
+        for r in rows:
+            source = Path(r.path).as_posix()
+            name = PurePosixPath(source).name
+            if by_name.setdefault(name, source) != source:
+                raise ValueError(f"Two recordings share the file name {name!r}: {by_name[name]} and {source}")
+            fixture_paths[source] = (target / name).as_posix()
+        folders = [target.parts[0]]
+    else:
+        folders = sorted({Path(r.path).parts[0] for r in rows})
+        if len(folders) != 1:
+            raise ValueError(
+                f"Recordings must share one top-level folder, found: {folders}. "
+                "Use --relocate to put them into one folder.",
+            )
+    if path_map is not None:
+        path_map.update(fixture_paths)
 
     task_ids = [r.id for r in rows]
 
@@ -213,6 +241,7 @@ async def export_template_fixture(
     tasks: list[FixtureTask] = []
     for r in rows:
         path = Path(r.path).as_posix()
+        path = fixture_paths.get(path, path)
         recordings.setdefault(
             path,
             FixtureRecording(
