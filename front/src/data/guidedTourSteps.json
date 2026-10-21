@@ -76,7 +76,7 @@
           {
             "target": "tasks-filter",
             "title": "Only the clear cases",
-            "hint": "Click {icon:filter} “Filters” and choose “Tag”. Under “Include”, add “species: Pipistrellus pipistrellus”. Then set “Distinct tags on task” to 1 and click “Done”. Only recordings whose sound events carry nothing but this species remain: 7."
+            "hint": "Click {icon:filter} “Filters” and choose “Tag”. Under “Include”, add “species: Pipistrellus pipistrellus”. Then set “Distinct tags on task” to 1 and click “Done”. Only recordings whose sound events carry nothing but this species remain: 7. Every filter now shows as a badge above the table; the ✕ on a badge removes that filter again."
           },
           {
             "target": "tasks-select-all",
@@ -91,12 +91,12 @@
           {
             "target": "tasks-filter",
             "title": "Feeding buzzes",
-            "hint": "Change the filter: remove the species and the amount, and include “type: feeding-buzz” instead. 5 recordings remain. Their feeding buzzes are tagged with the call type, but not with the species yet."
+            "hint": "Remove the amount with the ✕ on its badge above the table. Then open {icon:filter} “Filters” → “Tag” again: keep “species: Pipistrellus pipistrellus”, add “type: feeding-buzz”, choose “AND” under “Combine included tags with”, and set “Distinct tags on task” to 2. 4 recordings remain: only the pipistrelle and its feeding buzzes. The buzzes are tagged with the call type, not with the species yet."
           },
           {
             "target": "tasks-bulk-bar",
             "title": "Add the species to the buzzes",
-            "hint": "Click “All 5”, then “Add tag to tagged” (`t`). Pick “type: feeding-buzz” as the tag to look for and add “species: Pipistrellus pipistrellus”. Every feeding buzz now carries the species, the other events stay as they are.",
+            "hint": "Click “All 4”, then “Add tag to tagged” (`t`). Pick “type: feeding-buzz” as the tag to look for and add “species: Pipistrellus pipistrellus”. Every feeding buzz now carries the species, the other events stay as they are.",
             "task": "Add the species to all feeding buzzes",
             "complete": {
               "type": "event",
@@ -106,8 +106,8 @@
           {
             "target": "tasks-select-all",
             "title": "Accept the buzz recordings",
-            "hint": "Still filtered to feeding buzzes: click “All 5” and press `1` (Accepted).",
-            "task": "Accept the 5 recordings",
+            "hint": "Still filtered: click “All 4” and press `1` (Accepted).",
+            "task": "Accept the 4 recordings",
             "complete": {
               "type": "event",
               "event": "bulk-status-set"
@@ -121,7 +121,7 @@
           {
             "target": "tasks-bulk-bar",
             "title": "Social calls",
-            "hint": "Now the same for social calls: include “type: social-call” instead of the feeding buzz (7 recordings). Tick the 6 recordings without a badge yet (one holds a feeding buzz too and is accepted already), or simply click “All 7”: accepted recordings are skipped. Use “Add tag to tagged” (`t`) with “type: social-call” and “species: Pipistrellus pipistrellus”, then press `1` (Accepted). The selection stays after a tag action, so the status goes to the same recordings.",
+            "hint": "Now the same for social calls: with the ✕ remove “type: feeding-buzz” from the filter and add “type: social-call” (still AND, amount 2). 6 recordings remain. Tick them yourself this time (or click “All 6”), use “Add tag to tagged” (`t`) with “type: social-call” and “species: Pipistrellus pipistrellus”, then press `1` (Accepted). The selection stays after a tag action, so the status goes to the same recordings.",
             "task": "Tag and accept the social call recordings",
             "complete": {
               "type": "event",
@@ -129,9 +129,19 @@
             }
           },
           {
+            "target": "tasks-bulk-bar",
+            "title": "Both call types",
+            "hint": "One recording holds feeding buzzes and social calls. Include all three tags (“species: Pipistrellus pipistrellus”, “type: feeding-buzz”, “type: social-call”) with AND and amount 3. Use “Add tag to tagged” twice, once for each call type, then press `1` (Accepted).",
+            "task": "Tag and accept it",
+            "complete": {
+              "type": "event",
+              "event": "bulk-status-set"
+            }
+          },
+          {
             "target": "tasks-filter",
-            "title": "A second species",
-            "hint": "Two recordings also hold a few calls tagged as another species, which are pipistrelle calls in fact. Include “species: Pipistrellus pipistrellus” and “species: Pipistrellus nathusii”, and choose “AND” under “Combine included tags with”. One recording remains: AND keeps out lesson recordings with only Nathusius' pipistrelle."
+            "title": "A second species: look first",
+            "hint": "Two recordings also hold a few calls tagged as another species: Nathusius' pipistrelle in one, Leisler's bat in the other. In real work, never bulk-change these: open such a recording in Annotate (click its name, it opens in a new tab), listen to those calls and check their shape before you decide. Here they have been checked already: they are common pipistrelle calls. To find the first one, filter “species: Pipistrellus pipistrellus” AND “species: Pipistrellus nathusii” (amount removed). AND keeps out the lesson recordings with only Nathusius' pipistrelle."
           },
           {
             "target": "tasks-bulk-bar",
@@ -146,7 +156,7 @@
           {
             "target": "tasks-bulk-bar",
             "title": "And the other one",
-            "hint": "In the filter, swap “species: Pipistrellus nathusii” for “species: Nyctalus leisleri” (still AND with “species: Pipistrellus pipistrellus”). Click “All 1”, then replace “species: Nyctalus leisleri” with “species: Pipistrellus pipistrellus”.",
+            "hint": "In the filter, remove “species: Pipistrellus nathusii” with its ✕ and add “species: Nyctalus leisleri” (still AND with “species: Pipistrellus pipistrellus”). Click “All 1”, then replace “species: Nyctalus leisleri” with “species: Pipistrellus pipistrellus”.",
             "task": "Replace Nyctalus leisleri",
             "complete": {
               "type": "event",
@@ -156,7 +166,7 @@
           {
             "target": "tasks-select-all",
             "title": "Accept the last two",
-            "hint": "Both recordings now carry only the pipistrelle. Filter again: include “species: Pipistrellus pipistrellus”, “Distinct tags on task” 1. The two appear next to the 7 accepted earlier. Click “All”, press `1` (Accepted).",
+            "hint": "Both recordings now carry only the pipistrelle. Filter once more: include only “species: Pipistrellus pipistrellus” with “Distinct tags on task” 1. The two appear next to the 7 accepted earlier. Click “All”, press `1` (Accepted): accepted recordings are skipped.",
             "task": "Accept them",
             "complete": {
               "type": "event",
@@ -166,12 +176,12 @@
           {
             "target": "tasks-filter",
             "title": "Clear the filters",
-            "hint": "Every bulk recording has a status badge now. Remove the filters again (the ✕ on each filter badge), so the table shows all recordings."
+            "hint": "Every bulk recording has a status badge now. Remove all filters with the ✕ on each badge above the table, so the table shows every recording again."
           },
           {
             "target": "header-tabs",
             "title": "Back to Annotate",
-            "hint": "Done: 20 recordings checked and processed without opening one of them. Click “Annotate” at the top to finish the Tags lesson.",
+            "hint": "Done: 20 recordings processed, and the two unusual ones flagged for a closer look in real work. Click “Annotate” at the top to finish the Tags lesson.",
             "task": "Open the Annotate tab",
             "complete": {
               "type": "click"
@@ -256,7 +266,7 @@
           {
             "target": "audio-player",
             "title": "Repeat & autoplay",
-            "hint": "{icon:loop} repeats the visible part. {icon:autoplay} starts playback on every recording you open. A filled, ringed button is switched on."
+            "hint": "{icon:loop} repeats the selected sound event, or the whole recording when no event is selected. {icon:autoplay} starts playback on every recording you open. A filled, ringed button is switched on."
           },
           {
             "target": "spectrogram",
@@ -876,7 +886,7 @@
           {
             "target": "audio-player",
             "title": "Repeat & autoplay",
-            "hint": "{icon:loop} repeats the visible part. {icon:autoplay} starts playback on every recording you open. A filled, ringed button is switched on."
+            "hint": "{icon:loop} repeats the selected sound event, or the whole recording when no event is selected. {icon:autoplay} starts playback on every recording you open. A filled, ringed button is switched on."
           },
           {
             "target": "sound-event-detail",
