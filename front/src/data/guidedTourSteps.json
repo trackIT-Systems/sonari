@@ -116,7 +116,7 @@
           {
             "target": "tasks-bulk-bar",
             "title": "Social calls",
-            "hint": "Now the same for social calls: include “type: social-call” instead of the feeding buzz (7 recordings), click “All 7”, use “Add tag to tagged” (`t`) with “type: social-call” and “species: Pipistrellus pipistrellus”, then press `1` (Accepted). Most social calls carry the species already; the others get it now.",
+            "hint": "Now the same for social calls: include “type: social-call” instead of the feeding buzz (7 recordings). Click “All 7”, or tick only the recordings without a badge yet: one of them holds a feeding buzz too and is accepted already. Use “Add tag to tagged” (`t`) with “type: social-call” and “species: Pipistrellus pipistrellus”, then press `1` (Accepted). The selection stays after a tag action, so the status goes to the same recordings. Recordings that are accepted already are skipped.",
             "task": "Tag and accept the social call recordings",
             "complete": {
               "type": "event",

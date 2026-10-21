@@ -6,7 +6,10 @@ from unittest.mock import patch
 import pytest
 from httpx import AsyncClient
 
-from sonari import api, schemas
+from soundevent import data
+from sqlalchemy import select
+
+from sonari import api, models, schemas
 
 
 async def _create_task(
@@ -773,3 +776,58 @@ async def test_bulk_add_task_tag_creates_new_tag(
     assert response.status_code == 200, response.text
     data = schemas.AnnotationTaskBulkResult.model_validate(response.json())
     assert data.tasks_updated == 1
+
+
+@pytest.mark.asyncio
+async def test_bulk_add_badge_with_already_badged_tasks_in_between(
+    auth_client: AsyncClient,
+    db_session,
+    test_annotation_project: schemas.AnnotationProject,
+    test_recording_id: int,
+    test_annotation_task: schemas.AnnotationTask,
+):
+    """Accepting a mix of accepted and new tasks skips the accepted ones and updates the rest.
+
+    Through the route; the production failure (request user expired by a
+    skipped duplicate) is covered by the session-user test below.
+    """
+    tasks = [test_annotation_task] + [
+        await _create_task(db_session, test_annotation_project, test_recording_id, float(i), float(i) + 1.0)
+        for i in range(1, 5)
+    ]
+    for task in (tasks[0], tasks[2]):
+        first = await auth_client.post(
+            "/api/v1/annotation_tasks/detail/badges/",
+            params={"annotation_task_id": task.id, "state": "completed"},
+        )
+        assert first.status_code in [200, 201], first.text
+
+    response = await auth_client.post(
+        "/api/v1/annotation_tasks/bulk/badges/",
+        params={"annotation_project__eq": test_annotation_project.id},
+        json={"annotation_task_ids": [t.id for t in tasks], "state": "completed"},
+    )
+    assert response.status_code == 200, response.text
+    data = schemas.AnnotationTaskBulkResult.model_validate(response.json())
+    assert data.failures == []
+    assert (data.tasks_updated, data.tasks_skipped) == (3, 2)
+
+
+@pytest.mark.asyncio
+async def test_bulk_badge_with_session_user_skips_duplicates_without_breaking_later_tasks(db_session, test_annotation_project, test_recording_id, test_annotation_task):
+    """Regression: a skipped duplicate rolled back its savepoint, which expired the
+    request's ORM user; every later task then failed with a greenlet error."""
+    tasks = [test_annotation_task] + [
+        await _create_task(db_session, test_annotation_project, test_recording_id, float(i), float(i) + 1.0)
+        for i in range(1, 5)
+    ]
+    # Like production: the request's user is an ORM object of this very session.
+    user = (await db_session.execute(select(models.User).where(models.User.username == "admin"))).scalar_one()
+    await api.annotation_tasks.bulk_add_status_badge(
+        db_session, task_ids=[tasks[0].id, tasks[2].id], state=data.AnnotationState.completed, user=user,
+    )
+    result = await api.annotation_tasks.bulk_add_status_badge(
+        db_session, task_ids=[t.id for t in tasks], state=data.AnnotationState.completed, user=user,
+    )
+    assert result.failures == []
+    assert (result.tasks_updated, result.tasks_skipped) == (3, 2)

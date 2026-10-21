@@ -309,10 +309,9 @@ export default function AnnotationTaskBulkActionBar({
     (tag: Tag) => {
       runWithConfirm(
         () => {
-          bulkAddTag.mutate(
-            { annotation_task_ids: taskIds, tag },
-            { onSuccess: () => onClearSelection() },
-          );
+          // Keep the selection: tag actions are often followed by a status
+          // on the same tasks.
+          bulkAddTag.mutate({ annotation_task_ids: taskIds, tag });
         },
         {
           title: "Add task tag?",
@@ -351,7 +350,6 @@ export default function AnnotationTaskBulkActionBar({
           },
           {
             onSuccess: () => {
-              onClearSelection();
               emitGuidedTourEvent(options?.add_to_tagged ? "bulk-tag-added-to-tagged" : "bulk-tag-replaced");
             },
           },
@@ -371,7 +369,6 @@ export default function AnnotationTaskBulkActionBar({
       runWithConfirm(() => {
         bulkReplaceSoundEventTags.mutate(
           { annotation_task_ids: taskIds, replace_group: group },
-          { onSuccess: () => onClearSelection() },
         );
       }, {
         title: "Replace with group tag?",
@@ -395,7 +392,6 @@ export default function AnnotationTaskBulkActionBar({
           },
           {
             onSuccess: () => {
-              onClearSelection();
               emitGuidedTourEvent("bulk-tag-added-to-tagged");
             },
           },
@@ -414,10 +410,7 @@ export default function AnnotationTaskBulkActionBar({
     (tag: Tag, count: number) => {
       runWithConfirm(
         () => {
-          bulkDeleteSoundEventsByTag.mutate(
-            { annotation_task_ids: taskIds, tag },
-            { onSuccess: () => onClearSelection() },
-          );
+          bulkDeleteSoundEventsByTag.mutate({ annotation_task_ids: taskIds, tag });
         },
         {
           title: "Delete sound events?",
