@@ -2,7 +2,7 @@ import { useState, useRef } from "react";
 
 import Button from "@/components/Button";
 import { IssueIcon, NotesIcon } from "@/components/icons";
-import { InputGroup, TextArea } from "@/components/inputs/index";
+import { TextArea } from "@/components/inputs/index";
 
 import { useKeyPressEvent } from "react-use";
 import useKeyFilter from "@/hooks/utils/useKeyFilter";
@@ -58,22 +58,18 @@ export default function CreateNoteForm({
   };
 
   return (
-    <div className="flex flex-col p-4 w-full">
-      <InputGroup
-        label="Add a note"
+    <div className="flex w-full flex-col gap-1">
+      <TextArea
+        ref={textAreaRef}
         name="message"
-        help="Write the note message and click on the type of note you want to create."
-      >
-        <TextArea
-          ref={textAreaRef}
-          name="message"
-          value={message}
-          placeholder="Type your note here..."
-          onChange={(e) => setMessage(e.target.value)}
-          onKeyDown={handleKeyDown}
-        />
-      </InputGroup>
-      <div className="flex flex-row gap-4 justify-end">
+        aria-label="Add a note"
+        rows={2}
+        value={message}
+        placeholder="Add a note or flag an issue…"
+        onChange={(e) => setMessage(e.target.value)}
+        onKeyDown={handleKeyDown}
+      />
+      <div className="flex flex-row flex-wrap justify-end gap-x-2">
         <Button
           variant="danger"
           mode="text"

@@ -349,6 +349,11 @@ export const ANNOTATION_KEY_SHORTCUTS: KeyShortcut[] = [
         description: "Select a sound event annotation",
     },
     {
+        label: "Select several",
+        shortcut: `${getSpecialKeyLabel("Shift")} Click`,
+        description: "Add a sound event to the selection, or remove it. Adding, removing and replacing tags then applies to all selected events; Esc clears the selection.",
+    },
+    {
         label: "Delete Annotation",
         shortcut: DELETE_SOUND_EVENT_ANNOTATION_SHORTCUT,
         description: "Delete an annotation. If annotation is selected it will be deleted.",

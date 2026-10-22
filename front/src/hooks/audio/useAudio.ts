@@ -37,6 +37,11 @@ export type PlayerState = {
 };
 
 const LOWEST_SAMPLE_RATE = 8000;
+/**
+ * Publish the playhead every n-th animation frame while playing: each update
+ * re-renders and redraws the spectrogram and the waveform.
+ */
+const PLAYHEAD_FRAME_STRIDE = 2;
 const HIGHTEST_SAMPLE_RATE = 96000;
 
 const ALL_SPEED_OPTIONS: SpeedOption[] = [
@@ -63,11 +68,17 @@ export default function useAudio({
   endTime,
   startTime = 0,
   speed: initialSpeed,
+  channel = null,
   withShortcuts = true,
   withAutoplay,
   onWithAutoplayChange,
 }: {
   recording: Recording;
+  /**
+   * Channel to play, matching the spectrogram; null plays every channel
+   * (stereo for a two-channel recording, e.g. with mixed channels).
+   */
+  channel?: number | null;
   withShortcuts?: boolean;
   withAutoplay: boolean;
   onWithAutoplayChange: () => void;
@@ -113,9 +124,10 @@ export default function useAudio({
     return api.audio.getStreamUrl({
       recording,
       speed: speed,
+      channel,
       // Don't specify startTime/endTime to get the full audio
     });
-  }, [recording, speed]);
+  }, [recording, speed, channel]);
 
   const stopAudio = useCallback((audio: HTMLAudioElement, startTime: number) => {
     audio.pause();
@@ -129,20 +141,41 @@ export default function useAudio({
   const withAutoplayRef = useRef(withAutoplay);
   withAutoplayRef.current = withAutoplay;
 
-  const prevFullAudioUrl = useRef<string | undefined>(undefined);
+  /** What the element was last loaded with, to tell a speed change apart. */
+  const loadedRef = useRef<{
+    url: string;
+    recordingId: number;
+    speed: number;
+    channel: number | null;
+    start: number;
+    end: number;
+  } | null>(null);
 
   // Load the source and seek to the segment start. Only runs when the audio
-  // file or the segment changes, never for loop/volume/autoplay toggles, which
-  // previously restarted playback from the segment start.
+  // file, the speed or the segment changes, never for loop/volume/autoplay
+  // toggles, which previously restarted playback from the segment start.
   useEffect(() => {
     const { current } = audio;
+    const prev = loadedRef.current;
 
-    const isRecordingChange = prevFullAudioUrl.current !== undefined &&
-                              prevFullAudioUrl.current !== fullAudioUrl;
-    prevFullAudioUrl.current = fullAudioUrl;
+    // Speed and channel are part of the URL (the server time-expands the
+    // audio and picks the channel), so changing them reloads the source. Keep
+    // the position and keep playing: stopping and jumping back to the segment
+    // start felt like a restart.
+    const reloadInPlace =
+      prev != null &&
+      prev.recordingId === recording.id &&
+      (prev.speed !== speed || prev.channel !== channel) &&
+      prev.start === playbackStartTime &&
+      prev.end === playbackEndTime;
+    const isRecordingChange = prev != null && prev.url !== fullAudioUrl && !reloadInPlace;
+    const resumeAt = reloadInPlace ? current.currentTime * prev.speed : null;
+    const wasPlaying = reloadInPlace && !current.paused;
 
-    // Only update src if it's different (avoids re-download)
-    if (current.src !== fullAudioUrl) {
+    // Compare with what was loaded, not with `current.src`: the element
+    // stores an absolute URL, the API may build a relative one, and then every
+    // segment change (e.g. selecting a sound event) re-downloaded the stream.
+    if (prev?.url !== fullAudioUrl) {
       if (isRecordingChange) {
         current.pause();
         setIsPlaying(false);
@@ -152,16 +185,30 @@ export default function useAudio({
       current.src = fullAudioUrl;
       current.load();
     }
+    loadedRef.current = {
+      url: fullAudioUrl,
+      recordingId: recording.id,
+      speed,
+      channel,
+      start: playbackStartTime,
+      end: playbackEndTime,
+    };
 
     current.playbackRate = 1; // Speed is handled in the URL
 
-    current.currentTime = playbackStartTime / speed;
-    setTime(playbackStartTime);
+    const position =
+      resumeAt != null && resumeAt >= playbackStartTime && resumeAt < playbackEndTime
+        ? resumeAt
+        : playbackStartTime;
+    current.currentTime = position / speed;
+    setTime(position);
 
-    if (withAutoplayRef.current && !isRecordingChange) {
+    if (wasPlaying) {
+      current.play().then(() => setIsPlaying(true)).catch(() => setIsPlaying(false));
+    } else if (withAutoplayRef.current && !isRecordingChange && !reloadInPlace) {
       current.play().then(() => setIsPlaying(true)).catch(() => {});
     }
-  }, [fullAudioUrl, speed, playbackStartTime, playbackEndTime]);
+  }, [fullAudioUrl, recording.id, speed, channel, playbackStartTime, playbackEndTime]);
 
   useEffect(() => {
     audio.current.volume = volume;
@@ -174,6 +221,10 @@ export default function useAudio({
     current.loop = false;
 
     let timer: number | undefined;
+    // Every time update re-renders and redraws the spectrogram and the
+    // waveform, so publish the playhead only every few frames (the first one
+    // right away). Reaching the end is still checked on every frame.
+    let framesSincePublish = PLAYHEAD_FRAME_STRIDE;
 
     const cancel = () => {
       if (timer != null) cancelAnimationFrame(timer);
@@ -207,7 +258,11 @@ export default function useAudio({
         return;
       }
 
-      setTime(actualCurrentTime);
+      framesSincePublish += 1;
+      if (framesSincePublish >= PLAYHEAD_FRAME_STRIDE) {
+        framesSincePublish = 0;
+        setTime(actualCurrentTime);
+      }
       timer = requestAnimationFrame(updateTime);
     };
 

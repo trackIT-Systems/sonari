@@ -18,13 +18,11 @@ export default function AnnotationTaskTagBar({
   const tags = annotationTask.tags || [];
 
   return (
-    <Card>
-      <div className="flex justify-between items-center gap-2 mb-2">
-        <H4 className="text-center whitespace-nowrap pt-3">
-          <TagsIcon className="inline-block mr-1 w-5 h-5" />
-          Annotation Task Tags
-        </H4>
-      </div>
+    <Card className="gap-2 p-3">
+      <H4 className="flex items-center gap-1.5 text-sm">
+        <TagsIcon className="h-4 w-4 shrink-0" />
+        Task tags
+      </H4>
 
       <div className="flex flex-row items-center flex-wrap gap-1">
         {tags.map((tag: Tag) => (

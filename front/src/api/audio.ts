@@ -54,9 +54,12 @@ export function registerAudioAPI(
     speed = 1,
     startTime,
     endTime,
+    channel,
   }: {
     recording: Recording;
     speed?: number;
+    /** Only this channel (mono); omitted: every channel (stereo). */
+    channel?: number | null;
     startTime?: number;
     endTime?: number;
   }) {
@@ -73,6 +76,9 @@ export function registerAudioAPI(
     }
     if (endTime != null) {
       params["end_time"] = endTime.toString();
+    }
+    if (channel != null) {
+      params["channel"] = channel.toString();
     }
 
     const urlparams = new URLSearchParams(params);

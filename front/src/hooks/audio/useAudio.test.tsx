@@ -7,14 +7,23 @@ import type { Recording } from "@/types";
 vi.mock("@/app/api", () => ({
   default: {
     audio: {
-      getStreamUrl: ({ recording, speed }: { recording: Recording; speed: number }) =>
-        `http://test/audio?recording_id=${recording.id}&speed=${speed}`,
+      getStreamUrl: ({ recording, speed, channel }: { recording: Recording; speed: number; channel?: number | null }) =>
+        // Relative, like an API base URL such as "/sonari": the element turns
+        // it into an absolute URL (see FakeAudio.src).
+        `/audio?recording_id=${recording.id}&speed=${speed}${channel != null ? `&channel=${channel}` : ""}`,
     },
   },
 }));
 
 class FakeAudio extends EventTarget {
-  src = "";
+  private _src = "";
+  /** Like a real media element: `src` reads back as an absolute URL. */
+  get src() {
+    return this._src;
+  }
+  set src(value: string) {
+    this._src = new URL(value, "http://test").href;
+  }
   preload = "";
   loop = false;
   volume = 1;
@@ -74,7 +83,7 @@ afterEach(() => {
 
 const recording = { id: 1, samplerate: 48000, duration: 20 } as Recording;
 
-type Props = { startTime: number; endTime: number; withAutoplay: boolean };
+type Props = { startTime: number; endTime: number; withAutoplay: boolean; channel?: number | null };
 
 function renderAudio(initial: Partial<Props> = {}) {
   return renderHook(
@@ -83,6 +92,7 @@ function renderAudio(initial: Partial<Props> = {}) {
         recording,
         startTime: props.startTime,
         endTime: props.endTime,
+        channel: props.channel,
         withShortcuts: false,
         withAutoplay: props.withAutoplay,
         onWithAutoplayChange: () => undefined,
@@ -212,5 +222,59 @@ describe("useAudio", () => {
     expect(result.current.isPlaying).toBe(true);
     expect(element!.paused).toBe(false);
     expect(element!.currentTime).toBeCloseTo(2);
+  });
+
+  it("keeps the position and keeps playing when the speed changes", async () => {
+    const { result } = renderAudio();
+    await playTo(result, 6);
+    // A real element stops playing when a new source is loaded.
+    vi.spyOn(element!, "load").mockImplementation(function (this: FakeAudio) {
+      this.pause();
+    });
+
+    await act(async () => {
+      result.current.setSpeed(0.5);
+      await vi.advanceTimersByTimeAsync(32);
+    });
+
+    expect(element!.src).toContain("speed=0.5");
+    // Same place in the recording: 6 s, which is 12 s into the slowed stream.
+    expect(element!.currentTime).toBeCloseTo(12);
+    expect(result.current.currentTime).toBeCloseTo(6);
+    expect(element!.paused).toBe(false);
+    expect(result.current.isPlaying).toBe(true);
+  });
+
+  it("does not reload the stream when only the segment changes", async () => {
+    const { result, rerender } = renderAudio();
+    await playTo(result, 6);
+    const load = vi.spyOn(element!, "load");
+
+    await act(async () => {
+      rerender({ startTime: 3, endTime: 4, withAutoplay: false });
+      await vi.advanceTimersByTimeAsync(32);
+    });
+
+    expect(load).not.toHaveBeenCalled();
+    expect(result.current.currentTime).toBeCloseTo(3);
+  });
+
+  it("plays the selected channel and keeps playing when it changes", async () => {
+    const { result, rerender } = renderAudio({ channel: null });
+    expect(element!.src).not.toContain("channel=");
+    await playTo(result, 6);
+    vi.spyOn(element!, "load").mockImplementation(function (this: FakeAudio) {
+      this.pause();
+    });
+
+    await act(async () => {
+      rerender({ startTime: 2, endTime: 10, withAutoplay: false, channel: 1 });
+      await vi.advanceTimersByTimeAsync(32);
+    });
+
+    expect(element!.src).toContain("channel=1");
+    expect(element!.currentTime).toBeCloseTo(6);
+    expect(element!.paused).toBe(false);
+    expect(result.current.isPlaying).toBe(true);
   });
 });

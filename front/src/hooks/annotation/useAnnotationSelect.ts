@@ -1,5 +1,5 @@
 import { useCallback, useEffect } from "react";
-import { mergeProps, usePress } from "react-aria";
+import { mergeProps, usePress, type PressEvent } from "react-aria";
 
 import drawGeometry from "@/draw/geometry";
 import { ORANGE } from "@/draw/styles";
@@ -25,12 +25,15 @@ export default function useAnnotationSelect({
   enabled = true,
   onSelect,
   onDeselect,
+  onToggle,
 }: {
   annotations: SoundEventAnnotation[];
   window: SpectrogramWindow;
   enabled: boolean;
   onSelect?: (annotation: SoundEventAnnotation) => void;
   onDeselect?: () => void;
+  /** Shift + click: add the event to, or remove it from, the selection. */
+  onToggle?: (annotation: SoundEventAnnotation) => void;
 }) {
   const { props: hoverProps, hoveredAnnotation: hovered } =
     useHoveredAnnotation({
@@ -39,14 +42,19 @@ export default function useAnnotationSelect({
       enabled,
     });
 
-  const handleClick = useCallback(() => {
+  const handleClick = useCallback((event: PressEvent) => {
     if (!enabled) return;
+    if (event.shiftKey && onToggle) {
+      // Shift + click on empty space keeps the selection.
+      if (hovered != null) onToggle(hovered);
+      return;
+    }
     if (hovered == null) {
       onDeselect?.();
     } else {
       onSelect?.(hovered);
     }
-  }, [hovered, enabled, onSelect, onDeselect]);
+  }, [hovered, enabled, onSelect, onDeselect, onToggle]);
 
   const { pressProps } = usePress({
     onPress: handleClick,

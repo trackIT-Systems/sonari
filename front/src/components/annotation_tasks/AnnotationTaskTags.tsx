@@ -1,4 +1,5 @@
 import { useMemo, useCallback, useState, useRef, useEffect } from "react";
+import { createPortal } from "react-dom";
 import Card from "@/components/Card";
 import Empty from "@/components/Empty";
 import { H4 } from "@/components/Headings";
@@ -279,6 +280,9 @@ function TagAddPanel({
 }
 
 
+/** Tag menu opened by a keyboard shortcut. */
+type TagOverlay = "replace" | "add" | "addToTagged" | "addUntagged";
+
 export default function AnnotationTaskTags({
   annotationTask,
   onReplaceTagInSoundEventAnnotations,
@@ -286,6 +290,7 @@ export default function AnnotationTaskTags({
   onAddTagToUntaggedSoundEventAnnotations,
   onAddTagToSoundEventAnnotationsWithTag,
   selectedSoundEventAnnotation,
+  selectedSoundEventAnnotations,
   tagVisibility,
   headless = false,
 }: {
@@ -295,15 +300,20 @@ export default function AnnotationTaskTags({
   onAddTagToUntaggedSoundEventAnnotations?: (newTag: Tag) => void;
   onAddTagToSoundEventAnnotationsWithTag?: (filterTag: Tag, newTag: Tag, selectedSoundEventAnnotation?: SoundEventAnnotation | null) => void;
   selectedSoundEventAnnotation?: SoundEventAnnotation | null;
+  /** Several selected sound events (Shift + click): tag menus list their tags. */
+  selectedSoundEventAnnotations?: SoundEventAnnotation[];
   tagVisibility?: TagVisibilityFilter;
   /** Render no card, only the shortcut-driven popovers (full page view) */
   headless?: boolean;
 }) {
 
-  const replaceButtonRef = useRef<HTMLButtonElement>(null);
-  const addButtonRef = useRef<HTMLButtonElement>(null);
-  const addToTaggedButtonRef = useRef<HTMLButtonElement>(null);
-  const addUntaggedButtonRef = useRef<HTMLButtonElement>(null);
+  /**
+   * Opened from a keyboard shortcut: the tag bar is often below the visible
+   * page, so the menu opens centred above the spectrogram (like delete and
+   * cycle tag). A click on a tag bar button keeps the menu at the button.
+   */
+  const [overlay, setOverlay] = useState<TagOverlay | null>(null);
+  const rootRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const handleKeyPress = (event: KeyboardEvent) => {
@@ -316,32 +326,20 @@ export default function AnnotationTaskTags({
 
       const key = event.key.toLowerCase();
 
-      if (key === REPLACE_TAG_SHORTCUT && !event.metaKey) {
-        event.preventDefault();
-        event.stopPropagation();
-        replaceButtonRef.current?.click();
-        return;
-      }
+      // Several copies are mounted (one per layout, hidden with CSS); only
+      // the one on screen (or the full page one) handles the shortcuts.
+      if (!headless && (rootRef.current?.getClientRects().length ?? 0) === 0) return;
 
-      if (key === ADD_UNTAGGED_TAG_SHORTCUT && event.shiftKey && !event.metaKey) {
-        event.preventDefault();
-        event.stopPropagation();
-        addUntaggedButtonRef.current?.click();
-        return;
-      }
+      let next: TagOverlay | null = null;
+      if (key === REPLACE_TAG_SHORTCUT && !event.metaKey) next = "replace";
+      else if (key === ADD_UNTAGGED_TAG_SHORTCUT && event.shiftKey && !event.metaKey) next = "addUntagged";
+      else if (key === ADD_TO_TAGGED_TAG_SHORTCUT && !event.metaKey && !event.shiftKey) next = "addToTagged";
+      else if (key === ADD_TAG_SHORTCUT && !event.metaKey && !event.shiftKey) next = "add";
+      if (next == null) return;
 
-      if (key === ADD_TO_TAGGED_TAG_SHORTCUT && !event.metaKey && !event.shiftKey) {
-        event.preventDefault();
-        event.stopPropagation();
-        addToTaggedButtonRef.current?.click();
-        return;
-      }
-
-      if (key === ADD_TAG_SHORTCUT && !event.metaKey && !event.shiftKey) {
-        event.preventDefault();
-        event.stopPropagation();
-        addButtonRef.current?.click();
-      }
+      event.preventDefault();
+      event.stopPropagation();
+      setOverlay(next);
     };
     // Add event listener to document
     document.addEventListener('keydown', handleKeyPress);
@@ -350,7 +348,20 @@ export default function AnnotationTaskTags({
     return () => {
       document.removeEventListener('keydown', handleKeyPress);
     };
-  }, []);
+  }, [headless]);
+
+  // Esc closes the overlay only (captured: it must not also deselect the event).
+  useEffect(() => {
+    if (overlay == null) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") return;
+      event.preventDefault();
+      event.stopPropagation();
+      setOverlay(null);
+    };
+    window.addEventListener("keydown", onKeyDown, true);
+    return () => window.removeEventListener("keydown", onKeyDown, true);
+  }, [overlay]);
 
   // This always shows all tags in the task
   const tagsWithCount = useMemo(() => {
@@ -379,9 +390,11 @@ export default function AnnotationTaskTags({
   const popoverTagsWithCount = useMemo(() => {
     if (!annotationTask.sound_event_annotations) return [];
 
-    const relevantSoundEvents = selectedSoundEventAnnotation
-      ? [selectedSoundEventAnnotation]
-      : annotationTask.sound_event_annotations;
+    const relevantSoundEvents = selectedSoundEventAnnotations?.length
+      ? selectedSoundEventAnnotations
+      : selectedSoundEventAnnotation
+        ? [selectedSoundEventAnnotation]
+        : annotationTask.sound_event_annotations;
 
     const allTags = relevantSoundEvents.flatMap(event => event.tags || []);
     const tagCounts = new Map<string, TagCount>();
@@ -397,7 +410,7 @@ export default function AnnotationTaskTags({
     });
 
     return Array.from(tagCounts.values());
-  }, [annotationTask, selectedSoundEventAnnotation]);
+  }, [annotationTask, selectedSoundEventAnnotation, selectedSoundEventAnnotations]);
 
   const handleTagReplaceRemove = useCallback(
     async (oldTag: Tag | null, newTag: Tag | null) => {
@@ -406,8 +419,12 @@ export default function AnnotationTaskTags({
     [onReplaceTagInSoundEventAnnotations, selectedSoundEventAnnotation]
   );
 
+  // Hover hints open from their button's right edge towards the page, never
+  // past its right edge: an overflowing hint (Add untagged, right-most in the
+  // side column) toggled a horizontal scrollbar on hover and the page jumped.
   const actions = (
-    <div className="flex shrink-0 items-center">
+    // Wraps in the side column instead of overflowing the card.
+    <div className="-ml-2.5 flex min-w-0 flex-wrap items-center gap-x-1">
       <Popover as="div" className="relative inline-block text-left">
         {({ open, close }) => {
           return (
@@ -420,7 +437,6 @@ export default function AnnotationTaskTags({
         `}
                 >
                   <Button
-                    ref={replaceButtonRef}
                     mode="text"
                     variant="info"
                     type="button"
@@ -434,7 +450,7 @@ export default function AnnotationTaskTags({
                   opacity-0 scale-95 group-hover:opacity-100 group-hover:scale-100
                   transition duration-100 ease-out
                   pointer-events-none
-                  absolute top-full left-1/2 -translate-x-1/2 mt-2 
+                  absolute top-full right-0 mt-2 
                   rounded p-2 shadow-lg 
                   bg-stone-50 dark:bg-stone-700 
                   text-stone-600 dark:text-stone-400 
@@ -475,7 +491,6 @@ export default function AnnotationTaskTags({
           );
         }}
       </Popover>
-      <div className="h-4 w-px bg-stone-200 dark:bg-stone-600 mx-2" />
       <Popover as="div" className="relative inline-block text-left">
         {({ open, close }) => {
           return (
@@ -488,7 +503,6 @@ export default function AnnotationTaskTags({
         `}
                 >
                   <Button
-                    ref={addButtonRef}
                     mode="text"
                     variant="info"
                     type="button"
@@ -502,7 +516,7 @@ export default function AnnotationTaskTags({
           opacity-0 scale-95 group-hover:opacity-100 group-hover:scale-100
           transition duration-100 ease-out
           pointer-events-none
-          absolute top-full left-1/2 -translate-x-1/2 mt-2 
+          absolute top-full right-0 mt-2 
           rounded p-2 shadow-lg 
           bg-stone-50 dark:bg-stone-700 
           text-stone-600 dark:text-stone-400 
@@ -534,7 +548,6 @@ export default function AnnotationTaskTags({
           );
         }}
       </Popover>
-      <div className="h-4 w-px bg-stone-200 dark:bg-stone-600 mx-2" />
       <Popover as="div" className="relative inline-block text-left">
         {({ close }) => {
           return (
@@ -547,7 +560,6 @@ export default function AnnotationTaskTags({
         `}
                 >
                   <Button
-                    ref={addToTaggedButtonRef}
                     mode="text"
                     variant="info"
                     type="button"
@@ -561,7 +573,7 @@ export default function AnnotationTaskTags({
           opacity-0 scale-95 group-hover:opacity-100 group-hover:scale-100
           transition duration-100 ease-out
           pointer-events-none
-          absolute top-full left-1/2 -translate-x-1/2 mt-2 
+          absolute top-full right-0 mt-2 
           rounded p-2 shadow-lg 
           bg-stone-50 dark:bg-stone-700 
           text-stone-600 dark:text-stone-400 
@@ -598,7 +610,6 @@ export default function AnnotationTaskTags({
           );
         }}
       </Popover>
-      <div className="h-4 w-px bg-stone-200 dark:bg-stone-600 mx-2" />
       <Popover as="div" className="relative inline-block text-left">
         {({ close }) => {
           return (
@@ -611,7 +622,6 @@ export default function AnnotationTaskTags({
         `}
                 >
                   <Button
-                    ref={addUntaggedButtonRef}
                     mode="text"
                     variant="info"
                     type="button"
@@ -625,7 +635,7 @@ export default function AnnotationTaskTags({
           opacity-0 scale-95 group-hover:opacity-100 group-hover:scale-100
           transition duration-100 ease-out
           pointer-events-none
-          absolute top-full left-1/2 -translate-x-1/2 mt-2 
+          absolute top-full right-0 mt-2 
           rounded p-2 shadow-lg 
           bg-stone-50 dark:bg-stone-700 
           text-stone-600 dark:text-stone-400 
@@ -662,27 +672,92 @@ export default function AnnotationTaskTags({
     </div>
   );
 
+
+  const overlayPanel =
+    overlay == null ? null : (
+      <div
+        className="fixed inset-0 z-50 flex items-center justify-center bg-stone-900/20"
+        onMouseDown={(e) => {
+          if (e.target === e.currentTarget) setOverlay(null);
+        }}
+      >
+        <div
+          role="dialog"
+          aria-label="Sound event tags"
+          className="w-96 divide-y divide-stone-100 rounded-md border border-stone-200 bg-stone-50 shadow-md ring-1 ring-stone-900 ring-opacity-5 dark:border-stone-500 dark:bg-stone-700 dark:shadow-stone-800"
+        >
+          {overlay === "replace" && (
+            <TagReplacePanel
+              taskTags={popoverTagsWithCount}
+              onReplaceTag={async (oldTag, newTag) => {
+                setOverlay(null);
+                await handleTagReplaceRemove(oldTag, newTag);
+              }}
+              onReplaceGroup={
+                onReplaceGroupInSoundEventAnnotations
+                  ? async (group) => {
+                      setOverlay(null);
+                      await onReplaceGroupInSoundEventAnnotations(group, selectedSoundEventAnnotation);
+                    }
+                  : undefined
+              }
+            />
+          )}
+          {overlay === "add" && (
+            <TagAddPanel
+              onReplaceTag={async (_, newTag) => {
+                setOverlay(null);
+                await handleTagReplaceRemove(null, newTag);
+              }}
+            />
+          )}
+          {overlay === "addToTagged" && (
+            <TagAddToTaggedPanel
+              taskTags={popoverTagsWithCount}
+              onAddTag={async (filterTag, newTag) => {
+                setOverlay(null);
+                await onAddTagToSoundEventAnnotationsWithTag?.(filterTag, newTag, selectedSoundEventAnnotation);
+              }}
+            />
+          )}
+          {overlay === "addUntagged" && (
+            <TagAddPanel
+              title="Select tag to add to untagged sound events"
+              placeholder="Search tag to add..."
+              onReplaceTag={async (_, newTag) => {
+                setOverlay(null);
+                await onAddTagToUntaggedSoundEventAnnotations?.(newTag);
+              }}
+            />
+          )}
+        </div>
+      </div>
+    );
+  const overlayPortal =
+    overlayPanel != null && typeof document !== "undefined" ? createPortal(overlayPanel, document.body) : null;
+
   // Full page view: the card is gone but its shortcuts must keep working, so
   // only the action row stays mounted, invisible and out of the way. Its
   // popovers opt back into visibility and open from the top right corner.
   if (headless) {
     return (
-      <div className="fixed right-4 top-4 z-50 h-0 w-0">
+      <div ref={rootRef} className="fixed right-4 top-4 z-50 h-0 w-0">
         <div className="invisible absolute right-0 top-0">{actions}</div>
+        {overlayPortal}
       </div>
     );
   }
 
   return (
-    <Card className="min-w-0 max-w-full">
-      <div className="flex min-w-0 justify-between items-center gap-2 mb-2">
-        <H4 className="min-w-0 flex-1 text-center leading-tight">
-          <TagsIcon className="inline-block mr-1 w-5 h-5" />
-          All Sound Event Annotation Tags
+    <div ref={rootRef} className="min-w-0 max-w-full">
+    {overlayPortal}
+    <Card className="min-w-0 max-w-full gap-2 p-3">
+      <div className="flex min-w-0 flex-col">
+        <H4 className="flex items-center gap-1.5 text-sm">
+          <TagsIcon className="h-4 w-4 shrink-0" />
+          Sound event tags
         </H4>
         {actions}
-
-
       </div>
       <div className="flex min-w-0 flex-row flex-wrap items-center gap-1">
         {tagsWithCount.map(({ tag, count }) => (
@@ -696,5 +771,6 @@ export default function AnnotationTaskTags({
         {tagsWithCount.length === 0 && <NoTags />}
       </div>
     </Card>
+    </div>
   );
 }

@@ -56,6 +56,22 @@ import { SPECTROGRAM_CONTAINER_WIDTH } from "@/constants";
 import { DEFAULT_TAG_VISIBILITY } from "@/utils/passes";
 import type { TagVisibilityFilter } from "@/utils/passes";
 
+const NO_IDS = new Set<number>();
+
+/** Tags of these sound events with how many of them carry each. */
+function countTags(soundEventAnnotations: SoundEventAnnotation[]): { tag: Tag; count: number }[] {
+  const counts = new Map<string, { tag: Tag; count: number }>();
+  for (const sea of soundEventAnnotations) {
+    for (const tag of sea.tags ?? []) {
+      const key = `${tag.key}-${tag.value}`;
+      const entry = counts.get(key);
+      if (entry) entry.count += 1;
+      else counts.set(key, { tag, count: 1 });
+    }
+  }
+  return Array.from(counts.values());
+}
+
 export default function AnnotateTasks({
   taskFilter,
   parameters = DEFAULT_SPECTROGRAM_PARAMETERS,
@@ -138,6 +154,7 @@ export default function AnnotateTasks({
   const currentTaskId = annotationTask?.id;
   useEffect(() => {
     setSelectedTag(null);
+    setMultiSelectedIds(NO_IDS);
   }, [currentTaskId]);
   const [tagVisibility, setTagVisibility] = useState<TagVisibilityFilter>(DEFAULT_TAG_VISIBILITY);
   const [liveParameters, setLiveParameters] = useState<SpectrogramParameters>(parameters);
@@ -155,8 +172,21 @@ export default function AnnotateTasks({
   }, []);
   
   const [selectedSoundEventAnnotation, setSelectedSoundEventAnnotation] = useState<SoundEventAnnotation | null>(null);
+  /**
+   * All selected sound events when Shift + click selected several (always 2+,
+   * the primary `selectedSoundEventAnnotation` among them). Tag actions then
+   * apply to exactly these; otherwise to the selected one, or to all.
+   */
+  const [multiSelectedIds, setMultiSelectedIds] = useState<Set<number>>(NO_IDS);
   const onDeselectSoundEventAnnotation = useCallback(() => {
     setSelectedSoundEventAnnotation(null);
+    setMultiSelectedIds(NO_IDS);
+  }, []);
+
+  /** Single selection (click, n / b, Esc): ends a multi-selection. */
+  const handleSelectSoundEventAnnotation = useCallback((annotation: SoundEventAnnotation | null) => {
+    setSelectedSoundEventAnnotation(annotation);
+    setMultiSelectedIds((prev) => (annotation != null && prev.has(annotation.id) ? prev : NO_IDS));
   }, []);
 
   const onUpdateSelectedSoundEventAnnotation = useCallback((annotation: SoundEventAnnotation) => {
@@ -278,6 +308,40 @@ export default function AnnotateTasks({
     annotationTask?.sound_event_annotations,
   ]);
 
+  const multiSelectedSoundEventAnnotations = useMemo(
+    () =>
+      multiSelectedIds.size > 1
+        ? displayedSoundEventAnnotations.filter((sea) => multiSelectedIds.has(sea.id))
+        : [],
+    [multiSelectedIds, displayedSoundEventAnnotations],
+  );
+  const isMultiSelect = multiSelectedSoundEventAnnotations.length > 1;
+
+  /** Shift + click: add a sound event to, or remove it from, the selection. */
+  const handleToggleSelectSoundEventAnnotation = useCallback(
+    (annotation: SoundEventAnnotation) => {
+      const next = new Set(
+        multiSelectedIds.size > 0
+          ? multiSelectedIds
+          : selectedSoundEventAnnotation
+            ? [selectedSoundEventAnnotation.id]
+            : [],
+      );
+      if (next.has(annotation.id)) next.delete(annotation.id);
+      else next.add(annotation.id);
+      setMultiSelectedIds(next.size > 1 ? next : NO_IDS);
+
+      // Keep the primary (details panel, edit handles) inside the selection.
+      if (selectedSoundEventAnnotation == null || !next.has(selectedSoundEventAnnotation.id)) {
+        const primaryId = next.has(annotation.id) ? annotation.id : Array.from(next).pop();
+        setSelectedSoundEventAnnotation(
+          displayedSoundEventAnnotations.find((sea) => sea.id === primaryId) ?? null,
+        );
+      }
+    },
+    [multiSelectedIds, selectedSoundEventAnnotation, displayedSoundEventAnnotations],
+  );
+
   const displayAnnotationTask = useMemo(() => {
     if (annotationTask == null) return null;
     return {
@@ -384,7 +448,7 @@ export default function AnnotateTasks({
   }, [displayedSoundEventAnnotations]);
 
   // Wrapper functions that combine badge mutations with navigation
-  const handleMarkCompleted = useCallback(async () => {
+  const markCompleted = useCallback(async () => {
     if (!annotationTask || !onAddBadge) return;
     try {
       await onAddBadge(annotationTask, "completed");
@@ -394,6 +458,31 @@ export default function AnnotateTasks({
       console.error("Failed to mark task as completed:", error);
     }
   }, [annotationTask, onAddBadge, onCompleteTask, tasks]);
+
+  /**
+   * Accepting or verifying a task with untagged sound events is usually a
+   * slip: ask first. Holds the action to run if the user goes ahead.
+   */
+  const [untaggedWarning, setUntaggedWarning] = useState<{
+    label: string;
+    untagged: SoundEventAnnotation[];
+    proceed: () => void;
+  } | null>(null);
+  const withTaggedCheck = useCallback(
+    (label: string, proceed: () => void) => {
+      const untagged = (annotationTask?.sound_event_annotations ?? []).filter((sea) => !sea.tags?.length);
+      if (untagged.length === 0) {
+        proceed();
+        return;
+      }
+      setUntaggedWarning({ label, untagged, proceed });
+    },
+    [annotationTask?.sound_event_annotations],
+  );
+  const handleMarkCompleted = useCallback(
+    () => withTaggedCheck("Accept", () => void markCompleted()),
+    [withTaggedCheck, markCompleted],
+  );
 
   const handleMarkRejected = useCallback(async () => {
     if (!annotationTask || !onAddBadge) return;
@@ -417,7 +506,7 @@ export default function AnnotateTasks({
     }
   }, [annotationTask, onAddBadge, onUnsureTask, tasks]);
 
-  const handleMarkVerified = useCallback(async () => {
+  const markVerified = useCallback(async () => {
     if (!annotationTask || !onAddBadge) return;
     try {
       await onAddBadge(annotationTask, "verified");
@@ -427,6 +516,31 @@ export default function AnnotateTasks({
       console.error("Failed to mark task as verified:", error);
     }
   }, [annotationTask, onAddBadge, onVerifyTask, tasks]);
+  const handleMarkVerified = useCallback(
+    () => withTaggedCheck("Verify", () => void markVerified()),
+    [withTaggedCheck, markVerified],
+  );
+
+  /** Select the untagged sound events (several at once) so they can be tagged. */
+  const showUntagged = useCallback((untagged: SoundEventAnnotation[]) => {
+    setSelectedSoundEventAnnotation(untagged[0] ?? null);
+    setMultiSelectedIds(untagged.length > 1 ? new Set(untagged.map((sea) => sea.id)) : NO_IDS);
+    setUntaggedWarning(null);
+  }, []);
+
+  useEffect(() => {
+    if (untaggedWarning == null) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        event.stopPropagation();
+        setUntaggedWarning(null);
+      }
+    };
+    // Capture phase: the annotate shortcuts must not run behind the dialog.
+    window.addEventListener("keydown", onKeyDown, true);
+    return () => window.removeEventListener("keydown", onKeyDown, true);
+  }, [untaggedWarning]);
 
   const handleRemoveBadge = useCallback(async (state: AnnotationStatus, userId?: string) => {
     if (!annotationTask || !onRemoveBadge) return;
@@ -551,7 +665,17 @@ export default function AnnotateTasks({
   const handleDeleteTagFromAll = useCallback(
     async (tagWithCount: { tag: Tag; count: number }, shouldDelete: boolean) => {
       if (shouldDelete && activeRemoveTagFromSoundEventAnnotation) {
-        if (selectedSoundEventAnnotation) {
+        if (isMultiSelect) {
+          const tag = tagWithCount.tag;
+          const run = activeHistory?.runBatch ?? (async (_label, fn) => fn());
+          await run("Remove tags", async () => {
+            await Promise.all(
+              multiSelectedSoundEventAnnotations
+                .filter((sea) => sea.tags?.some((t) => t.key === tag.key && t.value === tag.value))
+                .map((sea) => activeRemoveTagFromSoundEventAnnotation({ soundEventAnnotation: sea, tag })),
+            );
+          });
+        } else if (selectedSoundEventAnnotation) {
           await activeRemoveTagFromSoundEventAnnotation({
             soundEventAnnotation: selectedSoundEventAnnotation,
             tag: tagWithCount.tag
@@ -564,7 +688,7 @@ export default function AnnotateTasks({
       }
       setIsDeletePopoverOpen(false);
     },
-    [handleRemoveTagFromSoundEventAnnotations, activeRemoveTagFromSoundEventAnnotation, selectedSoundEventAnnotation]
+    [handleRemoveTagFromSoundEventAnnotations, activeRemoveTagFromSoundEventAnnotation, selectedSoundEventAnnotation, isMultiSelect, multiSelectedSoundEventAnnotations, activeHistory]
   );
 
   const handleAddTagToPalette = useCallback((tag: Tag) => {
@@ -587,6 +711,7 @@ export default function AnnotateTasks({
           {
             oldTag,
             scopeSoundEventAnnotation: currentAnnotation ?? undefined,
+            scopeSoundEventAnnotations: isMultiSelect ? multiSelectedSoundEventAnnotations : undefined,
           },
         );
 
@@ -620,9 +745,9 @@ export default function AnnotateTasks({
         await Promise.all(promises);
       });
       emitGuidedTourEvent("tag-replaced");
-      if (!currentAnnotation) emitGuidedTourEvent("tag-replaced-on-all");
+      if (!currentAnnotation && !isMultiSelect) emitGuidedTourEvent("tag-replaced-on-all");
     },
-    [displayedSoundEventAnnotations, activeRemoveTagFromSoundEventAnnotation, activeAddTagToSoundEventAnnotation, activeHistory],
+    [displayedSoundEventAnnotations, activeRemoveTagFromSoundEventAnnotation, activeAddTagToSoundEventAnnotation, activeHistory, isMultiSelect, multiSelectedSoundEventAnnotations],
   );
 
   const handleReplaceGroupInSoundEventAnnotations = useCallback(
@@ -630,7 +755,11 @@ export default function AnnotateTasks({
       if (!displayedSoundEventAnnotations.length || !activeRemoveTagFromSoundEventAnnotation || !activeAddTagToSoundEventAnnotation) return;
 
       const groupTag: Tag = { key: GROUP_TAG_KEY, value: group };
-      const scope = currentAnnotation ? [currentAnnotation] : displayedSoundEventAnnotations;
+      const scope = isMultiSelect
+        ? multiSelectedSoundEventAnnotations
+        : currentAnnotation
+          ? [currentAnnotation]
+          : displayedSoundEventAnnotations;
       const run = activeHistory?.runBatch ?? (async (_label, fn) => fn());
       await run(`Replace ${group} species with group`, async () => {
         await Promise.all(
@@ -653,7 +782,7 @@ export default function AnnotateTasks({
         );
       });
     },
-    [displayedSoundEventAnnotations, activeRemoveTagFromSoundEventAnnotation, activeAddTagToSoundEventAnnotation, activeHistory],
+    [displayedSoundEventAnnotations, activeRemoveTagFromSoundEventAnnotation, activeAddTagToSoundEventAnnotation, activeHistory, isMultiSelect, multiSelectedSoundEventAnnotations],
   );
 
   const handleAddTagToUntaggedSoundEventAnnotations = useCallback(
@@ -664,7 +793,7 @@ export default function AnnotateTasks({
 
       const run = activeHistory?.runBatch ?? (async (_label, fn) => fn());
       await run("Add tag to untagged sound events", async () => {
-        const untagged = displayedSoundEventAnnotations.filter(
+        const untagged = (isMultiSelect ? multiSelectedSoundEventAnnotations : displayedSoundEventAnnotations).filter(
           (soundEventAnnotation) => !soundEventAnnotation.tags?.length,
         );
 
@@ -679,7 +808,7 @@ export default function AnnotateTasks({
       });
       emitGuidedTourEvent("untagged-events-tagged");
     },
-    [displayedSoundEventAnnotations, activeAddTagToSoundEventAnnotation, activeHistory],
+    [displayedSoundEventAnnotations, activeAddTagToSoundEventAnnotation, activeHistory, isMultiSelect, multiSelectedSoundEventAnnotations],
   );
 
   const handleAddTagToSoundEventAnnotationsWithTag = useCallback(
@@ -699,6 +828,7 @@ export default function AnnotateTasks({
           {
             oldTag: filterTag,
             scopeSoundEventAnnotation: currentAnnotation ?? undefined,
+            scopeSoundEventAnnotations: isMultiSelect ? multiSelectedSoundEventAnnotations : undefined,
           },
         );
 
@@ -719,7 +849,7 @@ export default function AnnotateTasks({
         await Promise.all(promises);
       });
     },
-    [displayedSoundEventAnnotations, activeAddTagToSoundEventAnnotation, activeHistory],
+    [displayedSoundEventAnnotations, activeAddTagToSoundEventAnnotation, activeHistory, isMultiSelect, multiSelectedSoundEventAnnotations],
   );
 
   const menuRef = useRef<HTMLDivElement>(null);
@@ -736,88 +866,83 @@ export default function AnnotateTasks({
     return <Empty>No tasks available</Empty>;
   }
 
+  const statusBadges = annotationTask != null && (
+    <AnnotationTaskStatus
+      compact
+      task={annotationTask}
+      onReview={handleMarkRejected}
+      onDone={handleMarkCompleted}
+      onUnsure={handleMarkUnsure}
+      onVerify={handleMarkVerified}
+      onRemoveBadge={handleRemoveBadge}
+    />
+  );
+
   return (
     <>
     <div
       className={
         fullscreen
           ? "fixed inset-0 z-[45] flex flex-col gap-4 overflow-hidden bg-stone-100 p-4 dark:bg-stone-900"
-          : "w-full flex flex-col gap-4"
+          : "w-full min-w-0 flex flex-col gap-4"
       }
     >
+      {/* Task bar across the page; the status badges sit at its right end. */}
+      <AnnotationProgress
+        filtersPreviewOnly={isGuidedTour}
+        current={tasks.current}
+        taskCount={tasks.tasks.length}
+        stats={tasks.stats}
+        filter={tasks._filter}
+        isLoading={tasks.isLoading}
+        onNext={tasks.nextTask}
+        onPrevious={tasks.prevTask}
+        actions={
+          annotationTask != null && (
+            <>
+              {statusBadges}
+              {fullscreen && (
+                <Tooltip
+                  portal
+                  tooltip={showTools ? "Hide spectrogram tools" : "Show spectrogram tools"}
+                  placement="bottom-end"
+                >
+                  <Button
+                    variant={showTools ? "primary" : "secondary"}
+                    onClick={() => setShowTools((prev) => !prev)}
+                  >
+                    <SpectrogramSettingsIcon className="w-5 h-5" />
+                  </Button>
+                </Tooltip>
+              )}
+            </>
+          )
+        }
+      />
+      {/*
+        From xl: main column (recording, spectrogram; at most the spectrogram's
+        natural width, it shrinks to fit) | side column (selected sound event,
+        tags; at least 24rem, takes the extra width, spans both rows), with
+        task tags and notes under the spectrogram. The second row is 1fr so a
+        tall side column grows it, not the gap below the spectrogram.
+        From 2xl: task tags and notes go back under the side column, which no
+        longer spans; the main column spans both rows instead.
+        Below xl: stacked, task tags and notes last. Full page view: only the
+        spectrogram.
+      */}
       <div
         className={
           fullscreen
-            ? "flex min-w-0 flex-row items-center gap-4"
-            : "flex flex-col gap-4 2xl:flex-row 2xl:items-start"
+            ? "flex min-h-0 flex-1 flex-col"
+            : "grid min-w-0 grid-cols-1 items-start gap-4 xl:grid-cols-[minmax(0,var(--annotate-main-w))_minmax(24rem,1fr)] xl:grid-rows-[auto_1fr]"
+        }
+        style={
+          fullscreen
+            ? undefined
+            : ({ ["--annotate-main-w"]: `${SPECTROGRAM_CONTAINER_WIDTH}px` } as CSSProperties)
         }
       >
-        <div
-          className={fullscreen ? "min-w-0 flex-1" : "max-w-full shrink-0"}
-          style={fullscreen ? undefined : { width: `${SPECTROGRAM_CONTAINER_WIDTH}px` }}
-        >
-          <AnnotationProgress
-            fill={fullscreen}
-            filtersPreviewOnly={isGuidedTour}
-            current={tasks.current}
-            taskCount={tasks.tasks.length}
-            stats={tasks.stats}
-            filter={tasks._filter}
-            isLoading={tasks.isLoading}
-            onNext={tasks.nextTask}
-            onPrevious={tasks.prevTask}
-          />
-        </div>
-        {annotationTask != null && (
-          <div
-            className={
-              fullscreen
-                ? "flex shrink-0 flex-row items-center gap-2"
-                : "hidden w-[35rem] max-w-full shrink-0 2xl:block"
-            }
-          >
-            <AnnotationTaskStatus
-              task={annotationTask}
-              onReview={handleMarkRejected}
-              onDone={handleMarkCompleted}
-              onUnsure={handleMarkUnsure}
-              onVerify={handleMarkVerified}
-              onRemoveBadge={handleRemoveBadge}
-            />
-            {fullscreen && (
-              <Tooltip
-                portal
-                tooltip={showTools ? "Hide spectrogram tools" : "Show spectrogram tools"}
-                placement="bottom-end"
-              >
-                <Button
-                  variant={showTools ? "primary" : "secondary"}
-                  onClick={() => setShowTools((prev) => !prev)}
-                >
-                  <SpectrogramSettingsIcon className="w-5 h-5" />
-                </Button>
-              </Tooltip>
-            )}
-          </div>
-        )}
-      </div>
-      <div className={classNames("flex flex-col gap-4", fullscreen && "min-h-0 flex-1")}>
-        {/*
-          Below 2xl: stacked column — sound-event + all-tags max width matches spectrogram column.
-          2xl+: row spectrogram | 35rem sidebar; bottom row as before.
-          Full page view: the spectrogram column takes all remaining space.
-        */}
-        <div
-          className={
-            fullscreen
-              ? "flex min-h-0 flex-1 flex-col"
-              : "flex flex-col gap-4 2xl:flex-row 2xl:items-start"
-          }
-        >
-          <div
-            className={fullscreen ? "flex min-h-0 min-w-0 flex-1 flex-col" : "max-w-full shrink-0"}
-            style={fullscreen ? undefined : { width: `${SPECTROGRAM_CONTAINER_WIDTH}px` }}
-          >
+        <div className={fullscreen ? "flex min-h-0 min-w-0 flex-1 flex-col" : "min-w-0 xl:col-start-1 xl:row-start-1 2xl:row-span-2"}>
             {isLoadingTask ? (
               <Loading />
             ) : annotationTask == null ? (
@@ -829,21 +954,6 @@ export default function AnnotateTasks({
               );
               return (
               <div className={classNames("flex flex-col gap-2", fullscreen && "min-h-0 flex-1")}>
-                <div
-                  className={classNames(
-                    "w-full min-w-0",
-                    fullscreen ? "hidden" : "2xl:hidden",
-                  )}
-                >
-                  <AnnotationTaskStatus
-                    task={annotationTask}
-                    onReview={handleMarkRejected}
-                    onDone={handleMarkCompleted}
-                    onUnsure={handleMarkUnsure}
-                    onVerify={handleMarkVerified}
-                    onRemoveBadge={handleRemoveBadge}
-                  />
-                </div>
                 <RecordingAnnotationContext
                   recording={annotationTask.recording!}
                   currentTaskIndex={currentTaskIndex >= 0 ? currentTaskIndex + 1 : undefined}
@@ -865,7 +975,9 @@ export default function AnnotateTasks({
                     onParameterSave={onParameterSave}
                     onParameterChange={handleParameterChange}
                     selectedSoundEventAnnotation={selectedSoundEventAnnotation}
-                    onSelectSoundEventAnnotation={setSelectedSoundEventAnnotation}
+                    onSelectSoundEventAnnotation={handleSelectSoundEventAnnotation}
+                    multiSelectedIds={multiSelectedIds}
+                    onToggleSelectSoundEventAnnotation={handleToggleSelectSoundEventAnnotation}
                     withSpectrogram={withSpectrogram}
                     onWithSpectrogramChange={onWithSpectrogramChange}
                     withSoundEvent={withSoundEvent}
@@ -901,28 +1013,28 @@ export default function AnnotateTasks({
               </div>
               );
             })()}
-          </div>
+        </div>
 
-          {!fullscreen && (
-          <div
-            data-annotate-stacked-sidebar
-            data-guided-tour="sound-event-detail"
-            className="flex min-w-0 w-full shrink-0 flex-col gap-4 2xl:w-[35rem] 2xl:flex-none"
-            style={
-              {
-                ["--spectrogram-container-w"]: `${SPECTROGRAM_CONTAINER_WIDTH}px`,
-              } as CSSProperties
-            }
-          >
+        {!fullscreen && (
+          <div className="flex min-w-0 flex-col gap-4 xl:col-start-2 xl:row-span-2 xl:row-start-1 2xl:row-span-1">
+            <div data-guided-tour="sound-event-detail" className="min-w-0">
             {selectedSoundEventAnnotation == null || annotationTask == null ? (
-              <div className="mt-0 w-full min-w-0 2xl:mt-9">
-                <Empty
-                  padding="p-0">
-                  No sound event annotation selected. Select a sound event annotation to view details.
+              <div className="w-full min-w-0">
+                <Empty padding="p-2">
+                  Select a sound event to see its details.
                 </Empty>
               </div>
             ) : (
-              <div className="mt-0 w-full min-w-0 2xl:mt-5">
+              <div className="w-full min-w-0">
+                {isMultiSelect && (
+                  <div
+                    role="status"
+                    className="mb-2 rounded-md border border-emerald-300 bg-emerald-50 px-3 py-2 text-sm text-emerald-900 dark:border-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-100"
+                  >
+                    <span className="font-semibold">{multiSelectedSoundEventAnnotations.length} sound events selected.</span>{" "}
+                    Adding, removing and replacing tags applies to all of them. Shift + click adds or removes an event, Esc clears the selection.
+                  </div>
+                )}
                 <SelectedSoundEventAnnotation
                   key={selectedSoundEventAnnotation.id}
                   annotationTask={selectedSoundEventAnnotationTask!}
@@ -933,119 +1045,76 @@ export default function AnnotateTasks({
                   referenceWindow={mainSpectrogramWindow}
                   onUpdate={onUpdateSelectedSoundEventAnnotation}
                   tagVisibility={tagVisibility}
-                  onSelectSoundEventAnnotation={setSelectedSoundEventAnnotation}
+                  onSelectSoundEventAnnotation={handleSelectSoundEventAnnotation}
                   onAddTag={(tag) =>
-                    activeAddTagToSoundEventAnnotation?.({
-                      soundEventAnnotation: selectedSoundEventAnnotation,
-                      tag,
-                    })
+                    isMultiSelect
+                      ? handleReplaceTagInSoundEventAnnotations(null, tag)
+                      : activeAddTagToSoundEventAnnotation?.({
+                          soundEventAnnotation: selectedSoundEventAnnotation,
+                          tag,
+                        })
                   }
                   onRemoveTag={(tag) =>
-                    activeRemoveTagFromSoundEventAnnotation?.({
-                      soundEventAnnotation: selectedSoundEventAnnotation,
-                      tag,
-                    })
+                    isMultiSelect
+                      ? handleDeleteTagFromAll({ tag, count: 0 }, true)
+                      : activeRemoveTagFromSoundEventAnnotation?.({
+                          soundEventAnnotation: selectedSoundEventAnnotation,
+                          tag,
+                        })
                   }
                 />
               </div>
             )}
+            </div>
             {displayAnnotationTask != null && (
-              <div className="block w-full min-w-0 2xl:hidden">
+              <div className="min-w-0" data-guided-tour="tag-bars">
                 <AnnotationTaskTags
                   annotationTask={displayAnnotationTask}
                   onReplaceTagInSoundEventAnnotations={handleReplaceTagInSoundEventAnnotations}
                   onReplaceGroupInSoundEventAnnotations={handleReplaceGroupInSoundEventAnnotations}
                   onAddTagToUntaggedSoundEventAnnotations={handleAddTagToUntaggedSoundEventAnnotations}
+                  onAddTagToSoundEventAnnotationsWithTag={handleAddTagToSoundEventAnnotationsWithTag}
                   selectedSoundEventAnnotation={selectedSoundEventAnnotation}
+                  selectedSoundEventAnnotations={isMultiSelect ? multiSelectedSoundEventAnnotations : undefined}
                   tagVisibility={tagVisibility}
                 />
               </div>
             )}
           </div>
-          )}
-        </div>
-
-        {annotationTask != null && (
-          <>
-            <div
-              className={
-                fullscreen
-                  ? "hidden"
-                  : "hidden w-full min-w-0 flex-row items-start gap-4 2xl:flex"
-              }
-            >
-              <div
-                className="flex max-w-full shrink-0 flex-col gap-4"
-                style={{ width: `${SPECTROGRAM_CONTAINER_WIDTH}px` }}
-              >
-                <div data-guided-tour="task-tags">
-                <AnnotationTaskTagBar
-                  annotationTask={annotationTask}
-                  onAddTag={onAddTag}
-                  onRemoveTag={onRemoveTag}
-                />
-                </div>
-                <div data-guided-tour="task-notes">
-                <AnnotationTaskNotes
-                  onCreateNote={onAddNote}
-                  onDeleteNote={onRemoveNote}
-                  annotationTask={annotationTask}
-                  currentUser={currentUser}
-                />
-                </div>
-              </div>
-              <div className="min-w-0 w-[35rem] max-w-full shrink-0" data-guided-tour="tag-bars">
-                {!fullscreen && (
-                <AnnotationTaskTags
-                  annotationTask={displayAnnotationTask!}
-                  onReplaceTagInSoundEventAnnotations={handleReplaceTagInSoundEventAnnotations}
-                  onReplaceGroupInSoundEventAnnotations={handleReplaceGroupInSoundEventAnnotations}
-                  onAddTagToUntaggedSoundEventAnnotations={handleAddTagToUntaggedSoundEventAnnotations}
-                  onAddTagToSoundEventAnnotationsWithTag={handleAddTagToSoundEventAnnotationsWithTag}
-                  selectedSoundEventAnnotation={selectedSoundEventAnnotation}
-                  tagVisibility={tagVisibility}
-                />
-                )}
-              </div>
-            </div>
-            <div
-              className={classNames(
-                "flex max-w-full shrink-0 flex-col gap-4 2xl:hidden",
-                fullscreen && "hidden",
-              )}
-              style={{ width: `${SPECTROGRAM_CONTAINER_WIDTH}px` }}
-            >
-              <div data-guided-tour="task-tags">
+        )}
+        {!fullscreen && annotationTask != null && (
+          <div className="flex min-w-0 flex-col gap-4 xl:col-start-1 xl:row-start-2 2xl:col-start-2">
+            <div data-guided-tour="task-tags">
               <AnnotationTaskTagBar
                 annotationTask={annotationTask}
                 onAddTag={onAddTag}
                 onRemoveTag={onRemoveTag}
               />
-              </div>
-              <div data-guided-tour="task-notes">
+            </div>
+            <div data-guided-tour="task-notes">
               <AnnotationTaskNotes
                 onCreateNote={onAddNote}
                 onDeleteNote={onRemoveNote}
                 annotationTask={annotationTask}
                 currentUser={currentUser}
               />
-              </div>
             </div>
-          </>
-        )}
-        {fullscreen && displayAnnotationTask != null && (
-          <AnnotationTaskTags
-            headless
-            annotationTask={displayAnnotationTask}
-            onReplaceTagInSoundEventAnnotations={handleReplaceTagInSoundEventAnnotations}
-            onReplaceGroupInSoundEventAnnotations={handleReplaceGroupInSoundEventAnnotations}
-            onAddTagToUntaggedSoundEventAnnotations={handleAddTagToUntaggedSoundEventAnnotations}
-            onAddTagToSoundEventAnnotationsWithTag={handleAddTagToSoundEventAnnotationsWithTag}
-            selectedSoundEventAnnotation={selectedSoundEventAnnotation}
-            tagVisibility={tagVisibility}
-          />
+          </div>
         )}
       </div>
+      {fullscreen && displayAnnotationTask != null && (
+        <AnnotationTaskTags
+          headless
+          annotationTask={displayAnnotationTask}
+          onReplaceTagInSoundEventAnnotations={handleReplaceTagInSoundEventAnnotations}
+          onReplaceGroupInSoundEventAnnotations={handleReplaceGroupInSoundEventAnnotations}
+          onAddTagToUntaggedSoundEventAnnotations={handleAddTagToUntaggedSoundEventAnnotations}
+          onAddTagToSoundEventAnnotationsWithTag={handleAddTagToSoundEventAnnotationsWithTag}
+          selectedSoundEventAnnotation={selectedSoundEventAnnotation}
+          selectedSoundEventAnnotations={isMultiSelect ? multiSelectedSoundEventAnnotations : undefined}
+          tagVisibility={tagVisibility}
+        />
+      )}
     </div>
 
       {isDeletePopoverOpen && (
@@ -1067,11 +1136,13 @@ export default function AnnotateTasks({
                     <div ref={menuRef} className="relative w-96 divide-y divide-stone-100 rounded-md bg-stone-50 dark:bg-stone-700 border border-stone-200 dark:border-stone-500 shadow-md dark:shadow-stone-800 ring-1 ring-stone-900 ring-opacity-5 focus:outline-none">
                       <div className="p-4">
                         <div className="mb-2 text-stone-700 dark:text-stone-300 underline underline-offset-2 decoration-amber-500 decoration-2">
-                          Select a tag to remove from {selectedSoundEventAnnotation ? 'selected sound event annotation' : 'all sound event annotations'}
+                          Select a tag to remove from {isMultiSelect ? `the ${multiSelectedSoundEventAnnotations.length} selected sound events` : selectedSoundEventAnnotation ? 'selected sound event annotation' : 'all sound event annotations'}
                         </div>
                         <SearchMenu
                           limit={100}
-                          options={selectedSoundEventAnnotation
+                          options={isMultiSelect
+                            ? countTags(multiSelectedSoundEventAnnotations)
+                            : selectedSoundEventAnnotation
                             ? (selectedSoundEventAnnotation.tags || []).map(tag => ({ tag, count: 1 }))
                             : tagsWithCount}
                           fields={["tag.key", "tag.value"]}
@@ -1101,6 +1172,42 @@ export default function AnnotateTasks({
             );
           }}
         </Popover>
+      )}
+
+      {untaggedWarning != null && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-stone-900/30">
+          <div
+            role="dialog"
+            aria-label="Untagged sound events"
+            className="w-96 rounded-md border border-stone-200 bg-stone-50 p-4 shadow-md dark:border-stone-500 dark:bg-stone-700"
+          >
+            <div className="mb-2 text-stone-700 underline decoration-amber-500 decoration-2 underline-offset-2 dark:text-stone-300">
+              Untagged sound events
+            </div>
+            <p className="mb-4 text-sm text-stone-600 dark:text-stone-300">
+              {untaggedWarning.untagged.length === 1
+                ? "1 sound event in this task has no tag."
+                : `${untaggedWarning.untagged.length} sound events in this task have no tag.`}{" "}
+              {untaggedWarning.label} the task anyway?
+            </p>
+            <div className="flex justify-end gap-2">
+              <Button variant="secondary" onClick={() => showUntagged(untaggedWarning.untagged)}>
+                Show untagged
+              </Button>
+              <Button
+                variant="primary"
+                autoFocus
+                onClick={() => {
+                  const { proceed } = untaggedWarning;
+                  setUntaggedWarning(null);
+                  proceed();
+                }}
+              >
+                {untaggedWarning.label} anyway
+              </Button>
+            </div>
+          </div>
+        </div>
       )}
 
       {tasks.filterMismatchTaskId != null && (

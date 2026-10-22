@@ -15,15 +15,29 @@ export function soundEventAnnotationsForTagReplace(
     oldTag: Tag | null;
     replaceAll?: boolean;
     scopeSoundEventAnnotation?: SoundEventAnnotation | null;
+    /**
+     * Several selected sound events: only these are changed. A replace of a
+     * specific tag only touches the ones carrying it; adding goes to all.
+     */
+    scopeSoundEventAnnotations?: SoundEventAnnotation[] | null;
   },
 ): SoundEventAnnotation[] {
-  const { oldTag, replaceAll = false, scopeSoundEventAnnotation } = options;
+  const { oldTag, replaceAll = false, scopeSoundEventAnnotation, scopeSoundEventAnnotations } = options;
+
+  const effectiveReplaceAll = replaceAll || isReplaceAllTag(oldTag);
+
+  if (scopeSoundEventAnnotations && scopeSoundEventAnnotations.length > 0) {
+    if (oldTag != null && !effectiveReplaceAll) {
+      return scopeSoundEventAnnotations.filter((sea) =>
+        sea.tags?.some((t) => t.key === oldTag.key && t.value === oldTag.value),
+      );
+    }
+    return scopeSoundEventAnnotations;
+  }
 
   if (scopeSoundEventAnnotation) {
     return [scopeSoundEventAnnotation];
   }
-
-  const effectiveReplaceAll = replaceAll || isReplaceAllTag(oldTag);
 
   if (effectiveReplaceAll) {
     return soundEventAnnotations.filter(

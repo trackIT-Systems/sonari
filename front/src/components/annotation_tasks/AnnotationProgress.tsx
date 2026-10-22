@@ -55,8 +55,8 @@ export default function AnnotationProgress({
   isLoading = false,
   onNext,
   onPrevious,
-  fill = false,
   filtersPreviewOnly = false,
+  actions,
 }: {
   current?: number | null;
   taskCount: number;
@@ -65,13 +65,13 @@ export default function AnnotationProgress({
   isLoading?: boolean;
   onNext?: () => void;
   onPrevious?: () => void;
-  /** Shrink to fit a shared header row (full page view) */
-  fill?: boolean;
   /**
    * Guided tour: the menu lists every filter, but choosing one is not applied.
    * A filter would hide or reorder the tasks the lessons are bound to.
    */
   filtersPreviewOnly?: boolean;
+  /** Shown at the right end of the bar, before the next-task arrow (status badges). */
+  actions?: React.ReactNode;
 }) {
   const menuFilter = useMemo<Filter<AnnotationTaskFilter>>(
     () =>
@@ -116,8 +116,10 @@ export default function AnnotationProgress({
     <div
       data-guided-tour="progress"
       className={classNames(
-        "inline-flex gap-4 items-center h-full",
-        fill ? "w-full min-w-0" : "w-[63rem]",
+        // The bar spans the page; the status badges sit at its right end. No
+        // h-full: in the full page view the bar sits directly in the fixed-
+        // height page column and would take all of it, hiding the spectrogram.
+        "flex w-full min-w-0 shrink-0 items-center gap-4",
       )}
     >
       <Tooltip
@@ -193,6 +195,7 @@ export default function AnnotationProgress({
           />
         </div>
       </div>
+      {actions != null && <div className="flex shrink-0 items-center gap-2">{actions}</div>}
       <Tooltip
         tooltip={
           <div className="inline-flex gap-2 items-center">

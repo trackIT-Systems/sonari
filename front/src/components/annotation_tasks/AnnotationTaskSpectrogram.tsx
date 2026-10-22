@@ -47,6 +47,19 @@ const STAGE_GAP = 12;
 /** SpectrogramBar uses h-8 */
 const OVERVIEW_BAR_HEIGHT = 32;
 
+/**
+ * Channel for the audio stream: null (every channel) for mono recordings and
+ * mixed channels, else the selected one; one the recording lacks falls back to
+ * 0, like the spectrogram.
+ */
+function audioChannelFor(
+  parameters: { channel: number; mix_channels: boolean },
+  channels: number,
+): number | null {
+  if (channels <= 1 || parameters.mix_channels) return null;
+  return parameters.channel < channels ? parameters.channel : 0;
+}
+
 export default function AnnotationTaskSpectrogram({
   annotationTask,
   parameters = DEFAULT_SPECTROGRAM_PARAMETERS,
@@ -64,6 +77,8 @@ export default function AnnotationTaskSpectrogram({
   selectedTag,
   fixedAspectRatio,
   selectedSoundEventAnnotation,
+  multiSelectedIds,
+  onToggleSelectSoundEventAnnotation,
   onClearSelectedTag,
   toggleFixedAspectRatio,
   onWithSpectrogramChange,
@@ -106,6 +121,9 @@ export default function AnnotationTaskSpectrogram({
   withAutoplay: boolean;
   fixedAspectRatio: boolean;
   selectedSoundEventAnnotation?: SoundEventAnnotation | null;
+  /** All selected sound events when several are (Shift + click). */
+  multiSelectedIds?: Set<number>;
+  onToggleSelectSoundEventAnnotation?: (annotation: SoundEventAnnotation) => void;
   onClearSelectedTag: (tag: { tag: Tag; count: number } | null) => void;
   toggleFixedAspectRatio: () => void;
   onWithSpectrogramChange: () => void;
@@ -233,8 +251,16 @@ export default function AnnotationTaskSpectrogram({
 
   const { startTime: playbackStartTime, endTime: playbackEndTime } = useMemo(() => getPlaybackBounds(), [getPlaybackBounds]);
 
+  // The audio plays what the spectrogram shows: every channel when channels
+  // are mixed (stereo), otherwise the selected one. The spectrogram hook keeps
+  // its own (live) parameters and needs the player, so mirror the channel.
+  const [audioChannel, setAudioChannel] = useState<number | null>(() =>
+    audioChannelFor(effectiveParameters, recording?.channels ?? 1),
+  );
+
   const audio = useAudio({
     recording: recording!,
+    channel: audioChannel,
     endTime: playbackEndTime,
     startTime: playbackStartTime,
     withShortcuts: withAudioShortcuts,
@@ -282,6 +308,11 @@ export default function AnnotationTaskSpectrogram({
   useEffect(() => {
     onWindowChange?.(spectrogram.window);
   }, [onWindowChange, spectrogram.window]);
+
+  const recordingChannels = recording?.channels ?? 1;
+  useEffect(() => {
+    setAudioChannel(audioChannelFor(spectrogram.parameters, recordingChannels));
+  }, [spectrogram.parameters, recordingChannels]);
 
   const handleParameterSave = useCallback(() => {
     onParameterSave?.(spectrogram.parameters);
@@ -358,6 +389,8 @@ export default function AnnotationTaskSpectrogram({
     soundEventAnnotations: taskSoundEventAnnotations,
     tagVisibility,
     externalSelectedSoundEventAnnotation: selectedSoundEventAnnotation,
+    multiSelectedIds,
+    onToggleSelectSoundEventAnnotation,
   });
 
   const passSiblingIds = useMemo(
@@ -461,9 +494,11 @@ export default function AnnotationTaskSpectrogram({
   const finalSpectrogramProps = isAnnotating ? annotate?.spectrogramProps : spectrogramProps;
   const finalWaveformProps = isAnnotating ? annotate?.waveformProps : {};
 
-  // In the full page view the canvases keep their size in canvas pixels (all
-  // drawing and hit testing works in those) and are only displayed larger,
-  // scaled uniformly so the spectrogram keeps its aspect ratio.
+  // The canvases keep their size in canvas pixels (all drawing and hit testing
+  // works in those) and are only displayed scaled, uniformly so the
+  // spectrogram keeps its aspect ratio. Full page view fills the stage; the
+  // normal view fits the column but never enlarges (the fixed-size bitmap
+  // would look pixelated), so a wider column leaves room for the side panel.
   const [stageRef, stage] = useMeasure<HTMLDivElement>();
   const scaledCanvasHeight =
     SPECTROGRAM_CANVAS_DIMENSIONS.height + WAVEFORM_CANVAS_DIMENSIONS.height;
@@ -478,7 +513,9 @@ export default function AnnotationTaskSpectrogram({
             (stage.height - fullscreenFixedChrome) / scaledCanvasHeight,
           ),
         )
-      : 1;
+      : !fullscreen && stage.width > 0
+        ? Math.min(1, stage.width / SPECTROGRAM_CANVAS_DIMENSIONS.width)
+        : 1;
   const displayWidth = SPECTROGRAM_CANVAS_DIMENSIONS.width * scale;
   const toolsVisible = !fullscreen || showTools;
 
@@ -492,7 +529,7 @@ export default function AnnotationTaskSpectrogram({
   }
 
   return (
-    <Card className={fullscreen ? "min-h-0 flex-1" : undefined} data-guided-tour="spectrogram">
+    <Card className={fullscreen ? "min-h-0 flex-1" : "min-w-0"} data-guided-tour="spectrogram">
       {toolsVisible && (
         <div className="flex flex-row flex-wrap items-stretch gap-2 [&>div]:flex" data-guided-tour="annotate-toolbar">
           <div data-guided-tour="hide-spectrogram">
@@ -575,7 +612,7 @@ export default function AnnotationTaskSpectrogram({
           />
         </div>
       )}
-      <div ref={stageRef} className={fullscreen ? "relative min-h-0 flex-1" : undefined}>
+      <div ref={stageRef} className={fullscreen ? "relative min-h-0 flex-1" : "w-full min-w-0"}>
       <div
         className={classNames(
           "flex flex-col gap-3",

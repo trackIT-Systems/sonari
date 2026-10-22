@@ -131,11 +131,12 @@ def load_clip_bytes(
     start: int,
     end: int | None,
     speed: float = 1,
-    frames: int = 8192,
+    frames: int | None = None,
     time_expansion: float = 1,
     start_time: float | None = None,
     end_time: float | None = None,
     bit_depth: int = 16,
+    channel: int | None = None,
 ) -> tuple[bytes, int, int, int]:
     """Load audio.
 
@@ -146,30 +147,43 @@ def load_clip_bytes(
     start
         Start byte.
     end
-        End byte.
+        End byte (inclusive, as in an HTTP Range header), or None.
     speed
         Speed of the audio.
+    frames
+        Maximum number of frames to return; by default as many as fit in
+        ``CHUNK_SIZE`` bytes. Tiny chunks make the browser fire hundreds of
+        range requests per recording.
     time_expansion
         Time expansion factor.
     start_time
         Start time in seconds.
     end_time
         End time in seconds.
+    channel
+        Return only this channel (mono), as the spectrogram shows it; a
+        channel the file does not have falls back to 0, like the spectrogram.
+        None returns every channel.
 
     Returns
     -------
     bytes
-        Loaded audio data in bytes
+        Loaded audio data in bytes, exactly from byte ``start`` on.
     start
         Start byte
     end
-        End byte
+        Last byte returned (inclusive, for the Content-Range header)
     filesize
         Total size of clip in bytes.
     """
     with sf.SoundFile(path) as sf_file:
         samplerate = int(sf_file.samplerate * time_expansion)
-        channels = sf_file.channels
+        file_channels = sf_file.channels
+        if channel is not None and file_channels > 1:
+            channel = channel if channel < file_channels else 0
+        else:
+            channel = None
+        channels = 1 if channel is not None else file_channels
 
         # Calculate start and end frames based on start and end times
         # to ensure that the requested piece of audio is loaded.
@@ -187,52 +201,51 @@ def load_clip_bytes(
         bytes_per_frame = channels * bit_depth // 8
         filesize = total_frames * bytes_per_frame
 
-        # Compute the offset, which is the frame at which to start reading
-        # the audio data.
-        offset = start_frame
-        if start != 0:
-            # When the start byte is not 0, calculate the offset in frames
-            # and add it to the start frame. Note that we need to
-            # remove the size of the header from the start byte to correctly
-            # calculate the offset in frames.
-            offset_frames = (start - HEADER_SIZE) // bytes_per_frame
-            offset += offset_frames
+        if frames is None:
+            frames = max(1, CHUNK_SIZE // bytes_per_frame)
+
+        # Map the requested start byte onto the audio: bytes inside the WAV
+        # header come from the header, the rest from the frame that holds
+        # them. A start byte in the middle of a frame (or of the header) must
+        # still be served exactly, otherwise the samples shift.
+        data_start = max(0, start - HEADER_SIZE)
+        offset = start_frame + data_start // bytes_per_frame
+        skip = data_start % bytes_per_frame
 
         # Make sure that the number of frames to read is not greater than
         # the number of frames requested.
-        frames = min(frames, end_frame - offset)
+        frames = max(0, min(frames, end_frame - offset))
 
-        sf_file.seek(offset)
+        sf_file.seek(min(offset, sf_file.frames))
         audio_data = sf_file.read(frames, fill_value=0, always_2d=True)
+        if channel is not None:
+            audio_data = audio_data[:, channel : channel + 1]
 
         # Convert the audio data to raw bytes
         audio_bytes = audio_to_bytes(
             audio_data,
             samplerate=samplerate,
             bit_depth=bit_depth,
-        )
+        )[skip:]
 
-        # Generate the WAV header if the start byte is 0 and
-        # append to the start of the audio data.
-        if start == 0:
+        if start < HEADER_SIZE:
             header = generate_wav_header(
                 samplerate=int(samplerate * speed),
                 channels=channels,
                 data_size=filesize,
                 bit_depth=bit_depth,
             )
-            audio_bytes = header + audio_bytes
+            audio_bytes = header[start:] + audio_bytes
 
-        # This fixes the Safari playback issue, as the first request
-        # in Safari always requests exactly one byte. This code makes
-        # sure that only the requests amount (or less) is returned.
-        if end is not None and end - start < len(audio_bytes):
-            audio_bytes = audio_bytes[:end]
+        # Honour the requested end byte (inclusive). Safari's first request
+        # asks for exactly bytes 0-1.
+        if end is not None and end - start + 1 < len(audio_bytes):
+            audio_bytes = audio_bytes[: max(0, end - start + 1)]
 
         return (
             audio_bytes,
             start,
-            start + len(audio_bytes),
+            start + len(audio_bytes) - 1,
             filesize + HEADER_SIZE,
         )
 

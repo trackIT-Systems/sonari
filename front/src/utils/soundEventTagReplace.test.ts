@@ -62,3 +62,47 @@ describe("isReplaceAllTag", () => {
     expect(isReplaceAllTag({ key: "species", value: "bat" })).toBe(false);
   });
 });
+
+describe("soundEventAnnotationsForTagReplace with several selected events", () => {
+  const a = sea(1, [{ key: "species", value: "a" }]);
+  const b = sea(2, []);
+  const c = sea(3, [{ key: "species", value: "a" }, { key: "type", value: "x" }]);
+  const d = sea(4, [{ key: "species", value: "a" }]);
+  const all = [a, b, c, d];
+  const selected = [a, b, c];
+
+  it("adds to every selected event, and only to those", () => {
+    expect(
+      soundEventAnnotationsForTagReplace(all, { oldTag: null, scopeSoundEventAnnotations: selected }),
+    ).toEqual([a, b, c]);
+  });
+
+  it("replaces a tag only on the selected events that carry it", () => {
+    expect(
+      soundEventAnnotationsForTagReplace(all, {
+        oldTag: { key: "species", value: "a" },
+        scopeSoundEventAnnotations: selected,
+      }),
+    ).toEqual([a, c]);
+  });
+
+  it("wins over the single selected event", () => {
+    expect(
+      soundEventAnnotationsForTagReplace(all, {
+        oldTag: null,
+        scopeSoundEventAnnotation: d,
+        scopeSoundEventAnnotations: selected,
+      }),
+    ).toEqual([a, b, c]);
+  });
+
+  it("falls back to the single selection when the list is empty", () => {
+    expect(
+      soundEventAnnotationsForTagReplace(all, {
+        oldTag: null,
+        scopeSoundEventAnnotation: d,
+        scopeSoundEventAnnotations: [],
+      }),
+    ).toEqual([d]);
+  });
+});

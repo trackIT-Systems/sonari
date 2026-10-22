@@ -5,6 +5,8 @@ import useAnnotationDelete from "@/hooks/annotation/useAnnotationDelete";
 import useAnnotationDraw from "@/hooks/annotation/useAnnotationDraw";
 import useAnnotationEdit from "@/hooks/annotation/useAnnotationEdit";
 import useAnnotationSelect from "@/hooks/annotation/useAnnotationSelect";
+import useHoveredAnnotation from "@/hooks/annotation/useHoveredAnnotation";
+import { mergeProps } from "react-aria";
 import useSpectrogramTags from "@/hooks/spectrogram/useSpectrogramTags";
 import useAnnotateTaskKeyShortcuts from "@/hooks/annotation/useSoundEventAnnotationKeyShortcuts";
 import useCreateWaveformMeasurement from "@/hooks/draw/useCreateWaveformMeasurement";
@@ -114,6 +116,10 @@ export default function useAnnotateTask(props: {
   tagVisibility?: TagVisibilityFilter;
   /** Selected annotation controlled by parent */
   externalSelectedSoundEventAnnotation?: SoundEventAnnotation | null;
+  /** Further selected sound events (Shift + click), drawn as selected. */
+  multiSelectedIds?: Set<number>;
+  /** Shift + click on a sound event: add it to, or remove it from, the selection. */
+  onToggleSelectSoundEventAnnotation?: (annotation: SoundEventAnnotation) => void;
 }) {
   const {
     annotationTask,
@@ -137,6 +143,8 @@ export default function useAnnotateTask(props: {
     soundEventAnnotations: soundEventAnnotationsOverride,
     tagVisibility,
     externalSelectedSoundEventAnnotation,
+    multiSelectedIds,
+    onToggleSelectSoundEventAnnotation,
   } = props;
 
   const {
@@ -340,8 +348,26 @@ export default function useAnnotateTask(props: {
     annotations: soundEvents,
     onSelect: setSelectedSoundEventAnnotation,
     onDeselect,
+    onToggle: onToggleSelectSoundEventAnnotation,
     enabled: active && mode === "select",
   });
+
+  // In edit mode only the edited event's handles are hit-tested, so Shift +
+  // click on another sound event needs its own hit test.
+  const multiSelectEnabled = active && mode === "edit" && onToggleSelectSoundEventAnnotation != null;
+  const { props: multiHoverProps, hoveredAnnotation: multiHovered } = useHoveredAnnotation({
+    window,
+    annotations: soundEvents,
+    enabled: multiSelectEnabled,
+  });
+  // A plain click handler: a second usePress on the same element would fight
+  // with the edit hook's press handling.
+  const multiClickProps = {
+    onClick: (event: React.MouseEvent) => {
+      if (!multiSelectEnabled || !event.shiftKey || multiHovered == null) return;
+      onToggleSelectSoundEventAnnotation?.(multiHovered);
+    },
+  };
 
     useEffect(() => {
       const handleKeyPress = (event: KeyboardEvent) => {
@@ -535,6 +561,7 @@ export default function useAnnotateTask(props: {
     annotations: soundEvents,
     selectedSoundEventAnnotation,
     passSiblingIds,
+    multiSelectedIds,
   });
 
   // Create props objects for spectrogram and waveform
@@ -561,7 +588,9 @@ export default function useAnnotateTask(props: {
         waveformProps = {};
         break;
       case "edit":
-        spectrogramProps = editProps;
+        spectrogramProps = multiSelectEnabled
+          ? mergeProps(editProps, multiHoverProps, multiClickProps)
+          : editProps;
         waveformProps = {};
         break;
       default:

@@ -7,6 +7,8 @@ import { getPassContext, getPassTimeRange } from "@/utils/passes";
 
 import type { SoundEventAnnotation, SpectrogramWindow } from "@/types";
 
+const EMPTY_IDS = new Set<number>();
+
 const IDLE_STYLE = {
   borderColor: BLUE,
   fillColor: BLUE,
@@ -32,10 +34,12 @@ function getAnnotationStyle(
   annotation: SoundEventAnnotation,
   selectedSoundEventAnnotation: SoundEventAnnotation | null | undefined,
   passSiblingIds: Set<number>,
+  multiSelectedIds: Set<number>,
 ) {
   if (
-    selectedSoundEventAnnotation &&
-    selectedSoundEventAnnotation.id === annotation.id
+    (selectedSoundEventAnnotation &&
+      selectedSoundEventAnnotation.id === annotation.id) ||
+    multiSelectedIds.has(annotation.id)
   ) {
     return SELECTED_STYLE;
   }
@@ -51,12 +55,15 @@ export default function useAnnotationDraw({
   window,
   annotations,
   selectedSoundEventAnnotation,
-  passSiblingIds = new Set<number>(),
+  passSiblingIds = EMPTY_IDS,
+  multiSelectedIds = EMPTY_IDS,
 }: {
   window: SpectrogramWindow;
   annotations: SoundEventAnnotation[];
   selectedSoundEventAnnotation?: SoundEventAnnotation | null;
   passSiblingIds?: Set<number>;
+  /** Further selected sound events (Shift + click), drawn like the selected one. */
+  multiSelectedIds?: Set<number>;
 }) {
   const passBracket = selectedSoundEventAnnotation
     ? getPassContext(selectedSoundEventAnnotation, annotations)
@@ -85,7 +92,10 @@ export default function useAnnotationDraw({
 
       const drawOrder = [...annotations].sort((a, b) => {
         const rank = (annotation: SoundEventAnnotation) => {
-          if (selectedSoundEventAnnotation?.id === annotation.id) {
+          if (
+            selectedSoundEventAnnotation?.id === annotation.id ||
+            multiSelectedIds.has(annotation.id)
+          ) {
             return 2;
           }
           if (passSiblingIds.has(annotation.id)) {
@@ -109,6 +119,7 @@ export default function useAnnotationDraw({
             item,
             selectedSoundEventAnnotation,
             passSiblingIds,
+            multiSelectedIds,
           ),
         );
       }
@@ -118,6 +129,7 @@ export default function useAnnotationDraw({
       annotations,
       selectedSoundEventAnnotation,
       passSiblingIds,
+      multiSelectedIds,
       passBracket,
     ],
   );

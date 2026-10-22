@@ -1,5 +1,5 @@
 import { useCallback, useMemo, useState } from "react";
-import { mergeProps, usePress } from "react-aria";
+import { mergeProps, usePress, type PressEvent } from "react-aria";
 
 import { type EditableElement, drawEditableElement } from "@/draw/edit";
 import useElementHover from "@/hooks/draw/useElementHover";
@@ -119,8 +119,11 @@ export default function createEditHook<J, T>(
       onMove: handleMove,
     });
 
-    const handleOnPress = useCallback(() => {
+    const handleOnPress = useCallback((event: PressEvent) => {
       if (!enabled || hovered != null || isDragging) return;
+      // Shift + click adds another sound event to the selection (handled by
+      // the annotate hook); it must not drop the event being edited.
+      if (event.shiftKey) return;
       onDeselect?.();
     }, [enabled, hovered, isDragging, onDeselect]);
 
