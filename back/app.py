@@ -40,4 +40,7 @@ if __name__ == "__main__":
         port=settings.port,
         reload=settings.dev,
         workers=settings.workers,
+        # A worker answers pings only after importing the app (~4 s, 9 s on a loaded
+        # host); the 5 s default got every new worker killed before it could answer.
+        timeout_worker_healthcheck=30,
     )
