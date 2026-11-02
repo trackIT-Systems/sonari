@@ -6,7 +6,6 @@ pyinstaller package to create a standalone executable.
 
 import multiprocessing
 
-import asyncpg
 import uvicorn
 
 from sonari.system import create_app, get_logging_config, get_settings

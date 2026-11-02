@@ -77,6 +77,8 @@ def test_slow_starting_workers_are_not_killed(tmp_path):
             text = log.read_text()
             if "died" in text or text.count("Application startup complete") >= WORKERS:
                 break
+            if server.poll() is not None:  # the server itself failed to start
+                break
             time.sleep(0.5)
         text = log.read_text()
         assert "died" not in text, "".join(line for line in text.splitlines(True) if "child process" in line.lower())
