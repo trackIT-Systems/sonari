@@ -2,6 +2,7 @@
 
 import datetime
 import logging
+import os
 import sqlite3
 from contextlib import asynccontextmanager
 from enum import Enum
@@ -181,10 +182,13 @@ def create_async_db_engine(database_url: str | URL) -> AsyncEngine:
         )
 
     if backend == "postgresql":
+        # Per process: every uvicorn worker (and every ecohub process writing to Sonari)
+        # has its own pool, and their sum must stay below the server's max_connections.
+        # Read from the environment because settings.json would pin the first value.
         return create_async_engine(
             database_url,
-            pool_size=50,
-            max_overflow=50,
+            pool_size=int(os.environ.get("SONARI_DB_POOL_SIZE", "5")),
+            max_overflow=int(os.environ.get("SONARI_DB_MAX_OVERFLOW", "10")),
             pool_timeout=5,
             pool_recycle=1800,
             pool_pre_ping=True,
