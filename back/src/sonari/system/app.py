@@ -3,7 +3,6 @@
 import functools
 import os
 from contextlib import asynccontextmanager
-from multiprocessing import get_context
 from pathlib import Path
 
 from fastapi import FastAPI, Request
@@ -56,16 +55,14 @@ class TrailingSlashNormalizationMiddleware(BaseHTTPMiddleware):
 @asynccontextmanager
 async def lifespan(settings: Settings, app: FastAPI):
     """Context manager to run startup and shutdown events."""
-    # Create per-worker cache (uvicorn workers are separate processes, so true sharing requires external services)
-    # Use spawn: fork() in a multi-threaded process (ASGI, pytest-asyncio) is unsafe and triggers DeprecationWarning on 3.12+.
-    cache_manager = get_context("spawn").Manager()
+    # Per-worker cache in process memory: uvicorn workers are separate processes, so
+    # true sharing would need an external service. Never spawn a helper process here:
+    # uvicorn SIGKILLs unresponsive workers, which skips shutdown and orphans it.
     shared_cache = SharedTTLCache(
-        manager=cache_manager,
         maxsize=2000,  # Small but reasonable size
         ttl=300,  # 5 minutes TTL
     )
     app.state.shared_cache = shared_cache
-    app.state.cache_manager = cache_manager
 
     set_shared_cache(shared_cache)
 
@@ -74,7 +71,6 @@ async def lifespan(settings: Settings, app: FastAPI):
 
     # Cleanup on shutdown
     await dispose_async_engine()
-    cache_manager.shutdown()
 
 
 def create_app(settings: Settings) -> FastAPI:

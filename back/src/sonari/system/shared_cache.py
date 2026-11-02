@@ -1,17 +1,20 @@
-"""Shared cache implementation using multiprocessing.Manager."""
+"""Per-worker TTL cache shared by the requests of one process."""
 
 import pickle
 import time
-from multiprocessing.managers import SyncManager
 from typing import Any
 
 
 class SharedTTLCache:
-    """Simple TTL cache using multiprocessing.Manager for cross-process sharing."""
+    """Simple TTL cache in process memory.
 
-    def __init__(self, manager: SyncManager, maxsize: int = 1000, ttl: int = 300):
-        self._cache = manager.dict()  # Shared across processes
-        self._timestamps = manager.dict()  # Track insertion times
+    Values are stored pickled, so every read returns a fresh copy and callers
+    cannot mutate the cached object.
+    """
+
+    def __init__(self, maxsize: int = 1000, ttl: int = 300):
+        self._cache: dict[Any, bytes] = {}
+        self._timestamps: dict[Any, float] = {}  # Track insertion times
         self.maxsize = maxsize
         self.ttl = ttl
 
