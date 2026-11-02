@@ -369,6 +369,9 @@ def get_annotation_tasks_router(settings: SonariSettings):
             created_by=user,
             annotation_task_id=annotation_task.id,
         )
+        # The created note does not carry its author. Without it the note is
+        # cached on the task (and shown) as "anonymous" until the next reload.
+        note_obj = note_obj.model_copy(update={"created_by": schemas.SimpleUser.model_validate(user)})
         updated = await api.annotation_tasks.add_note(
             session,
             annotation_task,
@@ -445,6 +448,123 @@ def get_annotation_tasks_router(settings: SonariSettings):
         )
         await session.commit()
         return updated
+
+    @annotation_tasks_router.post(
+        "/bulk/badges/",
+        response_model=schemas.AnnotationTaskBulkResult,
+    )
+    async def bulk_add_annotation_status_badges(
+        session: Session,
+        user: CurrentUser,
+        filter: Annotated[AnnotationTaskFilter, Depends(AnnotationTaskFilter)],  # type: ignore
+        body: schemas.AnnotationTaskBulkAddBadge,
+    ):
+        """Add a status badge to many annotation tasks (skip duplicates)."""
+        task_ids = await api.annotation_tasks.resolve_bulk_task_ids(
+            session,
+            filters=[filter],
+            annotation_task_ids=body.annotation_task_ids,
+        )
+        result = await api.annotation_tasks.bulk_add_status_badge(
+            session,
+            task_ids=task_ids,
+            state=body.state,
+            user=user,
+        )
+        return result
+
+    @annotation_tasks_router.post(
+        "/bulk/tags/",
+        response_model=schemas.AnnotationTaskBulkResult,
+    )
+    async def bulk_add_annotation_task_tags(
+        session: Session,
+        user: CurrentUser,
+        filter: Annotated[AnnotationTaskFilter, Depends(AnnotationTaskFilter)],  # type: ignore
+        body: schemas.AnnotationTaskBulkAddTag,
+    ):
+        """Add a tag to many annotation tasks (skip tasks that already have it)."""
+        task_ids = await api.annotation_tasks.resolve_bulk_task_ids(
+            session,
+            filters=[filter],
+            annotation_task_ids=body.annotation_task_ids,
+        )
+        return await api.annotation_tasks.bulk_add_tag(
+            session,
+            task_ids=task_ids,
+            tag=body.tag,
+            user=user,
+        )
+
+    @annotation_tasks_router.post(
+        "/bulk/sound_event_tags/summary/",
+        response_model=list[schemas.SoundEventTagBulkCount],
+    )
+    async def bulk_sound_event_tag_summary(
+        session: Session,
+        filter: Annotated[AnnotationTaskFilter, Depends(AnnotationTaskFilter)],  # type: ignore
+        body: schemas.AnnotationTaskBulkTagSummary,
+    ):
+        """Aggregate sound event tag counts for bulk replace UI."""
+        task_ids = await api.annotation_tasks.resolve_bulk_task_ids(
+            session,
+            filters=[filter],
+            annotation_task_ids=body.annotation_task_ids,
+        )
+        return await api.annotation_tasks.bulk_sound_event_tag_counts(
+            session,
+            task_ids=task_ids,
+        )
+
+    @annotation_tasks_router.post(
+        "/bulk/sound_event_tags/replace/",
+        response_model=schemas.AnnotationTaskBulkResult,
+    )
+    async def bulk_replace_sound_event_tags(
+        session: Session,
+        user: CurrentUser,
+        filter: Annotated[AnnotationTaskFilter, Depends(AnnotationTaskFilter)],  # type: ignore
+        body: schemas.AnnotationTaskBulkReplaceSoundEventTags,
+    ):
+        """Replace sound event annotation tags across many annotation tasks."""
+        task_ids = await api.annotation_tasks.resolve_bulk_task_ids(
+            session,
+            filters=[filter],
+            annotation_task_ids=body.annotation_task_ids,
+        )
+        result = await api.annotation_tasks.bulk_replace_sound_event_tags(
+            session,
+            task_ids=task_ids,
+            old_tag=body.old_tag,
+            new_tag=body.new_tag,
+            replace_all=body.replace_all,
+            add_to_tagged=body.add_to_tagged,
+            replace_group=body.replace_group,
+            user=user,
+        )
+        return result
+
+    @annotation_tasks_router.post(
+        "/bulk/sound_events/delete/",
+        response_model=schemas.AnnotationTaskBulkResult,
+    )
+    async def bulk_delete_sound_events_by_tag(
+        session: Session,
+        filter: Annotated[AnnotationTaskFilter, Depends(AnnotationTaskFilter)],  # type: ignore
+        body: schemas.AnnotationTaskBulkDeleteSoundEvents,
+    ):
+        """Delete sound event annotations whose only tag is the given tag across many tasks."""
+        task_ids = await api.annotation_tasks.resolve_bulk_task_ids(
+            session,
+            filters=[filter],
+            annotation_task_ids=body.annotation_task_ids,
+        )
+        result = await api.annotation_tasks.bulk_delete_sound_events_by_tag(
+            session,
+            task_ids=task_ids,
+            tag=body.tag,
+        )
+        return result
 
     @annotation_tasks_router.delete(
         "/detail/badges/",

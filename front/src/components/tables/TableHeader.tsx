@@ -4,7 +4,7 @@ export type SortDirection = "asc" | "desc" | null;
 
 export default function TableHeader({ children }: { children: ReactNode }) {
   return (
-    <span className="inline-block whitespace-nowrap align-middle w-full overflow-x-auto">
+    <span className="inline-block align-middle w-full min-w-0 overflow-hidden">
       {children}
     </span>
   );
@@ -45,7 +45,7 @@ export function SortableTableHeader({
     <button
       type="button"
       onClick={onSort}
-      className="inline-flex items-center whitespace-nowrap align-middle w-full overflow-x-auto cursor-pointer hover:text-emerald-500 transition-colors"
+      className="inline-flex items-center align-middle w-full min-w-0 overflow-hidden cursor-pointer hover:text-emerald-500 transition-colors"
     >
       {children}
       <SortIndicator direction={sortDirection} />

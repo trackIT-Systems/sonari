@@ -5,7 +5,7 @@ import { scalePixelsToWindow } from "@/utils/geometry";
 import { SPECTROGRAM_CANVAS_DIMENSIONS } from "@/constants";
 
 import type { EventKeys } from "@/hooks/utils/useDrag";
-import type { Position, SpectrogramWindow } from "@/types";
+import type { Dimensions, Position, SpectrogramWindow } from "@/types";
 
 /**
  * The `useDrag` hook manages dragging behavior for an object
@@ -15,12 +15,15 @@ import type { Position, SpectrogramWindow } from "@/types";
 export default function useWindowDrag({
   window,
   elementRef,
+  dimensions = SPECTROGRAM_CANVAS_DIMENSIONS,
   onMoveStart,
   onMove,
   onMoveEnd,
 }: {
   window: SpectrogramWindow;
   elementRef?: React.RefObject<HTMLElement | null>;
+  /** Size of the canvas the window is rendered on. */
+  dimensions?: Dimensions;
   onMoveStart?: (moveStartProps?: EventKeys) => void;
   onMove?: (moveProps: { shift: Position } & EventKeys) => void;
   onMoveEnd?: (moveEndProps?: EventKeys) => void;
@@ -52,9 +55,9 @@ export default function useWindowDrag({
           normalizedDeltaX = deltaX * scaleX;
           normalizedDeltaY = deltaY * scaleY;
         } else {
-          // For other elements (like divs), normalize to SPECTROGRAM_CANVAS_DIMENSIONS
-          const scaleX = SPECTROGRAM_CANVAS_DIMENSIONS.width / rect.width;
-          const scaleY = SPECTROGRAM_CANVAS_DIMENSIONS.height / rect.height;
+          // For other elements (like divs), normalize to the canvas dimensions
+          const scaleX = dimensions.width / rect.width;
+          const scaleY = dimensions.height / rect.height;
           normalizedDeltaX = deltaX * scaleX;
           normalizedDeltaY = deltaY * scaleY;
         }
@@ -68,6 +71,7 @@ export default function useWindowDrag({
         },
         window,
         true,
+        dimensions,
       );
       onMove?.({
         shift,
@@ -77,7 +81,7 @@ export default function useWindowDrag({
         metaKey,
       });
     },
-    [position, window, onMove, elementRef],
+    [position, window, onMove, elementRef, dimensions],
   );
 
   const handleMoveStart = useCallback(

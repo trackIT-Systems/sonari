@@ -61,7 +61,7 @@ def image_to_buffer(image: Image, fmt="webp") -> tuple[BytesIO, int, str]:
     # Preallocate a buffer with an estimated size to reduce resizing
     buffer = BytesIO()
 
-    if image.width > max_webp_size:
+    if fmt == "jpeg" or image.width > max_webp_size:
         fmt = "jpeg"
         # Only convert if not already RGB
         if image.mode != "RGB":

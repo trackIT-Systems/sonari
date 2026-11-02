@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import { isGeometryInWindow } from "@/utils/geometry";
 import { getLabelPosition } from "@/utils/tags";
@@ -32,6 +32,24 @@ export default function useSpectrogramTags({
   disabled?: boolean;
   tagVisibility?: TagVisibilityFilter;
 }) {
+  // Tag positions are in CSS pixels, so they must follow the canvas whenever
+  // its displayed size changes (e.g. entering the full page view).
+  const [canvasSize, setCanvasSize] = useState<{ width: number; height: number } | null>(null);
+  useEffect(() => {
+    const canvas = canvasRef?.current;
+    if (canvas == null || typeof ResizeObserver === "undefined") return;
+    const observer = new ResizeObserver(([entry]) => {
+      const { width, height } = entry.contentRect;
+      setCanvasSize((prev) =>
+        prev != null && prev.width === width && prev.height === height
+          ? prev
+          : { width, height },
+      );
+    });
+    observer.observe(canvas);
+    return () => observer.disconnect();
+  }, [canvasRef]);
+
   const annotationsInWindow = useMemo(() => {
     return annotations.filter((annotation) => {
       // @ts-ignore
@@ -125,6 +143,7 @@ export default function useSpectrogramTags({
     annotationsInWindow,
     window,
     canvasRef,
+    canvasSize,
     active,
     onClickTag,
     onAddTag,

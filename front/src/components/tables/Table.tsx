@@ -1,4 +1,4 @@
-import { useCallback } from "react";
+import { Fragment, useCallback, useEffect, useRef, type CSSProperties, type ReactNode } from "react";
 import { flexRender } from "@tanstack/react-table";
 import { useKeyPressEvent } from "react-use";
 import useKeyFilter from "@/hooks/utils/useKeyFilter";
@@ -12,7 +12,27 @@ import {
   SELECT_FRT_ELEMENT_SHORTCUT,
 } from "@/utils/keyboard";
 
-import type { Table } from "@tanstack/react-table";
+import { getScrollParent } from "@/utils/focus";
+
+import type { Column, RowSelectionState, Table } from "@tanstack/react-table";
+
+type TableColumnLayoutMeta = {
+  width?: string;
+  minWidth?: string;
+  maxWidth?: string;
+};
+
+function columnLayoutStyle<S>(column: Column<S, unknown>): CSSProperties {
+  const meta = column.columnDef.meta as TableColumnLayoutMeta | undefined;
+  if (meta?.width || meta?.minWidth || meta?.maxWidth) {
+    return {
+      width: meta.width,
+      minWidth: meta.minWidth,
+      maxWidth: meta.maxWidth,
+    };
+  }
+  return { width: `${column.getSize()}%` };
+}
 
 /** A Table component.
  * Will display a table.
@@ -29,6 +49,11 @@ export default function Table<S>({
   onFocusChange,
   onSelect,
   handleNumberKeys = true,
+  getRowClassName,
+  onRowClick,
+  renderExpandedRow,
+  dragSelect = false,
+  arrowKeys = true,
 }: {
   table: Table<S>;
   onCellKeyDown?: ({
@@ -47,9 +72,112 @@ export default function Table<S>({
   onFocusChange?: (index: number) => void;
   onSelect?: (row: S) => void;
   handleNumberKeys?: boolean;
+  getRowClassName?: (row: S) => string | undefined;
+  onRowClick?: (row: S, info: { index: number; event: React.MouseEvent }) => void;
+  /** Content rendered in a full-width sub-row below the row, or null for none */
+  renderExpandedRow?: (row: S) => ReactNode | null;
+  /** Click and drag over rows to select (or deselect) a range of rows */
+  dragSelect?: boolean;
+  /** Handle ArrowUp/ArrowDown row movement here. Turn off when the parent owns the cursor. */
+  arrowKeys?: boolean;
 }) {
+  const dragCleanupRef = useRef<(() => void) | null>(null);
+  const suppressClickRef = useRef(false);
 
-  useKeyPressEvent(useKeyFilter({ key: LIST_ELEMENT_DOWN_SHORTCUT }), (event) => {
+  // Stop an active drag if the table unmounts
+  useEffect(() => () => dragCleanupRef.current?.(), []);
+
+  const startDragSelect = useCallback(
+    (event: React.MouseEvent<HTMLTableRowElement>, startId: string) => {
+      if (event.button !== 0) return;
+      if ((event.target as HTMLElement).closest("a, button, input, label")) return;
+
+      const base: RowSelectionState = { ...table.getState().rowSelection };
+      const mode = base[startId] ? "deselect" : "select";
+      const scrollParent = getScrollParent(event.currentTarget);
+      const pointer = { x: event.clientX, y: event.clientY };
+      let moved = false;
+      let frame = 0;
+      let lastRange = "";
+
+      const rowIdAt = (x: number, y: number): string | null => {
+        for (const el of document.elementsFromPoint(x, y)) {
+          const tr = el.closest<HTMLElement>("tr[data-row-id], tr[data-expanded-row-for]");
+          if (tr) return tr.dataset.rowId ?? tr.dataset.expandedRowFor ?? null;
+        }
+        return null;
+      };
+
+      const tick = () => {
+        // Auto-scroll near the edges of the scroll area
+        const top = scrollParent ? scrollParent.getBoundingClientRect().top : 0;
+        const bottom = scrollParent ? scrollParent.getBoundingClientRect().bottom : window.innerHeight;
+        const edge = 56;
+        let dy = 0;
+        if (pointer.y < top + edge) dy = -Math.min(24, (top + edge - pointer.y) / 2);
+        else if (pointer.y > bottom - edge) dy = Math.min(24, (pointer.y - (bottom - edge)) / 2);
+        if (dy !== 0) {
+          if (scrollParent) scrollParent.scrollBy({ top: dy });
+          else window.scrollBy({ top: dy });
+        }
+
+        const currentId = rowIdAt(pointer.x, pointer.y);
+        if (currentId != null && (moved || currentId !== startId)) {
+          if (!moved) {
+            moved = true;
+            document.body.style.userSelect = "none";
+            window.getSelection()?.removeAllRanges();
+          }
+          const ids = table.getRowModel().rows.map((r) => r.id);
+          const a = ids.indexOf(startId);
+          const b = ids.indexOf(currentId);
+          const range = `${Math.min(a, b)}:${Math.max(a, b)}`;
+          if (a >= 0 && b >= 0 && range !== lastRange) {
+            lastRange = range;
+            const next: RowSelectionState = { ...base };
+            for (const id of ids.slice(Math.min(a, b), Math.max(a, b) + 1)) {
+              if (mode === "select") next[id] = true;
+              else delete next[id];
+            }
+            table.setRowSelection(next);
+          }
+        }
+        frame = requestAnimationFrame(tick);
+      };
+
+      const onMove = (e: MouseEvent) => {
+        pointer.x = e.clientX;
+        pointer.y = e.clientY;
+      };
+
+      const cleanup = () => {
+        cancelAnimationFrame(frame);
+        window.removeEventListener("mousemove", onMove);
+        window.removeEventListener("mouseup", onUp);
+        document.body.style.userSelect = "";
+        dragCleanupRef.current = null;
+      };
+
+      const onUp = () => {
+        cleanup();
+        if (moved) {
+          // The click that follows a drag must not toggle a preview
+          suppressClickRef.current = true;
+          setTimeout(() => { suppressClickRef.current = false; }, 0);
+        }
+      };
+
+      dragCleanupRef.current?.();
+      dragCleanupRef.current = cleanup;
+      window.addEventListener("mousemove", onMove);
+      window.addEventListener("mouseup", onUp);
+      frame = requestAnimationFrame(tick);
+    },
+    [table],
+  );
+
+
+  useKeyPressEvent(useKeyFilter({ key: LIST_ELEMENT_DOWN_SHORTCUT, enabled: arrowKeys }), (event) => {
     event.preventDefault();
     if (selectedIndex > -1) {
       const newIndex = Math.min(table.getRowModel().rows.length - 1, selectedIndex + 1);
@@ -57,7 +185,7 @@ export default function Table<S>({
     }
   });
 
-  useKeyPressEvent(useKeyFilter({ key: LIST_ELEMENT_UP_SHORTCUT }), (event) => {
+  useKeyPressEvent(useKeyFilter({ key: LIST_ELEMENT_UP_SHORTCUT, enabled: arrowKeys }), (event) => {
     event.preventDefault();
     if (selectedIndex <= 0) {
       onFocusChange?.(-1);
@@ -96,14 +224,9 @@ export default function Table<S>({
 
   return (
     <table
-      className="relative min-w-full rounded-lg border border-collapse table-fixed border-stone-300 text-stone-700 dark:border-stone-700 dark:text-stone-300"
-      {...{
-        style: {
-          width: table.getCenterTotalSize(),
-        },
-      }}
+      className="relative w-full min-w-[52rem] rounded-lg border border-collapse table-fixed border-stone-300 text-stone-700 dark:border-stone-700 dark:text-stone-300"
     >
-      <thead className="z-10 sticky top-0">
+      <thead className="z-10 sticky top-0 overflow-hidden">
         {table.getHeaderGroups().map((headerGroup) => (
           <tr
             key={headerGroup.id}
@@ -111,12 +234,10 @@ export default function Table<S>({
           >
             {headerGroup.headers.map((header) => (
               <th
-                className="overflow-x-auto relative py-1 px-2 whitespace-nowrap border border-stone-400 dark:border-stone-500"
+                className="relative overflow-hidden py-1 px-1.5 border border-stone-400 dark:border-stone-500"
                 key={header.id}
                 colSpan={header.colSpan}
-                style={{
-                  width: header.getSize(),
-                }}
+                style={columnLayoutStyle(header.column)}
               >
                 {header.isPlaceholder
                   ? null
@@ -124,12 +245,14 @@ export default function Table<S>({
                     header.column.columnDef.header,
                     header.getContext(),
                   )}
-                <div
-                  onMouseDown={header.getResizeHandler()}
-                  onTouchStart={header.getResizeHandler()}
-                  className={`resizer ${header.column.getIsResizing() ? "isResizing" : ""
-                    }`}
-                />
+                {header.column.getCanResize() ? (
+                  <div
+                    onMouseDown={header.getResizeHandler()}
+                    onTouchStart={header.getResizeHandler()}
+                    className={`resizer ${header.column.getIsResizing() ? "isResizing" : ""
+                      }`}
+                  />
+                ) : null}
               </th>
             ))}
           </tr>
@@ -137,28 +260,44 @@ export default function Table<S>({
       </thead>
       <tbody className="z-0 text-sm text-stone-800 dark:text-stone-300">
         {table.getRowModel().rows.map((row, index) => {
+          const expanded = renderExpandedRow?.(row.original);
+          const cells = row.getVisibleCells();
           return (
-            <tr
-              key={row.id}
-              className={`hover:dark:bg-stone-800 hover:bg-stone-200 max-h-40 h-min ${index === selectedIndex ? 'bg-stone-200 dark:bg-stone-800' : ''
-                }`}
-            >
-              {row.getVisibleCells().map((cell) => {
-                return (
-                  <td
-                    role="gridcell"
-                    className="border outline-none focus:ring-1 focus:ring-emerald-500 focus:ring-offset-1 focus:ring-offset-transparent border-stone-300 dark:border-stone-600 max-h-40"
-                    tabIndex={-1}
-                    key={cell.id}
-                    style={{
-                      width: cell.column.getSize(),
-                    }}
-                  >
-                    {flexRender(cell.column.columnDef.cell, cell.getContext())}
+            <Fragment key={row.id}>
+              <tr
+                data-row-id={row.id}
+                onMouseDown={dragSelect ? (event) => startDragSelect(event, row.id) : undefined}
+                onClick={onRowClick && ((event) => {
+                  if (suppressClickRef.current) return;
+                  // Keep links, checkboxes and buttons working as usual
+                  if ((event.target as HTMLElement).closest("a, button, input, label")) return;
+                  onRowClick(row.original, { index, event });
+                })}
+                className={`hover:dark:bg-stone-800 hover:bg-stone-200 max-h-40 h-min ${onRowClick ? 'cursor-pointer' : ''} ${index === selectedIndex ? 'bg-stone-200 dark:bg-stone-800' : ''
+                  } ${getRowClassName?.(row.original) ?? ''}`}
+              >
+                {cells.map((cell) => {
+                  return (
+                    <td
+                      role="gridcell"
+                      className="border outline-none focus:ring-1 focus:ring-emerald-500 focus:ring-offset-1 focus:ring-offset-transparent border-stone-300 dark:border-stone-600 max-h-40"
+                      tabIndex={-1}
+                      key={cell.id}
+                      style={columnLayoutStyle(cell.column)}
+                    >
+                      {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                    </td>
+                  );
+                })}
+              </tr>
+              {expanded != null && (
+                <tr data-expanded-row-for={row.id}>
+                  <td colSpan={cells.length} className="border border-stone-300 dark:border-stone-600">
+                    {expanded}
                   </td>
-                );
-              })}
-            </tr>
+                </tr>
+              )}
+            </Fragment>
           );
         })}
       </tbody>

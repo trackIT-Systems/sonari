@@ -5,6 +5,7 @@ import { toast } from "react-hot-toast";
 
 import Loading from "@/app/loading";
 import ProjectHeader from "@/components/annotation_projects/AnnotationProjectHeader";
+import TagScopeContext from "@/components/tags/TagScopeContext";
 import useAnnotationProject from "@/hooks/api/useAnnotationProject";
 
 import AnnotationProjectContext from "./context";
@@ -51,6 +52,7 @@ export default function Layout({ children }: { children: ReactNode }) {
 
   return (
     <AnnotationProjectContext.Provider value={project.data}>
+      <TagScopeContext.Provider value={project.data.id}>
       <div className="flex min-h-0 min-w-0 flex-col h-screen">
         <div className="flex-none">
           <ProjectHeader annotationProject={project.data} />
@@ -59,6 +61,7 @@ export default function Layout({ children }: { children: ReactNode }) {
           {children}
         </div>
       </div>
+      </TagScopeContext.Provider>
     </AnnotationProjectContext.Provider>
   );
 }

@@ -71,7 +71,7 @@ export default function AnnotationControls({
 
   if (disabled)
     return (
-      <div className="flex space-x-2">
+      <div className="flex space-x-1">
         <Tooltip
           tooltip={
             <div className="inline-flex gap-1">
@@ -86,6 +86,7 @@ export default function AnnotationControls({
         >
           <Button
             variant={isSelecting ? "primary" : "secondary"}
+            pressed={isSelecting}
             onClick={onSelect}
           >
             <SelectIcon className="w-5 h-5" />
@@ -95,7 +96,7 @@ export default function AnnotationControls({
     );
 
   return (
-    <div className="flex space-x-2">
+    <div className="flex space-x-1">
       <Tooltip
         tooltip={
           <div className="inline-flex gap-1">
@@ -107,7 +108,7 @@ export default function AnnotationControls({
         }
         placement="bottom"
       >
-        <Button variant={isDrawing ? "primary" : "secondary"} onClick={onDraw}>
+        <Button variant={isDrawing ? "primary" : "secondary"} pressed={isDrawing} onClick={onDraw}>
           <AddIcon className="w-5 h-5" />
         </Button>
       </Tooltip>
@@ -127,6 +128,7 @@ export default function AnnotationControls({
         >
           <Button
             variant={isSelecting ? "primary" : "secondary"}
+            pressed={isSelecting}
             onClick={onSelect}
           >
             <SelectIcon className="w-5 h-5" />

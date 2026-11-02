@@ -4,7 +4,8 @@ import { ForwardedRef, forwardRef, memo } from "react";
 import type { Mode, Variant } from "@/components/common";
 import type { ButtonHTMLAttributes, ReactNode } from "react";
 
-const FOCUS_STYLE = "focus:ring-4 focus:ring-emerald-500/50 focus:outline-none";
+// focus-visible: a mouse click must not leave a green ring that looks like an "on" state.
+const FOCUS_STYLE = "focus-visible:ring-4 focus-visible:ring-emerald-500/50 focus:outline-none";
 
 const CLASS_NAMES = {
   filled: {
@@ -74,9 +75,12 @@ const Button = memo(forwardRef(function Button(
     mode = "filled",
     padding = "p-2.5",
     className,
+    pressed,
     ...props
   }: {
     children: ReactNode;
+    /** For toggle buttons: marks the on state with a ring and aria-pressed. */
+    pressed?: boolean;
     variant?: Variant;
     padding?: string;
     mode?: Mode;
@@ -85,7 +89,16 @@ const Button = memo(forwardRef(function Button(
 ) {
   const baseClass = getButtonClassName({ variant, mode, padding });
   return (
-    <button className={classnames(baseClass, className)} {...props} ref={ref}>
+    <button
+      className={classnames(
+        baseClass,
+        pressed && "ring-2 ring-emerald-600 ring-offset-1 dark:ring-offset-stone-900",
+        className,
+      )}
+      aria-pressed={pressed}
+      {...props}
+      ref={ref}
+    >
       {children}
     </button>
   );

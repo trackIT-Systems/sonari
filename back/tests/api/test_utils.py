@@ -10,6 +10,7 @@ from sqlalchemy.orm import selectinload
 from sonari import api, exceptions, models, schemas
 from sonari.api.common.utils import (
     add_feature_to_object,
+    apply_filters,
     create_object,
     create_objects,
     create_objects_without_duplicates,
@@ -128,11 +129,49 @@ async def test_get_objects_with_sort_by(db_session: AsyncSession):
 async def test_get_objects_from_query_custom_query(db_session: AsyncSession, test_tag: schemas.Tag):
     """Test get_objects_from_query with custom query."""
     query = select(models.Tag).where(models.Tag.id == test_tag.id)
-    result, count = await get_objects_from_query(db_session, models.Tag, query, limit=10)
-    rows = result.unique().scalars().all()
+    rows, count = await get_objects_from_query(db_session, models.Tag, query, limit=10)
     assert len(rows) == 1
-    assert rows[0].id == test_tag.id
+    assert rows[0][0].id == test_tag.id
     assert count == 1
+
+
+@pytest.mark.asyncio
+async def test_get_objects_from_query_total_ignores_limit(db_session: AsyncSession, test_tag: schemas.Tag):
+    """The window-function total counts all matches, not just the page."""
+    total = await get_count(db_session, models.Tag, select(models.Tag))
+    rows, count = await get_objects_from_query(db_session, models.Tag, select(models.Tag), limit=1)
+    assert len(rows) == 1
+    assert len(rows[0]) == 1  # total column is stripped
+    assert count == total
+
+
+@pytest.mark.asyncio
+async def test_get_objects_from_query_offset_past_end(db_session: AsyncSession, test_tag: schemas.Tag):
+    """An empty page past the end still reports the total."""
+    total = await get_count(db_session, models.Tag, select(models.Tag))
+    rows, count = await get_objects_from_query(
+        db_session, models.Tag, select(models.Tag), limit=10, offset=total + 5
+    )
+    assert rows == []
+    assert count == total
+
+
+@pytest.mark.asyncio
+async def test_get_objects_from_query_no_matches(db_session: AsyncSession):
+    """No matches on the first page gives a zero total."""
+    rows, count = await get_objects_from_query(
+        db_session, models.Tag, select(models.Tag), filters=[models.Tag.id == -1]
+    )
+    assert rows == []
+    assert count == 0
+
+
+@pytest.mark.asyncio
+async def test_apply_filters(db_session: AsyncSession, test_tag: schemas.Tag):
+    """apply_filters applies column expressions to the query."""
+    query = apply_filters(select(models.Tag.id), [models.Tag.id == test_tag.id])
+    result = await db_session.execute(query)
+    assert list(result.scalars().all()) == [test_tag.id]
 
 
 @pytest.mark.asyncio
@@ -144,17 +183,15 @@ async def test_get_objects_from_query_annotation_task_sort(
     query = select(models.AnnotationTask).where(
         models.AnnotationTask.id == test_annotation_task.id
     )
-    result, count = await get_objects_from_query(
+    rows, count = await get_objects_from_query(
         db_session, models.AnnotationTask, query, sort_by="recording_datetime", limit=10
     )
-    rows = result.unique().scalars().all()
     assert len(rows) >= 1
     assert count >= 1
 
-    result2, _ = await get_objects_from_query(
+    rows2, _ = await get_objects_from_query(
         db_session, models.AnnotationTask, query, sort_by="duration", limit=10
     )
-    rows2 = result2.unique().scalars().all()
     assert len(rows2) >= 1
 
 

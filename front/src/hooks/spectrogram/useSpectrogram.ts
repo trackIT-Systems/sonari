@@ -18,31 +18,22 @@ import useSpectrogramMotions, { MotionMode } from "@/hooks/spectrogram/useSpectr
 import type { RefObject } from "react";
 import type {
   AnnotationTask,
+  Dimensions,
   Position,
   SpectrogramParameters,
   SpectrogramWindow,
 } from "@/types";
-import { ZOOM_FACTOR } from "@/constants";
-import { drawLineString, DEFAULT_LINESTRING_STYLE } from "@/draw/linestring";
-import { setFontStyle } from "@/draw/styles";
+import { SPECTROGRAM_CANVAS_DIMENSIONS, ZOOM_FACTOR } from "@/constants";
+import { drawAllFrequencyLines } from "@/draw/freqLines";
+import { getCanvasSize } from "@/draw/canvas";
 
-const FREQ_LINE_COLORS = [
-  "rgb(34 211 238)",  // cyan-400
-  "rgb(56 189 248)",  // sky-400
-  "rgb(52 211 153)",  // emerald-400
-  "rgb(163 230 53)",  // lime-400
-  "rgb(96 165 250)",  // blue-400
-  "rgb(45 212 191)",  // teal-400
-  "rgb(167 139 250)", // violet-400
-  "rgb(244 114 182)", // pink-400
-];
 
 /**
  * A function type representing the drawing function for a spectrogram.
  */
 type DrawFn = (
   ctx: CanvasRenderingContext2D,
-  options?: { withAxes?: boolean }
+  options?: { withAxes?: boolean; withFreqLines?: boolean }
 ) => void;
 
 /**
@@ -78,69 +69,6 @@ type SpectrogramControls = {
   disable: () => void;
 };
 
-function drawFrequencyLines(
-  ctx: CanvasRenderingContext2D,
-  freqLines: number[],
-  window: SpectrogramWindow,
-  style = DEFAULT_LINESTRING_STYLE
-) {
-  const { height, width } = ctx.canvas;
-  const { min: freqMin, max: freqMax } = window.freq;
-
-  for (const freq of freqLines) {
-    if (freq < freqMin || freq > freqMax) continue;
-
-    const y = height * (1 - (freq - freqMin) / (freqMax - freqMin));
-
-    const line = {
-      type: "LineString" as const,
-      coordinates: [
-        [0, y],
-        [width, y],
-      ],
-    };
-
-    const lineWidth = style.borderWidth ?? DEFAULT_LINESTRING_STYLE.borderWidth ?? 2;
-
-    // Dark outline keeps lines readable on bright spectrogram regions (e.g. without de-noise)
-    drawLineString(ctx, line, {
-      borderColor: "rgb(0 0 0)",
-      borderWidth: lineWidth + 2,
-      borderAlpha: 0.75,
-    });
-    drawLineString(ctx, line, {
-      ...style,
-      borderWidth: lineWidth,
-    });
-
-    // Draw the frequency label
-    ctx.save();
-
-    setFontStyle(ctx, { fontSize: 10, fontColor: style.borderColor });
-    
-    ctx.textAlign = "left";
-    ctx.textBaseline = "bottom";
-    
-    // Format frequency for display (convert Hz to kHz if >= 1000)
-    const freqLabel = freq >= 1000 ? `${(freq / 1000).toFixed(0)} kHz` : `${freq} Hz`;
-    
-    // Position text slightly to the left and above the line
-    const textX = 8; // 8 pixels from left edge
-    const textY = y - 4; // 4 pixels above the line
-    
-    // Only draw label if it's within visible bounds
-    if (textY > 0 && textY < height) {
-      ctx.lineWidth = 3;
-      ctx.strokeStyle = "rgb(0 0 0)";
-      ctx.strokeText(freqLabel, textX, textY);
-      ctx.fillText(freqLabel, textX, textY);
-    }
-    
-    ctx.restore();
-  }
-}
-
-
 /**
  * The `useSpectrogram` hook provides state, controls, and drawing functions
  * for managing and displaying a spectrogram of an audio recording.
@@ -152,6 +80,8 @@ export default function useSpectrogram({
   initial: initialWindow,
   parameters: initialParameters,
   canvasRef,
+  dimensions = SPECTROGRAM_CANVAS_DIMENSIONS,
+  pixelRatio = 1,
   onParameterChange,
   onModeChange,
   onDoubleClick,
@@ -171,6 +101,10 @@ export default function useSpectrogram({
   parameters: SpectrogramParameters;
   /** Optional canvas ref for position popover - if provided, shows coordinates on hover */
   canvasRef?: RefObject<HTMLCanvasElement | null>;
+  /** Size of the canvas the spectrogram is rendered on. */
+  dimensions?: Dimensions;
+  /** Canvas pixels per CSS pixel, for canvases drawn at screen resolution */
+  pixelRatio?: number;
   onParameterChange?: (parameters: SpectrogramParameters) => void;
   onModeChange?: (mode: MotionMode) => void;
   onDoubleClick?: (dblClickProps: { position: Position }) => void;
@@ -226,21 +160,18 @@ export default function useSpectrogram({
   // Used for image loading, drawing, and window bounds updates
   const effectiveSamplerate = clampSamplerate(parameters, samplerate);
 
-  // Handle significant parameter changes that affect frequency bounds (e.g., resampling)
-  // When resampling changes, reset window to show full new frequency range
+  // When resampling changes the samplerate, reset the window to show the full
+  // new frequency range (time range is preserved). Compared against the
+  // previous samplerate so a mere `bounds` identity change keeps the freq zoom.
+  const prevEffectiveSamplerateRef = useRef(effectiveSamplerate);
   useEffect(() => {
-    const prevEffectiveSamplerate = window.freq.max * 2; // Reverse calculate from current window
-    const freqBoundsChanged = Math.abs(effectiveSamplerate / 2 - prevEffectiveSamplerate) > 1000; // 1kHz threshold
-    
-    if (freqBoundsChanged) {
-      // Reset frequency range to show full spectrum, preserve time range
-      setConstrainedWindow((prev) => ({
-        time: prev.time,
-        freq: { min: 0, max: effectiveSamplerate / 2 },
-      }));
-    }
-  }, [effectiveSamplerate, setConstrainedWindow]); // eslint-disable-line react-hooks/exhaustive-deps
-  // Note: window intentionally not in deps to avoid infinite loop
+    if (prevEffectiveSamplerateRef.current === effectiveSamplerate) return;
+    prevEffectiveSamplerateRef.current = effectiveSamplerate;
+    setConstrainedWindow((prev) => ({
+      time: prev.time,
+      freq: { min: 0, max: effectiveSamplerate / 2 },
+    }));
+  }, [effectiveSamplerate, setConstrainedWindow]);
 
   const zoom = useCallback(
     (oldWindow: SpectrogramWindow, in_out: string): SpectrogramWindow => {
@@ -278,11 +209,15 @@ export default function useSpectrogram({
 
   // NOTE: Need to update the window if the initial window
   // changes. This usually happens when the visualised clip
-  // changes.
+  // changes. Compare by value: parents recreate an equal `initial` whenever
+  // the task query is replaced (tag/badge/note mutations), which must not
+  // throw away the user's zoom.
+  const prevInitialWindowRef = useRef(initialWindow);
   useEffect(() => {
-    if (initialWindow != null) {
-      setConstrainedWindow(initialWindow);
-    }
+    if (initialWindow == null) return;
+    if (windowsEqual(prevInitialWindowRef.current, initialWindow)) return;
+    prevInitialWindowRef.current = initialWindow;
+    setConstrainedWindow(initialWindow);
   }, [initialWindow, setConstrainedWindow]);
 
   const {
@@ -296,6 +231,7 @@ export default function useSpectrogram({
     parameters,
     withSpectrogram,
     onAllSegmentsLoaded: onSegmentsLoaded,
+    canvasWidth: dimensions.width * pixelRatio,
   });
 
   const handleZoomDrag = useCallback(
@@ -345,11 +281,15 @@ export default function useSpectrogram({
       if (vprtDuration == initialWindowDuration && vprtBandwidth == initialWindowBandwidth) {
         return initialWindow;
       } else {
-        const time_max_new = initialWindow.time.min + (initialWindow.time.max - initialWindow.time.min);
+        // Restore the initial zoom level but stay where the user is. Durations
+        // are relative, so the initial window's own start must not leak in:
+        // for a task that does not start at 0 that would blow the window up to
+        // the whole task.
+        const initialDuration = initialWindow.time.max - initialWindow.time.min;
         return {
           time: {
             min: prev.time.min,
-            max: prev.time.min + time_max_new,
+            max: prev.time.min + initialDuration,
           },
           freq: {
             min: initialWindow.freq.min,
@@ -447,6 +387,7 @@ export default function useSpectrogram({
     disable,
   } = useSpectrogramMotions({
     window,
+    dimensions,
     onDrag: handleZoomDrag,
     onZoom: handleZoomDrag,
     onScrollMoveTime: handleShift,
@@ -467,7 +408,8 @@ export default function useSpectrogram({
 
   // Create the drawing function
   const draw = useCallback<DrawFn>(
-    (ctx, options = { withAxes: true }) => {
+    (ctx, options) => {
+      const { withAxes = true, withFreqLines = true } = options ?? {};
       if (canDrag) {
         ctx.canvas.style.cursor = "crosshair";
       } else if (canZoom) {
@@ -497,23 +439,17 @@ export default function useSpectrogram({
       } else {
         // Clear canvas if spectrogram is disabled
         ctx.fillStyle = "rgb(156 163 175)";
-        ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+        const { width, height } = getCanvasSize(ctx);
+        ctx.fillRect(0, 0, width, height);
       }
       
-      if (withSpectrogram && options.withAxes) {
+      if (withSpectrogram && withAxes) {
         drawTimeAxis(ctx, window.time);
         drawFrequencyAxis(ctx, window.freq);
       }
       drawMotions(ctx);
-      if (parameters.freqLines && Array.isArray(parameters.freqLines)) {
-        parameters.freqLines.forEach((freq, index) => {
-          const color = FREQ_LINE_COLORS[index % FREQ_LINE_COLORS.length];
-          drawFrequencyLines(ctx, [freq], window, {
-            borderColor: color,
-            borderWidth: 2,
-            borderAlpha: 1,
-          });
-        });
+      if (withFreqLines) {
+        drawAllFrequencyLines(ctx, parameters.freqLines, window);
       }
 
     },
@@ -619,6 +555,15 @@ export default function useSpectrogram({
     enableZoom,
     disable,
   };
+}
+
+function windowsEqual(a: SpectrogramWindow, b: SpectrogramWindow): boolean {
+  return (
+    a.time.min === b.time.min &&
+    a.time.max === b.time.max &&
+    a.freq.min === b.freq.min &&
+    a.freq.max === b.freq.max
+  );
 }
 
 export function clampSamplerate(parameters: SpectrogramParameters, samplerate: number): number {

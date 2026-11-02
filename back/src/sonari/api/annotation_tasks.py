@@ -1,22 +1,43 @@
 """Python API for interacting with Annotation Tasks."""
 
+from statistics import median
+import datetime
 from typing import Sequence
 
 from soundevent import data
-from sqlalchemy import and_, select, tuple_
+from sqlalchemy import and_, exists, func, insert, literal, select, tuple_
+from sqlalchemy.orm import selectinload
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.sql._typing import _ColumnExpressionArgument
 
 from sonari import exceptions, models, schemas
 from sonari.api import common
 from sonari.api.common import BaseAPI
+from sonari.filters.annotation_tasks import confidence_feature_name_clause_for_tag_creator
 from sonari.filters.base import Filter
+from sonari.api.bulk_sound_event_tag_replace import (
+    BulkSoundEventTagReplaceParams,
+    build_bulk_params,
+    process_bulk_delete_sound_events_chunk,
+    process_bulk_tag_replace_chunk,
+)
+from sonari.utils.bat_groups import (
+    GROUP_TAG_KEY,
+    REPLACEABLE_BAT_GROUPS,
+    SPECIES_TAG_KEY,
+    species_in_group,
+)
+from sonari.utils.sound_event_tag_replace import is_replace_all_tag
 
 __all__ = [
     "AnnotationTaskAPI",
+    "MAX_BULK_TASKS",
     "annotation_tasks",
     "compute_duration",
 ]
+
+MAX_BULK_TASKS = 5000
+_BULK_CHUNK_SIZE = 100
 
 
 class AnnotationTaskAPI(
@@ -84,7 +105,7 @@ class AnnotationTaskAPI(
             models.AnnotationTask.start_time,
         )
 
-        result, count = await get_objects_from_query(
+        rows, count = await get_objects_from_query(
             session,
             models.AnnotationTask,
             query,
@@ -94,8 +115,7 @@ class AnnotationTaskAPI(
             sort_by=sort_by,
         )
 
-        # Extract rows and convert to schema objects
-        rows = result.all()
+        # Convert rows to schema objects
         indices = [
             schemas.AnnotationTaskIndex(
                 id=row[0],
@@ -131,17 +151,13 @@ class AnnotationTaskAPI(
         """
         from sqlalchemy.orm import selectinload
 
+        from sonari.api.common.utils import apply_filters
+
         # Get all tasks with their status badges
         query = select(models.AnnotationTask).options(
             selectinload(models.AnnotationTask.status_badges)
         )
-
-        # Apply filters (same pattern as get_objects_from_query)
-        for filter_ in filters or []:
-            if isinstance(filter_, Filter):
-                query = filter_.filter(query)
-            else:
-                query = query.where(filter_)
+        query = apply_filters(query, filters)
 
         result = await session.execute(query)
         tasks = result.scalars().all()
@@ -294,7 +310,7 @@ class AnnotationTaskAPI(
 
         query = query.options(*options)
 
-        result, count = await get_objects_from_query(
+        rows, count = await get_objects_from_query(
             session,
             models.AnnotationTask,
             query,
@@ -303,19 +319,25 @@ class AnnotationTaskAPI(
             filters=filters,
             sort_by=sort_by,
         )
-        # Don't use unique() - just return the scalars directly
-        objs = result.scalars().all()
+        # Don't deduplicate - just return the objects directly
+        objs = [row[0] for row in rows]
 
         # Load sound event tags separately if requested
         if include_sound_event_tags:
             task_ids = [obj.id for obj in objs]
             sound_event_tags_map = await self._load_sound_event_tags(session, task_ids)
+            stats_map = await self._load_sound_event_tag_stats(session, task_ids)
             tasks_with_tags = []
             for obj in objs:
                 task = self._schema.model_validate(obj)
                 tags_for_task = sound_event_tags_map.get(obj.id, [])
                 # Use model_copy with update to add sound_event_tags
-                task_with_tags = task.model_copy(update={"sound_event_tags": tags_for_task})
+                task_with_tags = task.model_copy(
+                    update={
+                        "sound_event_tags": tags_for_task,
+                        "sound_event_tag_stats": stats_map.get(obj.id, []),
+                    }
+                )
                 tasks_with_tags.append(task_with_tags)
             return tasks_with_tags, count
 
@@ -434,7 +456,13 @@ class AnnotationTaskAPI(
         if include_sound_event_tags:
             sound_event_tags_map = await self._load_sound_event_tags(session, [obj.id])
             # Use model_copy with update to add sound_event_tags
-            data = data.model_copy(update={"sound_event_tags": sound_event_tags_map.get(obj.id, [])})
+            stats_map = await self._load_sound_event_tag_stats(session, [obj.id])
+            data = data.model_copy(
+                update={
+                    "sound_event_tags": sound_event_tags_map.get(obj.id, []),
+                    "sound_event_tag_stats": stats_map.get(obj.id, []),
+                }
+            )
 
         self._update_cache(data)
         return data
@@ -669,8 +697,11 @@ class AnnotationTaskAPI(
         schemas.AnnotationTask
             Task with the new status badge.
         """
+        # Compare ids: the user may be an ORM object (request user) or a schema.
+        user_id = user.id if user is not None else None
         for b in obj.status_badges:
-            if b.user == user and b.state == state:
+            badge_user_id = b.user.id if b.user is not None else getattr(b, "user_id", None)
+            if badge_user_id == user_id and b.state == state:
                 raise exceptions.DuplicateObjectError(f"Status badge {b} already exists in task {obj.id}")
 
         badge = await common.create_object(
@@ -997,14 +1028,12 @@ class AnnotationTaskAPI(
         Returns
         -------
         dict[int, list[schemas.Tag]]
-            Mapping from task ID to list of unique tags from its sound events.
+            Mapping from task ID to tags (one entry per sound-event tag link, for counts).
         """
         # Handle empty task_ids
         if not task_ids:
             return {}
 
-        # Query to get sound event annotation tags for the given tasks
-        # Use distinct on both task_id and tag_id to get unique combinations
         query = (
             select(
                 models.SoundEventAnnotation.annotation_task_id,
@@ -1018,23 +1047,85 @@ class AnnotationTaskAPI(
                 models.SoundEventAnnotation.id == models.SoundEventAnnotationTag.sound_event_annotation_id,
             )
             .join(models.Tag, models.SoundEventAnnotationTag.tag_id == models.Tag.id)
-            .where(models.SoundEventAnnotation.annotation_task_id.in_(task_ids))
-            .distinct()
         )
 
-        result = await session.execute(query)
-        rows = result.all()
-
-        # Group tags by task ID
+        # Chunk the IN list to stay under the database's bound-parameter limit.
         tags_by_task: dict[int, list[schemas.Tag]] = {}
-        for task_id, tag_id, tag_key, tag_value in rows:
-            if task_id not in tags_by_task:
-                tags_by_task[task_id] = []
-            # Check if tag already added (for uniqueness by id)
-            if not any(t.id == tag_id for t in tags_by_task[task_id]):
-                tags_by_task[task_id].append(schemas.Tag(id=tag_id, key=tag_key, value=tag_value))
+        for start in range(0, len(task_ids), 500):
+            chunk = task_ids[start : start + 500]
+            result = await session.execute(
+                query.where(models.SoundEventAnnotation.annotation_task_id.in_(chunk))
+            )
+            for task_id, tag_id, tag_key, tag_value in result.all():
+                tags_by_task.setdefault(task_id, []).append(
+                    schemas.Tag(id=tag_id, key=tag_key, value=tag_value),
+                )
 
         return tags_by_task
+
+    async def _load_sound_event_tag_stats(
+        self,
+        session: AsyncSession,
+        task_ids: list[int],
+    ) -> dict[int, list[schemas.SoundEventTagStats]]:
+        """Load per-tag confidence statistics (median, max) for tasks.
+
+        Confidence is ``species_confidence`` for tags created by ``birdedge`` and
+        ``detection_confidence`` otherwise, matching the confidence filter.
+        """
+        if not task_ids:
+            return {}
+
+        tag_creator = models.User.__table__.alias("stats_tag_creator")
+        query = (
+            select(
+                models.SoundEventAnnotation.annotation_task_id,
+                models.Tag.key,
+                models.Tag.value,
+                models.SoundEventAnnotationFeature.value,
+            )
+            .select_from(models.SoundEventAnnotation)
+            .join(
+                models.SoundEventAnnotationTag,
+                models.SoundEventAnnotation.id == models.SoundEventAnnotationTag.sound_event_annotation_id,
+            )
+            .join(models.Tag, models.SoundEventAnnotationTag.tag_id == models.Tag.id)
+            .outerjoin(tag_creator, tag_creator.c.id == models.Tag.created_by_id)
+            .outerjoin(
+                models.SoundEventAnnotationFeature,
+                and_(
+                    models.SoundEventAnnotationFeature.sound_event_annotation_id == models.SoundEventAnnotation.id,
+                    confidence_feature_name_clause_for_tag_creator(tag_creator.c.username),
+                ),
+            )
+        )
+
+        # (task_id, key, value) -> [event count, confidences]
+        grouped: dict[tuple[int, str, str], tuple[list[int], list[float]]] = {}
+        for start in range(0, len(task_ids), 500):
+            chunk = task_ids[start : start + 500]
+            result = await session.execute(
+                query.where(models.SoundEventAnnotation.annotation_task_id.in_(chunk))
+            )
+            for task_id, key, value, confidence in result.all():
+                count, confidences = grouped.setdefault((task_id, key, value), ([0], []))
+                count[0] += 1
+                if confidence is not None:
+                    confidences.append(confidence)
+
+        stats_by_task: dict[int, list[schemas.SoundEventTagStats]] = {}
+        for (task_id, key, value), (count, confidences) in grouped.items():
+            stats_by_task.setdefault(task_id, []).append(
+                schemas.SoundEventTagStats(
+                    key=key,
+                    value=value,
+                    count=count[0],
+                    median_confidence=median(confidences) if confidences else None,
+                    max_confidence=max(confidences) if confidences else None,
+                )
+            )
+
+        return stats_by_task
 
     def _key_fn(self, obj: dict):
         return (
@@ -1050,6 +1141,425 @@ class AnnotationTaskAPI(
             models.AnnotationTask.recording_id,
             models.AnnotationTask.start_time,
             models.AnnotationTask.end_time,
+        )
+
+    async def resolve_bulk_task_ids(
+        self,
+        session: AsyncSession,
+        *,
+        filters: Sequence[Filter | _ColumnExpressionArgument] | None,
+        annotation_task_ids: list[int] | None,
+    ) -> list[int]:
+        """Resolve task IDs for bulk operations (intersect explicit IDs with filter)."""
+        from sonari.api.common.utils import apply_filters
+
+        query = apply_filters(select(models.AnnotationTask.id), filters)
+        result = await session.execute(query)
+        filter_ids = list(result.scalars().all())
+        filter_id_set = set(filter_ids)
+
+        if annotation_task_ids is not None:
+            resolved = [task_id for task_id in annotation_task_ids if task_id in filter_id_set]
+        else:
+            resolved = filter_ids
+
+        if len(resolved) > MAX_BULK_TASKS:
+            raise ValueError(
+                f"Too many tasks ({len(resolved)}). Maximum bulk size is {MAX_BULK_TASKS}.",
+            )
+        return resolved
+
+    async def bulk_add_status_badge(
+        self,
+        session: AsyncSession,
+        *,
+        task_ids: list[int],
+        state: data.AnnotationState,
+        user: schemas.SimpleUser,
+    ) -> schemas.AnnotationTaskBulkResult:
+        """Add a status badge to many tasks; skip duplicates."""
+        from sonari.api import annotation_projects
+
+        # A plain snapshot: a skipped duplicate rolls back its savepoint, which
+        # expires ORM objects of this session, e.g. the request user. Reading
+        # user.id afterwards would need a (sync) reload and fail every later task.
+        user = schemas.SimpleUser.model_validate(user)
+
+        tasks_targeted = len(task_ids)
+        tasks_updated = 0
+        tasks_skipped = 0
+        failures: list[schemas.AnnotationTaskBulkFailure] = []
+
+        for chunk_start in range(0, len(task_ids), _BULK_CHUNK_SIZE):
+            chunk = task_ids[chunk_start : chunk_start + _BULK_CHUNK_SIZE]
+            chunk_had_changes = False
+
+            for task_id in chunk:
+                try:
+                    task = await self.get(
+                        session,
+                        task_id,
+                        include_status_badges=True,
+                        include_status_badge_users=True,
+                    )
+                    try:
+                        async with session.begin_nested():
+                            await self.add_status_badge(session, task, state, user)
+                            await annotation_projects.invalidate_species_counts_for_task(
+                                session,
+                                task_id,
+                            )
+                        tasks_updated += 1
+                        chunk_had_changes = True
+                    except exceptions.DuplicateObjectError:
+                        tasks_skipped += 1
+                except exceptions.NotFoundError as exc:
+                    failures.append(
+                        schemas.AnnotationTaskBulkFailure(
+                            annotation_task_id=task_id,
+                            message=str(exc),
+                        )
+                    )
+                except Exception as exc:  # noqa: BLE001
+                    failures.append(
+                        schemas.AnnotationTaskBulkFailure(
+                            annotation_task_id=task_id,
+                            message=str(exc),
+                        )
+                    )
+
+            if chunk_had_changes:
+                await session.commit()
+
+        return schemas.AnnotationTaskBulkResult(
+            tasks_targeted=tasks_targeted,
+            tasks_updated=tasks_updated,
+            tasks_skipped=tasks_skipped,
+            sound_events_updated=0,
+            failures=failures,
+        )
+
+    async def bulk_add_tag(
+        self,
+        session: AsyncSession,
+        *,
+        task_ids: list[int],
+        tag: schemas.TagCreate,
+        user: schemas.SimpleUser,
+    ) -> schemas.AnnotationTaskBulkResult:
+        """Add a tag to many tasks; skip tasks that already have it."""
+        from sonari.api import tags as tags_api
+
+        tag_obj = await tags_api.get_or_create(session, tag.key, tag.value, user)
+        tag_id = tag_obj.id
+
+        tasks_updated = 0
+        tasks_skipped = 0
+        failures: list[schemas.AnnotationTaskBulkFailure] = []
+
+        for chunk_start in range(0, len(task_ids), _BULK_CHUNK_SIZE):
+            chunk = task_ids[chunk_start : chunk_start + _BULK_CHUNK_SIZE]
+            try:
+                existing_result = await session.execute(
+                    select(models.AnnotationTask.id).where(
+                        models.AnnotationTask.id.in_(chunk),
+                    ),
+                )
+                existing_ids = set(existing_result.scalars().all())
+                for task_id in chunk:
+                    if task_id not in existing_ids:
+                        failures.append(
+                            schemas.AnnotationTaskBulkFailure(
+                                annotation_task_id=task_id,
+                                message="Annotation task not found.",
+                            ),
+                        )
+                if not existing_ids:
+                    continue
+
+                # Like add_tag: a task counts as tagged if any user attached the tag.
+                already_tagged = exists(
+                    select(1).where(
+                        models.AnnotationTaskTag.annotation_task_id
+                        == models.AnnotationTask.id,
+                        models.AnnotationTaskTag.tag_id == tag_id,
+                    ),
+                )
+                now = datetime.datetime.now(datetime.timezone.utc)
+                source = select(
+                    models.AnnotationTask.id.label("annotation_task_id"),
+                    literal(tag_id).label("tag_id"),
+                    literal(user.id).label("created_by_id"),
+                    literal(now).label("created_on"),
+                ).where(
+                    models.AnnotationTask.id.in_(existing_ids),
+                    ~already_tagged,
+                )
+                result = await session.execute(
+                    insert(models.AnnotationTaskTag)
+                    .from_select(
+                        ["annotation_task_id", "tag_id", "created_by_id", "created_on"],
+                        source,
+                    )
+                    .returning(models.AnnotationTaskTag.annotation_task_id),
+                )
+                inserted = len(result.all())
+                tasks_updated += inserted
+                tasks_skipped += len(existing_ids) - inserted
+                if inserted > 0:
+                    await session.commit()
+            except Exception as exc:  # noqa: BLE001
+                await session.rollback()
+                message = str(exc)
+                for task_id in chunk:
+                    failures.append(
+                        schemas.AnnotationTaskBulkFailure(
+                            annotation_task_id=task_id,
+                            message=message,
+                        ),
+                    )
+
+        return schemas.AnnotationTaskBulkResult(
+            tasks_targeted=len(task_ids),
+            tasks_updated=tasks_updated,
+            tasks_skipped=tasks_skipped,
+            sound_events_updated=0,
+            failures=failures,
+        )
+
+    async def bulk_sound_event_tag_counts(
+        self,
+        session: AsyncSession,
+        *,
+        task_ids: list[int],
+    ) -> list[schemas.SoundEventTagBulkCount]:
+        """Aggregate distinct sound event tags (with counts) for the given tasks."""
+        if not task_ids:
+            return []
+
+        query = (
+            select(
+                models.Tag.key,
+                models.Tag.value,
+                func.count(models.SoundEventAnnotationTag.id),
+            )
+            .select_from(models.SoundEventAnnotationTag)
+            .join(
+                models.SoundEventAnnotation,
+                models.SoundEventAnnotationTag.sound_event_annotation_id
+                == models.SoundEventAnnotation.id,
+            )
+            .join(models.Tag, models.SoundEventAnnotationTag.tag_id == models.Tag.id)
+            .where(models.SoundEventAnnotation.annotation_task_id.in_(task_ids))
+            .group_by(models.Tag.key, models.Tag.value)
+            .order_by(models.Tag.key, models.Tag.value)
+        )
+        result = await session.execute(query)
+        return [
+            schemas.SoundEventTagBulkCount(key=row[0], value=row[1], count=row[2])
+            for row in result.all()
+        ]
+
+    async def bulk_replace_sound_event_tags(
+        self,
+        session: AsyncSession,
+        *,
+        task_ids: list[int],
+        old_tag: schemas.TagCreate | None,
+        new_tag: schemas.TagCreate | None,
+        replace_all: bool,
+        add_to_tagged: bool,
+        user: schemas.SimpleUser,
+        replace_group: str | None = None,
+    ) -> schemas.AnnotationTaskBulkResult:
+        """Replace sound event tags across many annotation tasks."""
+        from sonari.api import tags as tags_api
+
+        if replace_group is not None:
+            return await self._bulk_replace_species_group(
+                session,
+                task_ids=task_ids,
+                group=replace_group,
+                user=user,
+            )
+
+        effective_replace_all = replace_all or is_replace_all_tag(old_tag)
+        if add_to_tagged:
+            if replace_all or effective_replace_all:
+                raise ValueError("add_to_tagged cannot be combined with replace_all.")
+            if old_tag is None or new_tag is None or is_replace_all_tag(old_tag):
+                raise ValueError("add_to_tagged requires old_tag and new_tag.")
+        if new_tag is None and old_tag is None and not effective_replace_all:
+            raise ValueError("Provide old_tag, new_tag, or replace_all to update tags.")
+
+        new_tag_id: int | None = None
+        if new_tag is not None:
+            new_tag_obj = await tags_api.get_or_create(
+                session,
+                new_tag.key,
+                new_tag.value,
+                user,
+            )
+            new_tag_id = new_tag_obj.id
+
+        old_tag_id: int | None = None
+        old_tag_provided = old_tag is not None
+        if old_tag is not None and not is_replace_all_tag(old_tag):
+            old_tag_obj = await tags_api.get(session, (old_tag.key, old_tag.value))
+            old_tag_id = old_tag_obj.id
+
+        bulk_params = build_bulk_params(
+            new_tag_id=new_tag_id,
+            old_tag_id=old_tag_id,
+            effective_replace_all=effective_replace_all,
+            old_tag_provided=old_tag_provided,
+            add_to_tagged=add_to_tagged,
+            user=user,
+        )
+
+        return await self._run_bulk_replace_chunks(session, task_ids, bulk_params)
+
+    async def _run_bulk_replace_chunks(
+        self,
+        session: AsyncSession,
+        task_ids: list[int],
+        bulk_params: BulkSoundEventTagReplaceParams,
+    ) -> schemas.AnnotationTaskBulkResult:
+        tasks_targeted = len(task_ids)
+        tasks_updated = 0
+        sound_events_updated = 0
+        failures: list[schemas.AnnotationTaskBulkFailure] = []
+
+        for chunk_start in range(0, len(task_ids), _BULK_CHUNK_SIZE):
+            chunk = task_ids[chunk_start : chunk_start + _BULK_CHUNK_SIZE]
+            try:
+                chunk_result = await process_bulk_tag_replace_chunk(
+                    session,
+                    chunk,
+                    bulk_params,
+                )
+                failures.extend(chunk_result.failures)
+                tasks_updated += chunk_result.tasks_updated
+                sound_events_updated += chunk_result.sound_events_updated
+                if chunk_result.tasks_updated > 0 or chunk_result.sound_events_updated > 0:
+                    await session.commit()
+            except Exception as exc:  # noqa: BLE001
+                await session.rollback()
+                message = str(exc)
+                for task_id in chunk:
+                    failures.append(
+                        schemas.AnnotationTaskBulkFailure(
+                            annotation_task_id=task_id,
+                            message=message,
+                        ),
+                    )
+
+        return schemas.AnnotationTaskBulkResult(
+            tasks_targeted=tasks_targeted,
+            tasks_updated=tasks_updated,
+            tasks_skipped=0,
+            sound_events_updated=sound_events_updated,
+            failures=failures,
+        )
+
+    async def _bulk_replace_species_group(
+        self,
+        session: AsyncSession,
+        *,
+        task_ids: list[int],
+        group: str,
+        user: schemas.SimpleUser,
+    ) -> schemas.AnnotationTaskBulkResult:
+        """Replace every species tag of ``group`` with the tag ``group=<group>``."""
+        from sonari.api import tags as tags_api
+
+        if group not in REPLACEABLE_BAT_GROUPS:
+            raise ValueError(f"Unsupported group: {group}.")
+
+        empty = schemas.AnnotationTaskBulkResult(
+            tasks_targeted=len(task_ids),
+            tasks_updated=0,
+            tasks_skipped=0,
+            sound_events_updated=0,
+            failures=[],
+        )
+
+        member_values = [v for v in species_in_group(group) ]
+        member_ids = (
+            await session.execute(
+                select(models.Tag.id).where(
+                    models.Tag.key == SPECIES_TAG_KEY,
+                    models.Tag.value.in_(member_values),
+                ),
+            )
+        ).scalars().all()
+        if not member_ids:
+            return empty
+
+        group_tag = await tags_api.get_or_create(session, GROUP_TAG_KEY, group, user)
+        bulk_params = build_bulk_params(
+            new_tag_id=group_tag.id,
+            old_tag_id=None,
+            effective_replace_all=False,
+            old_tag_provided=True,
+            add_to_tagged=False,
+            user=user,
+            old_tag_ids=member_ids,
+        )
+        return await self._run_bulk_replace_chunks(session, task_ids, bulk_params)
+
+    async def bulk_delete_sound_events_by_tag(
+        self,
+        session: AsyncSession,
+        *,
+        task_ids: list[int],
+        tag: schemas.TagCreate,
+    ) -> schemas.AnnotationTaskBulkResult:
+        """Delete sound event annotations whose only tag is ``tag`` across many tasks."""
+        from sonari.api import tags as tags_api
+
+        if is_replace_all_tag(tag):
+            raise ValueError("Deleting sound events requires a specific tag.")
+
+        tag_obj = await tags_api.get(session, (tag.key, tag.value))
+
+        tasks_updated = 0
+        sound_events_deleted = 0
+        sound_events_skipped = 0
+        failures: list[schemas.AnnotationTaskBulkFailure] = []
+
+        for chunk_start in range(0, len(task_ids), _BULK_CHUNK_SIZE):
+            chunk = task_ids[chunk_start : chunk_start + _BULK_CHUNK_SIZE]
+            try:
+                chunk_result = await process_bulk_delete_sound_events_chunk(
+                    session,
+                    chunk,
+                    tag_obj.id,
+                )
+                failures.extend(chunk_result.failures)
+                tasks_updated += chunk_result.tasks_updated
+                sound_events_deleted += chunk_result.sound_events_updated
+                sound_events_skipped += chunk_result.sound_events_skipped
+                if chunk_result.sound_events_updated > 0:
+                    await session.commit()
+            except Exception as exc:  # noqa: BLE001
+                await session.rollback()
+                message = str(exc)
+                for task_id in chunk:
+                    failures.append(
+                        schemas.AnnotationTaskBulkFailure(
+                            annotation_task_id=task_id,
+                            message=message,
+                        ),
+                    )
+
+        return schemas.AnnotationTaskBulkResult(
+            tasks_targeted=len(task_ids),
+            tasks_updated=tasks_updated,
+            tasks_skipped=0,
+            sound_events_updated=sound_events_deleted,
+            sound_events_skipped=sound_events_skipped,
+            failures=failures,
         )
 
 

@@ -33,7 +33,7 @@ export default function DisableSpectrogramButton({
         }
         placement="bottom"
       >
-        <Button variant={!withSpectrogram ? "primary" : "secondary"} onClick={onWithSpectrogramChange}>
+        <Button variant={!withSpectrogram ? "primary" : "secondary"} pressed={!withSpectrogram} onClick={onWithSpectrogramChange}>
           <DisableIcon className="w-5 h-5" />
         </Button>
       </Tooltip>

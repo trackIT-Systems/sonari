@@ -7,6 +7,7 @@ import { useKeyPressEvent } from "react-use";
 
 import useKeyFilter from "@/hooks/utils/useKeyFilter";
 import { HELP_SHORTCUT } from "@/utils/keyboard";
+import { useGuidedTourReturnEvent } from "@/components/workshop/guidedTour/events";
 
 type Shortcut = {
   label: string;
@@ -21,10 +22,18 @@ export default function ShortcutHelper({
 } = {}) {
   const [show, setShow] = useState(false);
   useKeyPressEvent(useKeyFilter({ key: HELP_SHORTCUT }), () => setShow((v) => !v));
+  useGuidedTourReturnEvent(show, false, "shortcuts-closed");
 
   return (
     <>
-      <Button mode="text" variant="info" type="button" onClick={() => setShow(true)}>
+      <Button
+        mode="text"
+        variant="info"
+        type="button"
+        // Don't take focus on click, so nothing is left focused after closing
+        onMouseDown={(event) => event.preventDefault()}
+        onClick={() => setShow(true)}
+      >
         <HelpIcon className="inline-block w-4 h-4 align-middle" />
       </Button>
       <DialogOverlay
@@ -58,7 +67,7 @@ export default function ShortcutHelper({
                 </td>
               </tr>
               {shortcuts?.map((shortcut) => (
-                <tr key={shortcut.shortcut}>
+                <tr key={`${shortcut.shortcut}-${shortcut.label}`}>
                   <td className="p-2 border border-stone-500 text-center">
                     <KeyboardKey code={shortcut.shortcut.trim() || " "} />
                   </td>

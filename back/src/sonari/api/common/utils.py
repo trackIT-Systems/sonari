@@ -5,7 +5,7 @@ from dataclasses import MISSING, fields
 from typing import Any, Callable, Sequence, TypeVar
 
 from pydantic import BaseModel
-from sqlalchemy import Result, Select, func, insert, select
+from sqlalchemy import Select, func, insert, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.inspection import inspect
@@ -21,6 +21,7 @@ __all__ = [
     "add_feature_to_object",
     "add_note_to_object",
     "add_tag_to_object",
+    "apply_filters",
     "create_object",
     "create_objects",
     "create_objects_without_duplicates",
@@ -231,6 +232,22 @@ def get_sort_by_col_from_str(
     return col
 
 
+def apply_filters(
+    query: Select,
+    filters: Sequence[Filter | _ColumnExpressionArgument] | None,
+) -> Select:
+    """Apply filters (Filter objects or column expressions) to a query."""
+    for filter_ in filters or []:
+        if isinstance(filter_, Filter):
+            query = filter_.filter(query)
+        else:
+            query = query.where(filter_)
+    return query
+
+
+_TOTAL_COUNT_LABEL = "_total_count"
+
+
 async def get_objects_from_query(
     session: AsyncSession,
     model: type[A],
@@ -241,18 +258,19 @@ async def get_objects_from_query(
     filters: Sequence[Filter | _ColumnExpressionArgument] | None = None,
     sort_by: _ColumnExpressionArgument | str | None = None,
     noloads: list[Any] | None = None,
-) -> tuple[Result[Any], int]:
-    """Get a list of objects from a query."""
+) -> tuple[list[tuple[Any, ...]], int]:
+    """Get a page of rows from a query and the total number of matching rows.
+
+    The total is computed in the same statement with ``count(*) OVER ()`` so
+    the filters are evaluated only once. Returned rows exclude that column.
+    """
     for nl in noloads or []:
         query = query.options(noload(nl))
 
-    for filter_ in filters or []:
-        if isinstance(filter_, Filter):
-            query = filter_.filter(query)
-        else:
-            query = query.where(filter_)
+    query = apply_filters(query, filters)
+    filtered_query = query
 
-    count = await get_count(session, model, query)
+    query = query.add_columns(func.count().over().label(_TOTAL_COUNT_LABEL))
 
     if sort_by is not None:
         if isinstance(sort_by, str):
@@ -297,7 +315,17 @@ async def get_objects_from_query(
         query = query.offset(offset)
 
     result = await session.execute(query)
-    return result, count
+    rows = result.all()
+
+    if rows:
+        count = rows[0][-1]
+    elif offset:
+        # Page past the end: no rows carry the total, so count separately.
+        count = await get_count(session, model, filtered_query)
+    else:
+        count = 0
+
+    return [tuple(row[:-1]) for row in rows], count
 
 
 async def get_objects(
@@ -336,7 +364,7 @@ async def get_objects(
         have been returned if no limit or offset was applied.
     """
     query = select(model)
-    result, count = await get_objects_from_query(
+    rows, count = await get_objects_from_query(
         session,
         model,
         query,
@@ -346,7 +374,9 @@ async def get_objects(
         sort_by=sort_by,
         noloads=noloads,
     )
-    return result.unique().scalars().all(), count
+    # Keep first occurrence per object, as result.unique() did before.
+    objs = list({id(row[0]): row[0] for row in rows}.values())
+    return objs, count
 
 
 async def create_object(

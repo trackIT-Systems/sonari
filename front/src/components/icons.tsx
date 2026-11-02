@@ -15,6 +15,7 @@ import {
   ArrowTrendingDownIcon,
   ArrowUpOnSquareIcon,
   ArrowUturnLeftIcon,
+  ArrowsPointingInIcon,
   ArrowsPointingOutIcon,
   Bars2Icon,
   BellAlertIcon,
@@ -165,7 +166,6 @@ function TimeIntervalIcon(props: HTMLProps<SVGSVGElement>) {
       viewBox="0 0 24 24"
       fill="none"
       xmlns="http://www.w3.org/2000/svg"
-      transform="rotate(90)"
     >
       <g id="SVGRepo_bgCarrier" strokeWidth="0"></g>
       <g
@@ -173,7 +173,8 @@ function TimeIntervalIcon(props: HTMLProps<SVGSVGElement>) {
         strokeLinecap="round"
         strokeLinejoin="round"
       ></g>
-      <g id="SVGRepo_iconCarrier">
+      {/* Rotated inside the svg: an outer transform attribute is not honoured everywhere. */}
+      <g id="SVGRepo_iconCarrier" transform="rotate(90 12 12)">
         {" "}
         <path
           d="M12 18L12 6M12 18L9 16M12 18L15 16M12 6L9 8M12 6L15 8M21 3H3M21 21H3"
@@ -254,6 +255,8 @@ export {
   ArrowUpOnSquareIcon as UploadIcon,
   ArrowUturnLeftIcon as BackIcon,
   ArrowsPointingOutIcon as TimeExpansionIcon,
+  ArrowsPointingOutIcon as EnterFullscreenIcon,
+  ArrowsPointingInIcon as ExitFullscreenIcon,
   Bars2Icon as ChannelsIcon,
   BellAlertIcon as IssuesIcon,
   BoltIcon as SpeedIcon,

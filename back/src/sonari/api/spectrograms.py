@@ -88,12 +88,36 @@ def compute_spectrogram(
         hop_size_samples = 1
         overlap_samples = window_size_samples - 1
 
+    # Previews and zoomed out views only need a limited number of columns: widen
+    # the hop instead of computing every frame and downscaling afterwards. Frames
+    # further apart than half a window would leave audio unanalysed (short calls
+    # could vanish), so beyond that columns are max-pooled instead.
+    pool_size = 1
+    if spectrogram_parameters.max_columns is not None:
+        min_hop_size_samples = int(np.ceil(audio_length / spectrogram_parameters.max_columns))
+        max_hop_size_samples = max(hop_size_samples, window_size_samples // 2)
+        if min_hop_size_samples > max_hop_size_samples:
+            pool_size = int(np.ceil(min_hop_size_samples / max_hop_size_samples))
+        # hop * pool_size ~= min_hop_size_samples, so close to max_columns remain
+        pooled_hop_size_samples = int(np.ceil(min_hop_size_samples / pool_size))
+        hop_size_samples = max(hop_size_samples, pooled_hop_size_samples)
+
     spectrogram = compute_spectrogram_from_samples(
         wav,
         window_size_samples,
         hop_size_samples,
         window_type=spectrogram_parameters.window,
     )
+
+    # Pool right after the STFT so the steps below run on far fewer columns. dB
+    # scaling and normalisation commute with the maximum; PCEN smooths per frame,
+    # so like any hop change, pooling alters its effective time constant.
+    if pool_size > 1:
+        spectrogram = spectrogram.coarsen(
+            {Dimensions.time.value: pool_size},
+            boundary="pad",
+            coord_func="min",
+        ).max()
 
     # De-noise spectrogram with PCEN
     if not spectrogram_parameters.pcen:
@@ -194,27 +218,26 @@ def compute_waveform(
     # Width = number of STFT time bins
     width = int(np.ceil(duration / hop_size_seconds))
 
+    # Zoomed out views only need as many columns as are drawn
+    if spectrogram_parameters.max_columns is not None:
+        width = min(width, spectrogram_parameters.max_columns)
+
     # Height matches frontend WAVEFORM_CANVAS_DIMENSIONS.height
     height = 64
 
     # Resample waveform to match target width
     # Use min/max downsampling for better visual representation
-    samples_per_pixel = len(waveform) // width
-
-    if samples_per_pixel > 1:
-        # Reshape and compute min/max for each pixel column
-        truncated_length = (len(waveform) // samples_per_pixel) * samples_per_pixel
-        reshaped = waveform[:truncated_length].reshape(-1, samples_per_pixel)
-        waveform_max = reshaped.max(axis=1)
-        waveform_min = reshaped.min(axis=1)
+    if len(waveform) > width:
+        # Exactly `width` columns spanning all samples, so the image lines up
+        # with the requested time range.
+        column_starts = np.linspace(0, len(waveform), width + 1).astype(int)[:-1]
+        waveform_max = np.maximum.reduceat(waveform, column_starts)
+        waveform_min = np.minimum.reduceat(waveform, column_starts)
     else:
         # If we have fewer samples than pixels, just use the waveform as-is
         # and pad or interpolate if needed
         waveform_max = waveform[:width] if len(waveform) >= width else np.pad(waveform, (0, width - len(waveform)))
         waveform_min = waveform_max
-
-    # Create 2D array for the waveform visualization
-    canvas = np.zeros((height, width), dtype=np.float32)
 
     # Normalize waveform to [0, height-1] range
     # Center line is at height // 2
@@ -228,18 +251,10 @@ def compute_waveform(
     else:
         scale = 1
 
-    # For each x position, fill from min to max amplitude
-    for x in range(min(width, len(waveform_max))):
-        y_max = int(center - waveform_max[x] * scale)
-        y_min = int(center - waveform_min[x] * scale)
+    # Fill each column from min to max amplitude
+    y_max = np.clip(np.trunc(center - waveform_max * scale), 0, height - 1)
+    y_min = np.clip(np.trunc(center - waveform_min * scale), 0, height - 1)
+    rows = np.arange(height)[:, None]
+    canvas = (rows >= np.minimum(y_max, y_min)) & (rows <= np.maximum(y_max, y_min))
 
-        # Clamp to valid range
-        y_max = max(0, min(height - 1, y_max))
-        y_min = max(0, min(height - 1, y_min))
-
-        # Fill from min to max (or max to min if inverted)
-        start_y = min(y_max, y_min)
-        end_y = max(y_max, y_min) + 1
-        canvas[start_y:end_y, x] = 1.0
-
-    return canvas
+    return canvas.astype(np.float32)

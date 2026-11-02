@@ -24,6 +24,7 @@ import STFTSettings from "./settings/STFTSettings";
 import type { SpectrogramParameters } from "@/types";
 import KeyboardKey from "../KeyboardKey";
 import { SETTINGS_SHORTCUT } from "@/utils/keyboard";
+import { useGuidedTourReturnEvent } from "@/components/workshop/guidedTour/events";
 import useKeyFilter from "@/hooks/utils/useKeyFilter";
 import { useKeyPressEvent } from "react-use";
 import FreqLineSettings from "./settings/FreqLineSettings";
@@ -136,7 +137,8 @@ const SpectrogramSettings = memo(function SpectrogramSettings({
 }) {
   const [open, setOpen] = useState(false);
 
-  useKeyPressEvent(useKeyFilter({ key: SETTINGS_SHORTCUT }), () => setOpen(true));
+  useKeyPressEvent(useKeyFilter({ key: SETTINGS_SHORTCUT }), () => setOpen((value) => !value));
+  useGuidedTourReturnEvent(open, false, "settings-closed");
 
   return (
     <div>
@@ -149,7 +151,13 @@ const SpectrogramSettings = memo(function SpectrogramSettings({
         }
         placement="bottom"
       >
-        <Button variant="secondary" onClick={() => setOpen(true)}>
+        <Button
+          variant="secondary"
+          // Don't take focus: the panel hands focus back to its trigger on close,
+          // and a focused button blocks the keyboard shortcuts.
+          onMouseDown={(event) => event.preventDefault()}
+          onClick={() => setOpen(true)}
+        >
           <SettingsIcon className="w-5 h-5" />
         </Button>
       </Tooltip>
@@ -164,7 +172,14 @@ const SpectrogramSettings = memo(function SpectrogramSettings({
               <Button mode="text" variant="warning" onClick={onReset}>
                 Reset
               </Button>
-              <Button mode="text" variant="primary" onClick={onSave}>
+              <Button
+                mode="text"
+                variant="primary"
+                onClick={() => {
+                  onSave?.();
+                  setOpen(false);
+                }}
+              >
                 Save
               </Button>
             </span>

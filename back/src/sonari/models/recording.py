@@ -21,7 +21,7 @@ from typing import TYPE_CHECKING
 from uuid import UUID
 
 import sqlalchemy.orm as orm
-from sqlalchemy import ForeignKey, UniqueConstraint
+from sqlalchemy import ForeignKey, Index, UniqueConstraint
 
 from sonari.models.base import Base
 from sonari.models.user import User
@@ -104,6 +104,8 @@ class Recording(Base):
     """
 
     __tablename__ = "recording"
+
+    __table_args__ = (Index("ix_recording_date_time", "date", "time"),)
 
     id: orm.Mapped[int] = orm.mapped_column(primary_key=True, init=False)
     hash: orm.Mapped[str] = orm.mapped_column(unique=True, index=True)

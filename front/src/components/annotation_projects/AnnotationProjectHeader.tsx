@@ -11,6 +11,7 @@ import { H1 } from "@/components/Headings";
 import { DatasetIcon, EditIcon, TasksIcon } from "@/components/icons";
 import Tabs from "@/components/Tabs";
 import api from "@/app/api";
+import { clearAnnotationTaskFilterPersist } from "@/hooks/utils/annotationTaskFilterPersistKey";
 import { blurActiveElement } from "@/utils/focus";
 
 import type { AnnotationProject } from "@/types";
@@ -25,26 +26,42 @@ export default function AnnotationProjectHeader({
   const selectedLayoutSegment = useSelectedLayoutSegment();
   const [isLoadingFirstTask, setIsLoadingFirstTask] = useState(false);
 
+  const enteringFromOverview = selectedLayoutSegment === null;
+
   const handleAnnotateClick = useCallback(async () => {
     // Always fetch the first task, don't remember the previous one
+    if (enteringFromOverview) {
+      clearAnnotationTaskFilterPersist(annotationProject.id);
+    }
     setIsLoadingFirstTask(true);
     try {
-      const response = await api.annotationTasks.getMany({
-        annotation_project: annotationProject,
-        limit: 1,
-        offset: 0,
-      });
+      const projectId = params.get("annotation_project_id");
+      // A guided tour continues where the user is (the first lesson without a
+      // badge), not at lesson 1: e.g. back from a lesson on the Tasks tab.
+      let taskId: number | null = null;
+      if (annotationProject.is_guided_tour) {
+        const { tours } = await api.annotationProjects.getGuidedTourAvailable();
+        taskId =
+          tours.find((tour) => tour.annotation_project_id === annotationProject.id)
+            ?.resume_annotation_task_id ?? null;
+      }
+      if (taskId == null) {
+        const response = await api.annotationTasks.getMany({
+          annotation_project: annotationProject,
+          limit: 1,
+          offset: 0,
+        });
 
-      if (response.items.length === 0) {
-        toast.error("No annotation tasks found in this project.");
-        return;
+        if (response.items.length === 0) {
+          toast.error("No annotation tasks found in this project.");
+          return;
+        }
+        taskId = response.items[0].id;
       }
 
-      const firstTask = response.items[0];
-      const projectId = params.get("annotation_project_id");
       blurActiveElement();
       router.push(
-        `/annotation_projects/detail/annotation/?annotation_project_id=${projectId}&annotation_task_id=${firstTask.id}`,
+        `/annotation_projects/detail/annotation/?annotation_project_id=${projectId}&annotation_task_id=${taskId}`,
       );
     } catch (error) {
       toast.error("Failed to load annotation tasks.");
@@ -52,14 +69,15 @@ export default function AnnotationProjectHeader({
     } finally {
       setIsLoadingFirstTask(false);
     }
-  }, [annotationProject, params, router]);
+  }, [annotationProject, enteringFromOverview, params, router]);
 
   return (
     <Header>
-      <div className="flex overflow-x-auto flex-row space-x-4 w-full">
-        <H1 className="overflow-auto max-w-xl whitespace-nowrap">
+      <div className="flex w-full min-w-0 flex-col gap-3 sm:flex-row sm:items-center sm:gap-6">
+        <H1 className="min-w-0 break-words text-balance sm:max-w-[min(100%,60rem)] sm:shrink">
           {annotationProject.name}
         </H1>
+        <div className="shrink-0" data-guided-tour="header-tabs">
         <Tabs
           tabs={[
             {
@@ -79,6 +97,9 @@ export default function AnnotationProjectHeader({
               isActive: selectedLayoutSegment === "tasks",
               icon: <TasksIcon className="w-5 h-5 align-middle"/>,
               onClick: () => {
+                if (enteringFromOverview) {
+                  clearAnnotationTaskFilterPersist(annotationProject.id);
+                }
                 router.push(
                   `/annotation_projects/detail/tasks/?${params.toString()}`,
                 );
@@ -93,6 +114,7 @@ export default function AnnotationProjectHeader({
             },
           ]}
         />
+        </div>
       </div>
     </Header>
   );

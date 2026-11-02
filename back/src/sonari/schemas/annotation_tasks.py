@@ -7,7 +7,7 @@ from soundevent.data import AnnotationState
 
 from sonari.schemas.base import BaseSchema
 from sonari.schemas.features import Feature
-from sonari.schemas.tags import Tag
+from sonari.schemas.tags import Tag, TagCreate
 from sonari.schemas.users import SimpleUser
 
 if TYPE_CHECKING:
@@ -20,6 +20,15 @@ __all__ = [
     "AnnotationStatusBadge",
     "AnnotationStatusBadgeUpdate",
     "AnnotationTask",
+    "AnnotationTaskBulkAddBadge",
+    "AnnotationTaskBulkAddTag",
+    "AnnotationTaskBulkDeleteSoundEvents",
+    "AnnotationTaskBulkFailure",
+    "AnnotationTaskBulkReplaceSoundEventTags",
+    "AnnotationTaskBulkResult",
+    "AnnotationTaskBulkTagSummary",
+    "SoundEventTagBulkCount",
+    "SoundEventTagStats",
     "AnnotationTaskCreate",
     "AnnotationTaskUpdate",
     "AnnotationTaskTag",
@@ -60,6 +69,25 @@ class AnnotationStatusBadgeUpdate(BaseModel):
 
     state: AnnotationState | None = None
     """State of the task."""
+
+
+class SoundEventTagStats(BaseModel):
+    """Confidence statistics of one tag over the sound events of a task."""
+
+    key: str
+    """Key of the tag."""
+
+    value: str
+    """Value of the tag."""
+
+    count: int
+    """Number of sound events in the task with this tag."""
+
+    median_confidence: float | None = None
+    """Median confidence over those sound events (None if none has one)."""
+
+    max_confidence: float | None = None
+    """Maximum confidence over those sound events (None if none has one)."""
 
 
 class AnnotationTaskTag(BaseSchema):
@@ -104,6 +132,9 @@ class AnnotationTask(BaseSchema):
 
     sound_event_tags: Optional[list[Tag]] = None
     """Aggregated tags from sound event annotations (without loading full sound events)"""
+
+    sound_event_tag_stats: Optional[list[SoundEventTagStats]] = None
+    """Per-tag confidence statistics over the task's sound events"""
 
     notes: Optional[list["Note"]] = None
     """ All notes of that task"""
@@ -191,3 +222,68 @@ class AnnotationTaskStats(BaseModel):
 
     assigned_count: int
     """Number of tasks with assigned status."""
+
+
+class AnnotationTaskBulkFailure(BaseModel):
+    """A single task failure during a bulk operation."""
+
+    annotation_task_id: int
+    message: str
+
+
+class AnnotationTaskBulkResult(BaseModel):
+    """Result summary for bulk annotation task operations."""
+
+    tasks_targeted: int
+    tasks_updated: int
+    tasks_skipped: int
+    sound_events_updated: int
+    sound_events_skipped: int = 0
+    failures: list[AnnotationTaskBulkFailure]
+
+
+class _AnnotationTaskBulkTarget(BaseModel):
+    """Optional explicit task IDs; omit to target all tasks matching the request filter."""
+
+    annotation_task_ids: list[int] | None = None
+
+
+class AnnotationTaskBulkAddBadge(_AnnotationTaskBulkTarget):
+    """Bulk-add a status badge to annotation tasks."""
+
+    state: AnnotationState
+
+
+class AnnotationTaskBulkAddTag(_AnnotationTaskBulkTarget):
+    """Bulk-add a tag to annotation tasks."""
+
+    tag: TagCreate
+
+
+class AnnotationTaskBulkReplaceSoundEventTags(_AnnotationTaskBulkTarget):
+    """Bulk replace sound event annotation tags within annotation tasks."""
+
+    old_tag: TagCreate | None = None
+    new_tag: TagCreate | None = None
+    replace_all: bool = False
+    add_to_tagged: bool = False
+    replace_group: str | None = None
+    """Bat group (e.g. ``Myotis``): replace all species tags of the group with the group tag."""
+
+
+class AnnotationTaskBulkDeleteSoundEvents(_AnnotationTaskBulkTarget):
+    """Bulk delete sound event annotations carrying a tag within annotation tasks."""
+
+    tag: TagCreate
+
+
+class SoundEventTagBulkCount(BaseModel):
+    """Distinct sound event tag with occurrence count across targeted tasks."""
+
+    key: str
+    value: str
+    count: int
+
+
+class AnnotationTaskBulkTagSummary(_AnnotationTaskBulkTarget):
+    """Request body for aggregating sound event tags on bulk targets."""

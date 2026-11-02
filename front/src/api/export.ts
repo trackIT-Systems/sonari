@@ -109,6 +109,7 @@ export function registerExportAPI(
     startDate?: string,
     endDate?: string,
     groupSpecies?: boolean,
+    posttriggerMs?: number,
   ): Promise<{ blob: Blob; filename: string }> {
     const params = buildCommonParams({
       annotationProjects,
@@ -120,6 +121,9 @@ export function registerExportAPI(
 
     if (groupSpecies !== undefined) {
       params.append("group_species", groupSpecies.toString());
+    }
+    if (posttriggerMs !== undefined) {
+      params.append("posttrigger_ms", posttriggerMs.toString());
     }
 
     const response = await instance.get(`${endpoints.probat}?${params.toString()}`, {

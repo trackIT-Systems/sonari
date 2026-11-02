@@ -16,7 +16,10 @@ export default function AnnotationTaskStatus({
   onReview,
   onVerify,
   onRemoveBadge,
+  compact = false,
 }: {
+  /** In a toolbar (task progress bar): no frame of its own. */
+  compact?: boolean;
   task?: AnnotationTask;
   onDone?: () => void;
   onUnsure?: () => void;
@@ -25,7 +28,14 @@ export default function AnnotationTaskStatus({
   onRemoveBadge?: (state: AnnotationStatus, userId?: string) => void;
 }) {
   return (
-    <div className="flex flex-row justify-between items-center border rounded-md border-stone-200 dark:border-stone-800 px-6">
+    <div
+      data-guided-tour="status-badges"
+      className={
+        compact
+          ? "flex flex-row items-center gap-3"
+          : "flex flex-row justify-between items-center border rounded-md border-stone-200 dark:border-stone-800 px-6"
+      }
+    >
       <div className="flex flex-row flex-wrap gap-2">
         {task == null ? (
           <Loading />

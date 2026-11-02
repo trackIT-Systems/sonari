@@ -4,7 +4,7 @@ from typing import Annotated
 
 from fastapi import Depends
 
-from sonari import api, schemas
+from sonari import api, models, schemas
 from sonari.filters.notes import NoteFilter
 from sonari.routes.dependencies import Session
 from sonari.routes.dependencies.auth import create_authenticated_router
@@ -76,6 +76,10 @@ async def update_note(
         note,
         data,
     )
+    if updated.created_by is None:
+        author = await session.get(models.User, updated.created_by_id)
+        if author is not None:
+            updated = updated.model_copy(update={"created_by": schemas.SimpleUser.model_validate(author)})
     await session.commit()
     return updated
 

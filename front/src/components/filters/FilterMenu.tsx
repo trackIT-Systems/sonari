@@ -1,4 +1,4 @@
-import { Popover, PopoverButton, PopoverPanel } from "@headlessui/react";
+import { Popover, PopoverButton, PopoverPanel, useClose } from "@headlessui/react";
 import { type ReactNode, useState, useRef } from "react";
 
 import Button, { getButtonClassName } from "@/components/Button";
@@ -18,12 +18,19 @@ export type FilterDef<T extends Object> = {
   hideInMenu?: boolean;
   description?: string | ((filter: Filter<T>) => string);
   icon?: ReactNode;
+  /**
+   * Renders the filter input. `setFilter` applies a value and returns to the
+   * filter list; selectors that collect several values can instead write via
+   * `filter.set` (keeps the panel open) and call `close` when finished.
+   */
   selector: ({
     setFilter,
-    filter
+    filter,
+    close,
   }: {
     setFilter: SetFilter<T>;
     filter: Filter<T>;
+    close: () => void;
   }) => ReactNode;
   render: (renderProps: {
     value: any;
@@ -47,6 +54,7 @@ function FilterCombobox<T extends Object>({
       <SearchMenu
         options={filterDefs.filter((def) => !def.hideInMenu)}
         static={true}
+        inlineOptions
         renderOption={(filter) => (
           <>
             {filter.icon ?? filter.icon}
@@ -76,6 +84,7 @@ function FilterPanel<T extends Object>({
   filterDefs: FilterDef<T>[];
 }) {
   const [selectedFilter, setSelectedFilter] = useState<FilterDef<T> | null>(null);
+  const closePopover = useClose();
 
   const cancelButtonRef = useRef<HTMLButtonElement>(null);
 
@@ -131,7 +140,11 @@ function FilterPanel<T extends Object>({
             filter.set(name, value);
             setSelectedFilter(null);
           },
-          filter  // Pass the filter prop
+          filter,
+          close: () => {
+            setSelectedFilter(null);
+            closePopover();
+          },
         })}
       </div>
     </>
@@ -160,10 +173,10 @@ export default function FilterPopover<T extends Object>({
     className = getButtonClassName({ mode, variant });
   }
 
-  const panelPositionClass =
+  const panelAnchor =
     panelAlign === "start"
-      ? "left-0 origin-top-left"
-      : "right-0 origin-top-right";
+      ? { to: "bottom start" as const, gap: 4, padding: 16 }
+      : { to: "bottom end" as const, gap: 4, padding: 16 };
 
   return (
     <Popover as="div" className="relative inline-block text-left">
@@ -178,7 +191,9 @@ export default function FilterPopover<T extends Object>({
       )}
       <PopoverPanel
         unmount
-        className={`absolute ${panelPositionClass} mt-1 w-96 max-w-[min(24rem,calc(100vw-2rem))] divide-y divide-stone-100 rounded-md bg-stone-50 dark:bg-stone-700 border border-stone-200 dark:border-stone-500 shadow-md dark:shadow-stone-800 ring-1 ring-stone-900 ring-opacity-5 focus:outline-none z-50 transition transform data-[closed]:scale-95 data-[closed]:opacity-0 data-[enter]:duration-100 data-[leave]:duration-75 data-[enter]:ease-out data-[leave]:ease-in`}
+        portal
+        anchor={panelAnchor}
+        className="z-[60] w-96 max-w-[min(24rem,calc(100vw-2rem))] rounded-md bg-stone-50 dark:bg-stone-700 border border-stone-200 dark:border-stone-500 shadow-md dark:shadow-stone-800 ring-1 ring-stone-900 ring-opacity-5 focus:outline-none transition transform data-[closed]:scale-95 data-[closed]:opacity-0 data-[enter]:duration-100 data-[leave]:duration-75 data-[enter]:ease-out data-[leave]:ease-in [--anchor-max-height:calc(100vh-2rem)]"
       >
         <div className="p-4">
           <FilterPanel filter={filter} filterDefs={filterDef} />

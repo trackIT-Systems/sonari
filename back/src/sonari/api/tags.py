@@ -7,6 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from sonari import exceptions, models, schemas
 from sonari.api.common import BaseAPI
+from sonari.api.species_catalog import find_species
 from sonari.schemas.users import SimpleUser
 
 __all__ = [
@@ -33,6 +34,7 @@ class TagAPI(
         key: str,
         value: str,
         created_by: SimpleUser,
+        group_id: int | None = None,
     ) -> schemas.Tag:
         """Create a tag.
 
@@ -44,17 +46,28 @@ class TagAPI(
             The tag key.
         value
             The tag value.
+        group_id
+            The tag group (e.g. Bat, Bird) the tag belongs to. Ignored if
+            the value names a species in the species catalog; the tag then
+            joins the species' group.
 
         Returns
         -------
         schemas.Tag
             The tag.
         """
+        # A tag naming a catalog species is linked to it and joins its group
+        # (this also covers tags created by detectors through this API).
+        species = await find_species(session, value)
+        if species is not None and species.group_id is not None:
+            group_id = species.group_id
         return await self.create_from_data(
             session,
             key=key,
             value=value,
             created_by_id=created_by.id,
+            group_id=group_id,
+            species_id=species.id if species is not None else None,
         )
 
     async def get_or_create(

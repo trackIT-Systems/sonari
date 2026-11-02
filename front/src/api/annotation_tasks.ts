@@ -90,6 +90,8 @@ const AnnotationTaskFilterSchema = z.object({
   completed: z.boolean().optional(),
   assigned_to: UserSchema.optional(),
   search_recordings: z.string().optional(),
+  /** Only these tasks, e.g. the rows ticked in the tasks table ("annotate selection"). */
+  annotation_task_ids: z.array(z.number().int()).optional(),
   sort_by: z.string().optional(),
   date_range: z
     .union([
@@ -146,6 +148,10 @@ const AnnotationTaskFilterSchema = z.object({
     eq: z.number().optional(),
   }).optional(),
   confidence: z.object({
+    gt: z.number().optional(),
+    lt: z.number().optional(),
+  }).optional(),
+  median_confidence: z.object({
     gt: z.number().optional(),
     lt: z.number().optional(),
   }).optional(),
@@ -252,6 +258,7 @@ export function buildAnnotationTaskFilterQueryParams(
     completed__eq: params.completed,
     assigned_to__eq: params.assigned_to?.id,
     search_recordings: params.search_recordings,
+    id__lst: params.annotation_task_ids?.length ? params.annotation_task_ids.join(",") : undefined,
     date__start_dates: params.date_range
       ? (Array.isArray(params.date_range)
         ? params.date_range.map((d) => formatDateForAPI(d.start_date)).join(",")
@@ -274,6 +281,8 @@ export function buildAnnotationTaskFilterQueryParams(
       : undefined,
     confidence__gt: params.confidence?.gt,
     confidence__lt: params.confidence?.lt,
+    median_confidence__gt: params.median_confidence?.gt,
+    median_confidence__lt: params.median_confidence?.lt,
     sound_event_annotation_min_frequency__gt: params.sound_event_annotation_min_frequency?.gt,
     sound_event_annotation_min_frequency__lt: params.sound_event_annotation_min_frequency?.lt,
     sound_event_annotation_max_frequency__gt: params.sound_event_annotation_max_frequency?.gt,
@@ -296,6 +305,30 @@ type GetAnnotationTasksQuery = z.input<
   typeof GetAnnotationTasksQuerySchema
 >;
 
+const AnnotationTaskBulkFailureSchema = z.object({
+  annotation_task_id: z.number(),
+  message: z.string(),
+});
+
+export const AnnotationTaskBulkResultSchema = z.object({
+  tasks_targeted: z.number(),
+  tasks_updated: z.number(),
+  tasks_skipped: z.number(),
+  sound_events_updated: z.number(),
+  sound_events_skipped: z.number().default(0),
+  failures: z.array(AnnotationTaskBulkFailureSchema),
+});
+
+export type AnnotationTaskBulkResult = z.infer<typeof AnnotationTaskBulkResultSchema>;
+
+const SoundEventTagBulkCountSchema = z.object({
+  key: z.string(),
+  value: z.string(),
+  count: z.number(),
+});
+
+export type SoundEventTagBulkCount = z.infer<typeof SoundEventTagBulkCountSchema>;
+
 const DEFAULT_ENDPOINTS = {
   getMany: "/api/v1/annotation_tasks/",
   getIndex: "/api/v1/annotation_tasks/index",
@@ -308,6 +341,11 @@ const DEFAULT_ENDPOINTS = {
   removeNote:  "/api/v1/annotation_tasks/detail/notes/",
   addTag:  "/api/v1/annotation_tasks/detail/tags/",
   removeTag:  "/api/v1/annotation_tasks/detail/tags/",
+  bulkAddBadge: "/api/v1/annotation_tasks/bulk/badges/",
+  bulkAddTag: "/api/v1/annotation_tasks/bulk/tags/",
+  bulkReplaceSoundEventTags: "/api/v1/annotation_tasks/bulk/sound_event_tags/replace/",
+  bulkSoundEventTagSummary: "/api/v1/annotation_tasks/bulk/sound_event_tags/summary/",
+  bulkDeleteSoundEventsByTag: "/api/v1/annotation_tasks/bulk/sound_events/delete/",
 };
 
 export function registerAnnotationTasksAPI(
@@ -505,7 +543,123 @@ export function registerAnnotationTasksAPI(
     });
     return AnnotationTaskSchema.parse(response.data);
   }
-  
+
+  async function bulkAddBadge({
+    filter,
+    annotation_task_ids,
+    state,
+  }: {
+    filter: AnnotationTaskFilter;
+    annotation_task_ids?: number[];
+    state: AnnotationStatus;
+  }): Promise<AnnotationTaskBulkResult> {
+    const response = await instance.post(
+      endpoints.bulkAddBadge,
+      {
+        annotation_task_ids,
+        state,
+      },
+      {
+        params: buildAnnotationTaskFilterQueryParams(filter),
+      },
+    );
+    return AnnotationTaskBulkResultSchema.parse(response.data);
+  }
+
+  async function bulkAddTag({
+    filter,
+    annotation_task_ids,
+    tag,
+  }: {
+    filter: AnnotationTaskFilter;
+    annotation_task_ids?: number[];
+    tag: Pick<Tag, "key" | "value">;
+  }): Promise<AnnotationTaskBulkResult> {
+    const response = await instance.post(
+      endpoints.bulkAddTag,
+      {
+        annotation_task_ids,
+        tag: { key: tag.key, value: tag.value },
+      },
+      {
+        params: buildAnnotationTaskFilterQueryParams(filter),
+      },
+    );
+    return AnnotationTaskBulkResultSchema.parse(response.data);
+  }
+
+  async function bulkSoundEventTagSummary({
+    filter,
+    annotation_task_ids,
+  }: {
+    filter: AnnotationTaskFilter;
+    annotation_task_ids?: number[];
+  }): Promise<SoundEventTagBulkCount[]> {
+    const response = await instance.post(
+      endpoints.bulkSoundEventTagSummary,
+      { annotation_task_ids },
+      {
+        params: buildAnnotationTaskFilterQueryParams(filter),
+      },
+    );
+    return z.array(SoundEventTagBulkCountSchema).parse(response.data);
+  }
+
+  async function bulkReplaceSoundEventTags({
+    filter,
+    annotation_task_ids,
+    old_tag,
+    new_tag,
+    replace_all,
+    add_to_tagged,
+    replace_group,
+  }: {
+    filter: AnnotationTaskFilter;
+    annotation_task_ids?: number[];
+    old_tag?: Pick<Tag, "key" | "value"> | null;
+    new_tag?: Pick<Tag, "key" | "value"> | null;
+    replace_all?: boolean;
+    add_to_tagged?: boolean;
+    replace_group?: string;
+  }): Promise<AnnotationTaskBulkResult> {
+    const response = await instance.post(
+      endpoints.bulkReplaceSoundEventTags,
+      {
+        annotation_task_ids,
+        old_tag: old_tag ?? undefined,
+        new_tag: new_tag ?? undefined,
+        replace_all: replace_all ?? false,
+        add_to_tagged: add_to_tagged ?? false,
+        replace_group,
+      },
+      {
+        params: buildAnnotationTaskFilterQueryParams(filter),
+      },
+    );
+    return AnnotationTaskBulkResultSchema.parse(response.data);
+  }
+
+  async function bulkDeleteSoundEventsByTag({
+    filter,
+    annotation_task_ids,
+    tag,
+  }: {
+    filter: AnnotationTaskFilter;
+    annotation_task_ids?: number[];
+    tag: Pick<Tag, "key" | "value">;
+  }): Promise<AnnotationTaskBulkResult> {
+    const response = await instance.post(
+      endpoints.bulkDeleteSoundEventsByTag,
+      {
+        annotation_task_ids,
+        tag: { key: tag.key, value: tag.value },
+      },
+      {
+        params: buildAnnotationTaskFilterQueryParams(filter),
+      },
+    );
+    return AnnotationTaskBulkResultSchema.parse(response.data);
+  }
 
   return {
     getMany,
@@ -519,5 +673,10 @@ export function registerAnnotationTasksAPI(
     removeNote,
     addTag,
     removeTag,
+    bulkAddBadge,
+    bulkAddTag,
+    bulkReplaceSoundEventTags,
+    bulkSoundEventTagSummary,
+    bulkDeleteSoundEventsByTag,
   } as const;
 }

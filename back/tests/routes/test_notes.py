@@ -202,3 +202,22 @@ async def test_get_notes_validates_schema(auth_client: AsyncClient):
         assert item.message is not None
         assert isinstance(item.is_issue, bool)
 
+
+
+@pytest.mark.asyncio
+async def test_created_note_carries_its_author(
+    auth_client: AsyncClient,
+    test_annotation_task: schemas.AnnotationTask,
+    test_user,
+):
+    """A new note must show its author right away (not as anonymous)."""
+    response = await auth_client.post(
+        "/api/v1/annotation_tasks/detail/notes/",
+        params={"annotation_task_id": test_annotation_task.id},
+        json={"message": "who wrote this", "is_issue": False},
+    )
+    assert response.status_code == 200
+    note = next(n for n in response.json()["notes"] if n["message"] == "who wrote this")
+    assert note["created_by"] is not None
+    assert note["created_by"]["id"] == str(test_user.id)
+

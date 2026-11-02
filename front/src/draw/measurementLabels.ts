@@ -1,5 +1,7 @@
 /** Collision-aware measurement labels for spectrogram/waveform tools. */
 
+import { getCanvasSize } from "@/draw/canvas";
+
 const PADDING_X = 4;
 const PADDING_Y = 3;
 const LABEL_GAP = 6;
@@ -207,8 +209,8 @@ export function buildTwoPointLabelSpecs(
     return clusteredLabelSpecs(
       (point1.x + point2.x) / 2,
       (point1.y + point2.y) / 2,
-      ctx.canvas.width,
-      ctx.canvas.height,
+      getCanvasSize(ctx).width,
+      getCanvasSize(ctx).height,
       { text: point1.text, size: size1 },
       { text: point2.text, size: size2 },
       { text: deltaText, size: sizeDelta },
@@ -261,8 +263,7 @@ export function placeMeasurementLabels(
   ctx: CanvasRenderingContext2D,
   specs: LabelSpec[],
 ): PlacedLabel[] {
-  const canvasWidth = ctx.canvas.width;
-  const canvasHeight = ctx.canvas.height;
+  const { width: canvasWidth, height: canvasHeight } = getCanvasSize(ctx);
 
   const labels: PlacedLabel[] = specs.map((spec) => {
     const size = measureMeasurementLabel(ctx, spec.text, spec.font);

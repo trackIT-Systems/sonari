@@ -1,6 +1,7 @@
 import { useMutation } from "@tanstack/react-query";
+import { useMemo } from "react";
 
-import { type TagFilter } from "@/api/tags";
+import { type TagCreate, type TagFilter } from "@/api/tags";
 import api from "@/app/api";
 import useFilter from "@/hooks/utils/useFilter";
 import usePagedQuery from "@/hooks/utils/usePagedQuery";
@@ -13,11 +14,17 @@ export default function useTags({
   fixed = _fixed,
   pageSize = 10,
   enabled = true,
+  annotationProjectId,
+  scoped = true,
 }: {
   filter?: TagFilter;
   fixed?: (keyof TagFilter)[];
   pageSize?: number;
   enabled?: boolean;
+  /** Project whose tag group or preset is used; new tags join its group. */
+  annotationProjectId?: number | null;
+  /** If false, search all tags even inside a project. */
+  scoped?: boolean;
 } = {}) {
   const filter = useFilter<TagFilter>({
     defaults: initialFilter,
@@ -26,16 +33,29 @@ export default function useTags({
     persistKey: "filters:tags",
   });
 
+  // The project scope is kept out of the persisted filter so it does not
+  // leak into tag searches outside the project.
+  const queryFilter = useMemo<TagFilter>(
+    () =>
+      annotationProjectId != null && scoped
+        ? { ...filter.filter, annotation_project_id: annotationProjectId }
+        : filter.filter,
+    [filter.filter, annotationProjectId, scoped],
+  );
+
   const { items, total, query, pagination } = usePagedQuery({
     name: "tags",
     queryFn: api.tags.get,
     pageSize: pageSize,
-    filter: filter.filter,
+    filter: queryFilter,
     enabled: enabled,
   });
 
   const create = useMutation({
-    mutationFn: api.tags.create,
+    mutationFn: (data: TagCreate) =>
+      api.tags.create(data, {
+        annotationProjectId: annotationProjectId ?? undefined,
+      }),
     onSuccess: () => {
       query.refetch();
     },

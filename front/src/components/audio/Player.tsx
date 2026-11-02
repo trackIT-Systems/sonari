@@ -37,7 +37,7 @@ import type { AriaSliderProps, AriaSliderThumbOptions } from "react-aria";
 import type { SliderState } from "react-stately";
 
 const COMMON_BUTTON_CLASSES =
-  "focus:outline-none focus:ring-4 focus:ring-emerald-500/50 rounded-full";
+  "focus:outline-none focus-visible:ring-4 focus-visible:ring-emerald-500/50 rounded-full";
 
 /**
  * Player component represents the audio player.
@@ -86,11 +86,12 @@ const Player = memo(function Player(props: PlayerState & PlayerControls) {
       <button
         type="button"
         className={classNames(COMMON_BUTTON_CLASSES, {
-          "text-emerald-500 dark:hover:text-emerald-300 hover:text-emerald-700":
+          "bg-emerald-600 text-white hover:bg-emerald-700 ring-2 ring-emerald-600 ring-offset-1 dark:ring-offset-stone-900":
             loop,
           "dark:text-stone-400 dark:hover:text-stone-200 text-stone-600 hover:text-stone-800":
             !loop,
         })}
+        aria-pressed={loop}
         onClick={() => toggleLoop()}
       >
         <LoopIcon className="w-5 h-5" />
@@ -98,11 +99,12 @@ const Player = memo(function Player(props: PlayerState & PlayerControls) {
       <button
         type="button"
         className={classNames(COMMON_BUTTON_CLASSES, {
-          "text-emerald-500 dark:hover:text-emerald-300 hover:text-emerald-700":
+          "bg-emerald-600 text-white hover:bg-emerald-700 ring-2 ring-emerald-600 ring-offset-1 dark:ring-offset-stone-900":
             autoplay,
           "dark:text-stone-400 dark:hover:text-stone-200 text-stone-600 hover:text-stone-800":
             !autoplay,
         })}
+        aria-pressed={autoplay}
         onClick={() => toggleAutoplay()}
         >
           <PlayIcon className="w-5 h-5" />

@@ -42,6 +42,7 @@ async def export_probat(
     start_date: Annotated[str | None, Query()] = None,
     end_date: Annotated[str | None, Query()] = None,
     group_species: bool = False,
+    posttrigger_ms: Annotated[int | None, Query(gt=0)] = None,
 ):
     """Export annotation projects in ProBat CSV format."""
     service = ProBatService(session)
@@ -52,6 +53,7 @@ async def export_probat(
         start_date,
         end_date,
         group_species,
+        posttrigger_ms,
     )
 
 

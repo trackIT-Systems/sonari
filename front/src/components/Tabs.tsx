@@ -40,6 +40,7 @@ function TabButton({
   children,
   active = false,
   className,
+  onClick,
   ...props
 }: {
   children: ReactNode;
@@ -48,6 +49,11 @@ function TabButton({
   return (
     <button
       {...props}
+      onClick={(event) => {
+        onClick?.(event);
+        // Don't keep the tab focused: focused buttons block keyboard shortcuts
+        event.currentTarget.blur();
+      }}
       className={classnames(
         BASE_CLASS,
         active ? ACTIVE_CLASS : INACTIVE_CLASS,
@@ -63,11 +69,16 @@ function TabLink({
   children,
   active = false,
   className,
+  onClick,
   ...props
 }: { children: ReactNode; active: boolean } & ComponentProps<typeof Link>) {
   return (
     <Link
       {...props}
+      onClick={(event) => {
+        onClick?.(event);
+        event.currentTarget.blur();
+      }}
       className={classnames(
         BASE_CLASS,
         active ? ACTIVE_CLASS : INACTIVE_CLASS,
@@ -143,7 +154,7 @@ export default function Tabs({ tabs }: { tabs: TabType[] }) {
   useKeyPressEvent(useKeyFilter({ key: NAVIGATE_STH_ELEMENT_SHORTCUT }), handleNumberKey);
 
   return (
-    <ul className="flex space-x-4">
+    <ul className="flex flex-wrap gap-x-4 gap-y-2">
       {tabs.map((tab, index) => {
         const shortcutNumber = index < 6 ? (index + 5) % 10 : undefined;
 

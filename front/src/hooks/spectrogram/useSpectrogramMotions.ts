@@ -5,7 +5,8 @@ import useSpectrogramZoom from "@/hooks/spectrogram/useSpectrogramZoom";
 import useWindowMotions from "@/hooks/window/useWindowMotions";
 import useWindowScroll from "@/hooks/window/useWindowScroll";
 
-import type { Position, SpectrogramWindow } from "@/types";
+import type { Dimensions, Position, SpectrogramWindow } from "@/types";
+import { SPECTROGRAM_CANVAS_DIMENSIONS } from "@/constants";
 
 /**
  * The motion modes supported by the spectrogram motions.
@@ -20,6 +21,7 @@ export type MotionMode = "drag" | "zoom" | "idle";
  */
 export default function useSpectrogramMotions({
   window,
+  dimensions = SPECTROGRAM_CANVAS_DIMENSIONS,
   onDragStart,
   onDragEnd,
   onDrag,
@@ -34,6 +36,8 @@ export default function useSpectrogramMotions({
   enabled = true,
 }: {
   window: SpectrogramWindow;
+  /** Size of the canvas the window is rendered on. */
+  dimensions?: Dimensions;
   onDoubleClick?: (dblClickProps: { position: Position }) => void;
   onDragStart?: () => void;
   onDrag?: (window: SpectrogramWindow) => void;
@@ -85,6 +89,7 @@ export default function useSpectrogramMotions({
 
   const { props: dragProps } = useWindowMotions({
     window,
+    dimensions,
     onMoveStart: handleDragMoveStart,
     onMove: handleDragMove,
     onMoveEnd: handleDragMoveEnd,
@@ -102,6 +107,7 @@ export default function useSpectrogramMotions({
 
   const { zoomProps, draw } = useSpectrogramZoom({
     window,
+    dimensions,
     onZoom: handleOnZoom,
     fixedAspectRatio,
     enabled: enabled && motionMode === "zoom",
@@ -122,6 +128,7 @@ export default function useSpectrogramMotions({
 
   const { scrollProps: scrollDefaultProps } = useWindowScroll({
     window,
+    dimensions,
     onScroll: handleDefaultScroll,
     shift: false,
     ctrl: false,
@@ -141,6 +148,7 @@ export default function useSpectrogramMotions({
 
   const { scrollProps: scrollMoveFreqProps } = useWindowScroll({
     window,
+    dimensions,
     onScroll: handleFreqScroll,
     shift: false,
     ctrl: false,
@@ -160,6 +168,7 @@ export default function useSpectrogramMotions({
 
   const { scrollProps: scrollZoomTimeProps } = useWindowScroll({
     window,
+    dimensions,
     onScroll: handleTimeZoom,
     shift: true,
     ctrl: false,
@@ -179,6 +188,7 @@ export default function useSpectrogramMotions({
 
   const { scrollProps: scrollZoomFreqProps } = useWindowScroll({
     window,
+    dimensions,
     onScroll: handleFreqZoom,
     shift: false,
     ctrl: true,

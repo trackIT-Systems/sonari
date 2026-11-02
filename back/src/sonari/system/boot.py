@@ -1,9 +1,12 @@
+import logging
 import webbrowser
 
 from colorama import Fore, Style, just_fix_windows_console
 from fastapi import FastAPI
 
 from sonari.system.database import (
+    create_async_db_engine,
+    get_async_session,
     get_database_url,
     init_database,
 )
@@ -11,6 +14,8 @@ from sonari.system.env_app_users import sync_env_app_users
 from sonari.system.settings import Settings
 
 just_fix_windows_console()
+
+logger = logging.getLogger(__name__)
 
 
 def print_ready_message(settings: Settings):
@@ -36,6 +41,26 @@ async def is_first_run(settings: Settings) -> bool:
     try:
         async with get_async_session(engine) as session:
             return await is_first_user(session)
+    finally:
+        await engine.dispose()
+
+
+async def sync_species(settings: Settings) -> None:
+    """Load the species catalog and link tags to species and tag groups."""
+    from sonari.api.species_catalog import sync_species_catalog
+
+    engine = create_async_db_engine(get_database_url(settings))
+    try:
+        async with get_async_session(engine) as session:
+            tags_linked, tags_grouped = await sync_species_catalog(session)
+            await session.commit()
+        if tags_linked:
+            print(
+                f"Species catalog: linked {tags_linked} tags to species "
+                f"({tags_grouped} assigned to a tag group)."
+            )
+    except Exception as error:  # noqa: BLE001 - must not prevent startup
+        logger.exception("Species catalog sync failed: %s", error)
     finally:
         await engine.dispose()
 
@@ -67,6 +92,8 @@ async def sonari_init(settings: Settings, _: FastAPI):
     await init_database(settings)
 
     await sync_env_app_users(settings)
+
+    await sync_species(settings)
 
     print_ready_message(settings)
 

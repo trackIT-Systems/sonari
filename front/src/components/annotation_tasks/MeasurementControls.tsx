@@ -10,20 +10,25 @@ import { MEASURE_SHORTCUT, getSpecialKeyLabel } from "@/utils/keyboard";
 
 export default function MeasurementControls({
   isMeasuring,
+  withShortcutHints = true,
   onMeasure,
 }: {
   isMeasuring: boolean;
+  /** Off for views the measure key does not reach, so the tooltip stays honest */
+  withShortcutHints?: boolean;
   onMeasure?: () => void;
 }) {
   return (
-    <div className="flex space-x-2">
+    <div className="flex space-x-1">
       <Tooltip
         tooltip={
           <div className="inline-flex gap-1">
             Measure
-            <span className="text-xs">
-              <KeyboardKey code={`${getSpecialKeyLabel("Shift")}`} /><KeyboardKey code={MEASURE_SHORTCUT.toLowerCase()} />
-            </span>
+            {withShortcutHints && (
+              <span className="text-xs">
+                <KeyboardKey code={`${getSpecialKeyLabel("Shift")}`} /><KeyboardKey code={MEASURE_SHORTCUT.toLowerCase()} />
+              </span>
+            )}
           </div>
         }
         placement="bottom"

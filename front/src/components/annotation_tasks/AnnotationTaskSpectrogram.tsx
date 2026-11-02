@@ -1,13 +1,19 @@
 import { useCallback, useMemo, useRef, useState, useEffect } from "react";
+import HideSoundEventsButton from "@/components/spectrograms/HideSoundEventsButton";
+import { emitGuidedTourEvent } from "@/components/workshop/guidedTour/events";
+import { useMeasure } from "react-use";
+import classNames from "classnames";
 
 import { DEFAULT_SPECTROGRAM_PARAMETERS, applyAutoSTFT } from "@/api/spectrograms";
 import AnnotationControls from "@/components/annotation_tasks/AnnotationControls";
+import FullscreenSelectedSoundEventOverlay from "@/components/annotation_tasks/FullscreenSelectedSoundEventOverlay";
 import MeasurementControls from "./MeasurementControls";
 import Player from "@/components/audio/Player";
 import Card from "@/components/Card";
 import SpectrogramBar from "@/components/spectrograms/SpectrogramBar";
 import SpectrogramControls from "@/components/spectrograms/SpectrogramControls";
 import DisableSpectrogramButton from "../spectrograms/DisableSpectrogramButton";
+import FullscreenButton from "../spectrograms/FullscreenButton";
 import SpectrogramSettings from "@/components/spectrograms/SpectrogramSettings";
 import SpectrogramTags from "@/components/spectrograms/SpectrogramTags";
 import TagComponent, { getTagKey } from "@/components/tags/Tag";
@@ -36,6 +42,24 @@ import useAnnotationDrawWaveform from "@/hooks/annotation/useAnnotationDrawWavef
 import { NoIcon } from "../icons";
 import { SPECTROGRAM_CANVAS_DIMENSIONS, WAVEFORM_CANVAS_DIMENSIONS } from "@/constants";
 
+/** Space between the spectrogram and the waveform (Tailwind gap-3) */
+const STAGE_GAP = 12;
+/** SpectrogramBar uses h-8 */
+const OVERVIEW_BAR_HEIGHT = 32;
+
+/**
+ * Channel for the audio stream: null (every channel) for mono recordings and
+ * mixed channels, else the selected one; one the recording lacks falls back to
+ * 0, like the spectrogram.
+ */
+function audioChannelFor(
+  parameters: { channel: number; mix_channels: boolean },
+  channels: number,
+): number | null {
+  if (channels <= 1 || parameters.mix_channels) return null;
+  return parameters.channel < channels ? parameters.channel : 0;
+}
+
 export default function AnnotationTaskSpectrogram({
   annotationTask,
   parameters = DEFAULT_SPECTROGRAM_PARAMETERS,
@@ -53,6 +77,8 @@ export default function AnnotationTaskSpectrogram({
   selectedTag,
   fixedAspectRatio,
   selectedSoundEventAnnotation,
+  multiSelectedIds,
+  onToggleSelectSoundEventAnnotation,
   onClearSelectedTag,
   toggleFixedAspectRatio,
   onWithSpectrogramChange,
@@ -62,12 +88,19 @@ export default function AnnotationTaskSpectrogram({
   onParameterChange,
   onSelectSoundEventAnnotation,
   onSegmentsLoaded,
+  onWindowChange,
+  fullscreen = false,
+  showTools = true,
+  onToggleFullscreen,
   onAddTagToSoundEventAnnotation,
   onRemoveTagFromSoundEventAnnotation,
   onAddSoundEventAnnotation,
   onRemoveSoundEventAnnotation,
   onUpdateSoundEventAnnotation,
   soundEventAnnotationsOverride,
+  selectedSoundEventAnnotationTask,
+  onDeselectSoundEventAnnotation,
+  mainSpectrogramWindow,
   tagVisibility,
   onTagVisibilityChange,
 }: {
@@ -88,6 +121,9 @@ export default function AnnotationTaskSpectrogram({
   withAutoplay: boolean;
   fixedAspectRatio: boolean;
   selectedSoundEventAnnotation?: SoundEventAnnotation | null;
+  /** All selected sound events when several are (Shift + click). */
+  multiSelectedIds?: Set<number>;
+  onToggleSelectSoundEventAnnotation?: (annotation: SoundEventAnnotation) => void;
   onClearSelectedTag: (tag: { tag: Tag; count: number } | null) => void;
   toggleFixedAspectRatio: () => void;
   onWithSpectrogramChange: () => void;
@@ -97,12 +133,23 @@ export default function AnnotationTaskSpectrogram({
   onParameterChange?: (params: SpectrogramParameters) => void;
   onSelectSoundEventAnnotation?: (soundEventAnnotation: SoundEventAnnotation | null) => void;
   onSegmentsLoaded: () => void;
+  /** Reports the visible window whenever the user zooms or pans */
+  onWindowChange?: (window: SpectrogramWindow) => void;
+  /** Fill the available space instead of the fixed 1000px layout */
+  fullscreen?: boolean;
+  /** In full page view, hide toolbar and player until toggled on */
+  showTools?: boolean;
+  onToggleFullscreen?: () => void;
   onAddTagToSoundEventAnnotation?: (params: { soundEventAnnotation: SoundEventAnnotation; tag: Tag }) => Promise<SoundEventAnnotation>;
   onRemoveTagFromSoundEventAnnotation?: (params: { soundEventAnnotation: SoundEventAnnotation; tag: Tag }) => Promise<SoundEventAnnotation>;
   onAddSoundEventAnnotation?: (params: { geometry: Geometry; tags: Tag[] }) => Promise<SoundEventAnnotation>;
   onRemoveSoundEventAnnotation?: (annotation: SoundEventAnnotation) => void;
   onUpdateSoundEventAnnotation?: (params: { soundEventAnnotation: SoundEventAnnotation; geometry: Geometry }) => void;
   soundEventAnnotationsOverride?: SoundEventAnnotation[];
+  /** Task that owns the selected sound event (main vs source task) */
+  selectedSoundEventAnnotationTask?: AnnotationTask | null;
+  onDeselectSoundEventAnnotation?: () => void;
+  mainSpectrogramWindow?: SpectrogramWindow | null;
   tagVisibility: TagVisibilityFilter;
   onTagVisibilityChange: (visibility: TagVisibilityFilter) => void;
 }) {
@@ -114,11 +161,16 @@ export default function AnnotationTaskSpectrogram({
   // Extract recording with null safety
   const { recording, start_time: taskStartTime, end_time: taskEndTime } = annotationTask!;
 
+  // Depend on the samplerate value, not the `recording` object: task mutations
+  // replace the whole task (and recording) object, which would otherwise
+  // recompute everything below and reset the zoom and unsaved parameters.
+  const recordingSamplerate = recording?.samplerate;
+
   // Apply auto STFT calculation to parameters if enabled
   const effectiveParameters = useMemo(() => {
-    if (!recording) return parameters;
-    return applyAutoSTFT(parameters, recording.samplerate);
-  }, [parameters, recording]);
+    if (recordingSamplerate == null) return parameters;
+    return applyAutoSTFT(parameters, recordingSamplerate);
+  }, [parameters, recordingSamplerate]);
   
   const taskSoundEventAnnotations = useMemo(
     () => soundEventAnnotationsOverride ?? annotationTask?.sound_event_annotations ?? [],
@@ -131,41 +183,29 @@ export default function AnnotationTaskSpectrogram({
    * the effective frequency range based on current parameters.
    */
   const taskBounds = useMemo<SpectrogramWindow>(() => {
-    const baseSamplerate = recording!.samplerate;
-    const samplerate = clampSamplerate(effectiveParameters, baseSamplerate)
+    const samplerate = clampSamplerate(effectiveParameters, recordingSamplerate!)
     
     return {
       time: { min: taskStartTime, max: taskEndTime },
       freq: { min: 0, max: samplerate / 2 },
     };
-  }, [taskStartTime, taskEndTime, effectiveParameters, recording]);
+  }, [taskStartTime, taskEndTime, effectiveParameters, recordingSamplerate]);
 
   /**
-   * Initial window - Determines the starting view when component mounts.
-   * If spectrogram is enabled, calculates an optimal initial zoom level based on
-   * canvas dimensions. Otherwise, shows the full task range.
+   * Initial window - Determines the starting view when component mounts, based
+   * on the canvas dimensions. It must not depend on whether the spectrogram is
+   * shown: hiding it (h) used to reset the view to the full task, so showing it
+   * again came back at a different zoom level.
    */
   const initial = useMemo(
-    () => {
-      const baseSamplerate = recording!.samplerate;
-      const samplerate = clampSamplerate(effectiveParameters, baseSamplerate)
-      if (withSpectrogram) {
-        
-        const _initial = getInitialViewingWindow({
-          startTime: taskStartTime,
-          endTime: taskEndTime,
-          samplerate: samplerate,
-          parameters: effectiveParameters,
-        })
-        return _initial
-      } else {
-        return {
-          time: { min: taskStartTime, max: taskEndTime },
-          freq: { min: 0, max: samplerate / 2 },
-        }
-      }
-    },
-    [recording, taskStartTime, taskEndTime, withSpectrogram, effectiveParameters],
+    () =>
+      getInitialViewingWindow({
+        startTime: taskStartTime,
+        endTime: taskEndTime,
+        samplerate: clampSamplerate(effectiveParameters, recordingSamplerate!),
+        parameters: effectiveParameters,
+      }),
+    [recordingSamplerate, taskStartTime, taskEndTime, effectiveParameters],
   );
 
   const getPlaybackBounds = useCallback(() => {
@@ -211,8 +251,16 @@ export default function AnnotationTaskSpectrogram({
 
   const { startTime: playbackStartTime, endTime: playbackEndTime } = useMemo(() => getPlaybackBounds(), [getPlaybackBounds]);
 
+  // The audio plays what the spectrogram shows: every channel when channels
+  // are mixed (stereo), otherwise the selected one. The spectrogram hook keeps
+  // its own (live) parameters and needs the player, so mirror the channel.
+  const [audioChannel, setAudioChannel] = useState<number | null>(() =>
+    audioChannelFor(effectiveParameters, recording?.channels ?? 1),
+  );
+
   const audio = useAudio({
     recording: recording!,
+    channel: audioChannel,
     endTime: playbackEndTime,
     startTime: playbackStartTime,
     withShortcuts: withAudioShortcuts,
@@ -256,6 +304,15 @@ export default function AnnotationTaskSpectrogram({
     toggleFixedAspectRatio: toggleFixedAspectRatio,
     onSegmentsLoaded,
   });
+
+  useEffect(() => {
+    onWindowChange?.(spectrogram.window);
+  }, [onWindowChange, spectrogram.window]);
+
+  const recordingChannels = recording?.channels ?? 1;
+  useEffect(() => {
+    setAudioChannel(audioChannelFor(spectrogram.parameters, recordingChannels));
+  }, [spectrogram.parameters, recordingChannels]);
 
   const handleParameterSave = useCallback(() => {
     onParameterSave?.(spectrogram.parameters);
@@ -332,6 +389,8 @@ export default function AnnotationTaskSpectrogram({
     soundEventAnnotations: taskSoundEventAnnotations,
     tagVisibility,
     externalSelectedSoundEventAnnotation: selectedSoundEventAnnotation,
+    multiSelectedIds,
+    onToggleSelectSoundEventAnnotation,
   });
 
   const passSiblingIds = useMemo(
@@ -365,23 +424,21 @@ export default function AnnotationTaskSpectrogram({
     passSiblingIds,
   });
 
+  // Draw progressively: chunks appear as they arrive. Skipping the draw while
+  // any visible chunk is pending would freeze the view (and the playhead)
+  // until the slowest request finished.
   const drawSpectrogramCanvas = useMemo(() => {
-    // Wait until all visible chunks are loaded before displaying
-    if (spectrogramIsLoading) {
-      return (ctx: CanvasRenderingContext2D) => {
-        ctx.canvas.style.cursor = "wait";
-      };
-    }
+    const cursor = spectrogramIsLoading ? "wait" : "default";
     if (trackingAudio) {
       return (ctx: CanvasRenderingContext2D) => {
-        ctx.canvas.style.cursor = "default";
+        ctx.canvas.style.cursor = cursor;
         drawSpectrogram(ctx);
         drawTrackAudio(ctx);
         annotate?.drawSpectrogram(ctx);
       };
     }
     return (ctx: CanvasRenderingContext2D) => {
-      ctx.canvas.style.cursor = "default";
+      ctx.canvas.style.cursor = cursor;
       drawSpectrogram(ctx);
       // Draw the onset line even when not playing
       drawOnsetAt?.(ctx, audio.currentTime);
@@ -404,12 +461,7 @@ export default function AnnotationTaskSpectrogram({
       ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
       return;
     }
-    // Wait until all visible chunks are loaded before displaying
-    if (waveform.isLoading) {
-      ctx.canvas.style.cursor = "wait";
-      return;
-    }
-    ctx.canvas.style.cursor = "default";
+    ctx.canvas.style.cursor = waveform.isLoading ? "wait" : "default";
     
     // Draw complete waveform
     waveform.draw(ctx);
@@ -442,6 +494,31 @@ export default function AnnotationTaskSpectrogram({
   const finalSpectrogramProps = isAnnotating ? annotate?.spectrogramProps : spectrogramProps;
   const finalWaveformProps = isAnnotating ? annotate?.waveformProps : {};
 
+  // The canvases keep their size in canvas pixels (all drawing and hit testing
+  // works in those) and are only displayed scaled, uniformly so the
+  // spectrogram keeps its aspect ratio. Full page view fills the stage; the
+  // normal view fits the column but never enlarges (the fixed-size bitmap
+  // would look pixelated), so a wider column leaves room for the side panel.
+  const [stageRef, stage] = useMeasure<HTMLDivElement>();
+  const scaledCanvasHeight =
+    SPECTROGRAM_CANVAS_DIMENSIONS.height + WAVEFORM_CANVAS_DIMENSIONS.height;
+  const fullscreenFixedChrome =
+    STAGE_GAP + (withBar ? STAGE_GAP + OVERVIEW_BAR_HEIGHT : 0);
+  const scale =
+    fullscreen && stage.width > 0 && stage.height > 0
+      ? Math.min(
+          stage.width / SPECTROGRAM_CANVAS_DIMENSIONS.width,
+          Math.max(
+            0,
+            (stage.height - fullscreenFixedChrome) / scaledCanvasHeight,
+          ),
+        )
+      : !fullscreen && stage.width > 0
+        ? Math.min(1, stage.width / SPECTROGRAM_CANVAS_DIMENSIONS.width)
+        : 1;
+  const displayWidth = SPECTROGRAM_CANVAS_DIMENSIONS.width * scale;
+  const toolsVisible = !fullscreen || showTools;
+
   // Return early if no annotation task or recording (after all hooks have been called)
   if (!annotationTask || !recording) {
     return (
@@ -452,57 +529,82 @@ export default function AnnotationTaskSpectrogram({
   }
 
   return (
-    <Card>
-      <div className="flex flex-row gap-4">
-        <DisableSpectrogramButton
-          withSpectrogram={withSpectrogram}
-          onWithSpectrogramChange={onWithSpectrogramChange}
-        />
-        {withControls && (
-          <SpectrogramControls
-            canZoom={spectrogram.canZoom}
-            fixedAspectRatio={fixedAspectRatio}
-            onReset={spectrogram.reset}
-            onZoom={spectrogram.enableZoom}
-            onToggleAspectRatio={toggleFixedAspectRatio}
+    <Card className={fullscreen ? "min-h-0 flex-1" : "min-w-0"} data-guided-tour="spectrogram">
+      {toolsVisible && (
+        <div className="flex flex-row flex-wrap items-stretch gap-2 [&>div]:flex" data-guided-tour="annotate-toolbar">
+          <div data-guided-tour="hide-spectrogram">
+          <DisableSpectrogramButton
+            withSpectrogram={withSpectrogram}
+            onWithSpectrogramChange={onWithSpectrogramChange}
           />
-        )}
+          </div>
+          <HideSoundEventsButton
+            withSoundEvent={withSoundEvent}
+            onWithSoundEventChange={onWithSoundEventChange}
+          />
+          {onToggleFullscreen && (
+            <FullscreenButton fullscreen={fullscreen} onToggle={onToggleFullscreen} />
+          )}
+          {withControls && (
+            <div data-guided-tour="zoom-tools">
+            <SpectrogramControls
+              canZoom={spectrogram.canZoom}
+              fixedAspectRatio={fixedAspectRatio}
+              onReset={spectrogram.reset}
+              onZoom={spectrogram.enableZoom}
+              onToggleAspectRatio={toggleFixedAspectRatio}
+            />
+            </div>
+          )}
 
-        {!disabled && withControls && withSpectrogram && annotate && (
-          <MeasurementControls
-            isMeasuring={annotate.isMeasuring}
-            onMeasure={annotate.enableMeasure}
-          />
-        )}
-        {!disabled && withControls && withSpectrogram && withSoundEvent && annotate && (
-          <AnnotationControls
-            disabled={disabled}
-            isDrawing={annotate.isDrawing}
-            isDeleting={annotate.isDeleting}
-            isSelecting={annotate.isSelecting}
-            isEditing={annotate.isEditing}
-            geometryType={annotate.geometryType}
-            onDraw={annotate.enableDraw}
-            onDelete={annotate.enableDelete}
-            onSelect={annotate.enableSelect}
-            onSelectGeometryType={annotate.setGeometryType}
-          />
-        )}
-        {withSettings && withSpectrogram && withSoundEvent && (
-          <SpectrogramSettings
-            samplerate={recording.samplerate}
-            maxChannels={recording.channels}
-            settings={spectrogram.parameters}
-            onChange={spectrogram.setParameters}
-            onReset={spectrogram.resetParameters}
-            onSave={handleParameterSave}
-            currentTimeDurationSeconds={currentTimeDurationSeconds}
-            onUseCurrentZoom={handleUseCurrentZoom}
-          />
-        )}
-        {withPlayer && <Player {...audio} />}
-      </div>
-      {withSoundEvent && (
+          {!disabled && withControls && withSpectrogram && annotate && (
+            <MeasurementControls
+              isMeasuring={annotate.isMeasuring}
+              onMeasure={annotate.enableMeasure}
+            />
+          )}
+          {!disabled && withControls && withSpectrogram && withSoundEvent && annotate && (
+            <div data-guided-tour="sound-event-tools">
+            <AnnotationControls
+              disabled={disabled}
+              isDrawing={annotate.isDrawing}
+              isDeleting={annotate.isDeleting}
+              isSelecting={annotate.isSelecting}
+              isEditing={annotate.isEditing}
+              geometryType={annotate.geometryType}
+              onDraw={annotate.enableDraw}
+              onDelete={annotate.enableDelete}
+              onSelect={annotate.enableSelect}
+              onSelectGeometryType={(type) => {
+                annotate.setGeometryType(type);
+                // Also when it was already selected: choosing it is the user action.
+                if (type === "TimeInterval") emitGuidedTourEvent("time-interval-selected");
+              }}
+            />
+            </div>
+          )}
+          {withSettings && withSpectrogram && withSoundEvent && (
+            <div data-guided-tour="spec-settings">
+            <SpectrogramSettings
+              samplerate={recording.samplerate}
+              maxChannels={recording.channels}
+              settings={spectrogram.parameters}
+              onChange={spectrogram.setParameters}
+              onReset={spectrogram.resetParameters}
+              onSave={handleParameterSave}
+              currentTimeDurationSeconds={currentTimeDurationSeconds}
+              onUseCurrentZoom={handleUseCurrentZoom}
+            />
+            </div>
+          )}
+          {withPlayer && (
+            <div data-guided-tour="audio-player">
+              <Player {...audio} />
+            </div>
+          )}
+        </div>
+      )}
+      {toolsVisible && withSoundEvent && (
         <div className="mb-2">
           <TagVisibilityControls
             visibility={tagVisibility}
@@ -510,7 +612,20 @@ export default function AnnotationTaskSpectrogram({
           />
         </div>
       )}
-      <div className="relative overflow-visible rounded-md" style={{ height: SPECTROGRAM_CANVAS_DIMENSIONS.height, width: SPECTROGRAM_CANVAS_DIMENSIONS.width }}>
+      <div ref={stageRef} className={fullscreen ? "relative min-h-0 flex-1" : "w-full min-w-0"}>
+      <div
+        className={classNames(
+          "flex flex-col gap-3",
+          fullscreen && "absolute inset-0 items-center",
+        )}
+      >
+      <div
+        className="relative overflow-visible rounded-md"
+        style={{
+          height: SPECTROGRAM_CANVAS_DIMENSIONS.height * scale,
+          width: displayWidth,
+        }}
+      >
         <SpectrogramTags
           disabled={disabled}
           tags={annotate?.tags ?? []}
@@ -537,8 +652,41 @@ export default function AnnotationTaskSpectrogram({
             />
           </div>
         )}
+        {fullscreen &&
+          withSoundEvent &&
+          selectedSoundEventAnnotation != null &&
+          selectedSoundEventAnnotationTask != null &&
+          onDeselectSoundEventAnnotation != null && (
+            <FullscreenSelectedSoundEventOverlay
+              soundEventAnnotation={selectedSoundEventAnnotation}
+              annotationTask={selectedSoundEventAnnotationTask}
+              allSoundEventAnnotations={taskSoundEventAnnotations}
+              tagVisibility={tagVisibility}
+              offsetForTagChip={selectedTag != null}
+              onDeselect={onDeselectSoundEventAnnotation}
+              onSelectSoundEventAnnotation={(annotation) =>
+                onSelectSoundEventAnnotation?.(annotation)
+              }
+              onRemoveTag={(tag) =>
+                void onRemoveTagFromSoundEventAnnotation?.({
+                  soundEventAnnotation: selectedSoundEventAnnotation,
+                  tag,
+                })
+              }
+              samplerate={recording.samplerate}
+              parameters={effectiveParameters}
+              withSpectrogram={withSpectrogram}
+              referenceWindow={mainSpectrogramWindow}
+            />
+          )}
       </div>
-      <div className="relative overflow-hidden rounded-md" style={{ height: WAVEFORM_CANVAS_DIMENSIONS.height, width: WAVEFORM_CANVAS_DIMENSIONS.width }}>
+      <div
+        className="relative overflow-hidden rounded-md"
+        style={{
+          height: WAVEFORM_CANVAS_DIMENSIONS.height * scale,
+          width: displayWidth,
+        }}
+      >
           <canvas
           ref={waveformCanvasRef}
             {...finalWaveformProps}
@@ -548,7 +696,23 @@ export default function AnnotationTaskSpectrogram({
             height={WAVEFORM_CANVAS_DIMENSIONS.height}
           />
       </div>
-      {withBar && (
+      {withBar && fullscreen && (
+        <div style={{ width: displayWidth }}>
+          <SpectrogramBar
+            recordingId={recording.id}
+            bounds={taskBounds}
+            window={withSpectrogram ? spectrogram.window : taskBounds}
+            onMove={spectrogram.drag}
+            samplerate={recording.samplerate}
+            parameters={spectrogram.parameters}
+            withSpectrogram={withSpectrogram}
+          />
+        </div>
+      )}
+      </div>
+      </div>
+      {withBar && !fullscreen && (
+        <div data-guided-tour="overview-strip">
         <SpectrogramBar
           recordingId={recording.id}
           bounds={taskBounds}
@@ -558,6 +722,7 @@ export default function AnnotationTaskSpectrogram({
           parameters={spectrogram.parameters}
           withSpectrogram={withSpectrogram}
         />
+        </div>
       )}
     </Card>
   );

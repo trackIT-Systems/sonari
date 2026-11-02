@@ -14,7 +14,7 @@ type CacheEntry = {
  */
 class SpectrogramCache {
     private cache: Map<SpectrogramSegmentKey, CacheEntry>;
-    private loadingPromises: Map<string, Promise<void>>;
+    private loadingPromises: Map<string, Promise<HTMLImageElement>>;
     private totalSize: number;
     private maxSize: number;
     private insertOrder: SpectrogramSegmentKey[];
@@ -88,7 +88,8 @@ class SpectrogramCache {
         recordingId: number,
         segment: SpectrogramWindow,
         parameters: SpectrogramParameters,
-        loadFn: () => Promise<{ image: HTMLImageElement, size: number }>
+        loadFn: () => Promise<{ image: HTMLImageElement, size: number }>,
+        signal?: AbortSignal,
     ): Promise<HTMLImageElement> {
         const key = this.generateKey(recordingId, segment, parameters);
 
@@ -99,21 +100,27 @@ class SpectrogramCache {
         // Check if already loading
         let loadingPromise = this.loadingPromises.get(key);
         if (!loadingPromise) {
-            // Start new load
-            loadingPromise = (async () => {
-                try {
-                    const { image, size } = await loadFn();
-                    await this.set(recordingId, segment, parameters, image, size);
-                } finally {
+            const promise: Promise<HTMLImageElement> = (async () => {
+                const { image, size } = await loadFn();
+                await this.set(recordingId, segment, parameters, image, size);
+                // Return the image directly: it may not have been cached
+                // (too large, decode failure) or already been evicted.
+                return image;
+            })();
+            const forget = () => {
+                if (this.loadingPromises.get(key) === promise) {
                     this.loadingPromises.delete(key);
                 }
-            })();
-            this.loadingPromises.set(key, loadingPromise);
+            };
+            promise.then(forget, forget);
+            loadingPromise = promise;
+            this.loadingPromises.set(key, promise);
+            // Forget an aborted load right away so the next request for the
+            // same segment starts fresh instead of joining a dying request.
+            signal?.addEventListener("abort", forget);
         }
 
-        // Wait for load to complete
-        await loadingPromise;
-        return this.get(recordingId, segment, parameters)!;
+        return loadingPromise;
     }
 
     isLoading(key: string): boolean {

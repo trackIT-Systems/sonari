@@ -10,13 +10,21 @@ import {
   GO_EXPORT_SHORTCUT,
   getSpecialKeyLabel
 } from "@/utils/keyboard";
-import { getAppVersion, getAppVersionShort } from "@/utils/version";
+import { BookOpenIcon } from "@heroicons/react/24/outline";
+import { SONARI_WIKI_URL } from "@/constants";
+import { useReleaseNotesContext } from "@/components/ReleaseNotesProvider";
+import {
+  getAppVersion,
+  getReleaseTag,
+  getSidebarVersionLabel,
+} from "@/utils/version";
 
 import KeyboardKey from "../KeyboardKey";
 import {
   AnnotationProjectIcon,
   SonariIcon,
   DownloadIcon,
+  TagIcon,
   UserIcon,
 } from "@/components/icons";
 import Button from "@/components/Button";
@@ -143,6 +151,15 @@ function MainNavigation({ pathname }: { pathname?: string }) {
           <DownloadIcon className="w-6 h-6 text-stone-400" />
         </SideMenuLink>
       </li>
+      <li className="px-3">
+        <SideMenuLink
+          isActive={pathname?.startsWith("/tags")}
+          tooltip={"Tags"}
+          href="/tags"
+        >
+          <TagIcon className="w-6 h-6 text-stone-400" />
+        </SideMenuLink>
+      </li>
     </ul>
   );
 }
@@ -169,8 +186,10 @@ export function SideMenu() {
 
   useSpecialKeyShortcuts(shortcuts);
 
-  const fullVersion = getAppVersion();
-  const shortVersion = getAppVersionShort();
+  const buildVersion = getAppVersion();
+  const releaseTag = getReleaseTag();
+  const sidebarVersionLabel = getSidebarVersionLabel();
+  const { hasReleaseNotes, openReleaseNotes } = useReleaseNotesContext();
 
   return (
     <aside
@@ -186,6 +205,26 @@ export function SideMenu() {
           <MainNavigation pathname={pathname || undefined} />
         </div>
         <ul className="flex flex-col items-center pb-4">
+          <li className="px-3 pb-3">
+            <Tooltip
+              portal={true}
+              tooltip={
+                <p className="whitespace-nowrap text-stone-700 dark:text-stone-300">
+                  Documentation (wiki)
+                </p>
+              }
+            >
+              <a
+                href={SONARI_WIKI_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label="Documentation (wiki)"
+                className="group flex flex-row items-center rounded-lg p-2.5 text-stone-400 hover:bg-stone-200 hover:text-stone-700 hover:dark:bg-stone-900 hover:dark:text-stone-300"
+              >
+                <BookOpenIcon className="w-6 h-6" />
+              </a>
+            </Tooltip>
+          </li>
           <li className="px-3">
             <SideMenuLink
               isActive={pathname?.startsWith("/settings")}
@@ -200,16 +239,31 @@ export function SideMenu() {
               portal={true}
               tooltip={
                 <p className="whitespace-nowrap text-stone-700 dark:text-stone-300">
-                  Version {fullVersion}
+                  {hasReleaseNotes
+                    ? `What's new in ${releaseTag}`
+                    : buildVersion === releaseTag
+                      ? `Version ${releaseTag}`
+                      : `Version ${releaseTag} (${buildVersion})`}
                 </p>
               }
             >
-              <span
-                className="cursor-default select-none text-center text-[10px] font-medium tabular-nums text-stone-400 dark:text-stone-500"
-                aria-label={`Version ${fullVersion}`}
-              >
-                {shortVersion}
-              </span>
+              {hasReleaseNotes ? (
+                <button
+                  type="button"
+                  className="cursor-pointer select-none text-center text-[10px] font-medium tabular-nums text-stone-400 hover:text-stone-600 dark:text-stone-500 dark:hover:text-stone-300"
+                  aria-label={`What's new in ${releaseTag}`}
+                  onClick={openReleaseNotes}
+                >
+                  {sidebarVersionLabel}
+                </button>
+              ) : (
+                <span
+                  className="cursor-default select-none text-center text-[10px] font-medium tabular-nums text-stone-400 dark:text-stone-500"
+                  aria-label={`Version ${releaseTag}`}
+                >
+                  {sidebarVersionLabel}
+                </span>
+              )}
             </Tooltip>
           </li>
         </ul>

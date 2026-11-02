@@ -3,50 +3,34 @@ import { useCallback, useEffect, useState } from "react";
 import drawGeometry from "@/draw/geometry";
 import { DEFAULT_LINESTRING_STYLE } from "@/draw/linestring";
 import {
-  buildTwoPointLabelSpecs,
-  drawMeasurementLabels,
-  drawSinglePointLabel,
-} from "@/draw/measurementLabels";
+  drawMeasurementCrosshair,
+  drawTwoPointMeasurementLabels,
+  formatMeasurementPoint,
+} from "@/draw/measurement";
+import { drawSinglePointLabel } from "@/draw/measurementLabels";
 import useWindowMotions from "@/hooks/window/useWindowMotions";
 import { scaleGeometryToWindow } from "@/utils/geometry";
+import { SPECTROGRAM_CANVAS_DIMENSIONS } from "@/constants";
 
 import type { BorderStyle } from "@/draw/styles";
 import type {
   Coordinates,
+  Dimensions,
   LineString,
   Position,
   SpectrogramWindow,
 } from "@/types";
 
-function formatPoint(time: number, freq: number) {
-  return `${Math.round(time * 1000)}ms, ${Math.round(freq / 1000)}kHz`;
-}
-
-function formatDelta(time1: number, freq1: number, time2: number, freq2: number) {
-  const deltaTime = Math.round(Math.abs(time2 - time1) * 1000);
-  const deltaFreq = Math.round(Math.abs((freq2 - freq1) / 1000));
-  return `Δt: ${deltaTime}ms, Δf: ${deltaFreq}kHz`;
-}
-
-function drawCrosshair(ctx: CanvasRenderingContext2D, x: number, y: number) {
-  const markerSize = 5;
-  ctx.strokeStyle = "white";
-  ctx.lineWidth = 2;
-  ctx.beginPath();
-  ctx.moveTo(x - markerSize, y - markerSize);
-  ctx.lineTo(x + markerSize, y + markerSize);
-  ctx.moveTo(x + markerSize, y - markerSize);
-  ctx.lineTo(x - markerSize, y + markerSize);
-  ctx.stroke();
-}
-
 export default function useCreateLineString({
   window,
+  dimensions = SPECTROGRAM_CANVAS_DIMENSIONS,
   enabled = true,
   style = DEFAULT_LINESTRING_STYLE,
   onCreate,
 }: {
   window: SpectrogramWindow;
+  /** Size of the canvas the window is rendered on. */
+  dimensions?: Dimensions;
   enabled?: boolean;
   style?: BorderStyle;
   onCreate?: (lineString: LineString) => void;
@@ -137,6 +121,7 @@ export default function useCreateLineString({
   const { props, isDragging } = useWindowMotions({
     enabled,
     window,
+    dimensions,
     onClick: handleClick,
     onMoveStart: handleMoveStart,
     onMove: handleMove,
@@ -150,11 +135,11 @@ export default function useCreateLineString({
       let scaledCoords: Coordinates[] = [];
       if (coordinates != null) {
         const geometry: LineString = { type: "LineString", coordinates };
-        const scaled = scaleGeometryToWindow(geometry, window);
+        const scaled = scaleGeometryToWindow(geometry, window, dimensions);
         drawGeometry(ctx, scaled, style);
         scaledCoords = scaled.coordinates;
         scaledCoords.forEach(([x, y]) => {
-          drawCrosshair(ctx, x, y);
+          drawMeasurementCrosshair(ctx, x, y);
         });
       }
 
@@ -163,6 +148,7 @@ export default function useCreateLineString({
         const scaledVertex = scaleGeometryToWindow(
           { type: "Point", coordinates: [vertex.time, vertex.freq] },
           window,
+          dimensions,
         );
         drawGeometry(ctx, scaledVertex, style);
         vertexXY = scaledVertex.coordinates;
@@ -174,7 +160,7 @@ export default function useCreateLineString({
           type: "LineString",
           coordinates: [lastVertex, [vertex.time, vertex.freq]],
         };
-        const scaled = scaleGeometryToWindow(geometry, window);
+        const scaled = scaleGeometryToWindow(geometry, window, dimensions);
         drawGeometry(ctx, scaled, style);
       }
 
@@ -182,13 +168,7 @@ export default function useCreateLineString({
         start: { x: number; y: number; time: number; freq: number },
         end: { x: number; y: number; time: number; freq: number },
       ) => {
-        const specs = buildTwoPointLabelSpecs(
-          ctx,
-          { x: start.x, y: start.y, text: formatPoint(start.time, start.freq) },
-          { x: end.x, y: end.y, text: formatPoint(end.time, end.freq) },
-          formatDelta(start.time, start.freq, end.time, end.freq),
-        );
-        drawMeasurementLabels(ctx, specs);
+        drawTwoPointMeasurementLabels(ctx, start, end);
       };
 
       if (
@@ -230,7 +210,7 @@ export default function useCreateLineString({
           ctx,
           scaledCoords[0][0],
           scaledCoords[0][1],
-          formatPoint(coordinates[0][0], coordinates[0][1]),
+          formatMeasurementPoint(coordinates[0][0], coordinates[0][1]),
         );
         return;
       }
@@ -240,11 +220,11 @@ export default function useCreateLineString({
           ctx,
           vertexXY[0],
           vertexXY[1],
-          formatPoint(vertex.time, vertex.freq),
+          formatMeasurementPoint(vertex.time, vertex.freq),
         );
       }
     },
-    [enabled, coordinates, style, window, vertex],
+    [enabled, coordinates, style, window, vertex, dimensions],
   );
 
   useEffect(() => {

@@ -41,7 +41,7 @@ from typing import TYPE_CHECKING, Optional
 from uuid import UUID
 
 import sqlalchemy.orm as orm
-from sqlalchemy import ForeignKey, UniqueConstraint
+from sqlalchemy import ForeignKey, Index, String, UniqueConstraint
 
 from sonari.models.base import Base
 from sonari.models.user import User
@@ -77,7 +77,10 @@ class Tag(Base):
     """
 
     __tablename__ = "tag"
-    __table_args__ = (UniqueConstraint("key", "value"),)
+    __table_args__ = (
+        UniqueConstraint("key", "value"),
+        Index("ix_tag_shortcut", "shortcut", unique=True),
+    )
 
     id: orm.Mapped[int] = orm.mapped_column(primary_key=True, init=False)
     key: orm.Mapped[str] = orm.mapped_column(nullable=False)
@@ -87,6 +90,20 @@ class Tag(Base):
         nullable=True,
         index=True,
     )
+    group_id: orm.Mapped[Optional[int]] = orm.mapped_column(
+        ForeignKey("tag_group.id", ondelete="SET NULL"),
+        default=None,
+        nullable=True,
+        index=True,
+    )
+    species_id: orm.Mapped[Optional[int]] = orm.mapped_column(
+        ForeignKey("species.id", ondelete="SET NULL"),
+        default=None,
+        nullable=True,
+        index=True,
+    )
+    shortcut: orm.Mapped[Optional[str]] = orm.mapped_column(String(1), default=None, nullable=True)
+    """Keyboard key (0-9) that picks this tag in the tag search. Shared by all users."""
 
     # Relationships
     created_by: orm.Mapped[Optional[User]] = orm.relationship(

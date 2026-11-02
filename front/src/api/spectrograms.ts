@@ -151,10 +151,12 @@ export function registerSpectrogramAPI(
     recording_id,
     segment,
     parameters = DEFAULT_SPECTROGRAM_PARAMETERS,
+    signal,
   }: {
     recording_id: number;
     segment: Interval;
     parameters?: SpectrogramParameters;
+    signal?: AbortSignal;
   }): Promise<Blob> {
     // Validate parameters
     const parsed_params = SpectrogramParametersSchema.parse(parameters);
@@ -172,6 +174,7 @@ export function registerSpectrogramAPI(
     const response = await instsance.get(endpoints.get, {
       params: query,
       responseType: 'blob',
+      signal,
     });
 
     return response.data;

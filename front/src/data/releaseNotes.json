@@ -1,0 +1,34 @@
+{
+  "2026.9.6": {
+    "highlights": [
+      {
+        "title": "Release notes",
+        "description": "New features for this release appear here when you ship a tag."
+      }
+    ]
+  },
+  "2026.10.2": {
+    "highlights": [
+      {
+        "title": "Release notes",
+        "description": "Annotation Task Table now has spectogram preview on click or using arrow keys up and down. Bulk tag operations with shortscuts also implemented."
+      }
+    ]
+  },
+  "2026.10.3": {
+    "highlights": [
+      {
+        "title": "Release notes",
+        "description": "Annotate View has full screen mode on press of Keyboard w. Selected Sound Event now has zoom and measure actions."
+      } 
+    ]
+  },
+  "2026.10.4": {
+    "highlights": [
+      {
+        "title": "Guided user tour",
+        "description": "Start a personal tutorial from the home page and follow the lessons step by step. Pick up where you left off, or start from scratch. Your copy is hidden from the annotation projects list."
+      }
+    ]
+  }
+}

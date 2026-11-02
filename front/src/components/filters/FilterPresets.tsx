@@ -102,10 +102,10 @@ export default function FilterPresets<T extends Object>({
   const [name, setName] = useState("");
   const recent = useMemo(() => recentList.slice(0, recentLimit), [recentList, recentLimit]);
 
-  const panelPositionClass =
+  const panelAnchor =
     panelAlign === "start"
-      ? "left-0 origin-top-left"
-      : "right-0 origin-top-right";
+      ? { to: "bottom start" as const, gap: 4, padding: 16 }
+      : { to: "bottom end" as const, gap: 4, padding: 16 };
 
   return (
     <div className={classNames("inline-flex items-center gap-2", className)}>
@@ -116,7 +116,11 @@ export default function FilterPresets<T extends Object>({
             <ExpandIcon className="w-4 h-4 ml-1" />
           </ListboxButton>
           <Transition as={Fragment} enter="transition ease-out duration-100" enterFrom="transform opacity-0 scale-95" enterTo="transform opacity-100 scale-100" leave="transition ease-in duration-75" leaveFrom="transform opacity-100 scale-100" leaveTo="transform opacity-0 scale-95">
-            <ListboxOptions className={`absolute ${panelPositionClass} mt-1 w-96 max-w-[min(24rem,calc(100vw-2rem))] divide-y divide-stone-100 rounded-md bg-stone-50 dark:bg-stone-700 border border-stone-200 dark:border-stone-500 shadow-md dark:shadow-stone-800 ring-1 ring-stone-900 ring-opacity-5 focus:outline-none z-50`}>
+            <ListboxOptions
+              portal
+              anchor={panelAnchor}
+              className="z-[60] w-96 max-w-[min(24rem,calc(100vw-2rem))] divide-y divide-stone-100 rounded-md bg-stone-50 dark:bg-stone-700 border border-stone-200 dark:border-stone-500 shadow-md dark:shadow-stone-800 ring-1 ring-stone-900 ring-opacity-5 focus:outline-none"
+            >
               <div className="p-3">
                 <div className="text-xs uppercase text-stone-500 mb-2">Recent</div>
                 {recent.length === 0 ? (
