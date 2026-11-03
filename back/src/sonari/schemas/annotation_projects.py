@@ -193,3 +193,87 @@ class SpeciesTagCount(BaseModel):
 
     no_status: int = 0
     """Annotations on tasks with no status badges."""
+
+
+class PredictionCorrectionTarget(BaseModel):
+    """A tag and how often reviewers chose it."""
+
+    key: str
+    """Tag key."""
+
+    value: str
+    """Tag value."""
+
+    count: int
+    """Number of tags."""
+
+
+class PredictionCorrectionCount(BaseModel):
+    """What reviewers did with one predicted tag across a project.
+
+    The outcomes are mutually exclusive and sum to ``predicted``.
+    """
+
+    key: str
+    """Tag key (species or type)."""
+
+    value: str
+    """Predicted tag value."""
+
+    predicted: int
+    """Number of predictions of this tag in reviewed tasks."""
+
+    confirmed: int = 0
+    """Predictions whose event still has the tag."""
+
+    relabeled: int = 0
+    """Predictions whose event has another tag of the same key instead."""
+
+    tag_removed: int = 0
+    """Predictions whose event has no tag of this key any more."""
+
+    event_deleted: int = 0
+    """Predictions without a matching event (false positives)."""
+
+    box_changed: int = 0
+    """Predictions whose event box was moved or resized."""
+
+    relabeled_to: list[PredictionCorrectionTarget] = []
+    """Tags the relabeled predictions were changed to."""
+
+
+class PredictionCorrectionStats(BaseModel):
+    """Detector predictions from GUANO files compared with reviewed tasks.
+
+    Only tasks marked completed or verified are compared.
+    """
+
+    detector: str | None
+    """Detector that created the project, from its name or ecohub's id file."""
+
+    run_id: int | None
+    """ecohub run that created the project."""
+
+    model_versions: list[str]
+    """Model versions of the GUANO files that were read."""
+
+    reviewed_tasks: int
+    """Tasks marked completed or verified."""
+
+    recordings: int
+    """Recordings of the reviewed tasks."""
+
+    recordings_with_source: int
+    """Recordings with a GUANO file holding the predictions."""
+
+    match_rate: float | None
+    """Share of the detector's events that match a GUANO detection exactly."""
+
+    reliable: bool
+    """Whether the match rate is high enough to trust the comparison."""
+
+    species: list[PredictionCorrectionCount]
+    """Outcomes per predicted tag, most predicted first."""
+
+    added: list[PredictionCorrectionTarget]
+    """Tags reviewers added that no prediction covered."""

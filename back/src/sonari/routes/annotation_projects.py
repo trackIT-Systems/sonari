@@ -9,7 +9,7 @@ from sqlalchemy import func, select
 from sonari import api, models, schemas
 from sonari.filters.annotation_projects import AnnotationProjectFilter
 from sonari.filters.guided_tour import ExcludeGuidedToursFilter
-from sonari.routes.dependencies import Session
+from sonari.routes.dependencies import Session, SonariSettings
 from sonari.routes.dependencies.auth import CurrentUser, create_authenticated_router
 from sonari.routes.types import Limit, Offset
 from sonari.services.guided_tour import (
@@ -19,6 +19,7 @@ from sonari.services.guided_tour import (
     get_guided_tour_progress,
     get_user_guided_tours,
 )
+from sonari.services.prediction_corrections import get_prediction_corrections, summarize_corrections
 
 __all__ = [
     "annotation_projects_router",
@@ -282,3 +283,18 @@ async def get_annotation_project_species_counts(
         session,
         annotation_project_id,
     )
+
+
+@annotation_projects_router.get(
+    "/detail/prediction_corrections/",
+    response_model=schemas.PredictionCorrectionStats,
+)
+async def get_annotation_project_prediction_corrections(
+    session: Session,
+    settings: SonariSettings,
+    annotation_project_id: int,
+):
+    """Compare completed and verified tasks with the detector predictions in their GUANO files."""
+    annotation_project = await api.annotation_projects.get(session, annotation_project_id)
+    corrections = await get_prediction_corrections(session, annotation_project, settings.audio_dir)
+    return summarize_corrections(corrections)

@@ -66,6 +66,22 @@ export default function ExportPage() {
           </Card>
           <Card className="p-6 justify-between">
             <h2 className="text-2xl font-bold mb-4">
+              Corrections
+            </h2>
+            <p className="text-sm mb-4">
+              Export how reviewers changed the detector predictions (BirdEdge, YOLOBat, AnuraVox)
+              in completed or verified tasks, compared with the GUANO detection files.
+            </p>
+            <Link
+              mode="text"
+              href="/export/corrections/"
+              className="text-sm underline font-bold"
+            >
+              Export Corrections
+            </Link>
+          </Card>
+          <Card className="p-6 justify-between">
+            <h2 className="text-2xl font-bold mb-4">
               Yearly Activity
             </h2>
             <p className="text-sm mb-4">

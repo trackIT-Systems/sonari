@@ -30,6 +30,40 @@ const SpeciesTagCountSchema = z.object({
 
 type SpeciesTagCount = z.infer<typeof SpeciesTagCountSchema>;
 
+const PredictionCorrectionTargetSchema = z.object({
+  key: z.string(),
+  value: z.string(),
+  count: z.number(),
+});
+
+const PredictionCorrectionCountSchema = z.object({
+  key: z.string(),
+  value: z.string(),
+  predicted: z.number(),
+  confirmed: z.number(),
+  relabeled: z.number(),
+  tag_removed: z.number(),
+  event_deleted: z.number(),
+  box_changed: z.number(),
+  relabeled_to: z.array(PredictionCorrectionTargetSchema),
+});
+
+const PredictionCorrectionStatsSchema = z.object({
+  detector: z.string().nullable(),
+  run_id: z.number().nullable(),
+  model_versions: z.array(z.string()),
+  reviewed_tasks: z.number(),
+  recordings: z.number(),
+  recordings_with_source: z.number(),
+  match_rate: z.number().nullable(),
+  reliable: z.boolean(),
+  species: z.array(PredictionCorrectionCountSchema),
+  added: z.array(PredictionCorrectionTargetSchema),
+});
+
+export type PredictionCorrectionCount = z.infer<typeof PredictionCorrectionCountSchema>;
+export type PredictionCorrectionStats = z.infer<typeof PredictionCorrectionStatsSchema>;
+
 const GuidedTourVariantSchema = z.enum(["bird", "bat"]);
 export type GuidedTourVariant = z.infer<typeof GuidedTourVariantSchema>;
 
@@ -73,6 +107,7 @@ const DEFAULT_ENDPOINTS = {
   get: "/api/v1/annotation_projects/detail/",
   getProgress: "/api/v1/annotation_projects/detail/progress/",
   getSpeciesCounts: "/api/v1/annotation_projects/detail/species_counts/",
+  getPredictionCorrections: "/api/v1/annotation_projects/detail/prediction_corrections/",
   getTagScope: "/api/v1/annotation_projects/detail/tag_scope/",
   ensureGuidedTour: "/api/v1/annotation_projects/guided_tour/",
 };
@@ -131,6 +166,13 @@ export function registerAnnotationProjectAPI(
     return z.array(SpeciesTagCountSchema).parse(data);
   }
 
+  async function getPredictionCorrections(id: number): Promise<PredictionCorrectionStats> {
+    const { data } = await instance.get(endpoints.getPredictionCorrections, {
+      params: { annotation_project_id: id },
+    });
+    return PredictionCorrectionStatsSchema.parse(data);
+  }
+
   async function update(
     id: number,
     data: AnnotationProjectUpdate,
@@ -168,6 +210,7 @@ export function registerAnnotationProjectAPI(
     get,
     getProgress,
     getSpeciesCounts,
+    getPredictionCorrections,
     update,
     getTagScope,
     getGuidedTourAvailable,

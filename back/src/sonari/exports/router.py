@@ -6,6 +6,7 @@ from fastapi import Depends, Query
 
 from .constants import ExportConstants
 from .services import (
+    CorrectionsService,
     DumpService,
     MultiBaseService,
     PassesService,
@@ -15,7 +16,7 @@ from .services import (
     YearlyActivityService,
 )
 from sonari.filters.annotation_tasks import AnnotationTaskFilter
-from sonari.routes.dependencies import Session
+from sonari.routes.dependencies import Session, SonariSettings
 from sonari.routes.dependencies.auth import create_authenticated_router
 
 export_router = create_authenticated_router()
@@ -55,6 +56,17 @@ async def export_probat(
         group_species,
         posttrigger_ms,
     )
+
+
+@export_router.get("/corrections/")
+async def export_corrections(
+    session: Session,
+    settings: SonariSettings,
+    annotation_project_ids: Annotated[list[int], Query()],
+):
+    """Export reviewer corrections of detector predictions (from GUANO files) in CSV format."""
+    service = CorrectionsService(session)
+    return await service.export_corrections(annotation_project_ids, settings.audio_dir)
 
 
 @export_router.get("/dump/")
