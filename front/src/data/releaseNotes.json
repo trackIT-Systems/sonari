@@ -30,5 +30,14 @@
         "description": "Start a personal tutorial from the home page and follow the lessons step by step. Pick up where you left off, or start from scratch. Your copy is hidden from the annotation projects list."
       }
     ]
+  },
+  "2026.11.1": {
+    "highlights": [
+      {
+        "title": "Release notes",
+        "description": "Multiple sound event selection and restructured Annotate View, Tag page and Tag Keyboard shortcuts."
+      }
+    ]
   }
 }
+ 

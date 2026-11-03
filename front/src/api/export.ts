@@ -5,6 +5,7 @@ import {
   buildAnnotationTaskFilterQueryParams,
 } from "@/api/annotation_tasks";
 import type { AnnotationProject } from "@/types";
+import { filenameFromContentDisposition } from "@/utils/contentDisposition";
 
 const DEFAULT_ENDPOINTS = {
   multibase: "/api/v1/export/multibase/",
@@ -59,14 +60,10 @@ function buildCommonParams(params: CommonExportParams): URLSearchParams {
 }
 
 function extractFilenameFromResponse(response: any, defaultFilename: string): string {
-  const contentDisposition = response.headers['content-disposition'];
-  if (contentDisposition) {
-    const filenameMatch = contentDisposition.match(/filename="?(.+)"?/i);
-    if (filenameMatch) {
-      return filenameMatch[1];
-    }
-  }
-  return defaultFilename;
+  return (
+    filenameFromContentDisposition(response.headers['content-disposition']) ??
+    defaultFilename
+  );
 }
 
 function createBlobFromResponse(response: any, mimeType: string): Blob {

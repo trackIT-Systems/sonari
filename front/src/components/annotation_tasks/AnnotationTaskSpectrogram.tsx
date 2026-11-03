@@ -696,8 +696,8 @@ export default function AnnotationTaskSpectrogram({
             height={WAVEFORM_CANVAS_DIMENSIONS.height}
           />
       </div>
-      {withBar && fullscreen && (
-        <div style={{ width: displayWidth }}>
+      {withBar && (
+        <div data-guided-tour="overview-strip" style={{ width: displayWidth }}>
           <SpectrogramBar
             recordingId={recording.id}
             bounds={taskBounds}
@@ -711,19 +711,6 @@ export default function AnnotationTaskSpectrogram({
       )}
       </div>
       </div>
-      {withBar && !fullscreen && (
-        <div data-guided-tour="overview-strip">
-        <SpectrogramBar
-          recordingId={recording.id}
-          bounds={taskBounds}
-          window={withSpectrogram ? spectrogram.window : taskBounds}
-          onMove={spectrogram.drag}
-          samplerate={recording.samplerate}
-          parameters={spectrogram.parameters}
-          withSpectrogram={withSpectrogram}
-        />
-        </div>
-      )}
     </Card>
   );
 }

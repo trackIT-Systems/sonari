@@ -2,6 +2,7 @@ import { AxiosInstance, type AxiosResponse } from "axios";
 import { z } from "zod";
 
 import type { Recording } from "@/types";
+import { filenameFromContentDisposition } from "@/utils/contentDisposition";
 
 const DEFAULT_ENDPOINTS = {
   download: "/api/v1/audio/download/",
@@ -124,14 +125,10 @@ export function registerAudioAPI(
     response: AxiosResponse,
     defaultFilename: string,
   ): string {
-    const contentDisposition = response.headers["content-disposition"];
-    if (typeof contentDisposition === "string") {
-      const filenameMatch = contentDisposition.match(/filename="?(.+)"?/i);
-      if (filenameMatch) {
-        return filenameMatch[1];
-      }
-    }
-    return defaultFilename;
+    return (
+      filenameFromContentDisposition(response.headers["content-disposition"]) ??
+      defaultFilename
+    );
   }
 
   async function downloadRecording({

@@ -224,7 +224,28 @@ describe("useAudio", () => {
     expect(element!.currentTime).toBeCloseTo(2);
   });
 
-  it("keeps the position and keeps playing when the speed changes", async () => {
+  it("changes the speed without reloading the stream", async () => {
+    const { result } = renderAudio();
+    await playTo(result, 6);
+    const load = vi.spyOn(element!, "load");
+
+    await act(async () => {
+      result.current.setSpeed(0.5);
+      await vi.advanceTimersByTimeAsync(32);
+    });
+
+    expect(load).not.toHaveBeenCalled();
+    expect(element!.src).toContain("speed=1");
+    expect(element!.playbackRate).toBeCloseTo(0.5);
+    // Pitch drops with the speed, like the server's time expansion.
+    expect((element as unknown as { preservesPitch: boolean }).preservesPitch).toBe(false);
+    expect(element!.currentTime).toBeCloseTo(6);
+    expect(result.current.currentTime).toBeCloseTo(6);
+    expect(result.current.speed).toBe(0.5);
+    expect(element!.paused).toBe(false);
+  });
+
+  it("reloads at the new speed beyond what the playback rate can do, keeping the position", async () => {
     const { result } = renderAudio();
     await playTo(result, 6);
     // A real element stops playing when a new source is loaded.
@@ -233,16 +254,27 @@ describe("useAudio", () => {
     });
 
     await act(async () => {
-      result.current.setSpeed(0.5);
+      result.current.setSpeed(0.1);
       await vi.advanceTimersByTimeAsync(32);
     });
 
-    expect(element!.src).toContain("speed=0.5");
-    // Same place in the recording: 6 s, which is 12 s into the slowed stream.
-    expect(element!.currentTime).toBeCloseTo(12);
+    expect(element!.src).toContain("speed=0.1");
+    expect(element!.playbackRate).toBeCloseTo(1);
+    // Same place in the recording: 6 s, which is 60 s into the slowed stream.
+    expect(element!.currentTime).toBeCloseTo(60);
     expect(result.current.currentTime).toBeCloseTo(6);
     expect(element!.paused).toBe(false);
     expect(result.current.isPlaying).toBe(true);
+
+    // Back up to 0.25x: a rate on the 0.1x stream, recording time unchanged.
+    await act(async () => {
+      result.current.setSpeed(0.25);
+      element!.currentTime = 70;
+      await vi.advanceTimersByTimeAsync(32);
+    });
+    expect(element!.src).toContain("speed=0.1");
+    expect(element!.playbackRate).toBeCloseTo(2.5);
+    expect(result.current.currentTime).toBeCloseTo(7);
   });
 
   it("does not reload the stream when only the segment changes", async () => {

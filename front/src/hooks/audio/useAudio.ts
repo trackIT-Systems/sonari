@@ -43,6 +43,12 @@ const LOWEST_SAMPLE_RATE = 8000;
  */
 const PLAYHEAD_FRAME_STRIDE = 2;
 const HIGHTEST_SAMPLE_RATE = 96000;
+/**
+ * How far `playbackRate` may take the loaded stream from its own speed.
+ * Gecko mutes audio outside 0.25x to 4x; beyond that the stream is reloaded
+ * at the new speed instead.
+ */
+const MAX_RATE_FACTOR = 4;
 
 const ALL_SPEED_OPTIONS: SpeedOption[] = [
   { label: "0.1x", value: 0.1 },
@@ -99,6 +105,12 @@ export default function useAudio({
   const [speed, setSpeed] = useState<number>(
     initialSpeed || defaultSpeedOption.value,
   );
+  // The speed the stream is loaded at: the server time-expands the audio by
+  // rewriting the sample rate. Speed changes near it only change the
+  // element's playback rate, which is instant; reloading the stream discards
+  // the buffer and waits for several range requests before playing again.
+  // All element times are stream times, i.e. recording time / sourceSpeed.
+  const [sourceSpeed, setSourceSpeed] = useState<number>(speed);
   const [time, setTime] = useState<number>(startTime);
   const [loop, setLoop] = useState<boolean>(false);
   const [volume, setVolume] = useState<number>(1);
@@ -123,19 +135,19 @@ export default function useAudio({
   const fullAudioUrl = useMemo(() => {
     return api.audio.getStreamUrl({
       recording,
-      speed: speed,
+      speed: sourceSpeed,
       channel,
       // Don't specify startTime/endTime to get the full audio
     });
-  }, [recording, speed, channel]);
+  }, [recording, sourceSpeed, channel]);
 
   const stopAudio = useCallback((audio: HTMLAudioElement, startTime: number) => {
     audio.pause();
     // Don't reset currentTime to 0, reset to the segment start
-    audio.currentTime = startTime / speed;
+    audio.currentTime = startTime / sourceSpeed;
     setTime(startTime);
     setIsPlaying(false);
-  }, [speed]);
+  }, [sourceSpeed]);
 
   // Autoplay is read through a ref so toggling it does not re-seek the audio.
   const withAutoplayRef = useRef(withAutoplay);
@@ -145,7 +157,7 @@ export default function useAudio({
   const loadedRef = useRef<{
     url: string;
     recordingId: number;
-    speed: number;
+    sourceSpeed: number;
     channel: number | null;
     start: number;
     end: number;
@@ -165,11 +177,11 @@ export default function useAudio({
     const reloadInPlace =
       prev != null &&
       prev.recordingId === recording.id &&
-      (prev.speed !== speed || prev.channel !== channel) &&
+      (prev.sourceSpeed !== sourceSpeed || prev.channel !== channel) &&
       prev.start === playbackStartTime &&
       prev.end === playbackEndTime;
     const isRecordingChange = prev != null && prev.url !== fullAudioUrl && !reloadInPlace;
-    const resumeAt = reloadInPlace ? current.currentTime * prev.speed : null;
+    const resumeAt = reloadInPlace ? current.currentTime * prev.sourceSpeed : null;
     const wasPlaying = reloadInPlace && !current.paused;
 
     // Compare with what was loaded, not with `current.src`: the element
@@ -188,19 +200,17 @@ export default function useAudio({
     loadedRef.current = {
       url: fullAudioUrl,
       recordingId: recording.id,
-      speed,
+      sourceSpeed,
       channel,
       start: playbackStartTime,
       end: playbackEndTime,
     };
 
-    current.playbackRate = 1; // Speed is handled in the URL
-
     const position =
       resumeAt != null && resumeAt >= playbackStartTime && resumeAt < playbackEndTime
         ? resumeAt
         : playbackStartTime;
-    current.currentTime = position / speed;
+    current.currentTime = position / sourceSpeed;
     setTime(position);
 
     if (wasPlaying) {
@@ -208,7 +218,23 @@ export default function useAudio({
     } else if (withAutoplayRef.current && !isRecordingChange && !reloadInPlace) {
       current.play().then(() => setIsPlaying(true)).catch(() => {});
     }
-  }, [fullAudioUrl, recording.id, speed, channel, playbackStartTime, playbackEndTime]);
+  }, [fullAudioUrl, recording.id, sourceSpeed, channel, playbackStartTime, playbackEndTime]);
+
+  // The rest of the speed. Without pitch preservation a slower rate also
+  // lowers the pitch, like the server's time expansion. Loading a source
+  // resets `playbackRate` to `defaultPlaybackRate`, so set both.
+  useEffect(() => {
+    const current = audio.current as HTMLAudioElement & {
+      webkitPreservesPitch?: boolean;
+      mozPreservesPitch?: boolean;
+    };
+    current.preservesPitch = false;
+    current.webkitPreservesPitch = false;
+    current.mozPreservesPitch = false;
+    const rate = speed / sourceSpeed;
+    current.defaultPlaybackRate = rate;
+    current.playbackRate = rate;
+  }, [speed, sourceSpeed]);
 
   useEffect(() => {
     audio.current.volume = volume;
@@ -234,7 +260,7 @@ export default function useAudio({
     const finish = () => {
       cancel();
       if (loop) {
-        current.currentTime = playbackStartTime / speed;
+        current.currentTime = playbackStartTime / sourceSpeed;
         setTime(playbackStartTime);
         current.play().catch(() => {});
         // `play` fires (and reschedules) only if the element was paused.
@@ -252,7 +278,7 @@ export default function useAudio({
       timer = undefined;
       if (current.paused) return;
 
-      const actualCurrentTime = current.currentTime * speed;
+      const actualCurrentTime = current.currentTime * sourceSpeed;
       if (actualCurrentTime >= playbackEndTime) {
         finish();
         return;
@@ -267,9 +293,9 @@ export default function useAudio({
     };
 
     const onPlay = () => {
-      const actualCurrentTime = current.currentTime * speed;
+      const actualCurrentTime = current.currentTime * sourceSpeed;
       if (actualCurrentTime < playbackStartTime || actualCurrentTime >= playbackEndTime) {
-        current.currentTime = playbackStartTime / speed;
+        current.currentTime = playbackStartTime / sourceSpeed;
         setTime(playbackStartTime);
       }
       cancel();
@@ -302,7 +328,7 @@ export default function useAudio({
       current.removeEventListener("error", onPause);
       current.removeEventListener("ended", onEnded);
     };
-  }, [speed, playbackStartTime, playbackEndTime, loop]);
+  }, [sourceSpeed, playbackStartTime, playbackEndTime, loop]);
 
   // Cleanup audio on component unmount
   useEffect(() => {
@@ -324,13 +350,13 @@ export default function useAudio({
     if (lockPlay.current) return;
     
     // Ensure we start from the segment beginning if we're outside bounds
-    const actualCurrentTime = audio.current.currentTime * speed;
+    const actualCurrentTime = audio.current.currentTime * sourceSpeed;
     if (
       audio.current.ended ||
       actualCurrentTime < playbackStartTime ||
       actualCurrentTime >= playbackEndTime
     ) {
-      audio.current.currentTime = playbackStartTime / speed;
+      audio.current.currentTime = playbackStartTime / sourceSpeed;
     }
     
     const promise = audio.current.play();
@@ -347,7 +373,7 @@ export default function useAudio({
     } else {
       setIsPlaying(true);
     }
-  }, [playbackStartTime, playbackEndTime, speed]);
+  }, [playbackStartTime, playbackEndTime, sourceSpeed]);
 
   const handlePause = useCallback(() => {
     audio.current.pause();
@@ -366,9 +392,17 @@ export default function useAudio({
   const handleSeek = useCallback((time: number) => {
     // Clamp seek time to our playback bounds
     const clampedTime = Math.max(playbackStartTime, Math.min(playbackEndTime, time));
-    audio.current.currentTime = clampedTime / speed;
+    audio.current.currentTime = clampedTime / sourceSpeed;
     setTime(clampedTime);
-  }, [speed, playbackStartTime, playbackEndTime]);
+  }, [sourceSpeed, playbackStartTime, playbackEndTime]);
+
+  const handleSetSpeed = useCallback((next: number) => {
+    setSpeed(next);
+    setSourceSpeed((loaded) => {
+      const factor = next / loaded;
+      return factor >= 1 / MAX_RATE_FACTOR && factor <= MAX_RATE_FACTOR ? loaded : next;
+    });
+  }, []);
 
   const handleTogglePlay = useCallback(() => {
     if (isPlaying) {
@@ -405,7 +439,7 @@ export default function useAudio({
     setVolume: handleSetVolume,
     toggleLoop: handleToggleLoop,
     seek: handleSeek,
-    setSpeed,
+    setSpeed: handleSetSpeed,
     setTime,
   };
 }
