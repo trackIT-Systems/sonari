@@ -208,6 +208,40 @@ class PredictionCorrectionTarget(BaseModel):
     """Number of tags."""
 
 
+class PredictionConfidence(BaseModel):
+    """Confidence of a group of predictions."""
+
+    count: int
+    """Number of predictions with a confidence."""
+
+    mean: float
+    """Mean confidence."""
+
+    median: float
+    """Median confidence."""
+
+
+class PredictionConfidenceComparison(BaseModel):
+    """Confidence of confirmed predictions next to corrected ones.
+
+    Corrected means relabeled, tag removed or event deleted. Birdedge
+    predictions use the species confidence, all others the detection
+    confidence.
+    """
+
+    confirmed: PredictionConfidence | None = None
+    """Predictions reviewers kept."""
+
+    corrected: PredictionConfidence | None = None
+    """Predictions reviewers overruled."""
+
+    suggested_threshold: float | None = None
+    """Lowest confidence above which at least 90% of predictions were confirmed.
+
+    None with fewer than 10 predictions or if no confidence reaches 90%.
+    """
+
+
 class PredictionCorrectionCount(BaseModel):
     """What reviewers did with one predicted tag across a project.
 
@@ -241,6 +275,9 @@ class PredictionCorrectionCount(BaseModel):
     relabeled_to: list[PredictionCorrectionTarget] = []
     """Tags the relabeled predictions were changed to."""
 
+    confidence: PredictionConfidenceComparison = PredictionConfidenceComparison()
+    """Confidence of confirmed and corrected predictions of this tag."""
+
 
 class PredictionCorrectionStats(BaseModel):
     """Detector predictions from GUANO files compared with reviewed tasks.
@@ -271,6 +308,9 @@ class PredictionCorrectionStats(BaseModel):
 
     reliable: bool
     """Whether the match rate is high enough to trust the comparison."""
+
+    confidence: PredictionConfidenceComparison
+    """Confidence of confirmed and corrected predictions across all tags."""
 
     species: list[PredictionCorrectionCount]
     """Outcomes per predicted tag, most predicted first."""

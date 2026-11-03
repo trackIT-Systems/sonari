@@ -33,6 +33,7 @@ from collections import OrderedDict, defaultdict
 from collections.abc import Iterable, Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
+from statistics import fmean, median
 from typing import Any, Literal
 
 from soundevent.data import AnnotationState
@@ -63,6 +64,15 @@ MIN_OVERLAP = 0.3
 #: Below this share of exactly matched detector events, the GUANO files
 #: probably do not belong to the project
 MIN_MATCH_RATE = 0.8
+
+#: Outcomes where a reviewer overruled the prediction
+CORRECTED_OUTCOMES = ("relabeled", "tag_removed", "event_deleted")
+
+#: Share of confirmed predictions a suggested threshold must reach
+TARGET_PRECISION = 0.9
+
+#: Fewer predictions with a confidence give no suggested threshold
+MIN_THRESHOLD_SAMPLES = 10
 
 ID_FILE_PREFIX = ".annotation_project_id."
 SIDECAR_DETECTIONS_FIELD = "SONARIX|Detector|Detections"
@@ -776,10 +786,52 @@ async def get_prediction_corrections(
     return result
 
 
+def _row_confidence(row: CorrectionRow) -> float | None:
+    """Confidence of a prediction, as the confidence filter reads it (birdedge: species confidence)."""
+    if row.detector == "birdedge" and row.species_confidence is not None:
+        return row.species_confidence
+    return row.detection_confidence
+
+
+def _confidence_summary(values: list[float]) -> schemas.PredictionConfidence | None:
+    if not values:
+        return None
+    return schemas.PredictionConfidence(count=len(values), mean=fmean(values), median=median(values))
+
+
+def suggest_threshold(samples: list[tuple[float, bool]]) -> float | None:
+    """Lowest confidence above which at least ``TARGET_PRECISION`` of the predictions were confirmed.
+
+    ``samples`` are ``(confidence, confirmed)`` pairs. Predictions with the
+    same confidence are kept together.
+    """
+    if len(samples) < MIN_THRESHOLD_SAMPLES:
+        return None
+    ordered = sorted(samples, key=lambda sample: -sample[0])
+    threshold = None
+    confirmed = 0
+    for i, (confidence, ok) in enumerate(ordered):
+        confirmed += ok
+        if i + 1 < len(ordered) and ordered[i + 1][0] == confidence:
+            continue
+        if confirmed / (i + 1) >= TARGET_PRECISION:
+            threshold = confidence
+    return threshold
+
+
+def _confidence_comparison(samples: list[tuple[float, bool]]) -> schemas.PredictionConfidenceComparison:
+    return schemas.PredictionConfidenceComparison(
+        confirmed=_confidence_summary([c for c, ok in samples if ok]),
+        corrected=_confidence_summary([c for c, ok in samples if not ok]),
+        suggested_threshold=suggest_threshold(samples),
+    )
+
+
 def summarize_corrections(corrections: ProjectCorrections) -> schemas.PredictionCorrectionStats:
     """Aggregate correction rows per predicted tag, for the project overview."""
     predicted: dict[tuple[str, str], dict[str, Any]] = {}
     added: dict[tuple[str, str], int] = defaultdict(int)
+    all_samples: list[tuple[float, bool]] = []
     for row in corrections.rows:
         if row.outcome == "added":
             for value in row.final_values:
@@ -787,9 +839,14 @@ def summarize_corrections(corrections: ProjectCorrections) -> schemas.Prediction
             continue
         entry = predicted.setdefault(
             (row.key, row.predicted_value or ""),
-            {"counts": defaultdict(int), "box_changed": 0, "relabeled_to": defaultdict(int)},
+            {"counts": defaultdict(int), "box_changed": 0, "relabeled_to": defaultdict(int), "samples": []},
         )
         entry["counts"][row.outcome] += 1
+        confidence = _row_confidence(row)
+        if confidence is not None:
+            sample = (confidence, row.outcome not in CORRECTED_OUTCOMES)
+            entry["samples"].append(sample)
+            all_samples.append(sample)
         if row.box_changed:
             entry["box_changed"] += 1
         if row.outcome == "relabeled":
@@ -810,6 +867,7 @@ def summarize_corrections(corrections: ProjectCorrections) -> schemas.Prediction
                 schemas.PredictionCorrectionTarget(key=key, value=target, count=count)
                 for target, count in sorted(entry["relabeled_to"].items(), key=lambda item: -item[1])
             ],
+            confidence=_confidence_comparison(entry["samples"]),
         )
         for (key, value), entry in predicted.items()
     ]
@@ -824,6 +882,7 @@ def summarize_corrections(corrections: ProjectCorrections) -> schemas.Prediction
         recordings_with_source=corrections.recordings_with_source,
         match_rate=corrections.match_rate,
         reliable=corrections.match_rate is None or corrections.match_rate >= MIN_MATCH_RATE,
+        confidence=_confidence_comparison(all_samples),
         species=species,
         added=[
             schemas.PredictionCorrectionTarget(key=key, value=value, count=count)

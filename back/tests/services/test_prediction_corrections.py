@@ -21,6 +21,7 @@ from sonari.services.prediction_corrections import (
     get_prediction_corrections,
     parse_guano_text,
     parse_project_name,
+    suggest_threshold,
     summarize_corrections,
 )
 
@@ -90,6 +91,18 @@ def test_build_predictions_maps_and_groups_like_ecohub():
             ("type", ("social-call",), 0.9),
         ],
     }
+
+
+def test_suggest_threshold():
+    samples = [(0.9, True)] * 5 + [(0.7, True)] * 4 + [(0.6, False)] * 3 + [(0.5, True)]
+    # 9/9 confirmed from 0.7, 9/12 from 0.6
+    assert suggest_threshold(samples) == 0.7
+    # Too few predictions
+    assert suggest_threshold(samples[:9]) is None
+    # Never 90% confirmed
+    assert suggest_threshold([(0.9, False)] * 5 + [(0.5, True)] * 5) is None
+    # Equal confidences count together: 0.8 is 9/10 only with all four
+    assert suggest_threshold([(0.9, True)] * 6 + [(0.8, True)] * 3 + [(0.8, False)] + [(0.1, False)] * 2) == 0.8
 
 
 def test_birdedge_accepts_german_and_scientific_names():
@@ -202,11 +215,11 @@ async def reviewed_project(
 
     audio_path = test_settings.audio_dir / test_recording.path
     detections = [
-        _det("Mmyo", [0.01, 20000.0, 0.02, 80000.0]),
-        _det("Mdau", [0.05, 20000.0, 0.06, 80000.0]),
-        _det("Nnoc", [0.1, 20000.0, 0.11, 80000.0]),
+        _det("Mmyo", [0.01, 20000.0, 0.02, 80000.0], 0.95),
+        _det("Mdau", [0.05, 20000.0, 0.06, 80000.0], 0.4),
+        _det("Nnoc", [0.1, 20000.0, 0.11, 80000.0], 0.85),
         # Deleted by the reviewer
-        _det("Ppip", [0.2, 20000.0, 0.21, 80000.0]),
+        _det("Ppip", [0.2, 20000.0, 0.21, 80000.0], 0.3),
         # In the open task: not compared
         _det("Pnat", [0.7, 20000.0, 0.71, 80000.0]),
     ]
@@ -243,6 +256,13 @@ async def test_prediction_corrections(db_session: AsyncSession, reviewed_project
     assert by_value["Nyctalus noctula"].box_changed == 1
     assert by_value["Pipistrellus pipistrellus"].event_deleted == 1
     assert [(a.value, a.count) for a in stats.added] == [("Eptesicus serotinus", 1)]
+
+    # Confirmed: Mmyo 0.95, Nnoc 0.85; corrected: Mdau 0.4 (relabeled), Ppip 0.3 (deleted)
+    assert (stats.confidence.confirmed.count, stats.confidence.confirmed.median) == (2, pytest.approx(0.9))
+    assert (stats.confidence.corrected.count, stats.confidence.corrected.mean) == (2, pytest.approx(0.35))
+    assert stats.confidence.suggested_threshold is None
+    assert by_value["Myotis daubentonii"].confidence.confirmed is None
+    assert by_value["Myotis daubentonii"].confidence.corrected.median == pytest.approx(0.4)
 
 
 @pytest.mark.asyncio
