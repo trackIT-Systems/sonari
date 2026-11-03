@@ -3,7 +3,6 @@ import Info from "@/components/Info";
 import { getTagKey } from "@/components/tags/Tag";
 
 import type {
-  PredictionConfidenceComparison,
   PredictionCorrectionCount,
   PredictionCorrectionStats,
 } from "@/api/annotation_projects";
@@ -32,47 +31,6 @@ const OUTCOME_SEGMENTS = [
 ] as const;
 
 type OutcomeKey = (typeof OUTCOME_SEGMENTS)[number]["key"];
-
-function formatConfidence(value: number) {
-  return value.toFixed(2);
-}
-
-/** Median (mean) confidence of confirmed vs. corrected predictions, and the suggested threshold */
-export function ConfidenceComparison({
-  confidence,
-  className = "text-xs text-stone-500",
-}: {
-  confidence: PredictionConfidenceComparison;
-  className?: string;
-}) {
-  const { confirmed, corrected, suggested_threshold } = confidence;
-  if (confirmed == null && corrected == null) return null;
-  const parts = [
-    confirmed != null
-      ? `confirmed ${formatConfidence(confirmed.median)} (${formatConfidence(confirmed.mean)}, n=${confirmed.count})`
-      : null,
-    corrected != null
-      ? `corrected ${formatConfidence(corrected.median)} (${formatConfidence(corrected.mean)}, n=${corrected.count})`
-      : null,
-  ].filter(Boolean);
-
-  return (
-    <p className={className}>
-      Confidence median (mean): {parts.join(" · ")}
-      {suggested_threshold != null && (
-        <>
-          {" · "}
-          <span
-            className="font-semibold text-stone-700 dark:text-stone-300"
-            title="Lowest confidence above which at least 90% of the predictions were confirmed"
-          >
-            ≥90% confirmed from {formatConfidence(suggested_threshold)}
-          </span>
-        </>
-      )}
-    </p>
-  );
-}
 
 function CorrectionRow({
   species,
@@ -124,7 +82,6 @@ function CorrectionRow({
       {details.length > 0 && (
         <p className="text-xs text-stone-500">{details.join(" · ")}</p>
       )}
-      <ConfidenceComparison confidence={species.confidence} />
     </div>
   );
 }
@@ -166,17 +123,6 @@ export default function AnnotationProjectCorrectionsChart({
   return (
     <div className="space-y-4">
       <Summary corrections={corrections} />
-      <div className="rounded-lg bg-stone-50 p-3 dark:bg-stone-800/50">
-        <p className="text-sm font-semibold text-stone-700 dark:text-stone-300">All predictions</p>
-        <ConfidenceComparison
-          confidence={corrections.confidence}
-          className="text-sm text-stone-500"
-        />
-        <p className="mt-1 text-xs text-stone-500">
-          Corrected means relabeled, tag removed or event deleted. The suggested threshold is the lowest
-          confidence above which at least 90% of predictions were confirmed (shown from 10 predictions on).
-        </p>
-      </div>
       {!corrections.reliable && corrections.match_rate != null && (
         <Info title="Unreliable comparison">
           Only {Math.round(corrections.match_rate * 100)}% of the detector&apos;s events match a

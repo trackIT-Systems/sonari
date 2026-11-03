@@ -14,11 +14,6 @@ const corrections: PredictionCorrectionStats = {
   recordings_with_source: 3,
   match_rate: 1,
   reliable: true,
-  confidence: {
-    confirmed: { count: 6, mean: 0.81, median: 0.84 },
-    corrected: { count: 4, mean: 0.42, median: 0.4 },
-    suggested_threshold: null,
-  },
   species: [
     {
       key: "species",
@@ -30,11 +25,6 @@ const corrections: PredictionCorrectionStats = {
       event_deleted: 1,
       box_changed: 2,
       relabeled_to: [{ key: "species", value: "Myotis bechsteinii", count: 3 }],
-      confidence: {
-        confirmed: { count: 6, mean: 0.81, median: 0.84 },
-        corrected: { count: 4, mean: 0.42, median: 0.4 },
-        suggested_threshold: 0.65,
-      },
     },
   ],
   added: [{ key: "species", value: "Eptesicus serotinus", count: 2 }],
@@ -53,17 +43,6 @@ describe("AnnotationProjectCorrectionsChart", () => {
     expect(screen.getByText("Eptesicus serotinus")).toBeTruthy();
     expect(screen.getByText(/GUANO detections for 3 of 4 recordings/)).toBeTruthy();
     expect(screen.queryByText(/Treat these numbers with caution/)).toBeNull();
-  });
-
-  it("compares the confidence of confirmed and corrected predictions", () => {
-    render(<AnnotationProjectCorrectionsChart corrections={corrections} />);
-
-    // Project-wide and per species
-    expect(
-      screen.getAllByText(/confirmed 0\.84 \(0\.81, n=6\) · corrected 0\.40 \(0\.42, n=4\)/),
-    ).toHaveLength(2);
-    // Only the species has enough predictions for a threshold
-    expect(screen.getAllByText("≥90% confirmed from 0.65")).toHaveLength(1);
   });
 
   it("warns when the GUANO files do not match the project", () => {

@@ -36,18 +36,6 @@ const PredictionCorrectionTargetSchema = z.object({
   count: z.number(),
 });
 
-const PredictionConfidenceSchema = z.object({
-  count: z.number(),
-  mean: z.number(),
-  median: z.number(),
-});
-
-const PredictionConfidenceComparisonSchema = z.object({
-  confirmed: PredictionConfidenceSchema.nullable(),
-  corrected: PredictionConfidenceSchema.nullable(),
-  suggested_threshold: z.number().nullable(),
-});
-
 const PredictionCorrectionCountSchema = z.object({
   key: z.string(),
   value: z.string(),
@@ -58,7 +46,6 @@ const PredictionCorrectionCountSchema = z.object({
   event_deleted: z.number(),
   box_changed: z.number(),
   relabeled_to: z.array(PredictionCorrectionTargetSchema),
-  confidence: PredictionConfidenceComparisonSchema,
 });
 
 const PredictionCorrectionStatsSchema = z.object({
@@ -70,12 +57,10 @@ const PredictionCorrectionStatsSchema = z.object({
   recordings_with_source: z.number(),
   match_rate: z.number().nullable(),
   reliable: z.boolean(),
-  confidence: PredictionConfidenceComparisonSchema,
   species: z.array(PredictionCorrectionCountSchema),
   added: z.array(PredictionCorrectionTargetSchema),
 });
 
-export type PredictionConfidenceComparison = z.infer<typeof PredictionConfidenceComparisonSchema>;
 export type PredictionCorrectionCount = z.infer<typeof PredictionCorrectionCountSchema>;
 export type PredictionCorrectionStats = z.infer<typeof PredictionCorrectionStatsSchema>;
 
