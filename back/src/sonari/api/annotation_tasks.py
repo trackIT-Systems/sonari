@@ -5,7 +5,7 @@ import datetime
 from typing import Sequence
 
 from soundevent import data
-from sqlalchemy import and_, exists, func, insert, literal, select, tuple_
+from sqlalchemy import and_, case, exists, func, insert, literal, select, tuple_
 from sqlalchemy.orm import selectinload
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.sql._typing import _ColumnExpressionArgument
@@ -149,65 +149,51 @@ class AnnotationTaskAPI(
         schemas.AnnotationTaskStats
             Aggregate statistics for tasks.
         """
-        from sqlalchemy.orm import selectinload
-
         from sonari.api.common.utils import apply_filters
 
-        # Get all tasks with their status badges
-        query = select(models.AnnotationTask).options(
-            selectinload(models.AnnotationTask.status_badges)
+        # Count in the database: loading every task and badge of a large
+        # project into Python is far too slow. A task is done when any user
+        # verified, rejected or completed it; every other task is pending.
+        filtered = apply_filters(
+            select(models.AnnotationTask.id.label("task_id")),
+            filters,
+        ).subquery()
+
+        def has_state(*states: data.AnnotationState):
+            return exists().where(
+                models.AnnotationStatusBadge.annotation_task_id == filtered.c.task_id,
+                models.AnnotationStatusBadge.state.in_(states),
+            )
+
+        def count_if(condition):
+            return func.coalesce(func.sum(case((condition, 1), else_=0)), 0)
+
+        done = has_state(
+            data.AnnotationState.verified,
+            data.AnnotationState.rejected,
+            data.AnnotationState.completed,
         )
-        query = apply_filters(query, filters)
+        query = select(
+            func.count(),
+            count_if(done),
+            count_if(has_state(data.AnnotationState.verified)),
+            count_if(has_state(data.AnnotationState.rejected)),
+            count_if(has_state(data.AnnotationState.completed)),
+            count_if(has_state(data.AnnotationState.assigned)),
+        ).select_from(filtered)
 
-        result = await session.execute(query)
-        tasks = result.scalars().all()
-
-        # Initialize counters
-        total = len(tasks)
-        pending_count = 0
-        done_count = 0
-        verified_count = 0
-        rejected_count = 0
-        completed_count = 0
-        assigned_count = 0
-
-        # Count tasks by status (matching frontend logic)
-        for task in tasks:
-            if not task.status_badges or len(task.status_badges) == 0:
-                pending_count += 1
-                continue
-
-            # Check for each state
-            is_verified = any(b.state == "verified" for b in task.status_badges)
-            is_rejected = any(b.state == "rejected" for b in task.status_badges)
-            is_completed = any(b.state == "completed" for b in task.status_badges)
-            is_assigned = any(b.state == "assigned" for b in task.status_badges)
-
-            # Count specific states
-            if is_verified:
-                verified_count += 1
-            if is_rejected:
-                rejected_count += 1
-            if is_completed:
-                completed_count += 1
-            if is_assigned:
-                assigned_count += 1
-
-            # Determine if task is done or pending
-            is_done = is_verified or is_rejected or is_completed
-            if is_done:
-                done_count += 1
-            else:
-                pending_count += 1
+        total, done_count, verified, rejected, completed, assigned = (
+            await session.execute(query)
+        ).one()
 
         return schemas.AnnotationTaskStats(
             total=total,
             done_count=done_count,
-            verified_count=verified_count,
-            rejected_count=rejected_count,
-            completed_count=completed_count,
-            pending_count=pending_count,
-            assigned_count=assigned_count,
+            verified_count=verified,
+            rejected_count=rejected,
+            completed_count=completed,
+            pending_count=total - done_count,
+            assigned_count=assigned,
         )
 
     async def get_many(

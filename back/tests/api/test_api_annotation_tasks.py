@@ -216,3 +216,141 @@ async def test_median_filter_respects_other_filters(
     for tag in (False, True):
         assert await count(project_id, tag) == 1
         assert await count(project_id + 1000, tag) == 0
+
+
+async def _project_tasks(db_session: AsyncSession, project: schemas.AnnotationProject, recording_id: int, n: int):
+    recording = await api.recordings.get(db_session, recording_id)
+    tasks = [
+        await api.annotation_tasks.create(
+            db_session,
+            annotation_project=project,
+            recording=recording,
+            start_time=0.1 * i,
+            end_time=0.1 * (i + 1),
+        )
+        for i in range(n)
+    ]
+    await db_session.commit()
+    return tasks
+
+
+@pytest.mark.asyncio
+async def test_annotation_tasks_get_stats(
+    db_session: AsyncSession,
+    test_annotation_project: schemas.AnnotationProject,
+    test_recording_id: int,
+    test_user,
+):
+    """Stats count each task once per state and treat verified/rejected/completed as done."""
+    from soundevent.data import AnnotationState
+
+    from sonari.filters.annotation_tasks import AnnotationTaskFilter
+
+    tasks = await _project_tasks(db_session, test_annotation_project, test_recording_id, 5)
+    badges = [
+        # Verified by two users: still one verified task
+        (tasks[0], AnnotationState.verified, None),
+        (tasks[0], AnnotationState.verified, test_user.id),
+        (tasks[1], AnnotationState.rejected, None),
+        (tasks[1], AnnotationState.assigned, test_user.id),
+        (tasks[2], AnnotationState.completed, None),
+        (tasks[3], AnnotationState.assigned, None),
+        # tasks[4] has no badge
+    ]
+    db_session.add_all(
+        models.AnnotationStatusBadge(annotation_task_id=task.id, state=state, user_id=user_id)
+        for task, state, user_id in badges
+    )
+    await db_session.commit()
+
+    project_filter = AnnotationTaskFilter(annotation_project__eq=test_annotation_project.id)
+    stats = await api.annotation_tasks.get_stats(db_session, filters=[project_filter])
+    assert stats == schemas.AnnotationTaskStats(
+        total=5,
+        done_count=3,
+        verified_count=1,
+        rejected_count=1,
+        completed_count=1,
+        pending_count=2,
+        assigned_count=2,
+    )
+
+    pending = await api.annotation_tasks.get_stats(
+        db_session,
+        filters=[AnnotationTaskFilter(annotation_project__eq=test_annotation_project.id, pending__eq=True)],
+    )
+    assert (pending.total, pending.pending_count, pending.done_count, pending.assigned_count) == (2, 2, 0, 1)
+
+    empty = await api.annotation_tasks.get_stats(
+        db_session,
+        filters=[AnnotationTaskFilter(annotation_project__eq=test_annotation_project.id + 1000)],
+    )
+    assert (empty.total, empty.pending_count, empty.done_count) == (0, 0, 0)
+
+
+@pytest.mark.asyncio
+async def test_annotation_tasks_get_index_unpaginated_total(
+    db_session: AsyncSession,
+    test_annotation_project: schemas.AnnotationProject,
+    test_recording_id: int,
+):
+    """Without a limit the total is still the number of matching tasks, also with an offset."""
+    from sonari.filters.annotation_tasks import AnnotationTaskFilter
+
+    tasks = await _project_tasks(db_session, test_annotation_project, test_recording_id, 4)
+    filters = [AnnotationTaskFilter(annotation_project__eq=test_annotation_project.id)]
+
+    for limit in (None, -1):
+        indices, total = await api.annotation_tasks.get_index(db_session, limit=limit, filters=filters, sort_by="id")
+        assert [i.id for i in indices] == [t.id for t in tasks]
+        assert total == 4
+
+    indices, total = await api.annotation_tasks.get_index(db_session, offset=1, filters=filters, sort_by="id")
+    assert [i.id for i in indices] == [t.id for t in tasks[1:]]
+    assert total == 4
+
+    indices, total = await api.annotation_tasks.get_index(db_session, offset=10, filters=filters, sort_by="id")
+    assert indices == []
+    assert total == 4
+
+
+@pytest.mark.asyncio
+async def test_annotation_tasks_date_and_time_range_filter(
+    db_session: AsyncSession,
+    test_annotation_project: schemas.AnnotationProject,
+    test_recording: schemas.Recording,
+):
+    """Date ranges with times compare the combined recording date and time."""
+    import datetime
+
+    from sonari.filters.annotation_tasks import AnnotationTaskFilter
+
+    recording = await api.recordings.update(
+        db_session,
+        test_recording,
+        schemas.RecordingUpdate(date=datetime.date(2026, 5, 1), time=datetime.time(22, 30)),
+    )
+    (task,) = await _project_tasks(db_session, test_annotation_project, recording.id, 1)
+
+    async def matches(start_time: str, end_time: str, end_date: str = "2026-05-01") -> bool:
+        tasks, _ = await api.annotation_tasks.get_many(
+            db_session,
+            limit=10,
+            filters=[
+                AnnotationTaskFilter(
+                    annotation_project__eq=test_annotation_project.id,
+                    date__start_dates="2026-05-01T00:00:00",
+                    date__end_dates=f"{end_date}T00:00:00",
+                    date__start_times=f"1970-01-01T{start_time}",
+                    date__end_times=f"1970-01-01T{end_time}",
+                )
+            ],
+        )
+        return [t.id for t in tasks] == [task.id]
+
+    assert await matches("22:00:00", "23:00:00")
+    assert not await matches("20:00:00", "21:00:00")
+    assert not await matches("23:00:00", "23:30:00")
+    # Range crossing midnight extends the end date by one day
+    assert await matches("22:00:00", "02:00:00")
+    assert not await matches("10:00:00", "12:00:00", end_date="2026-04-30")

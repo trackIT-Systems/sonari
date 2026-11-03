@@ -4,7 +4,7 @@ from datetime import datetime, timedelta, time
 from typing import Literal
 
 from soundevent import data
-from sqlalchemy import Float, Select, and_, case, exists, false, func, literal, not_, or_, select, union_all
+from sqlalchemy import DateTime, Float, Select, and_, case, exists, false, func, literal, not_, or_, select, union_all
 from sqlalchemy.ext.compiler import compiles
 from sqlalchemy.sql.expression import FunctionElement
 
@@ -58,6 +58,28 @@ def _json_array_element_default(element, compiler, **kw):
     # Get the literal value of the index
     idx_value = idx.value if hasattr(idx, "value") else idx
     return f"CAST(json_extract({compiler.process(col, **kw)}, '$.coordinates[{idx_value}]') AS REAL)"
+
+
+class combine_date_time(FunctionElement):
+    """Combine a date and a time column into a datetime - compiles to dialect-specific SQL."""
+
+    type = DateTime()
+    name = "combine_date_time"
+    inherit_cache = True
+
+
+@compiles(combine_date_time, "postgresql")
+def _combine_date_time_postgresql(element, compiler, **kw):
+    """PostgreSQL adds a time to a date to get a timestamp."""
+    date_col, time_col = list(element.clauses)
+    return f"({compiler.process(date_col, **kw)} + {compiler.process(time_col, **kw)})"
+
+
+@compiles(combine_date_time)
+def _combine_date_time_default(element, compiler, **kw):
+    """Use SQLite's datetime() as default."""
+    date_col, time_col = list(element.clauses)
+    return f"datetime({compiler.process(date_col, **kw)}, {compiler.process(time_col, **kw)})"
 
 
 class PendingFilter(base.Filter):
@@ -665,7 +687,7 @@ class DateRangeFilter(base.Filter):
 
             # Time/datetime conditions
             if has_times:
-                virtual_datetime = func.datetime(Recording.c.date, Recording.c.time)
+                virtual_datetime = combine_date_time(Recording.c.date, Recording.c.time)
                 has_dates = (i < len(start_dates) and start_dates[i]) or (
                     i < len(end_dates) and end_dates[i]
                 )
