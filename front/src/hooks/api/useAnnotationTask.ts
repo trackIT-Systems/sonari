@@ -4,6 +4,7 @@ import api from "@/app/api";
 import useObject from "@/hooks/utils/useObject";
 
 import type { AnnotationTask } from "@/types";
+import { invalidateAnnotationTaskQueries } from "./invalidateAnnotationTaskQueries";
 import useSoundEventMutations from "./useSoundEventMutations";
 
 export default function useAnnotationTask({
@@ -71,54 +72,42 @@ export default function useAnnotationTask({
   const addBadge = useMutation({
     mutationFn: api.annotationTasks.addBadge,
     onSuccess: () => {
-      client.invalidateQueries({ queryKey: ["annotation_tasks"] });
-      client.invalidateQueries({ queryKey: ["annotation_tasks_index"] });
-      client.invalidateQueries({ queryKey: ["annotation_tasks_stats"] });
+      invalidateAnnotationTaskQueries(client, "status");
     },
   });
 
   const removeBadge = useMutation({
     mutationFn: api.annotationTasks.removeBadge,
     onSuccess: () => {
-      client.invalidateQueries({ queryKey: ["annotation_tasks"] });
-      client.invalidateQueries({ queryKey: ["annotation_tasks_index"] });
-      client.invalidateQueries({ queryKey: ["annotation_tasks_stats"] });
+      invalidateAnnotationTaskQueries(client, "status");
     },
   });
 
   const addNote = useMutation({
     mutationFn: api.annotationTasks.addNote,
     onSuccess: () => {
-      client.invalidateQueries({ queryKey: ["annotation_tasks"] });
-      client.invalidateQueries({ queryKey: ["annotation_tasks_index"] });
-      client.invalidateQueries({ queryKey: ["annotation_tasks_stats"] });
+      invalidateAnnotationTaskQueries(client, "note");
     },
   });
 
   const removeNote = useMutation({
     mutationFn: api.annotationTasks.removeNote,
     onSuccess: () => {
-      client.invalidateQueries({ queryKey: ["annotation_tasks"] });
-      client.invalidateQueries({ queryKey: ["annotation_tasks_index"] });
-      client.invalidateQueries({ queryKey: ["annotation_tasks_stats"] });
+      invalidateAnnotationTaskQueries(client, "note");
     },
   });
 
   const addTag = useMutation({
     mutationFn: api.annotationTasks.addTag,
     onSuccess: () => {
-      client.invalidateQueries({ queryKey: ["annotation_tasks"] });
-      client.invalidateQueries({ queryKey: ["annotation_tasks_index"] });
-      client.invalidateQueries({ queryKey: ["annotation_tasks_stats"] });
+      invalidateAnnotationTaskQueries(client, "task_tag");
     },
   });
 
   const removeTag = useMutation({
     mutationFn: api.annotationTasks.removeTag,
     onSuccess: () => {
-      client.invalidateQueries({ queryKey: ["annotation_tasks"] });
-      client.invalidateQueries({ queryKey: ["annotation_tasks_index"] });
-      client.invalidateQueries({ queryKey: ["annotation_tasks_stats"] });
+      invalidateAnnotationTaskQueries(client, "task_tag");
     },
   });
 

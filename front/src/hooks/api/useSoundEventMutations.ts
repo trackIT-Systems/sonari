@@ -2,6 +2,7 @@ import { useMutation as useQueryMutation, QueryClient } from "@tanstack/react-qu
 import type { AxiosError } from "axios";
 
 import api from "@/app/api";
+import { invalidateAnnotationTaskQueries } from "@/hooks/api/invalidateAnnotationTaskQueries";
 import type { AnnotationTask, Geometry, SoundEventAnnotation, Tag } from "@/types";
 
 /**
@@ -57,9 +58,7 @@ export default function useSoundEventMutations({
           sound_event_annotations: [...(prev.sound_event_annotations || []), data],
         };
       });
-      client.invalidateQueries({ queryKey: ["annotation_tasks"] });
-      client.invalidateQueries({ queryKey: ["annotation_tasks_index"] });
-      client.invalidateQueries({ queryKey: ["annotation_tasks_stats"] });
+      invalidateAnnotationTaskQueries(client, "sound_event");
     },
     onError,
   });
@@ -114,9 +113,7 @@ export default function useSoundEventMutations({
           }),
         };
       });
-      client.invalidateQueries({ queryKey: ["annotation_tasks"] });
-      client.invalidateQueries({ queryKey: ["annotation_tasks_index"] });
-      client.invalidateQueries({ queryKey: ["annotation_tasks_stats"] });
+      invalidateAnnotationTaskQueries(client, "sound_event");
     },
     onError,
   });
@@ -141,9 +138,7 @@ export default function useSoundEventMutations({
           ),
         };
       });
-      client.invalidateQueries({ queryKey: ["annotation_tasks"] });
-      client.invalidateQueries({ queryKey: ["annotation_tasks_index"] });
-      client.invalidateQueries({ queryKey: ["annotation_tasks_stats"] });
+      invalidateAnnotationTaskQueries(client, "sound_event");
     },
     onError,
   });
@@ -195,9 +190,7 @@ export default function useSoundEventMutations({
           ),
         };
       });
-      client.invalidateQueries({ queryKey: ["annotation_tasks"] });
-      client.invalidateQueries({ queryKey: ["annotation_tasks_index"] });
-      client.invalidateQueries({ queryKey: ["annotation_tasks_stats"] });
+      invalidateAnnotationTaskQueries(client, "sound_event");
     },
     onError: (error) => {
       // Don't call onError for duplicate tag errors (client-side check)
@@ -254,9 +247,7 @@ export default function useSoundEventMutations({
           ),
         };
       });
-      client.invalidateQueries({ queryKey: ["annotation_tasks"] });
-      client.invalidateQueries({ queryKey: ["annotation_tasks_index"] });
-      client.invalidateQueries({ queryKey: ["annotation_tasks_stats"] });
+      invalidateAnnotationTaskQueries(client, "sound_event");
     },
     onError: (error) => {
       // Don't call onError for non-existent tag errors (client-side check)
