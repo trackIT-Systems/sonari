@@ -72,12 +72,15 @@ class SoundEventAnnotation(Base):
     """
 
     __tablename__ = "sound_event_annotation"
+    __table_args__ = (
+        # Serves lookups by task and ecohub's re-import delete by task and creator.
+        Index("ix_sound_event_annotation_task_id_created_by_id", "annotation_task_id", "created_by_id"),
+    )
 
     id: orm.Mapped[int] = orm.mapped_column(primary_key=True, init=False)
     annotation_task_id: orm.Mapped[int] = orm.mapped_column(
         ForeignKey("annotation_task.id", ondelete="CASCADE"),
         nullable=False,
-        index=True,
     )
     recording_id: orm.Mapped[int] = orm.mapped_column(
         ForeignKey("recording.id", ondelete="CASCADE"),
@@ -153,7 +156,6 @@ class SoundEventAnnotationFeature(Base):
         ForeignKey("sound_event_annotation.id", ondelete="CASCADE"),
         nullable=False,
         primary_key=True,
-        index=True,
     )
     name: orm.Mapped[str] = orm.mapped_column(nullable=False, primary_key=True)
     value: orm.Mapped[float] = orm.mapped_column(nullable=False)
@@ -197,13 +199,13 @@ class SoundEventAnnotationTag(Base):
     )
 
     id: orm.Mapped[int] = orm.mapped_column(primary_key=True, init=False)
+    # Indexed by the unique constraint, which starts with this column.
     sound_event_annotation_id: orm.Mapped[int] = orm.mapped_column(
         ForeignKey("sound_event_annotation.id", ondelete="CASCADE"),
-        index=True,
     )
+    # Indexed by ix_sound_event_annotation_tag_tag_id_sea_id, which starts with this column.
     tag_id: orm.Mapped[int] = orm.mapped_column(
         ForeignKey("tag.id", ondelete="CASCADE"),
-        index=True,
     )
     created_by_id: orm.Mapped[Optional[UUID]] = orm.mapped_column(
         ForeignKey("user.id"),

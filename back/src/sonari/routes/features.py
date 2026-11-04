@@ -1,6 +1,6 @@
 """REST API routes for features."""
 
-from sqlalchemy import func, select, union
+from sqlalchemy import func, literal, select, union
 
 from sonari import models, schemas
 from sonari.routes.dependencies import Session
@@ -28,12 +28,11 @@ async def get_features_names(
     in a separate FeatureName table, this endpoint queries all feature tables
     and returns distinct feature names.
     """
-    # Query distinct feature names from all three feature tables
+    # Task duration is a column now, but its name stays selectable as a feature.
     recording_features = select(models.RecordingFeature.name).distinct()
-    task_features = select(models.AnnotationTaskFeature.name).distinct()
+    task_features = select(literal("duration").label("name"))
     sound_event_features = select(models.SoundEventAnnotationFeature.name).distinct()
 
-    # Union all feature names
     all_features = union(recording_features, task_features, sound_event_features).subquery()
 
     # Build query for feature names

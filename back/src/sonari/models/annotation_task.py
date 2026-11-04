@@ -10,7 +10,7 @@ from uuid import UUID
 
 import sqlalchemy.orm as orm
 from soundevent import data
-from sqlalchemy import ForeignKey, UniqueConstraint
+from sqlalchemy import Computed, ForeignKey, UniqueConstraint
 
 from sonari.models.base import Base
 from sonari.models.tag import Tag
@@ -24,7 +24,6 @@ if TYPE_CHECKING:
 
 __all__ = [
     "AnnotationTask",
-    "AnnotationTaskFeature",
     "AnnotationTaskTag",
     "AnnotationStatusBadge",
 ]
@@ -51,8 +50,8 @@ class AnnotationTask(Base):
         The tags attached to this task.
     notes
         The notes attached to this task.
-    features
-        Computed features for this audio segment.
+    duration
+        Length of the audio segment in seconds, computed by the database.
     status_badges
         Status badges tracking task completion.
     created_on
@@ -72,12 +71,14 @@ class AnnotationTask(Base):
 
     __tablename__ = "annotation_task"
     __table_args__ = (UniqueConstraint("annotation_project_id", "recording_id", "start_time", "end_time"),)
+    # Read the generated duration back after inserts and updates instead of expiring it.
+    __mapper_args__ = {"eager_defaults": True}
 
     id: orm.Mapped[int] = orm.mapped_column(primary_key=True, init=False)
+    # Indexed by the unique constraint, which starts with this column.
     annotation_project_id: orm.Mapped[int] = orm.mapped_column(
         ForeignKey("annotation_project.id", ondelete="CASCADE"),
         nullable=False,
-        index=True,
     )
     recording_id: orm.Mapped[int] = orm.mapped_column(
         ForeignKey("recording.id", ondelete="CASCADE"),
@@ -86,6 +87,11 @@ class AnnotationTask(Base):
     )
     start_time: orm.Mapped[float] = orm.mapped_column(nullable=False)
     end_time: orm.Mapped[float] = orm.mapped_column(nullable=False)
+    duration: orm.Mapped[float] = orm.mapped_column(
+        Computed("end_time - start_time", persisted=True),
+        init=False,
+        repr=False,
+    )
 
     # Relationships
     annotation_project: orm.Mapped["AnnotationProject"] = orm.relationship(
@@ -112,13 +118,6 @@ class AnnotationTask(Base):
         repr=False,
         init=False,
     )
-    features: orm.Mapped[list["AnnotationTaskFeature"]] = orm.relationship(
-        back_populates="annotation_task",
-        default_factory=list,
-        cascade="all, delete-orphan",
-        passive_deletes=True,
-        repr=False,
-    )
     notes: orm.Mapped[list["Note"]] = orm.relationship(
         back_populates="annotation_task",
         default_factory=list,
@@ -133,53 +132,6 @@ class AnnotationTask(Base):
         init=False,
         repr=False,
         default_factory=list,
-    )
-
-
-class AnnotationTaskFeature(Base):
-    """Annotation Task Feature Model.
-
-    Features are numerical values computed for audio segments.
-
-    Attributes
-    ----------
-    name
-        The name of the feature.
-    value
-        The value of the feature.
-
-    Parameters
-    ----------
-    annotation_task_id : int
-        The database id of the annotation task.
-    name : str
-        The name of the feature.
-    value : float
-        The value of the feature.
-    """
-
-    __tablename__ = "annotation_task_feature"
-    __table_args__ = (
-        UniqueConstraint(
-            "annotation_task_id",
-            "name",
-        ),
-    )
-
-    annotation_task_id: orm.Mapped[int] = orm.mapped_column(
-        ForeignKey("annotation_task.id", ondelete="CASCADE"),
-        nullable=False,
-        primary_key=True,
-        index=True,
-    )
-    name: orm.Mapped[str] = orm.mapped_column(nullable=False, primary_key=True)
-    value: orm.Mapped[float] = orm.mapped_column(nullable=False)
-
-    # Relations
-    annotation_task: orm.Mapped[AnnotationTask] = orm.relationship(
-        back_populates="features",
-        init=False,
-        repr=False,
     )
 
 
@@ -217,9 +169,9 @@ class AnnotationTaskTag(Base):
     )
 
     id: orm.Mapped[int] = orm.mapped_column(primary_key=True, init=False)
+    # Indexed by the unique constraint, which starts with this column.
     annotation_task_id: orm.Mapped[int] = orm.mapped_column(
         ForeignKey("annotation_task.id", ondelete="CASCADE"),
-        index=True,
     )
     tag_id: orm.Mapped[int] = orm.mapped_column(
         ForeignKey("tag.id", ondelete="CASCADE"),
@@ -278,10 +230,10 @@ class AnnotationStatusBadge(Base):
         primary_key=True,
         init=False,
     )
+    # Indexed by the unique constraint, which starts with this column.
     annotation_task_id: orm.Mapped[int] = orm.mapped_column(
         ForeignKey("annotation_task.id", ondelete="CASCADE"),
         nullable=False,
-        index=True,
     )
     user_id: orm.Mapped[Optional[UUID]] = orm.mapped_column(
         ForeignKey("user.id"),

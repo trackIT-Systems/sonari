@@ -80,6 +80,17 @@ def _without_hashes(data: dict) -> dict:
     return data
 
 
+def _expected_export(fixture: GuidedTourFixture) -> dict:
+    """What exporting an imported fixture returns, without the recording hashes."""
+    expected = fixture.model_dump(mode="json")
+    for rec in expected["recordings"]:
+        del rec["hash"]
+    # Task features are read from older files but not stored: the duration is a column now.
+    for task in expected["tasks"]:
+        task["features"] = []
+    return expected
+
+
 def _setup_audio(audio_root: Path) -> str:
     folder = f"tour-{uuid.uuid4().hex[:8]}"
     _write_wav(audio_root / folder / "a.wav")
@@ -101,10 +112,7 @@ async def test_import_then_export_round_trips(db_session: AsyncSession, audio_ro
     assert result.warnings == []
 
     exported = await export_template_fixture(db_session, result.template_id, "bat")
-    expected = fixture.model_dump(mode="json")
-    for rec in expected["recordings"]:
-        del rec["hash"]
-    assert _without_hashes(exported.model_dump(mode="json")) == expected
+    assert _without_hashes(exported.model_dump(mode="json")) == _expected_export(fixture)
 
 
 @pytest.mark.asyncio
@@ -289,10 +297,7 @@ async def test_cli_import_dry_run_then_import_then_export(
         test_settings, parse_args(["export", "--template", "--variant", "bat", "-o", str(out_path)])
     ) == 0
     exported = json.loads(out_path.read_text())
-    expected = GuidedTourFixture.model_validate_json(fixture_path.read_text()).model_dump(mode="json")
-    for rec in expected["recordings"]:
-        del rec["hash"]
-    assert _without_hashes(exported) == expected
+    assert _without_hashes(exported) == _expected_export(GuidedTourFixture.model_validate_json(fixture_path.read_text()))
 
 
 @pytest.mark.asyncio

@@ -21,7 +21,7 @@ from typing import TYPE_CHECKING
 from uuid import UUID
 
 import sqlalchemy.orm as orm
-from sqlalchemy import ForeignKey, Index, UniqueConstraint
+from sqlalchemy import Computed, ForeignKey, Index, UniqueConstraint
 
 from sonari.models.base import Base
 from sonari.models.user import User
@@ -105,7 +105,17 @@ class Recording(Base):
 
     __tablename__ = "recording"
 
-    __table_args__ = (Index("ix_recording_date_time", "date", "time"),)
+    __table_args__ = (
+        Index("ix_recording_recorded_at", "recorded_at", "id"),
+        Index(
+            "ix_recording_path_trgm",
+            "path",
+            postgresql_using="gin",
+            postgresql_ops={"path": "gin_trgm_ops"},
+        ),
+    )
+    # Read the generated recorded_at back after inserts and updates instead of expiring it.
+    __mapper_args__ = {"eager_defaults": True}
 
     id: orm.Mapped[int] = orm.mapped_column(primary_key=True, init=False)
     hash: orm.Mapped[str] = orm.mapped_column(unique=True, index=True)
@@ -115,6 +125,12 @@ class Recording(Base):
     channels: orm.Mapped[int]
     date: orm.Mapped[datetime.date | None] = orm.mapped_column(default=None)
     time: orm.Mapped[datetime.time | None] = orm.mapped_column(default=None)
+    # date + time, midnight when the time is unknown. The migration writes the SQLite variant.
+    recorded_at: orm.Mapped[datetime.datetime | None] = orm.mapped_column(
+        Computed("date + coalesce(time, '00:00'::time)", persisted=True),
+        init=False,
+        repr=False,
+    )
     latitude: orm.Mapped[float | None] = orm.mapped_column(default=None)
     longitude: orm.Mapped[float | None] = orm.mapped_column(default=None)
     time_expansion: orm.Mapped[float] = orm.mapped_column(default=1.0)
@@ -185,7 +201,6 @@ class RecordingFeature(Base):
         ForeignKey("recording.id", ondelete="CASCADE"),
         nullable=False,
         primary_key=True,
-        index=True,
     )
     name: orm.Mapped[str] = orm.mapped_column(nullable=False, primary_key=True)
     value: orm.Mapped[float] = orm.mapped_column(nullable=False)

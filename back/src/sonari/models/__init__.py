@@ -11,7 +11,6 @@ from sonari.models.annotation_project import AnnotationProject
 from sonari.models.annotation_task import (
     AnnotationStatusBadge,
     AnnotationTask,
-    AnnotationTaskFeature,
     AnnotationTaskTag,
 )
 from sonari.models.app_token import AppToken
@@ -37,7 +36,6 @@ __all__ = [
     "AnnotationProject",
     "AnnotationStatusBadge",
     "AnnotationTask",
-    "AnnotationTaskFeature",
     "AnnotationTaskTag",
     "Base",
     "Dataset",

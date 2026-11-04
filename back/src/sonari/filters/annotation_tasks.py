@@ -4,7 +4,7 @@ from datetime import datetime, timedelta, time
 from typing import Literal
 
 from soundevent import data
-from sqlalchemy import DateTime, Float, Select, and_, case, exists, false, func, literal, not_, or_, select, union_all
+from sqlalchemy import Float, Select, and_, case, exists, false, func, literal, not_, or_, select, union_all
 from sqlalchemy.ext.compiler import compiles
 from sqlalchemy.sql.expression import FunctionElement
 
@@ -58,28 +58,6 @@ def _json_array_element_default(element, compiler, **kw):
     # Get the literal value of the index
     idx_value = idx.value if hasattr(idx, "value") else idx
     return f"CAST(json_extract({compiler.process(col, **kw)}, '$.coordinates[{idx_value}]') AS REAL)"
-
-
-class combine_date_time(FunctionElement):
-    """Combine a date and a time column into a datetime - compiles to dialect-specific SQL."""
-
-    type = DateTime()
-    name = "combine_date_time"
-    inherit_cache = True
-
-
-@compiles(combine_date_time, "postgresql")
-def _combine_date_time_postgresql(element, compiler, **kw):
-    """PostgreSQL adds a time to a date to get a timestamp."""
-    date_col, time_col = list(element.clauses)
-    return f"({compiler.process(date_col, **kw)} + {compiler.process(time_col, **kw)})"
-
-
-@compiles(combine_date_time)
-def _combine_date_time_default(element, compiler, **kw):
-    """Use SQLite's datetime() as default."""
-    date_col, time_col = list(element.clauses)
-    return f"datetime({compiler.process(date_col, **kw)}, {compiler.process(time_col, **kw)})"
 
 
 class PendingFilter(base.Filter):
@@ -676,18 +654,25 @@ class DateRangeFilter(base.Filter):
                 and end_time_val < start_time_val
             )
 
-            # Date conditions (end date extended by one day when range crosses midnight)
+            # Date conditions (end date extended by one day when range crosses midnight).
+            # Expressed on recorded_at, which is NULL exactly when the date is, so the
+            # index on recorded_at serves them.
             if start_date_dt:
-                conditions.append(Recording.c.date >= start_date_dt.date())
+                conditions.append(Recording.c.recorded_at >= datetime.combine(start_date_dt.date(), time.min))
             if end_date_dt:
                 end_date_bound = (
                     end_date_dt.date() + timedelta(days=1) if crosses_midnight else end_date_dt.date()
                 )
-                conditions.append(Recording.c.date <= end_date_bound)
+                conditions.append(
+                    Recording.c.recorded_at < datetime.combine(end_date_bound + timedelta(days=1), time.min)
+                )
 
             # Time/datetime conditions
             if has_times:
-                virtual_datetime = combine_date_time(Recording.c.date, Recording.c.time)
+                # recorded_at falls back to midnight without a time; a time filter
+                # needs a real time.
+                conditions.append(Recording.c.time.is_not(None))
+                virtual_datetime = Recording.c.recorded_at
                 has_dates = (i < len(start_dates) and start_dates[i]) or (
                     i < len(end_dates) and end_dates[i]
                 )

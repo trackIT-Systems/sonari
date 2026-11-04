@@ -140,10 +140,17 @@ class AnnotationTask(BaseSchema):
     """ All notes of that task"""
 
     features: Optional[list[Feature]] = None
-    """Features of that task"""
+    """Features of that task. Only the duration, derived from the task bounds."""
 
     status_badges: Optional[list[AnnotationStatusBadge]] = None
     """Status badges for the task."""
+
+    @model_validator(mode="after")
+    def fill_duration_feature(self):
+        """Report the duration as a feature, as when it was stored in annotation_task_feature."""
+        if self.features is None:
+            self.features = [Feature(name="duration", value=self.end_time - self.start_time)]
+        return self
 
     @model_validator(mode="after")
     def clip_sound_event_geometries(self):

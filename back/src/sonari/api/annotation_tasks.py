@@ -33,7 +33,6 @@ __all__ = [
     "AnnotationTaskAPI",
     "MAX_BULK_TASKS",
     "annotation_tasks",
-    "compute_duration",
 ]
 
 MAX_BULK_TASKS = 5000
@@ -61,7 +60,6 @@ class AnnotationTaskAPI(
         "sound_event_annotations": models.AnnotationTask.sound_event_annotations,
         "tags": models.AnnotationTask.tags,
         "notes": models.AnnotationTask.notes,
-        "features": models.AnnotationTask.features,
         "status_badges": models.AnnotationTask.status_badges,
     }
 
@@ -242,7 +240,7 @@ class AnnotationTaskAPI(
         include_notes
             If True, eagerly load the notes relationship.
         include_features
-            If True, eagerly load the features relationship.
+            Kept for compatibility: the duration feature is always returned.
 
         Returns
         -------
@@ -264,7 +262,6 @@ class AnnotationTaskAPI(
             "sound_event_annotations": include_sound_event_annotations,
             "tags": include_tags,
             "notes": include_notes,
-            "features": include_features,
             "status_badges": include_status_badges or include_status_badge_users,
         }
 
@@ -366,7 +363,7 @@ class AnnotationTaskAPI(
         include_notes
             If True, eagerly load the notes relationship.
         include_features
-            If True, eagerly load the features relationship.
+            Kept for compatibility: the duration feature is always returned.
         include_status_badges
             If True, eagerly load the status_badges relationship.
         include_status_badge_users
@@ -391,7 +388,6 @@ class AnnotationTaskAPI(
             "sound_event_annotations": include_sound_event_annotations,
             "tags": include_tags,
             "notes": include_notes,
-            "features": include_features,
             "status_badges": include_status_badges or include_status_badge_users,
         }
 
@@ -493,9 +489,6 @@ class AnnotationTaskAPI(
             **kwargs,
         )
 
-        # Compute and add default features
-        features = await self._create_task_features(session, [task])
-        task = task.model_copy(update=dict(features=features[0]))
         self._update_cache(task)
         return task
 
@@ -521,142 +514,11 @@ class AnnotationTaskAPI(
         list[schemas.AnnotationTask]
             Created tasks.
         """
-        tasks = await super().create_many_without_duplicates(
+        return await super().create_many_without_duplicates(
             session,
             data,
             return_all=return_all,
         )
-
-        if not tasks:
-            return tasks
-
-        # Compute features for all tasks
-        task_features = await self._create_task_features(session, tasks)
-        return [
-            task.model_copy(update=dict(features=features))
-            for task, features in zip(tasks, task_features, strict=False)
-        ]
-
-    async def add_feature(
-        self,
-        session: AsyncSession,
-        obj: schemas.AnnotationTask,
-        feature: schemas.Feature,
-    ) -> schemas.AnnotationTask:
-        """Add feature to annotation task.
-
-        Parameters
-        ----------
-        session
-            Database session.
-        obj
-            Task to add feature to.
-        feature
-            Feature to add.
-
-        Returns
-        -------
-        schemas.AnnotationTask
-            Updated task.
-        """
-        for f in obj.features:
-            if f.name == feature.name:
-                raise exceptions.DuplicateObjectError(f"Task {obj.id} already has a feature with name {feature.name}.")
-
-        await common.create_object(
-            session,
-            models.AnnotationTaskFeature,
-            annotation_task_id=obj.id,
-            name=feature.name,
-            value=feature.value,
-        )
-
-        obj = obj.model_copy(update=dict(features=[*obj.features, feature]))
-        self._update_cache(obj)
-        return obj
-
-    async def update_feature(
-        self,
-        session: AsyncSession,
-        obj: schemas.AnnotationTask,
-        feature: schemas.Feature,
-    ) -> schemas.AnnotationTask:
-        """Update a feature value for a task.
-
-        Parameters
-        ----------
-        session
-            Database session.
-        obj
-            Task to update feature for.
-        feature
-            Feature to update.
-
-        Returns
-        -------
-        schemas.AnnotationTask
-            The updated task.
-        """
-        for f in obj.features:
-            if f.name == feature.name:
-                break
-        else:
-            raise ValueError(f"Task {obj} does not have a feature with name {feature.name}.")
-
-        await common.update_object(
-            session,
-            models.AnnotationTaskFeature,
-            and_(
-                models.AnnotationTaskFeature.annotation_task_id == obj.id,
-                models.AnnotationTaskFeature.name == feature.name,
-            ),
-            value=feature.value,
-        )
-
-        obj = obj.model_copy(update=dict(features=[f if f.name != feature.name else feature for f in obj.features]))
-        self._update_cache(obj)
-        return obj
-
-    async def remove_feature(
-        self,
-        session: AsyncSession,
-        obj: schemas.AnnotationTask,
-        feature: schemas.Feature,
-    ) -> schemas.AnnotationTask:
-        """Remove feature from task.
-
-        Parameters
-        ----------
-        session
-            Database session.
-        obj
-            Task to remove feature from.
-        feature
-            Feature to remove.
-
-        Returns
-        -------
-        schemas.AnnotationTask
-            The updated task.
-        """
-        for f in obj.features:
-            if f.name == feature.name:
-                break
-        else:
-            raise ValueError(f"Task {obj} does not have a feature with name {feature.name}.")
-
-        await common.delete_object(
-            session,
-            models.AnnotationTaskFeature,
-            and_(
-                models.AnnotationTaskFeature.annotation_task_id == obj.id,
-                models.AnnotationTaskFeature.name == feature.name,
-            ),
-        )
-
-        obj = obj.model_copy(update=dict(features=[f for f in obj.features if f.name != feature.name]))
-        self._update_cache(obj)
-        return obj
 
     async def add_status_badge(
         self,
@@ -944,58 +806,6 @@ class AnnotationTaskAPI(
         )
         self._update_cache(obj)
         return obj
-
-    async def _create_task_features(
-        self,
-        session: AsyncSession,
-        tasks: Sequence[schemas.AnnotationTask],
-    ) -> Sequence[list[schemas.Feature]]:
-        """Create features for tasks.
-
-        Parameters
-        ----------
-        session
-            Database session.
-        tasks
-            List of tasks to create features for.
-
-        Returns
-        -------
-        list[list[schemas.Feature]]
-            List of features created for each task.
-        """
-        task_features = [
-            [schemas.Feature(name=name, value=value) for name, value in compute_task_features(task).items()]
-            for task in tasks
-        ]
-
-        create_values = [
-            (task.id, feature.name, feature.value)
-            for task, features in zip(tasks, task_features, strict=False)
-            for feature in features
-        ]
-
-        data = [
-            dict(
-                annotation_task_id=task_id,
-                name=name,
-                value=value,
-            )
-            for task_id, name, value in create_values
-        ]
-
-        await common.create_objects_without_duplicates(
-            session,
-            models.AnnotationTaskFeature,
-            data,
-            key=lambda obj: (obj["annotation_task_id"], obj["name"]),
-            key_column=tuple_(
-                models.AnnotationTaskFeature.annotation_task_id,
-                models.AnnotationTaskFeature.name,
-            ),
-            return_all=True,
-        )
-        return task_features
 
     async def _load_sound_event_tags(
         self,
@@ -1547,50 +1357,6 @@ class AnnotationTaskAPI(
             sound_events_skipped=sound_events_skipped,
             failures=failures,
         )
-
-
-# Feature computation functions
-DURATION = "duration"
-"""Name of duration feature."""
-
-
-def compute_duration(task: schemas.AnnotationTask | models.AnnotationTask) -> float:
-    """Compute duration of task's audio segment.
-
-    Parameters
-    ----------
-    task
-        Task to compute duration for.
-
-    Returns
-    -------
-    float
-        Duration in seconds.
-    """
-    return task.end_time - task.start_time
-
-
-TASK_FEATURES = {
-    DURATION: compute_duration,
-}
-
-
-def compute_task_features(
-    task: schemas.AnnotationTask | models.AnnotationTask,
-) -> dict[str, float]:
-    """Compute features for task.
-
-    Parameters
-    ----------
-    task
-        Task to compute features for.
-
-    Returns
-    -------
-    dict[str, float]
-        Dictionary of feature names and values.
-    """
-    return {name: func(task) for name, func in TASK_FEATURES.items()}
 
 
 annotation_tasks = AnnotationTaskAPI()

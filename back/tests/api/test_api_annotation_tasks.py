@@ -354,3 +354,79 @@ async def test_annotation_tasks_date_and_time_range_filter(
     # Range crossing midnight extends the end date by one day
     assert await matches("22:00:00", "02:00:00")
     assert not await matches("10:00:00", "12:00:00", end_date="2026-04-30")
+
+
+@pytest.mark.asyncio
+async def test_annotation_tasks_date_filter_on_recorded_at(
+    db_session: AsyncSession,
+    test_annotation_project: schemas.AnnotationProject,
+    test_recording: schemas.Recording,
+):
+    """Date-only ranges include the whole end day; time ranges skip recordings without a time."""
+    import datetime
+
+    from sonari.filters.annotation_tasks import AnnotationTaskFilter
+
+    recording = await api.recordings.update(
+        db_session,
+        test_recording,
+        schemas.RecordingUpdate(date=datetime.date(2026, 5, 1), time=datetime.time(23, 59, 30)),
+    )
+    (task,) = await _project_tasks(db_session, test_annotation_project, recording.id, 1)
+
+    async def matches(**dates: str) -> bool:
+        tasks, _ = await api.annotation_tasks.get_many(
+            db_session,
+            limit=10,
+            filters=[AnnotationTaskFilter(annotation_project__eq=test_annotation_project.id, **dates)],
+        )
+        return [t.id for t in tasks] == [task.id]
+
+    one_day = {"date__start_dates": "2026-05-01T00:00:00", "date__end_dates": "2026-05-01T00:00:00"}
+    assert await matches(**one_day)
+    assert not await matches(date__start_dates="2026-05-02T00:00:00")
+    assert not await matches(date__end_dates="2026-04-30T00:00:00")
+
+    await api.recordings.update(db_session, recording, schemas.RecordingUpdate(time=None))
+    await db_session.commit()
+    assert await matches(**one_day)
+    assert not await matches(date__start_times="1970-01-01T00:00:00", date__end_times="1970-01-01T01:00:00")
+
+
+@pytest.mark.asyncio
+async def test_recording_recorded_at_and_task_duration_columns(
+    db_session: AsyncSession,
+    test_annotation_project: schemas.AnnotationProject,
+    test_recording: schemas.Recording,
+):
+    """The database computes recorded_at (midnight without a time) and the task duration."""
+    import datetime
+
+    from sqlalchemy import select
+
+    recording = await api.recordings.update(
+        db_session,
+        test_recording,
+        schemas.RecordingUpdate(date=datetime.date(2026, 5, 1), time=datetime.time(21, 3, 4)),
+    )
+    tasks = await _project_tasks(db_session, test_annotation_project, recording.id, 3)
+
+    async def recorded_at():
+        return (
+            await db_session.execute(select(models.Recording.recorded_at).where(models.Recording.id == recording.id))
+        ).scalar_one()
+
+    assert await recorded_at() == datetime.datetime(2026, 5, 1, 21, 3, 4)
+    await api.recordings.update(db_session, recording, schemas.RecordingUpdate(time=None))
+    await db_session.commit()
+    assert await recorded_at() == datetime.datetime(2026, 5, 1)
+
+    durations = (
+        await db_session.execute(
+            select(models.AnnotationTask.duration).where(models.AnnotationTask.id.in_([t.id for t in tasks]))
+        )
+    ).scalars()
+    assert sorted(durations) == pytest.approx([0.1, 0.1, 0.1])
+    # The duration is still reported as a task feature.
+    task = await api.annotation_tasks.get(db_session, tasks[0].id)
+    assert [(f.name, f.value) for f in task.features] == [("duration", pytest.approx(0.1))]

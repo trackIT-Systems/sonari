@@ -279,22 +279,16 @@ async def get_objects_from_query(
     if sort_by is not None:
         if isinstance(sort_by, str):
             if sort_by == "recording_datetime":
-                # Join with related tables to access recording date and time
                 query = query.join(
                     models.Recording, models.AnnotationTask.recording_id == models.Recording.id
                 ).order_by(
-                    models.Recording.date.asc(),
-                    models.Recording.time.asc(),
+                    models.Recording.recorded_at.asc(),
                     models.AnnotationTask.id.asc(),  # Add stable secondary sort
                 )
             elif sort_by == "duration" or sort_by == "-duration":
-                # Sort by computed duration (end_time - start_time)
                 descending = sort_by.startswith("-")
-                duration_expr = models.AnnotationTask.end_time - models.AnnotationTask.start_time
-                if descending:
-                    query = query.order_by(duration_expr.desc())
-                else:
-                    query = query.order_by(duration_expr.asc())
+                duration = models.AnnotationTask.duration
+                query = query.order_by(duration.desc() if descending else duration.asc())
             elif sort_by == "recording" or sort_by == "-recording":
                 # Sort by recording path (lexicographical/alphabetical)
                 descending = sort_by.startswith("-")
