@@ -101,6 +101,8 @@ export const ZOOM_SHORTCUT = "z";
 export const ZOOM_IN_SHORTCUT = "+";
 export const ZOOM_OUT_SHORTCUT = "-";
 export const RESET_ZOOM_SHORTCUT = "u";
+/** Shift + u: the current zoom becomes the zoom every task opens with. */
+export const SAVE_DEFAULT_ZOOM_SHORTCUT = "U";
 
 export const MOVE_LEFT_SHORTCUT = "ArrowLeft";
 export const MOVE_RIGHT_SHORTCUT = "ArrowRight";
@@ -290,7 +292,12 @@ export const SPECTROGRAM_KEY_SHORTCUTS: KeyShortcut[] = [
     {
         label: "Reset Zoom",
         shortcut: RESET_ZOOM_SHORTCUT,
-        description: "Zoom to original settings",
+        description: "Go back to the default zoom",
+    },
+    {
+        label: "Save default zoom",
+        shortcut: `${getSpecialKeyLabel("Shift")} ${RESET_ZOOM_SHORTCUT}`,
+        description: "Open every task at the current time zoom from now on (back to automatic in the settings)",
     },
 ];
 

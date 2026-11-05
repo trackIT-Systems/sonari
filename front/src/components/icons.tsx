@@ -18,6 +18,7 @@ import {
   ArrowsPointingInIcon,
   ArrowsPointingOutIcon,
   Bars2Icon,
+  BookmarkIcon,
   BellAlertIcon,
   BoltIcon,
   CalendarDaysIcon,
@@ -244,6 +245,7 @@ function LineStringIcon(props: HTMLProps<SVGSVGElement>) {
 
 export {
   AdjustmentsVerticalIcon as SpectrogramSettingsIcon,
+  BookmarkIcon as SaveDefaultZoomIcon,
   ArchiveBoxIcon as DatasetIcon,
   ArrowDownOnSquareIcon as DownloadIcon,
   ArrowLeftOnRectangleIcon as GoToIcon,

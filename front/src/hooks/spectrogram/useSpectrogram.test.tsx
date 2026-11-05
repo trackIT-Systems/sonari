@@ -139,6 +139,34 @@ describe("useSpectrogram window", () => {
   });
 });
 
+describe("useSpectrogram default zoom", () => {
+  it("stays in place when the current zoom becomes the initial one", () => {
+    const { result, rerender } = renderSpectrogram();
+    act(() => result.current.zoom(win(10, 10.25)));
+    // Saving 0.25 s as the default zoom: the initial window starts at the
+    // task start with the current duration.
+    rerender({ bounds: win(0, 60), initial: win(0, 0.25), parameters: PARAMS });
+    expect(result.current.window).toEqual(win(10, 10.25));
+    // u then goes back to the saved zoom where the user is.
+    act(() => result.current.zoom(win(10, 12)));
+    act(() => result.current.reset());
+    expect(result.current.window.time.max - result.current.window.time.min).toBeCloseTo(0.25, 9);
+  });
+
+  it("keeps unsaved parameter changes when other saved parameters change", () => {
+    const { result, rerender } = renderSpectrogram();
+    act(() => result.current.setParameters({ ...result.current.parameters, gamma: 2 }));
+    rerender({
+      bounds: win(0, 60),
+      initial: win(0, 1),
+      parameters: { ...PARAMS, time_zoom_automatic: false, time_zoom_duration_seconds: 1 },
+    });
+    expect(result.current.parameters.gamma).toBe(2);
+    expect(result.current.parameters.time_zoom_automatic).toBe(false);
+    expect(result.current.parameters.time_zoom_duration_seconds).toBe(1);
+  });
+});
+
 describe("useSpectrogram detail", () => {
   it.each([
     [undefined, 448],
