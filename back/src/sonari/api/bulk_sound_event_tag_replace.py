@@ -18,6 +18,7 @@ from sonari.services import sound_event_history as history
 __all__ = [
     "BulkSoundEventTagReplaceParams",
     "BulkTagReplaceChunkResult",
+    "invalidate_species_counts_for_tasks",
     "process_bulk_delete_sound_events_chunk",
     "process_bulk_tag_replace_chunk",
 ]
@@ -182,7 +183,7 @@ async def _mark_seas_edited(
         )
 
 
-async def _invalidate_species_counts_for_tasks(
+async def invalidate_species_counts_for_tasks(
     session: AsyncSession,
     task_ids: Sequence[int],
 ) -> None:
@@ -252,7 +253,7 @@ async def process_bulk_tag_replace_chunk(
     tasks_with_changes = {sea_to_task[sea_id] for sea_id in changed_sea_ids if sea_id in sea_to_task}
 
     if tasks_with_changes:
-        await _invalidate_species_counts_for_tasks(session, list(tasks_with_changes))
+        await invalidate_species_counts_for_tasks(session, list(tasks_with_changes))
 
     return BulkTagReplaceChunkResult(
         tasks_updated=len(tasks_with_changes),
@@ -326,7 +327,7 @@ async def process_bulk_delete_sound_events_chunk(
     await session.execute(delete(Sea).where(Sea.id.in_(sea_ids)))
 
     tasks_with_changes = set(sea_to_task.values())
-    await _invalidate_species_counts_for_tasks(session, list(tasks_with_changes))
+    await invalidate_species_counts_for_tasks(session, list(tasks_with_changes))
 
     return BulkTagReplaceChunkResult(
         tasks_updated=len(tasks_with_changes),

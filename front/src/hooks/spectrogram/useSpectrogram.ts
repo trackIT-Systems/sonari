@@ -130,9 +130,22 @@ export default function useSpectrogram({
   const cycleIndexRef = useRef(0);
   const isCyclingRef = useRef(false);
 
-  // Update internal parameters when external parameters change
+  // Update internal parameters when external parameters change. Only the
+  // fields that changed outside are taken over: saving one setting (e.g. the
+  // default zoom) must not throw away other unsaved changes, such as a cycled
+  // channel.
+  const prevInitialParametersRef = useRef(initialParameters);
   useEffect(() => {
-    setParameters(validateParameters(initialParameters, samplerate));
+    const previous = prevInitialParametersRef.current;
+    prevInitialParametersRef.current = initialParameters;
+    setParameters((current) =>
+      validateParameters(
+        previous === initialParameters
+          ? current
+          : takeOverChangedFields(current, previous, initialParameters),
+        samplerate,
+      ),
+    );
   }, [initialParameters, samplerate]);
 
   /**
@@ -213,10 +226,22 @@ export default function useSpectrogram({
   // the task query is replaced (tag/badge/note mutations), which must not
   // throw away the user's zoom.
   const prevInitialWindowRef = useRef(initialWindow);
+  // Read in the effect below without making it depend on every pan and zoom.
+  const windowRef = useRef(window);
+  windowRef.current = window;
   useEffect(() => {
     if (initialWindow == null) return;
-    if (windowsEqual(prevInitialWindowRef.current, initialWindow)) return;
+    const previous = prevInitialWindowRef.current;
+    if (windowsEqual(previous, initialWindow)) return;
     prevInitialWindowRef.current = initialWindow;
+    // Same task, and the user already looks at the new initial zoom (they
+    // just saved it as the default): stay where they are.
+    if (
+      previous.time.min === initialWindow.time.min
+      && sameDuration(windowRef.current.time, initialWindow.time)
+    ) {
+      return;
+    }
     setConstrainedWindow(initialWindow);
   }, [initialWindow, setConstrainedWindow]);
 
@@ -555,6 +580,37 @@ export default function useSpectrogram({
     enableZoom,
     disable,
   };
+}
+
+/** Equal lengths, allowing for float rounding of `min + duration`. */
+function sameDuration(
+  a: { min: number; max: number },
+  b: { min: number; max: number },
+): boolean {
+  const da = a.max - a.min;
+  const db = b.max - b.min;
+  return Math.abs(da - db) <= 1e-9 * Math.max(Math.abs(da), Math.abs(db), 1);
+}
+
+/**
+ * `current` with every field that differs between `previous` and `next`
+ * replaced by its value in `next`.
+ */
+function takeOverChangedFields(
+  current: SpectrogramParameters,
+  previous: SpectrogramParameters,
+  next: SpectrogramParameters,
+): SpectrogramParameters {
+  const merged: Record<string, unknown> = { ...current };
+  const keys = Object.keys(previous).concat(Object.keys(next));
+  for (const key of keys) {
+    const before = (previous as Record<string, unknown>)[key];
+    const after = (next as Record<string, unknown>)[key];
+    if (JSON.stringify(before) !== JSON.stringify(after)) {
+      merged[key] = after;
+    }
+  }
+  return merged as SpectrogramParameters;
 }
 
 function windowsEqual(a: SpectrogramWindow, b: SpectrogramWindow): boolean {

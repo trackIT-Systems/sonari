@@ -603,6 +603,13 @@ export default function AnnotationTaskTable({
   if (annotationTasks.isLoading || annotationTasks.data == null) {
     return <Loading />;
   }
+
+  // The previous rows stay visible while a new filter (or page) loads, and a
+  // filter edit first waits for the debounce: say that results are coming.
+  const isFiltering =
+    (annotationTasks.filter.isPending ?? false)
+    || (annotationTasks.isFetching && annotationTasks.isPlaceholderData);
+
   return (
     <div className="flex flex-col gap-y-4" data-guided-tour="task-table">
       <div className="flex flex-row justify-between space-x-4">
@@ -666,6 +673,22 @@ export default function AnnotationTaskTable({
         total={annotationTasks.total}
         filterDef={tasksFilterDefs}
       />
+      <div className="-my-3 flex h-2 flex-row items-center gap-3" aria-live="polite">
+        {isFiltering && (
+          <>
+            <div
+              className="h-1 grow overflow-hidden rounded-full bg-emerald-200/80 dark:bg-emerald-900/50"
+              role="progressbar"
+              aria-valuetext="Loading filtered tasks"
+            >
+              <div className="bulk-action-progress-indeterminate h-full w-1/3 rounded-full bg-emerald-600 motion-reduce:animate-none dark:bg-emerald-400" />
+            </div>
+            <span className="shrink-0 text-xs text-stone-500 dark:text-stone-400">
+              Filtering…
+            </span>
+          </>
+        )}
+      </div>
       {showBulkBar && (
         <div ref={bulkBarRef} className="sticky top-0 z-30 rounded-md bg-stone-100 shadow-md dark:bg-stone-900" data-guided-tour="tasks-bulk-bar">
         <AnnotationTaskBulkActionBar
@@ -676,9 +699,12 @@ export default function AnnotationTaskTable({
           soundEventTagCounts={bulkTagSummaryQuery.data ?? []}
           isTagSummaryLoading={bulkTagSummaryQuery.isLoading}
           bulkAddBadge={bulkActions.bulkAddBadge}
+          bulkRemoveBadge={bulkActions.bulkRemoveBadge}
           bulkAddTag={bulkActions.bulkAddTag}
           bulkReplaceSoundEventTags={bulkActions.bulkReplaceSoundEventTags}
           bulkDeleteSoundEventsByTag={bulkActions.bulkDeleteSoundEventsByTag}
+          progress={bulkActions.progress}
+          onStop={bulkActions.stop}
           onClearSelection={handleClearBulkSelection}
           onSelectAllMatchingFilter={handleSelectAllMatchingFilter}
           onSelectPageOnly={handleSelectPageOnly}
@@ -686,8 +712,12 @@ export default function AnnotationTaskTable({
         />
         </div>
       )}
-      <div className="w-full">
-        <div className="w-full min-w-0 overflow-x-auto rounded-md outline outline-1 outline-stone-200 dark:outline-stone-800">
+      <div className="w-full" aria-busy={isFiltering}>
+        <div
+          className={`w-full min-w-0 overflow-x-auto rounded-md outline outline-1 outline-stone-200 transition-opacity duration-200 dark:outline-stone-800 ${
+            isFiltering ? "opacity-50" : ""
+          }`}
+        >
           <Table
             table={table}
             selectedIndex={typeof focusedElement === 'number' ? focusedElement : -1}

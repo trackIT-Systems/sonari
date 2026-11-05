@@ -21,7 +21,25 @@ type SpeciesCount = {
   unsure: number;
   rejected: number;
   no_status: number;
+  /** Tasks with at least one sound event with this tag */
+  task_count: number;
+  /** Recordings with at least one sound event with this tag */
+  recording_count: number;
 };
+
+function plural(count: number, singular: string, pluralForm = `${singular}s`) {
+  return `${count} ${count === 1 ? singular : pluralForm}`;
+}
+
+/**
+ * Where a species occurs: "12 tasks", or "12 tasks · 5 recordings" when
+ * recordings are split into several tasks.
+ */
+function occurrenceLabel({ task_count, recording_count }: SpeciesCount): string {
+  const tasks = plural(task_count, "task");
+  if (recording_count === task_count) return tasks;
+  return `${tasks} · ${plural(recording_count, "recording")}`;
+}
 
 const STATUS_SEGMENTS = [
   {
@@ -82,7 +100,18 @@ function SpeciesBarChart({ speciesCounts }: { speciesCounts: SpeciesCount[] }) {
                   <span className="ml-1 font-semibold italic">{species.value}</span>
                 </span>
                 <span className="shrink-0 tabular-nums text-stone-500">
-                  {species.count}
+                  <span title="Sound events with this tag">
+                    <span className="font-medium text-stone-700 dark:text-stone-300">
+                      {species.count}
+                    </span>{" "}
+                    {species.count === 1 ? "event" : "events"}
+                  </span>
+                  {species.task_count > 0 && (
+                    <span title="Tasks and recordings with at least one such sound event">
+                      {" · "}
+                      {occurrenceLabel(species)}
+                    </span>
+                  )}
                 </span>
               </div>
               <div className="h-3 w-full rounded-full bg-stone-100 dark:bg-stone-800">

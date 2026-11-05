@@ -40,6 +40,8 @@ export type Filter<T extends Object> = {
   isFixed: <K extends keyof T>(key: K) => boolean;
   /** The count of non-fixed keys in the filter state. */
   size: number;
+  /** An edit is waiting for the debounce: `filter` does not include it yet. */
+  isPending?: boolean;
 };
 
 const _fixed: any[] = [];
@@ -196,5 +198,7 @@ export default function useFilter<T extends Object>({
     submit,
     size,
     isFixed,
+    // `debouncedState` takes over the very `state` object once it fires.
+    isPending: state !== debouncedState,
   };
 }

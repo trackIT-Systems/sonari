@@ -1,7 +1,8 @@
 import { useCallback, useMemo, useRef, useState, useEffect } from "react";
 import HideSoundEventsButton from "@/components/spectrograms/HideSoundEventsButton";
 import { emitGuidedTourEvent } from "@/components/workshop/guidedTour/events";
-import { useMeasure } from "react-use";
+import { useKeyPressEvent, useMeasure } from "react-use";
+import toast from "react-hot-toast";
 import classNames from "classnames";
 
 import { DEFAULT_SPECTROGRAM_PARAMETERS, applyAutoSTFT } from "@/api/spectrograms";
@@ -24,6 +25,8 @@ import useCanvas from "@/hooks/draw/useCanvas";
 import useSpectrogram, { clampSamplerate } from "@/hooks/spectrogram/useSpectrogram";
 import useSpectrogramTrackAudio from "@/hooks/spectrogram/useSpectrogramTrackAudio";
 import { getInitialViewingWindow } from "@/utils/windows";
+import useKeyFilter from "@/hooks/utils/useKeyFilter";
+import { RESET_ZOOM_SHORTCUT, SAVE_DEFAULT_ZOOM_SHORTCUT } from "@/utils/keyboard";
 import { getPassSiblingIds } from "@/utils/passes";
 import type { TagVisibilityFilter } from "@/utils/passes";
 import type { AnnotateMode } from "@/hooks/annotation/useAnnotateTask";
@@ -41,6 +44,15 @@ import useWaveform from "@/hooks/spectrogram/useWaveform";
 import useAnnotationDrawWaveform from "@/hooks/annotation/useAnnotationDrawWaveform";
 import { NoIcon } from "../icons";
 import { SPECTROGRAM_CANVAS_DIMENSIONS, WAVEFORM_CANVAS_DIMENSIONS } from "@/constants";
+
+/** Shortest default zoom the parameters accept (seconds) */
+const TIME_ZOOM_MIN = 0.01;
+
+function formatSeconds(seconds: number): string {
+  return seconds < 1
+    ? `${Math.round(seconds * 1000)} ms`
+    : `${Number(seconds.toPrecision(3))} s`;
+}
 
 /** Space between the spectrogram and the waveform (Tailwind gap-3) */
 const STAGE_GAP = 12;
@@ -333,6 +345,41 @@ export default function AnnotationTaskSpectrogram({
     [spectrogram],
   );
 
+  /**
+   * Save the visible time span as the default zoom: every task opens with it
+   * from now on. Only the zoom is saved, on top of the saved parameters, so
+   * unsaved changes (e.g. a cycled channel) are neither saved nor lost.
+   */
+  const handleSaveDefaultZoom = useCallback(() => {
+    if (!onParameterSave) return;
+    const seconds = spectrogram.window.time.max - spectrogram.window.time.min;
+    if (!(seconds >= TIME_ZOOM_MIN)) return;
+    onParameterSave({
+      ...parameters,
+      time_zoom_automatic: false,
+      time_zoom_duration_seconds: seconds,
+    });
+    toast.success(
+      `Default zoom saved: ${formatSeconds(seconds)}. Tasks now open at this zoom; ${RESET_ZOOM_SHORTCUT} returns to it.`,
+    );
+  }, [onParameterSave, parameters, spectrogram.window]);
+
+  useKeyPressEvent(
+    useKeyFilter({
+      enabled: withSpectrogramShortcuts && withSpectrogram && onParameterSave != null,
+      key: SAVE_DEFAULT_ZOOM_SHORTCUT,
+    }),
+    (event: KeyboardEvent) => {
+      if (event.ctrlKey || event.altKey || event.metaKey) return;
+      event.preventDefault();
+      handleSaveDefaultZoom();
+    },
+  );
+
+  const hasDefaultZoom =
+    parameters.time_zoom_automatic === false
+    && parameters.time_zoom_duration_seconds != null;
+
   const waveform = useWaveform({
     recording: recording!,
     parameters: spectrogram.parameters,
@@ -553,6 +600,10 @@ export default function AnnotationTaskSpectrogram({
               onReset={spectrogram.reset}
               onZoom={spectrogram.enableZoom}
               onToggleAspectRatio={toggleFixedAspectRatio}
+              onSaveDefaultZoom={
+                onParameterSave && withSpectrogram ? handleSaveDefaultZoom : undefined
+              }
+              hasDefaultZoom={hasDefaultZoom}
             />
             </div>
           )}

@@ -297,20 +297,94 @@ async def test_bulk_target_by_filter_only(
 
 
 @pytest.mark.asyncio
-async def test_bulk_max_tasks_limit(
+async def test_bulk_has_no_task_limit_and_spans_chunks(
     auth_client: AsyncClient,
+    db_session,
     test_annotation_project: schemas.AnnotationProject,
+    test_recording_id: int,
     test_annotation_task: schemas.AnnotationTask,
 ):
-    """Reject bulk operations that exceed MAX_BULK_TASKS."""
-    assert test_annotation_task.annotation_project_id == test_annotation_project.id
-    with patch("sonari.api.annotation_tasks.MAX_BULK_TASKS", 0):
+    """Large targets are processed chunk by chunk instead of being rejected."""
+    with patch("sonari.api.annotation_tasks._BULK_CHUNK_SIZE", 2):
+        tasks = [test_annotation_task] + [
+            await _create_task(db_session, test_annotation_project, test_recording_id, float(i), float(i) + 1.0)
+            for i in range(1, 5)
+        ]
         response = await auth_client.post(
             "/api/v1/annotation_tasks/bulk/badges/",
             params={"annotation_project__eq": test_annotation_project.id},
             json={"state": "completed"},
         )
-    assert response.status_code == 400
+    assert response.status_code == 200, response.text
+    result = schemas.AnnotationTaskBulkResult.model_validate(response.json())
+    assert result.failures == []
+    assert (result.tasks_targeted, result.tasks_updated) == (len(tasks), len(tasks))
+
+
+@pytest.mark.asyncio
+async def test_bulk_resolve_ids(
+    auth_client: AsyncClient,
+    db_session,
+    test_annotation_project: schemas.AnnotationProject,
+    test_recording_id: int,
+    test_annotation_task: schemas.AnnotationTask,
+):
+    """The ids endpoint lists the filter's tasks, or the explicit ids that match it."""
+    task2 = await _create_task(db_session, test_annotation_project, test_recording_id, 1.0, 2.0)
+    params = {"annotation_project__eq": test_annotation_project.id}
+
+    response = await auth_client.post(
+        "/api/v1/annotation_tasks/bulk/ids/", params=params, json={},
+    )
+    assert response.status_code == 200, response.text
+    assert sorted(response.json()) == sorted([test_annotation_task.id, task2.id])
+
+    response = await auth_client.post(
+        "/api/v1/annotation_tasks/bulk/ids/",
+        params=params,
+        json={"annotation_task_ids": [task2.id, 999_999, task2.id]},
+    )
+    assert response.status_code == 200, response.text
+    assert response.json() == [task2.id]
+
+
+@pytest.mark.asyncio
+async def test_bulk_remove_badge(
+    auth_client: AsyncClient,
+    db_session,
+    test_annotation_project: schemas.AnnotationProject,
+    test_recording_id: int,
+    test_annotation_task: schemas.AnnotationTask,
+):
+    """Removes the badge where present, skips tasks without it, keeps other states."""
+    task2 = await _create_task(db_session, test_annotation_project, test_recording_id, 1.0, 2.0)
+    for state in ("completed", "verified"):
+        added = await auth_client.post(
+            "/api/v1/annotation_tasks/detail/badges/",
+            params={"annotation_task_id": test_annotation_task.id, "state": state},
+        )
+        assert added.status_code in [200, 201], added.text
+
+    response = await auth_client.post(
+        "/api/v1/annotation_tasks/bulk/badges/remove/",
+        params={"annotation_project__eq": test_annotation_project.id},
+        json={
+            "annotation_task_ids": [test_annotation_task.id, task2.id],
+            "state": "completed",
+        },
+    )
+    assert response.status_code == 200, response.text
+    result = schemas.AnnotationTaskBulkResult.model_validate(response.json())
+    assert result.failures == []
+    assert (result.tasks_updated, result.tasks_skipped) == (1, 1)
+
+    detail = await auth_client.get(
+        "/api/v1/annotation_tasks/detail/",
+        params={"annotation_task_id": test_annotation_task.id, "include_status_badges": True},
+    )
+    assert detail.status_code == 200
+    task = schemas.AnnotationTask.model_validate(detail.json())
+    assert [b.state for b in task.status_badges or []] == ["verified"]
 
 
 @pytest.mark.asyncio

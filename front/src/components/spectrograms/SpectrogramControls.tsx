@@ -1,8 +1,13 @@
 import Button from "@/components/Button";
-import { BackIcon, LockClosedIcon, LockOpenIcon, SearchIcon } from "@/components/icons";
+import { BackIcon, LockClosedIcon, LockOpenIcon, SaveDefaultZoomIcon, SearchIcon } from "@/components/icons";
 import Tooltip from "@/components/Tooltip";
 import KeyboardKey from "@/components/KeyboardKey";
-import { LOCK_ASPECT_RATIO_SHORTCUT, ZOOM_SHORTCUT, RESET_ZOOM_SHORTCUT } from "@/utils/keyboard";
+import {
+  LOCK_ASPECT_RATIO_SHORTCUT,
+  ZOOM_SHORTCUT,
+  RESET_ZOOM_SHORTCUT,
+  getSpecialKeyLabel,
+} from "@/utils/keyboard";
 
 export default function SpectrogramControls({
   canZoom,
@@ -11,6 +16,8 @@ export default function SpectrogramControls({
   onZoom,
   onReset,
   onToggleAspectRatio,
+  onSaveDefaultZoom,
+  hasDefaultZoom = false,
 }: {
   canZoom: boolean;
   fixedAspectRatio: boolean;
@@ -19,6 +26,10 @@ export default function SpectrogramControls({
   onReset?: () => void;
   onZoom?: () => void;
   onToggleAspectRatio?: () => void;
+  /** Make the current zoom the one every task opens with */
+  onSaveDefaultZoom?: () => void;
+  /** A saved default zoom is in use (instead of the automatic one) */
+  hasDefaultZoom?: boolean;
 }) {
   return (
     <div className="flex space-x-1">
@@ -81,6 +92,30 @@ export default function SpectrogramControls({
           <BackIcon className="w-5 h-5" />
         </Button>
       </Tooltip>
+      {onSaveDefaultZoom && (
+        <Tooltip
+          tooltip={
+            <div className="inline-flex gap-2 items-center">
+              {hasDefaultZoom ? "Save current zoom as default (replaces saved)" : "Save current zoom as default"}
+              {withShortcutHints && (
+                <div className="text-xs">
+                  <KeyboardKey code={getSpecialKeyLabel("Shift")} />{" "}
+                  <KeyboardKey code={RESET_ZOOM_SHORTCUT} />
+                </div>
+              )}
+            </div>
+          }
+          placement="bottom"
+        >
+          <Button
+            variant={hasDefaultZoom ? "primary" : "secondary"}
+            onClick={onSaveDefaultZoom}
+            aria-label="Save current zoom as default"
+          >
+            <SaveDefaultZoomIcon className="w-5 h-5" />
+          </Button>
+        </Tooltip>
+      )}
     </div>
   );
 }

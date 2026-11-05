@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Popover, PopoverButton, PopoverPanel } from "@headlessui/react";
+import { Menu, MenuButton, MenuItem, MenuItems, Popover, PopoverButton, PopoverPanel } from "@headlessui/react";
 import Button from "@/components/Button";
 import { DialogOverlay } from "@/components/Dialog";
 import { Input } from "@/components/inputs";
@@ -33,6 +33,7 @@ import type { AnnotationStatus, Tag } from "@/types";
 import type { UseMutationResult } from "@tanstack/react-query";
 import type { AnnotationTaskBulkResult } from "@/api/annotation_tasks";
 import type { AxiosError } from "axios";
+import type { BulkProgress } from "@/hooks/api/useAnnotationTaskBulkActions";
 import { emitGuidedTourEvent } from "@/components/workshop/guidedTour/events";
 
 type BulkMutation<T> = UseMutationResult<
@@ -80,6 +81,23 @@ const STATUS_SHORTCUTS: Record<string, AnnotationStatus> = {
   [VERIFY_TASK_SHORTCUT]: "verified",
 };
 
+/**
+ * Shift + 1-4 removes the status. Matched on the physical key (event.code):
+ * with Shift held, event.key is "!", '"', "§", … depending on the layout.
+ */
+const REMOVE_STATUS_SHORTCUTS: Record<string, AnnotationStatus> = Object.fromEntries(
+  Object.entries(STATUS_SHORTCUTS).map(([key, status]) => [`Digit${key}`, status]),
+);
+
+const STATUS_ICONS: Record<AnnotationStatus, { Icon: typeof CompleteIcon; className: string }> = {
+  completed: { Icon: CompleteIcon, className: "text-emerald-500" },
+  assigned: { Icon: HelpIcon, className: "text-amber-500" },
+  rejected: { Icon: NeedsReviewIcon, className: "text-red-500" },
+  verified: { Icon: VerifiedIcon, className: "text-emerald-500" },
+};
+
+const STATUS_ORDER: AnnotationStatus[] = ["completed", "assigned", "rejected", "verified"];
+
 /** True when the key event comes from a field where the user is typing. */
 function isTextEntryTarget(target: EventTarget | null): boolean {
   if (!(target instanceof HTMLElement)) return false;
@@ -108,15 +126,35 @@ function ReportPopoverOpen({
   return null;
 }
 
-function BulkActionProgressBar() {
+function BulkActionProgressBar({ progress }: { progress?: BulkProgress | null }) {
+  const total = progress?.total;
+  // Indeterminate while the targets are resolved, and for single-batch runs.
+  if (progress == null || total == null || total === 0) {
+    return (
+      <div
+        className="h-1 w-full overflow-hidden rounded-full bg-emerald-200/80 dark:bg-emerald-900/50"
+        role="progressbar"
+        aria-valuetext="Bulk action in progress"
+      >
+        <div
+          className="bulk-action-progress-indeterminate h-full w-1/3 rounded-full bg-emerald-600 motion-reduce:animate-none dark:bg-emerald-400"
+        />
+      </div>
+    );
+  }
+  const percent = Math.round((progress.done / total) * 100);
   return (
     <div
       className="h-1 w-full overflow-hidden rounded-full bg-emerald-200/80 dark:bg-emerald-900/50"
       role="progressbar"
-      aria-valuetext="Bulk action in progress"
+      aria-valuemin={0}
+      aria-valuemax={total}
+      aria-valuenow={progress.done}
+      aria-valuetext={`${progress.done} of ${total} tasks`}
     >
       <div
-        className="bulk-action-progress-indeterminate h-full w-1/3 rounded-full bg-emerald-600 motion-reduce:animate-none dark:bg-emerald-400"
+        className="h-full rounded-full bg-emerald-600 transition-[width] duration-300 motion-reduce:transition-none dark:bg-emerald-400"
+        style={{ width: `${percent}%` }}
       />
     </div>
   );
@@ -168,9 +206,12 @@ export default function AnnotationTaskBulkActionBar({
   soundEventTagCounts,
   isTagSummaryLoading,
   bulkAddBadge,
+  bulkRemoveBadge,
   bulkAddTag,
   bulkReplaceSoundEventTags,
   bulkDeleteSoundEventsByTag,
+  progress,
+  onStop,
   onClearSelection,
   onSelectAllMatchingFilter,
   onSelectPageOnly,
@@ -183,6 +224,7 @@ export default function AnnotationTaskBulkActionBar({
   soundEventTagCounts: SoundEventTagBulkCount[];
   isTagSummaryLoading?: boolean;
   bulkAddBadge: BulkMutation<{ annotation_task_ids?: number[]; state: AnnotationStatus }>;
+  bulkRemoveBadge?: BulkMutation<{ annotation_task_ids?: number[]; state: AnnotationStatus }>;
   bulkAddTag: BulkMutation<{
     annotation_task_ids?: number[];
     tag: Pick<Tag, "key" | "value">;
@@ -199,6 +241,10 @@ export default function AnnotationTaskBulkActionBar({
     annotation_task_ids?: number[];
     tag: Pick<Tag, "key" | "value">;
   }>;
+  /** Progress of a running bulk action that is sent in batches. */
+  progress?: BulkProgress | null;
+  /** Stop a running bulk action after the current batch. */
+  onStop?: () => void;
   onClearSelection: () => void;
   /** Switch from "this page" to every task matching the filter. */
   onSelectAllMatchingFilter?: () => void;
@@ -303,6 +349,27 @@ export default function AnnotationTaskBulkActionBar({
       );
     },
     [bulkAddBadge, onClearSelection, runWithConfirm, targetLabel, taskIds],
+  );
+
+  const handleRemoveStatus = useCallback(
+    (state: AnnotationStatus) => {
+      if (!bulkRemoveBadge) return;
+      runWithConfirm(
+        () => {
+          bulkRemoveBadge.mutate(
+            { annotation_task_ids: taskIds, state },
+            { onSuccess: () => onClearSelection() },
+          );
+        },
+        {
+          title: "Remove task status?",
+          message: `Remove the status "${STATUS_LABELS[state]}" (of every user) from ${targetLabel}. Tasks without it are skipped.`,
+          confirmLabel: `Remove ${STATUS_LABELS[state]}`,
+          destructive: true,
+        },
+      );
+    },
+    [bulkRemoveBadge, onClearSelection, runWithConfirm, targetLabel, taskIds],
   );
 
   const handleAddTaskTag = useCallback(
@@ -426,6 +493,7 @@ export default function AnnotationTaskBulkActionBar({
 
   const isBusy =
     bulkAddBadge.isPending
+    || (bulkRemoveBadge?.isPending ?? false)
     || bulkAddTag.isPending
     || bulkReplaceSoundEventTags.isPending
     || bulkDeleteSoundEventsByTag.isPending;
@@ -443,10 +511,19 @@ export default function AnnotationTaskBulkActionBar({
 
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.defaultPrevented) return;
-      if (event.ctrlKey || event.metaKey || event.altKey || event.shiftKey) return;
+      if (event.ctrlKey || event.metaKey || event.altKey) return;
       if (isTextEntryTarget(event.target)) return;
       // e.g. the shortcut help is open
       if (document.querySelector('[role="dialog"]')) return;
+
+      if (event.shiftKey) {
+        const removeStatus = REMOVE_STATUS_SHORTCUTS[event.code];
+        if (removeStatus && bulkRemoveBadge) {
+          event.preventDefault();
+          handleRemoveStatus(removeStatus);
+        }
+        return;
+      }
 
       const status = STATUS_SHORTCUTS[event.key];
       if (status) {
@@ -465,16 +542,38 @@ export default function AnnotationTaskBulkActionBar({
 
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [isBusy, confirmOpen, anyPanelOpen, handleStatus, isTagSummaryLoading]);
+  }, [
+    isBusy,
+    confirmOpen,
+    anyPanelOpen,
+    handleStatus,
+    handleRemoveStatus,
+    bulkRemoveBadge,
+    isTagSummaryLoading,
+  ]);
 
   return (
     <div className="flex flex-col gap-2 rounded-md border border-emerald-200 bg-emerald-50 px-4 py-3 dark:border-emerald-900 dark:bg-emerald-950/40">
       {isBusy && (
         <div className="flex flex-col gap-1">
-          <BulkActionProgressBar />
-          <span className="text-xs text-stone-600 dark:text-stone-400">
-            Applying bulk action…
-          </span>
+          <BulkActionProgressBar progress={progress} />
+          <div className="flex flex-row items-center justify-between gap-2 text-xs text-stone-600 dark:text-stone-400">
+            <span className="tabular-nums">
+              {progress?.total == null
+                ? "Collecting tasks…"
+                : `Applying bulk action… ${progress.done} of ${progress.total} tasks`}
+            </span>
+            {onStop && progress?.total != null && progress.total > 0 && (
+              <button
+                type="button"
+                className="font-medium text-stone-700 underline underline-offset-2 hover:text-stone-900 dark:text-stone-300 dark:hover:text-stone-100"
+                onClick={onStop}
+                title="Stop after the current batch; tasks already done stay changed"
+              >
+                Stop
+              </button>
+            )}
+          </div>
         </div>
       )}
       <div className="flex flex-row flex-wrap items-center justify-between gap-2">
@@ -524,6 +623,42 @@ export default function AnnotationTaskBulkActionBar({
         <Button mode="text" variant="primary" onClick={() => handleStatus("verified")} disabled={isBusy} title={`Verified (${VERIFY_TASK_SHORTCUT})`}>
           <VerifiedIcon className="h-6 w-6" />
         </Button>
+        {bulkRemoveBadge && (
+          <Menu as="div" className="relative">
+            <MenuButton
+              as={Button}
+              mode="outline"
+              variant="secondary"
+              disabled={isBusy}
+              title="Remove a status (Shift + 1-4)"
+            >
+              Remove status
+            </MenuButton>
+            <MenuItems
+              anchor="bottom start"
+              className="z-50 mt-2 w-56 rounded-md border border-stone-200 bg-stone-50 p-1 shadow-lg focus:outline-none dark:border-stone-500 dark:bg-stone-700"
+            >
+              {STATUS_ORDER.map((state, index) => {
+                const { Icon, className } = STATUS_ICONS[state];
+                return (
+                  <MenuItem key={state}>
+                    <button
+                      type="button"
+                      className="flex w-full flex-row items-center gap-2 rounded px-2 py-1.5 text-left text-sm text-stone-700 data-[focus]:bg-stone-200 dark:text-stone-200 dark:data-[focus]:bg-stone-600"
+                      onClick={() => handleRemoveStatus(state)}
+                    >
+                      <Icon className={`h-5 w-5 ${className}`} />
+                      <span className="grow">{STATUS_LABELS[state]}</span>
+                      <span className="text-xs text-stone-500 dark:text-stone-400">
+                        <KeyboardKey code="⇧" /> <KeyboardKey code={String(index + 1)} />
+                      </span>
+                    </button>
+                  </MenuItem>
+                );
+              })}
+            </MenuItems>
+          </Menu>
+        )}
         <Popover as="div" className="relative">
           {({ open }) => (
             <>

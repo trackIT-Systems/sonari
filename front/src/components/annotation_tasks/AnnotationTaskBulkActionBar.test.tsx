@@ -14,6 +14,7 @@ function mutation() {
 
 function renderBar(props: { targetMode: "selected" | "filter_all"; selectedTaskIds?: number[] }) {
   const bulkAddBadge = mutation();
+  const bulkRemoveBadge = mutation();
   render(
     <AnnotationTaskBulkActionBar
       targetMode={props.targetMode}
@@ -22,13 +23,14 @@ function renderBar(props: { targetMode: "selected" | "filter_all"; selectedTaskI
       currentPageTaskIds={[]}
       soundEventTagCounts={[]}
       bulkAddBadge={bulkAddBadge}
+      bulkRemoveBadge={bulkRemoveBadge}
       bulkAddTag={mutation()}
       bulkReplaceSoundEventTags={mutation()}
       bulkDeleteSoundEventsByTag={mutation()}
       onClearSelection={() => {}}
     />,
   );
-  return { bulkAddBadge };
+  return { bulkAddBadge, bulkRemoveBadge };
 }
 
 describe("AnnotationTaskBulkActionBar confirmation", () => {
@@ -71,5 +73,40 @@ describe("AnnotationTaskBulkActionBar confirmation", () => {
 
     expect(bulkAddBadge.mutate).toHaveBeenCalledTimes(1);
     expect(screen.queryByLabelText("Number of tasks")).toBeNull();
+  });
+});
+
+describe("AnnotationTaskBulkActionBar status removal", () => {
+  afterEach(cleanup);
+
+  it("removes a status with Shift + its number, whatever the layout prints", () => {
+    const { bulkAddBadge, bulkRemoveBadge } = renderBar({
+      targetMode: "selected",
+      selectedTaskIds: [1, 2],
+    });
+
+    // Shift + 4 on a German layout prints "$".
+    fireEvent.keyDown(window, { key: "$", code: "Digit4", shiftKey: true });
+
+    expect(bulkRemoveBadge.mutate).toHaveBeenCalledWith(
+      { annotation_task_ids: [1, 2], state: "verified" },
+      expect.anything(),
+    );
+    expect(bulkAddBadge.mutate).not.toHaveBeenCalled();
+  });
+
+  it("asks before removing from every task matching the filter", async () => {
+    const { bulkRemoveBadge } = renderBar({ targetMode: "filter_all" });
+
+    await act(async () => {
+      fireEvent.keyDown(window, { key: "!", code: "Digit1", shiftKey: true });
+    });
+
+    expect(
+      await screen.findByText(
+        'Remove the status "Accepted" (of every user) from all 25 tasks matching the current filter. Tasks without it are skipped.',
+      ),
+    ).toBeTruthy();
+    expect(bulkRemoveBadge.mutate).not.toHaveBeenCalled();
   });
 });

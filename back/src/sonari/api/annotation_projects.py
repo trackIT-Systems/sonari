@@ -246,6 +246,12 @@ class AnnotationProjectAPI(
                     _count_distinct_if(is_no_status, annotation_id).label(
                         "no_status"
                     ),
+                    func.count(func.distinct(models.AnnotationTask.id)).label(
+                        "task_count"
+                    ),
+                    func.count(
+                        func.distinct(models.AnnotationTask.recording_id)
+                    ).label("recording_count"),
                 )
                 .select_from(models.AnnotationTask)
                 .join(
@@ -286,6 +292,8 @@ class AnnotationProjectAPI(
                     unsure=row.unsure,
                     rejected=row.rejected,
                     no_status=row.no_status,
+                    task_count=row.task_count,
+                    recording_count=row.recording_count,
                 )
                 for row in result.all()
             ]

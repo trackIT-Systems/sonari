@@ -195,3 +195,46 @@ async def test_get_annotation_project_species_counts(auth_client: AsyncClient):
             == item["count"]
         )
 
+
+
+@pytest.mark.asyncio
+async def test_species_counts_include_task_and_recording_counts(
+    auth_client: AsyncClient,
+    db_session,
+    test_annotation_project,
+    test_recording_id: int,
+    test_annotation_task,
+    test_tag,
+):
+    """Two tasks of one recording count as 2 tasks but 1 recording."""
+    from sonari import api
+
+    recording = await api.recordings.get(db_session, test_recording_id)
+    task2 = await api.annotation_tasks.create(
+        db_session,
+        annotation_project=test_annotation_project,
+        recording=recording,
+        start_time=1.0,
+        end_time=2.0,
+    )
+    await db_session.commit()
+
+    for task_id, n_events in ((test_annotation_task.id, 2), (task2.id, 1)):
+        for _ in range(n_events):
+            response = await auth_client.post(
+                "/api/v1/sound_event_annotations/",
+                params={"annotation_task_id": task_id},
+                json={
+                    "geometry": {"type": "TimeInterval", "coordinates": [0.1, 0.2]},
+                    "tags": [{"key": test_tag.key, "value": test_tag.value}],
+                },
+            )
+            assert response.status_code in [200, 201], response.text
+
+    response = await auth_client.get(
+        "/api/v1/annotation_projects/detail/species_counts/",
+        params={"annotation_project_id": test_annotation_project.id},
+    )
+    assert response.status_code == 200, response.text
+    item = next(i for i in response.json() if i["key"] == test_tag.key)
+    assert (item["count"], item["task_count"], item["recording_count"]) == (3, 2, 1)

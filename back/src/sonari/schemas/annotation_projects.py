@@ -277,3 +277,12 @@ class PredictionCorrectionStats(BaseModel):
 
     added: list[PredictionCorrectionTarget]
     """Tags reviewers added that no prediction covered."""
+
+    task_count: int = 0
+    """Number of distinct tasks with at least one annotation with this tag."""
+
+    recording_count: int = 0
+    """Number of distinct recordings with at least one annotation with this tag.
+
+    Lower than ``task_count`` when a recording is split into several tasks.
+    """
