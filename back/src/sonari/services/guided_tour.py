@@ -10,6 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from sonari import api, exceptions, models, schemas
 from sonari.schemas.annotation_projects import GuidedTourVariant
+from sonari.services import sound_event_history
 
 __all__ = [
     "ensure_guided_tour",
@@ -251,6 +252,7 @@ async def _delete_project_tasks(
         (models.SoundEventAnnotationFeature, models.SoundEventAnnotationFeature.sound_event_annotation_id),
     ):
         await session.execute(delete(model).where(column.in_(event_ids)))
+    await sound_event_history.delete_task_history(session, task_ids)
     for model, column in (
         (models.SoundEventAnnotation, models.SoundEventAnnotation.annotation_task_id),
         (models.AnnotationTaskTag, models.AnnotationTaskTag.annotation_task_id),

@@ -5,6 +5,7 @@ import { getTagKey } from "@/components/tags/Tag";
 import type {
   PredictionCorrectionCount,
   PredictionCorrectionStats,
+  PredictionCorrectionTarget,
 } from "@/api/annotation_projects";
 
 const OUTCOME_SEGMENTS = [
@@ -86,6 +87,60 @@ function CorrectionRow({
   );
 }
 
+/** Outcome bars per predicted tag, the legend, and the tags reviewers added. */
+export function CorrectionOutcomes({
+  species,
+  added,
+  emptyMessage,
+}: {
+  species: PredictionCorrectionCount[];
+  added: PredictionCorrectionTarget[];
+  emptyMessage: string;
+}) {
+  const maxPredicted = Math.max(...species.map(({ predicted }) => predicted), 1);
+
+  return (
+    <div className="space-y-4">
+      <div className="flex flex-wrap gap-x-4 gap-y-2 text-xs text-stone-500">
+        {OUTCOME_SEGMENTS.map(({ key, label, className }) => (
+          <div key={key} className="inline-flex items-center gap-1.5">
+            <span className={`h-2.5 w-2.5 rounded-sm ${className}`} />
+            <span>{label}</span>
+          </div>
+        ))}
+      </div>
+      {species.length === 0 ? (
+        <Empty padding="p-2">{emptyMessage}</Empty>
+      ) : (
+        <div className="space-y-3">
+          {species.map((species) => (
+            <CorrectionRow
+              key={getTagKey({ key: species.key, value: species.value })}
+              species={species}
+              maxPredicted={maxPredicted}
+            />
+          ))}
+        </div>
+      )}
+      {added.length > 0 && (
+        <div className="space-y-1">
+          <p className="text-sm font-semibold text-stone-700 dark:text-stone-300">
+            Added by reviewers (not predicted)
+          </p>
+          <p className="text-sm text-stone-500">
+            {added.map(({ key, value, count }) => (
+              <span key={getTagKey({ key, value })} className="mr-3 inline-block">
+                <span className="italic">{value}</span>{" "}
+                <span className="tabular-nums">{count}</span>
+              </span>
+            ))}
+          </p>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function Summary({ corrections }: { corrections: PredictionCorrectionStats }) {
   const parts = [
     `${corrections.reviewed_tasks} completed or verified ${corrections.reviewed_tasks === 1 ? "task" : "tasks"}`,
@@ -118,8 +173,6 @@ export default function AnnotationProjectCorrectionsChart({
     );
   }
 
-  const maxPredicted = Math.max(...corrections.species.map(({ predicted }) => predicted), 1);
-
   return (
     <div className="space-y-4">
       <Summary corrections={corrections} />
@@ -130,42 +183,11 @@ export default function AnnotationProjectCorrectionsChart({
           with caution.
         </Info>
       )}
-      <div className="flex flex-wrap gap-x-4 gap-y-2 text-xs text-stone-500">
-        {OUTCOME_SEGMENTS.map(({ key, label, className }) => (
-          <div key={key} className="inline-flex items-center gap-1.5">
-            <span className={`h-2.5 w-2.5 rounded-sm ${className}`} />
-            <span>{label}</span>
-          </div>
-        ))}
-      </div>
-      {corrections.species.length === 0 ? (
-        <Empty padding="p-2">The GUANO files hold no predictions for the reviewed tasks.</Empty>
-      ) : (
-        <div className="space-y-3">
-          {corrections.species.map((species) => (
-            <CorrectionRow
-              key={getTagKey({ key: species.key, value: species.value })}
-              species={species}
-              maxPredicted={maxPredicted}
-            />
-          ))}
-        </div>
-      )}
-      {corrections.added.length > 0 && (
-        <div className="space-y-1">
-          <p className="text-sm font-semibold text-stone-700 dark:text-stone-300">
-            Added by reviewers (not predicted)
-          </p>
-          <p className="text-sm text-stone-500">
-            {corrections.added.map(({ key, value, count }) => (
-              <span key={getTagKey({ key, value })} className="mr-3 inline-block">
-                <span className="italic">{value}</span>{" "}
-                <span className="tabular-nums">{count}</span>
-              </span>
-            ))}
-          </p>
-        </div>
-      )}
+      <CorrectionOutcomes
+        species={corrections.species}
+        added={corrections.added}
+        emptyMessage="The GUANO files hold no predictions for the reviewed tasks."
+      />
     </div>
   );
 }

@@ -329,6 +329,74 @@ const SoundEventTagBulkCountSchema = z.object({
 
 export type SoundEventTagBulkCount = z.infer<typeof SoundEventTagBulkCountSchema>;
 
+const SoundEventOriginalTagSchema = z.object({
+  tag_id: z.number().nullish(),
+  tag_key: z.string(),
+  tag_value: z.string(),
+  confidence: z.number().nullish(),
+});
+
+const SoundEventOriginalSchema = z.object({
+  id: z.number(),
+  annotation_task_id: z.number(),
+  sound_event_annotation_id: z.number().nullish(),
+  created_by_id: z.string().nullish(),
+  created_by_username: z.string().nullish(),
+  source: z.string(),
+  geometry_type: z.string(),
+  start_time: z.number(),
+  end_time: z.number(),
+  low_freq: z.number().nullish(),
+  high_freq: z.number().nullish(),
+  created_on: z.coerce.date(),
+  tags: z.array(SoundEventOriginalTagSchema),
+});
+
+export const SoundEventChangeActionSchema = z.enum([
+  "created",
+  "deleted",
+  "geometry_changed",
+  "tag_added",
+  "tag_removed",
+  "tag_replaced",
+]);
+
+const SoundEventChangeSchema = z.object({
+  id: z.number(),
+  annotation_task_id: z.number(),
+  sound_event_annotation_id: z.number(),
+  user_id: z.string().nullish(),
+  username: z.string().nullish(),
+  edit_id: z.string(),
+  action: SoundEventChangeActionSchema,
+  old_tag_id: z.number().nullish(),
+  old_tag_key: z.string().nullish(),
+  old_tag_value: z.string().nullish(),
+  new_tag_id: z.number().nullish(),
+  new_tag_key: z.string().nullish(),
+  new_tag_value: z.string().nullish(),
+  old_start_time: z.number().nullish(),
+  old_end_time: z.number().nullish(),
+  old_low_freq: z.number().nullish(),
+  old_high_freq: z.number().nullish(),
+  new_start_time: z.number().nullish(),
+  new_end_time: z.number().nullish(),
+  new_low_freq: z.number().nullish(),
+  new_high_freq: z.number().nullish(),
+  created_on: z.coerce.date(),
+  updated_on: z.coerce.date().nullish(),
+});
+
+export const SoundEventTaskHistorySchema = z.object({
+  annotation_task_id: z.number(),
+  originals: z.array(SoundEventOriginalSchema),
+  changes: z.array(SoundEventChangeSchema),
+});
+
+export type SoundEventOriginal = z.infer<typeof SoundEventOriginalSchema>;
+export type SoundEventChange = z.infer<typeof SoundEventChangeSchema>;
+export type SoundEventTaskHistory = z.infer<typeof SoundEventTaskHistorySchema>;
+
 const DEFAULT_ENDPOINTS = {
   getMany: "/api/v1/annotation_tasks/",
   getIndex: "/api/v1/annotation_tasks/index",
@@ -346,6 +414,7 @@ const DEFAULT_ENDPOINTS = {
   bulkReplaceSoundEventTags: "/api/v1/annotation_tasks/bulk/sound_event_tags/replace/",
   bulkSoundEventTagSummary: "/api/v1/annotation_tasks/bulk/sound_event_tags/summary/",
   bulkDeleteSoundEventsByTag: "/api/v1/annotation_tasks/bulk/sound_events/delete/",
+  getHistory: "/api/v1/annotation_tasks/detail/history/",
 };
 
 export function registerAnnotationTasksAPI(
@@ -661,6 +730,14 @@ export function registerAnnotationTasksAPI(
     return AnnotationTaskBulkResultSchema.parse(response.data);
   }
 
+  /** Original state of the task's imported sound events and every user edit since. */
+  async function getHistory(annotationTaskId: number): Promise<SoundEventTaskHistory> {
+    const response = await instance.get(endpoints.getHistory, {
+      params: { annotation_task_id: annotationTaskId },
+    });
+    return SoundEventTaskHistorySchema.parse(response.data);
+  }
+
   return {
     getMany,
     getIndex,
@@ -678,5 +755,6 @@ export function registerAnnotationTasksAPI(
     bulkReplaceSoundEventTags,
     bulkSoundEventTagSummary,
     bulkDeleteSoundEventsByTag,
+    getHistory,
   } as const;
 }

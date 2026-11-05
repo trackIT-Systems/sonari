@@ -6,10 +6,9 @@ import { H4 } from "@/components/Headings";
 import Toggle from "@/components/inputs/Toggle";
 import Loading from "@/components/Loading";
 import { getTagKey } from "@/components/tags/Tag";
-import useAnnotationProjectPredictionCorrections from "@/hooks/api/useAnnotationProjectPredictionCorrections";
 import useAnnotationProjectSpeciesCounts from "@/hooks/api/useAnnotationProjectSpeciesCounts";
 
-import AnnotationProjectCorrectionsChart from "./AnnotationProjectCorrectionsChart";
+import AnnotationProjectPredictionHistory from "./AnnotationProjectPredictionHistory";
 
 import type { AnnotationProject } from "@/types";
 
@@ -124,11 +123,6 @@ export default function AnnotationProjectSpeciesChart({
   const { speciesCounts, isLoading } = useAnnotationProjectSpeciesCounts({
     annotationProjectId: annotationProject.id,
   });
-  const { corrections, isLoading: isLoadingCorrections, error: correctionsError } =
-    useAnnotationProjectPredictionCorrections({
-      annotationProjectId: annotationProject.id,
-      enabled: showCorrections,
-    });
 
   return (
     <Card>
@@ -144,13 +138,7 @@ export default function AnnotationProjectSpeciesChart({
         </label>
       </div>
       {showCorrections ? (
-        isLoadingCorrections ? (
-          <Loading />
-        ) : correctionsError != null || corrections == null ? (
-          <Empty padding="p-2">The detector predictions could not be loaded.</Empty>
-        ) : (
-          <AnnotationProjectCorrectionsChart corrections={corrections} />
-        )
+        <AnnotationProjectPredictionHistory annotationProjectId={annotationProject.id} />
       ) : isLoading && speciesCounts.length === 0 ? (
         <Loading />
       ) : speciesCounts.length === 0 ? (

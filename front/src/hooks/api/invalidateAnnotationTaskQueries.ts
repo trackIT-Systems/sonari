@@ -140,4 +140,8 @@ export function invalidateAnnotationTaskQueries(
     queryKey: ["annotation_tasks_stats"],
     predicate: (query) => change === "status" || affected(query.queryKey),
   });
+  // Only refetched while the history panel is open.
+  if (change === "sound_event") {
+    client.invalidateQueries({ queryKey: ["annotation_task_history"] });
+  }
 }

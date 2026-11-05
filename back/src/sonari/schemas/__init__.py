@@ -68,6 +68,14 @@ from sonari.schemas.sound_event_annotations import (
     SoundEventAnnotationTag,
     SoundEventAnnotationUpdate,
 )
+from sonari.schemas.sound_event_history import (
+    PredictionBackfillStatus,
+    PredictionHistoryStats,
+    SoundEventChange,
+    SoundEventOriginal,
+    SoundEventOriginalTag,
+    SoundEventTaskHistory,
+)
 from sonari.schemas.spectrograms import (
     AmplitudeParameters,
     Scale,
@@ -150,6 +158,12 @@ __all__ = [
     "SoundEventAnnotationCreate",
     "SoundEventAnnotationTag",
     "SoundEventAnnotationUpdate",
+    "SoundEventChange",
+    "PredictionBackfillStatus",
+    "PredictionHistoryStats",
+    "SoundEventOriginal",
+    "SoundEventOriginalTag",
+    "SoundEventTaskHistory",
     "SpectrogramParameters",
     "ProjectTagScope",
     "SpeciesInfo",

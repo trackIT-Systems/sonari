@@ -20,6 +20,7 @@ import { registerSpectrogramAPI } from "./spectrograms";
 import { registerTagAPI } from "./tags";
 import { registerUserAPI } from "./user";
 import { registerWaveformsAPI } from "./waveforms";
+import { setupEditSessionInterceptor } from "@/utils/editSession";
 
 type APIConfig = {
   baseURL: string;
@@ -38,6 +39,7 @@ export default function createAPI(config: APIConfig) {
   });
 
   setupAuthInterceptor(instance);
+  setupEditSessionInterceptor(instance);
 
   const annotationProjectAPI = registerAnnotationProjectAPI(instance);
   const annotationTasksAPI = registerAnnotationTasksAPI(instance);

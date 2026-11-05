@@ -15,6 +15,7 @@ from sonari.api import common
 from sonari.api.common import BaseAPI
 from sonari.filters.annotation_tasks import confidence_feature_name_clause_for_tag_creator
 from sonari.filters.base import Filter
+from sonari.services.sound_event_history import EditContext
 from sonari.api.bulk_sound_event_tag_replace import (
     BulkSoundEventTagReplaceParams,
     build_bulk_params,
@@ -1167,16 +1168,19 @@ class AnnotationTaskAPI(
         add_to_tagged: bool,
         user: schemas.SimpleUser,
         replace_group: str | None = None,
+        edit: EditContext | None = None,
     ) -> schemas.AnnotationTaskBulkResult:
         """Replace sound event tags across many annotation tasks."""
         from sonari.api import tags as tags_api
 
+        edit = edit or EditContext(user_id=user.id)
         if replace_group is not None:
             return await self._bulk_replace_species_group(
                 session,
                 task_ids=task_ids,
                 group=replace_group,
                 user=user,
+                edit=edit,
             )
 
         effective_replace_all = replace_all or is_replace_all_tag(old_tag)
@@ -1213,13 +1217,14 @@ class AnnotationTaskAPI(
             user=user,
         )
 
-        return await self._run_bulk_replace_chunks(session, task_ids, bulk_params)
+        return await self._run_bulk_replace_chunks(session, task_ids, bulk_params, edit)
 
     async def _run_bulk_replace_chunks(
         self,
         session: AsyncSession,
         task_ids: list[int],
         bulk_params: BulkSoundEventTagReplaceParams,
+        edit: EditContext,
     ) -> schemas.AnnotationTaskBulkResult:
         tasks_targeted = len(task_ids)
         tasks_updated = 0
@@ -1233,6 +1238,7 @@ class AnnotationTaskAPI(
                     session,
                     chunk,
                     bulk_params,
+                    edit,
                 )
                 failures.extend(chunk_result.failures)
                 tasks_updated += chunk_result.tasks_updated
@@ -1265,6 +1271,7 @@ class AnnotationTaskAPI(
         task_ids: list[int],
         group: str,
         user: schemas.SimpleUser,
+        edit: EditContext,
     ) -> schemas.AnnotationTaskBulkResult:
         """Replace every species tag of ``group`` with the tag ``group=<group>``."""
         from sonari.api import tags as tags_api
@@ -1302,7 +1309,7 @@ class AnnotationTaskAPI(
             user=user,
             old_tag_ids=member_ids,
         )
-        return await self._run_bulk_replace_chunks(session, task_ids, bulk_params)
+        return await self._run_bulk_replace_chunks(session, task_ids, bulk_params, edit)
 
     async def bulk_delete_sound_events_by_tag(
         self,
@@ -1310,6 +1317,7 @@ class AnnotationTaskAPI(
         *,
         task_ids: list[int],
         tag: schemas.TagCreate,
+        edit: EditContext | None = None,
     ) -> schemas.AnnotationTaskBulkResult:
         """Delete sound event annotations whose only tag is ``tag`` across many tasks."""
         from sonari.api import tags as tags_api
@@ -1331,6 +1339,7 @@ class AnnotationTaskAPI(
                     session,
                     chunk,
                     tag_obj.id,
+                    edit,
                 )
                 failures.extend(chunk_result.failures)
                 tasks_updated += chunk_result.tasks_updated

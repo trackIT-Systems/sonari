@@ -63,6 +63,33 @@ const PredictionCorrectionStatsSchema = z.object({
 
 export type PredictionCorrectionCount = z.infer<typeof PredictionCorrectionCountSchema>;
 export type PredictionCorrectionStats = z.infer<typeof PredictionCorrectionStatsSchema>;
+export type PredictionCorrectionTarget = z.infer<typeof PredictionCorrectionTargetSchema>;
+
+const PredictionBackfillStatusSchema = z.object({
+  state: z.enum(["running", "done", "failed"]),
+  started_on: z.coerce.date(),
+  updated_on: z.coerce.date(),
+  finished_on: z.coerce.date().nullish(),
+  reviewed_tasks: z.number(),
+  recordings: z.number(),
+  recordings_with_source: z.number(),
+  match_rate: z.number().nullish(),
+  originals_created: z.number(),
+  error: z.string().nullish(),
+  stale: z.boolean(),
+});
+
+const PredictionHistoryStatsSchema = z.object({
+  reviewed_tasks: z.number(),
+  predicted_events: z.number(),
+  edited_events: z.number(),
+  species: z.array(PredictionCorrectionCountSchema),
+  added: z.array(PredictionCorrectionTargetSchema),
+  backfill: PredictionBackfillStatusSchema.nullish(),
+});
+
+export type PredictionBackfillStatus = z.infer<typeof PredictionBackfillStatusSchema>;
+export type PredictionHistoryStats = z.infer<typeof PredictionHistoryStatsSchema>;
 
 const GuidedTourVariantSchema = z.enum(["bird", "bat"]);
 export type GuidedTourVariant = z.infer<typeof GuidedTourVariantSchema>;
@@ -108,6 +135,8 @@ const DEFAULT_ENDPOINTS = {
   getProgress: "/api/v1/annotation_projects/detail/progress/",
   getSpeciesCounts: "/api/v1/annotation_projects/detail/species_counts/",
   getPredictionCorrections: "/api/v1/annotation_projects/detail/prediction_corrections/",
+  getPredictionHistory: "/api/v1/annotation_projects/detail/prediction_history/",
+  startPredictionBackfill: "/api/v1/annotation_projects/detail/prediction_history/backfill/",
   getTagScope: "/api/v1/annotation_projects/detail/tag_scope/",
   ensureGuidedTour: "/api/v1/annotation_projects/guided_tour/",
 };
@@ -166,6 +195,22 @@ export function registerAnnotationProjectAPI(
     return z.array(SpeciesTagCountSchema).parse(data);
   }
 
+  /** Corrections of predictions in reviewed tasks, from the edit history in the database. */
+  async function getPredictionHistory(id: number): Promise<PredictionHistoryStats> {
+    const { data } = await instance.get(endpoints.getPredictionHistory, {
+      params: { annotation_project_id: id },
+    });
+    return PredictionHistoryStatsSchema.parse(data);
+  }
+
+  /** Start reading predictions from the GUANO files for edits made before the history existed. */
+  async function startPredictionBackfill(id: number): Promise<PredictionBackfillStatus> {
+    const { data } = await instance.post(endpoints.startPredictionBackfill, null, {
+      params: { annotation_project_id: id },
+    });
+    return PredictionBackfillStatusSchema.parse(data);
+  }
+
   async function getPredictionCorrections(id: number): Promise<PredictionCorrectionStats> {
     const { data } = await instance.get(endpoints.getPredictionCorrections, {
       params: { annotation_project_id: id },
@@ -211,6 +256,8 @@ export function registerAnnotationProjectAPI(
     getProgress,
     getSpeciesCounts,
     getPredictionCorrections,
+    getPredictionHistory,
+    startPredictionBackfill,
     update,
     getTagScope,
     getGuidedTourAvailable,

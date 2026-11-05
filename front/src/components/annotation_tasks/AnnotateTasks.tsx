@@ -51,6 +51,7 @@ import type {
   Geometry,
 } from "@/types";
 import AnnotationTaskNotes from "./AnnotationTaskNotes";
+import AnnotationTaskHistory from "./AnnotationTaskHistory";
 import AnnotationTaskTags from "@/components/annotation_tasks/AnnotationTaskTags";
 import { SPECTROGRAM_CONTAINER_WIDTH } from "@/constants";
 import { DEFAULT_TAG_VISIBILITY } from "@/utils/passes";
@@ -1099,6 +1100,13 @@ export default function AnnotateTasks({
                 currentUser={currentUser}
               />
             </div>
+            <AnnotationTaskHistory
+              annotationTask={annotationTask}
+              onSelectSoundEventAnnotation={(id) => {
+                const annotation = annotationTask.sound_event_annotations?.find((sea) => sea.id === id);
+                if (annotation != null) handleSelectSoundEventAnnotation(annotation);
+              }}
+            />
           </div>
         )}
       </div>

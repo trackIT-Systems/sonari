@@ -261,3 +261,85 @@ async def test_prediction_corrections_routes(auth_client: AsyncClient, reviewed_
     assert sorted(r["outcome"] for r in rows) == ["added", "confirmed", "confirmed", "event_deleted", "relabeled"]
     relabeled = next(r for r in rows if r["outcome"] == "relabeled")
     assert (relabeled["predicted_label"], relabeled["final_values"]) == ("Mdau", "Myotis bechsteinii")
+
+
+@pytest.mark.asyncio
+async def test_guano_backfill_creates_originals_for_earlier_edits(
+    auth_client: AsyncClient, db_session: AsyncSession, reviewed_project, test_user
+):
+    """Edits from before the history: relabeled and moved events belong to the reviewer, no confidence."""
+    project, reviewed = reviewed_project
+    events = {
+        e.geometry.coordinates[0]: e
+        for e in (
+            await db_session.scalars(
+                select(models.SoundEventAnnotation).where(models.SoundEventAnnotation.annotation_task_id == reviewed.id)
+            )
+        ).all()
+    }
+    for start in (0.05, 0.101):
+        events[start].created_by_id = test_user.id
+    # The untouched prediction still has its confidence.
+    db_session.add(
+        models.SoundEventAnnotationFeature(
+            sound_event_annotation_id=events[0.01].id, name="detection_confidence:Myotis myotis", value=0.9
+        )
+    )
+    await db_session.commit()
+
+    response = await auth_client.post(
+        "/api/v1/annotation_projects/detail/prediction_history/backfill/",
+        params={"annotation_project_id": project.id},
+    )
+    assert response.status_code == 200, response.text
+
+    response = await auth_client.get(
+        "/api/v1/annotation_projects/detail/prediction_history/",
+        params={"annotation_project_id": project.id},
+    )
+    assert response.status_code == 200, response.text
+    stats = schemas.PredictionHistoryStats.model_validate(response.json())
+    assert stats.backfill is not None
+    assert (stats.backfill.state, stats.backfill.error) == ("done", None)
+    assert (stats.backfill.originals_created, stats.backfill.match_rate) == (3, 1.0)
+
+    by_value = {s.value: s for s in stats.species}
+    assert by_value["Myotis myotis"].confirmed == 1
+    assert by_value["Myotis daubentonii"].relabeled == 1
+    assert by_value["Myotis daubentonii"].relabeled_to[0].value == "Myotis bechsteinii"
+    assert (by_value["Nyctalus noctula"].confirmed, by_value["Nyctalus noctula"].box_changed) == (1, 1)
+    assert by_value["Pipistrellus pipistrellus"].event_deleted == 1
+    assert [(a.value, a.count) for a in stats.added] == [("Eptesicus serotinus", 1)]
+    assert (stats.reviewed_tasks, stats.predicted_events, stats.edited_events) == (1, 4, 3)
+
+    # A rerun skips the task, which already has GUANO originals.
+    response = await auth_client.post(
+        "/api/v1/annotation_projects/detail/prediction_history/backfill/",
+        params={"annotation_project_id": project.id},
+    )
+    assert response.status_code == 200, response.text
+    originals = (
+        await db_session.scalars(
+            select(models.SoundEventOriginal).where(models.SoundEventOriginal.annotation_task_id == reviewed.id)
+        )
+    ).all()
+    assert len(originals) == 3
+
+
+@pytest.mark.asyncio
+async def test_guano_backfill_refuses_files_of_another_run(auth_client: AsyncClient, reviewed_project):
+    """The fixture's detector events don't match the GUANO boxes well enough (2 of 3)."""
+    project, _ = reviewed_project
+    response = await auth_client.post(
+        "/api/v1/annotation_projects/detail/prediction_history/backfill/",
+        params={"annotation_project_id": project.id},
+    )
+    assert response.status_code == 200, response.text
+    response = await auth_client.get(
+        "/api/v1/annotation_projects/detail/prediction_history/",
+        params={"annotation_project_id": project.id},
+    )
+    backfill = response.json()["backfill"]
+    assert backfill["state"] == "failed"
+    assert "another run" in backfill["error"]
+    assert backfill["originals_created"] == 0

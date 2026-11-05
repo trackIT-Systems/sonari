@@ -75,6 +75,8 @@ class SoundEventAnnotation(Base):
     __table_args__ = (
         # Serves lookups by task and ecohub's re-import delete by task and creator.
         Index("ix_sound_event_annotation_task_id_created_by_id", "annotation_task_id", "created_by_id"),
+        # Event ids are never reused (the history keys rows by them); SQLite needs this for it.
+        {"sqlite_autoincrement": True},
     )
 
     id: orm.Mapped[int] = orm.mapped_column(primary_key=True, init=False)

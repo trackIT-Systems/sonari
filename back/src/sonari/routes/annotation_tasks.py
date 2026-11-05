@@ -9,9 +9,10 @@ from fastapi import Depends
 from soundevent.data import AnnotationState
 
 from sonari import api, schemas
+from sonari.services import sound_event_history
 from sonari.filters.annotation_tasks import AnnotationTaskFilter
 from sonari.filters.recordings import IDFilter as RecordingIDFilter
-from sonari.routes.dependencies import Session
+from sonari.routes.dependencies import CurrentEdit, Session
 from sonari.routes.dependencies.auth import CurrentUser, create_authenticated_router
 from sonari.routes.dependencies.settings import SonariSettings
 from sonari.routes.types import Limit, Offset
@@ -239,6 +240,18 @@ def get_annotation_tasks_router(settings: SonariSettings):
         )
         await session.commit()
         return annotation_task
+
+    @annotation_tasks_router.get(
+        "/detail/history/",
+        response_model=schemas.SoundEventTaskHistory,
+    )
+    async def get_task_history(
+        session: Session,
+        annotation_task_id: int,
+    ):
+        """Original state of the task's imported sound events and every user edit since."""
+        await api.annotation_tasks.get(session, annotation_task_id)
+        return await sound_event_history.get_task_history(session, annotation_task_id)
 
     @annotation_tasks_router.get(
         "/detail/",
@@ -523,6 +536,7 @@ def get_annotation_tasks_router(settings: SonariSettings):
     async def bulk_replace_sound_event_tags(
         session: Session,
         user: CurrentUser,
+        edit: CurrentEdit,
         filter: Annotated[AnnotationTaskFilter, Depends(AnnotationTaskFilter)],  # type: ignore
         body: schemas.AnnotationTaskBulkReplaceSoundEventTags,
     ):
@@ -541,6 +555,7 @@ def get_annotation_tasks_router(settings: SonariSettings):
             add_to_tagged=body.add_to_tagged,
             replace_group=body.replace_group,
             user=user,
+            edit=edit,
         )
         return result
 
@@ -550,6 +565,7 @@ def get_annotation_tasks_router(settings: SonariSettings):
     )
     async def bulk_delete_sound_events_by_tag(
         session: Session,
+        edit: CurrentEdit,
         filter: Annotated[AnnotationTaskFilter, Depends(AnnotationTaskFilter)],  # type: ignore
         body: schemas.AnnotationTaskBulkDeleteSoundEvents,
     ):
@@ -563,6 +579,7 @@ def get_annotation_tasks_router(settings: SonariSettings):
             session,
             task_ids=task_ids,
             tag=body.tag,
+            edit=edit,
         )
         return result
 

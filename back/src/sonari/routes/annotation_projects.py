@@ -2,7 +2,7 @@
 
 from typing import Annotated
 
-from fastapi import Depends, HTTPException
+from fastapi import BackgroundTasks, Depends, HTTPException
 from soundevent.data import AnnotationState
 from sqlalchemy import func, select
 
@@ -19,6 +19,7 @@ from sonari.services.guided_tour import (
     get_guided_tour_progress,
     get_user_guided_tours,
 )
+from sonari.services import prediction_history
 from sonari.services.prediction_corrections import get_prediction_corrections, summarize_corrections
 
 __all__ = [
@@ -298,3 +299,33 @@ async def get_annotation_project_prediction_corrections(
     annotation_project = await api.annotation_projects.get(session, annotation_project_id)
     corrections = await get_prediction_corrections(session, annotation_project, settings.audio_dir)
     return summarize_corrections(corrections)
+
+
+@annotation_projects_router.get(
+    "/detail/prediction_history/",
+    response_model=schemas.PredictionHistoryStats,
+)
+async def get_annotation_project_prediction_history(
+    session: Session,
+    annotation_project_id: int,
+):
+    """What reviewers did with the predictions in completed and verified tasks, from the edit history."""
+    await api.annotation_projects.get(session, annotation_project_id)
+    return await prediction_history.get_prediction_history_stats(session, annotation_project_id)
+
+
+@annotation_projects_router.post(
+    "/detail/prediction_history/backfill/",
+    response_model=schemas.PredictionBackfillStatus,
+)
+async def start_annotation_project_prediction_backfill(
+    session: Session,
+    settings: SonariSettings,
+    background_tasks: BackgroundTasks,
+    annotation_project_id: int,
+):
+    """Start creating originals from the GUANO files, for edits made before the history existed."""
+    await api.annotation_projects.get(session, annotation_project_id)
+    status = await prediction_history.start_guano_backfill(session, annotation_project_id)
+    background_tasks.add_task(prediction_history.run_guano_backfill, annotation_project_id, settings.audio_dir)
+    return status

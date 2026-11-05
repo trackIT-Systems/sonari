@@ -17,6 +17,7 @@ from sqlalchemy.orm import aliased
 from sonari import exceptions, models, schemas
 from sonari.api.species_catalog import normalize_name
 from sonari.cache import invalidate_cache
+from sonari.services import sound_event_history
 from sonari.shared_cache_global import get_shared_cache
 
 __all__ = [
@@ -327,6 +328,7 @@ async def merge_tags(
     task_moved, task_removed = await _merge_association(
         session, TaskTag, "annotation_task_id", source_ids, target_tag_id
     )
+    await sound_event_history.move_tags(session, source_ids, target_tag_id)
 
     # Presets that contained a source tag now contain the target tag.
     preset_ids = (
