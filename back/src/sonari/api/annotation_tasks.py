@@ -5,7 +5,7 @@ import datetime
 from typing import Sequence
 
 from soundevent import data
-from sqlalchemy import and_, exists, func, insert, literal, select, tuple_
+from sqlalchemy import and_, delete, exists, func, insert, literal, select, tuple_
 from sqlalchemy.orm import selectinload
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.sql._typing import _ColumnExpressionArgument
@@ -18,6 +18,7 @@ from sonari.filters.base import Filter
 from sonari.api.bulk_sound_event_tag_replace import (
     BulkSoundEventTagReplaceParams,
     build_bulk_params,
+    invalidate_species_counts_for_tasks,
     process_bulk_delete_sound_events_chunk,
     process_bulk_tag_replace_chunk,
 )
@@ -31,13 +32,19 @@ from sonari.utils.sound_event_tag_replace import is_replace_all_tag
 
 __all__ = [
     "AnnotationTaskAPI",
-    "MAX_BULK_TASKS",
     "annotation_tasks",
     "compute_duration",
 ]
 
-MAX_BULK_TASKS = 5000
+#: Tasks handled per statement/commit in bulk operations. Bulk operations have
+#: no upper limit: they work through the targets chunk by chunk, so each
+#: statement stays small (well under the bind parameter limit) and progress is
+#: committed as it goes. The UI additionally sends large targets in several
+#: requests to show progress and keep each request short.
 _BULK_CHUNK_SIZE = 100
+
+#: Chunk size for read-only ``IN (...)`` lookups of task ids.
+_ID_LOOKUP_CHUNK_SIZE = 5000
 
 
 class AnnotationTaskAPI(
@@ -1150,24 +1157,74 @@ class AnnotationTaskAPI(
         filters: Sequence[Filter | _ColumnExpressionArgument] | None,
         annotation_task_ids: list[int] | None,
     ) -> list[int]:
-        """Resolve task IDs for bulk operations (intersect explicit IDs with filter)."""
+        """Resolve task IDs for bulk operations (intersect explicit IDs with filter).
+
+        Without explicit IDs, every task matching the filter is targeted, in
+        ascending id order. With explicit IDs, their order is kept and only
+        those matching the filter remain. There is no upper limit.
+        """
         from sonari.api.common.utils import apply_filters
 
-        query = apply_filters(select(models.AnnotationTask.id), filters)
-        result = await session.execute(query)
-        filter_ids = list(result.scalars().all())
-        filter_id_set = set(filter_ids)
+        base = apply_filters(select(models.AnnotationTask.id), filters)
 
-        if annotation_task_ids is not None:
-            resolved = [task_id for task_id in annotation_task_ids if task_id in filter_id_set]
-        else:
-            resolved = filter_ids
+        if annotation_task_ids is None:
+            result = await session.execute(base.order_by(models.AnnotationTask.id))
+            return list(result.scalars().all())
 
-        if len(resolved) > MAX_BULK_TASKS:
-            raise ValueError(
-                f"Too many tasks ({len(resolved)}). Maximum bulk size is {MAX_BULK_TASKS}.",
+        requested = list(dict.fromkeys(annotation_task_ids))
+        matching: set[int] = set()
+        for start in range(0, len(requested), _ID_LOOKUP_CHUNK_SIZE):
+            chunk = requested[start : start + _ID_LOOKUP_CHUNK_SIZE]
+            result = await session.execute(
+                base.where(models.AnnotationTask.id.in_(chunk)),
             )
-        return resolved
+            matching.update(result.scalars().all())
+        return [task_id for task_id in requested if task_id in matching]
+
+    def _forget_cached_tasks(self, task_ids: Sequence[int]) -> None:
+        """Drop tasks changed by set-based SQL from the object cache."""
+        cache = self._cache
+        if cache is None:
+            return
+        for task_id in task_ids:
+            cache.pop((self._model.__name__, task_id), None)
+
+    async def _existing_task_ids(
+        self,
+        session: AsyncSession,
+        task_ids: Sequence[int],
+    ) -> set[int]:
+        result = await session.execute(
+            select(models.AnnotationTask.id).where(
+                models.AnnotationTask.id.in_(task_ids),
+            ),
+        )
+        return set(result.scalars().all())
+
+    @staticmethod
+    def _not_found_failures(
+        chunk: Sequence[int],
+        existing_ids: set[int],
+    ) -> list[schemas.AnnotationTaskBulkFailure]:
+        return [
+            schemas.AnnotationTaskBulkFailure(
+                annotation_task_id=task_id,
+                message="Annotation task not found.",
+            )
+            for task_id in chunk
+            if task_id not in existing_ids
+        ]
+
+    @staticmethod
+    def _chunk_failures(
+        chunk: Sequence[int],
+        exc: Exception,
+    ) -> list[schemas.AnnotationTaskBulkFailure]:
+        message = str(exc)
+        return [
+            schemas.AnnotationTaskBulkFailure(annotation_task_id=task_id, message=message)
+            for task_id in chunk
+        ]
 
     async def bulk_add_status_badge(
         self,
@@ -1177,62 +1234,120 @@ class AnnotationTaskAPI(
         state: data.AnnotationState,
         user: schemas.SimpleUser,
     ) -> schemas.AnnotationTaskBulkResult:
-        """Add a status badge to many tasks; skip duplicates."""
-        from sonari.api import annotation_projects
-
-        # A plain snapshot: a skipped duplicate rolls back its savepoint, which
-        # expires ORM objects of this session, e.g. the request user. Reading
-        # user.id afterwards would need a (sync) reload and fail every later task.
-        user = schemas.SimpleUser.model_validate(user)
-
-        tasks_targeted = len(task_ids)
+        """Add the user's status badge to many tasks; skip tasks that already have it."""
+        user_id = user.id
         tasks_updated = 0
         tasks_skipped = 0
         failures: list[schemas.AnnotationTaskBulkFailure] = []
 
         for chunk_start in range(0, len(task_ids), _BULK_CHUNK_SIZE):
             chunk = task_ids[chunk_start : chunk_start + _BULK_CHUNK_SIZE]
-            chunk_had_changes = False
+            try:
+                existing_ids = await self._existing_task_ids(session, chunk)
+                failures.extend(self._not_found_failures(chunk, existing_ids))
+                if not existing_ids:
+                    continue
 
-            for task_id in chunk:
-                try:
-                    task = await self.get(
-                        session,
-                        task_id,
-                        include_status_badges=True,
-                        include_status_badge_users=True,
+                # Same rule as add_status_badge: one badge per (task, user, state).
+                already_badged = exists(
+                    select(1).where(
+                        models.AnnotationStatusBadge.annotation_task_id
+                        == models.AnnotationTask.id,
+                        models.AnnotationStatusBadge.state == state,
+                        models.AnnotationStatusBadge.user_id == user_id,
+                    ),
+                )
+                now = datetime.datetime.now(datetime.timezone.utc)
+                source = select(
+                    models.AnnotationTask.id.label("annotation_task_id"),
+                    literal(user_id, type_=models.AnnotationStatusBadge.user_id.type).label(
+                        "user_id",
+                    ),
+                    literal(state, type_=models.AnnotationStatusBadge.state.type).label(
+                        "state",
+                    ),
+                    literal(now).label("created_on"),
+                ).where(
+                    models.AnnotationTask.id.in_(existing_ids),
+                    ~already_badged,
+                )
+                result = await session.execute(
+                    insert(models.AnnotationStatusBadge)
+                    .from_select(
+                        ["annotation_task_id", "user_id", "state", "created_on"],
+                        source,
                     )
-                    try:
-                        async with session.begin_nested():
-                            await self.add_status_badge(session, task, state, user)
-                            await annotation_projects.invalidate_species_counts_for_task(
-                                session,
-                                task_id,
-                            )
-                        tasks_updated += 1
-                        chunk_had_changes = True
-                    except exceptions.DuplicateObjectError:
-                        tasks_skipped += 1
-                except exceptions.NotFoundError as exc:
-                    failures.append(
-                        schemas.AnnotationTaskBulkFailure(
-                            annotation_task_id=task_id,
-                            message=str(exc),
-                        )
-                    )
-                except Exception as exc:  # noqa: BLE001
-                    failures.append(
-                        schemas.AnnotationTaskBulkFailure(
-                            annotation_task_id=task_id,
-                            message=str(exc),
-                        )
-                    )
-
-            if chunk_had_changes:
-                await session.commit()
+                    .returning(models.AnnotationStatusBadge.annotation_task_id),
+                )
+                inserted = list(result.scalars().all())
+                tasks_updated += len(inserted)
+                tasks_skipped += len(existing_ids) - len(inserted)
+                if inserted:
+                    await invalidate_species_counts_for_tasks(session, inserted)
+                    await session.commit()
+                    self._forget_cached_tasks(inserted)
+            except Exception as exc:  # noqa: BLE001
+                await session.rollback()
+                failures.extend(self._chunk_failures(chunk, exc))
 
         return schemas.AnnotationTaskBulkResult(
-            tasks_targeted=tasks_targeted,
+            tasks_targeted=len(task_ids),
+            tasks_updated=tasks_updated,
+            tasks_skipped=tasks_skipped,
+            sound_events_updated=0,
+            failures=failures,
+        )
+
+    async def bulk_remove_status_badge(
+        self,
+        session: AsyncSession,
+        *,
+        task_ids: list[int],
+        state: data.AnnotationState,
+        user_id: str | None = None,
+    ) -> schemas.AnnotationTaskBulkResult:
+        """Remove status badges of ``state`` from many tasks.
+
+        Like :meth:`remove_status_badge`, every user's badge of that state is
+        removed unless ``user_id`` is given. Tasks without such a badge are
+        counted as skipped.
+        """
+        tasks_updated = 0
+        tasks_skipped = 0
+        failures: list[schemas.AnnotationTaskBulkFailure] = []
+
+        for chunk_start in range(0, len(task_ids), _BULK_CHUNK_SIZE):
+            chunk = task_ids[chunk_start : chunk_start + _BULK_CHUNK_SIZE]
+            try:
+                existing_ids = await self._existing_task_ids(session, chunk)
+                failures.extend(self._not_found_failures(chunk, existing_ids))
+                if not existing_ids:
+                    continue
+
+                conditions = [
+                    models.AnnotationStatusBadge.annotation_task_id.in_(existing_ids),
+                    models.AnnotationStatusBadge.state == state,
+                ]
+                if user_id is not None:
+                    conditions.append(models.AnnotationStatusBadge.user_id == user_id)
+                result = await session.execute(
+                    delete(models.AnnotationStatusBadge)
+                    .where(*conditions)
+                    .returning(models.AnnotationStatusBadge.annotation_task_id),
+                )
+                changed = set(result.scalars().all())
+                tasks_updated += len(changed)
+                tasks_skipped += len(existing_ids) - len(changed)
+                if changed:
+                    await invalidate_species_counts_for_tasks(session, list(changed))
+                    await session.commit()
+                    self._forget_cached_tasks(list(changed))
+            except Exception as exc:  # noqa: BLE001
+                await session.rollback()
+                failures.extend(self._chunk_failures(chunk, exc))
+
+        return schemas.AnnotationTaskBulkResult(
+            tasks_targeted=len(task_ids),
             tasks_updated=tasks_updated,
             tasks_skipped=tasks_skipped,
             sound_events_updated=0,
@@ -1350,14 +1465,20 @@ class AnnotationTaskAPI(
                 == models.SoundEventAnnotation.id,
             )
             .join(models.Tag, models.SoundEventAnnotationTag.tag_id == models.Tag.id)
-            .where(models.SoundEventAnnotation.annotation_task_id.in_(task_ids))
             .group_by(models.Tag.key, models.Tag.value)
-            .order_by(models.Tag.key, models.Tag.value)
         )
-        result = await session.execute(query)
+        counts: dict[tuple[str, str], int] = {}
+        for start in range(0, len(task_ids), _ID_LOOKUP_CHUNK_SIZE):
+            chunk = task_ids[start : start + _ID_LOOKUP_CHUNK_SIZE]
+            result = await session.execute(
+                query.where(models.SoundEventAnnotation.annotation_task_id.in_(chunk)),
+            )
+            for key, value, count in result.all():
+                counts[(key, value)] = counts.get((key, value), 0) + count
+
         return [
-            schemas.SoundEventTagBulkCount(key=row[0], value=row[1], count=row[2])
-            for row in result.all()
+            schemas.SoundEventTagBulkCount(key=key, value=value, count=count)
+            for (key, value), count in sorted(counts.items())
         ]
 
     async def bulk_replace_sound_event_tags(

@@ -24,7 +24,9 @@ __all__ = [
     "AnnotationTaskBulkAddTag",
     "AnnotationTaskBulkDeleteSoundEvents",
     "AnnotationTaskBulkFailure",
+    "AnnotationTaskBulkRemoveBadge",
     "AnnotationTaskBulkReplaceSoundEventTags",
+    "AnnotationTaskBulkResolve",
     "AnnotationTaskBulkResult",
     "AnnotationTaskBulkTagSummary",
     "SoundEventTagBulkCount",
@@ -252,6 +254,18 @@ class AnnotationTaskBulkAddBadge(_AnnotationTaskBulkTarget):
     """Bulk-add a status badge to annotation tasks."""
 
     state: AnnotationState
+
+
+class AnnotationTaskBulkRemoveBadge(_AnnotationTaskBulkTarget):
+    """Bulk-remove status badges from annotation tasks."""
+
+    state: AnnotationState
+    user_id: str | None = None
+    """Only remove this user's badges; omit to remove the badge of every user."""
+
+
+class AnnotationTaskBulkResolve(_AnnotationTaskBulkTarget):
+    """Resolve the task IDs a bulk action targets (explicit IDs and/or filter)."""
 
 
 class AnnotationTaskBulkAddTag(_AnnotationTaskBulkTarget):

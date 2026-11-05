@@ -342,6 +342,8 @@ const DEFAULT_ENDPOINTS = {
   addTag:  "/api/v1/annotation_tasks/detail/tags/",
   removeTag:  "/api/v1/annotation_tasks/detail/tags/",
   bulkAddBadge: "/api/v1/annotation_tasks/bulk/badges/",
+  bulkRemoveBadge: "/api/v1/annotation_tasks/bulk/badges/remove/",
+  bulkResolveIds: "/api/v1/annotation_tasks/bulk/ids/",
   bulkAddTag: "/api/v1/annotation_tasks/bulk/tags/",
   bulkReplaceSoundEventTags: "/api/v1/annotation_tasks/bulk/sound_event_tags/replace/",
   bulkSoundEventTagSummary: "/api/v1/annotation_tasks/bulk/sound_event_tags/summary/",
@@ -566,6 +568,46 @@ export function registerAnnotationTasksAPI(
     return AnnotationTaskBulkResultSchema.parse(response.data);
   }
 
+  async function bulkRemoveBadge({
+    filter,
+    annotation_task_ids,
+    state,
+  }: {
+    filter: AnnotationTaskFilter;
+    annotation_task_ids?: number[];
+    state: AnnotationStatus;
+  }): Promise<AnnotationTaskBulkResult> {
+    const response = await instance.post(
+      endpoints.bulkRemoveBadge,
+      {
+        annotation_task_ids,
+        state,
+      },
+      {
+        params: buildAnnotationTaskFilterQueryParams(filter),
+      },
+    );
+    return AnnotationTaskBulkResultSchema.parse(response.data);
+  }
+
+  /** IDs a bulk action targets: the explicit ones matching the filter, or every match. */
+  async function bulkResolveIds({
+    filter,
+    annotation_task_ids,
+  }: {
+    filter: AnnotationTaskFilter;
+    annotation_task_ids?: number[];
+  }): Promise<number[]> {
+    const response = await instance.post(
+      endpoints.bulkResolveIds,
+      { annotation_task_ids },
+      {
+        params: buildAnnotationTaskFilterQueryParams(filter),
+      },
+    );
+    return z.array(z.number().int()).parse(response.data);
+  }
+
   async function bulkAddTag({
     filter,
     annotation_task_ids,
@@ -674,6 +716,8 @@ export function registerAnnotationTasksAPI(
     addTag,
     removeTag,
     bulkAddBadge,
+    bulkRemoveBadge,
+    bulkResolveIds,
     bulkAddTag,
     bulkReplaceSoundEventTags,
     bulkSoundEventTagSummary,

@@ -676,9 +676,12 @@ export default function AnnotationTaskTable({
           soundEventTagCounts={bulkTagSummaryQuery.data ?? []}
           isTagSummaryLoading={bulkTagSummaryQuery.isLoading}
           bulkAddBadge={bulkActions.bulkAddBadge}
+          bulkRemoveBadge={bulkActions.bulkRemoveBadge}
           bulkAddTag={bulkActions.bulkAddTag}
           bulkReplaceSoundEventTags={bulkActions.bulkReplaceSoundEventTags}
           bulkDeleteSoundEventsByTag={bulkActions.bulkDeleteSoundEventsByTag}
+          progress={bulkActions.progress}
+          onStop={bulkActions.stop}
           onClearSelection={handleClearBulkSelection}
           onSelectAllMatchingFilter={handleSelectAllMatchingFilter}
           onSelectPageOnly={handleSelectPageOnly}

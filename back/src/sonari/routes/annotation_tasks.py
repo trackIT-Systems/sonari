@@ -474,6 +474,44 @@ def get_annotation_tasks_router(settings: SonariSettings):
         return result
 
     @annotation_tasks_router.post(
+        "/bulk/badges/remove/",
+        response_model=schemas.AnnotationTaskBulkResult,
+    )
+    async def bulk_remove_annotation_status_badges(
+        session: Session,
+        filter: Annotated[AnnotationTaskFilter, Depends(AnnotationTaskFilter)],  # type: ignore
+        body: schemas.AnnotationTaskBulkRemoveBadge,
+    ):
+        """Remove a status badge from many annotation tasks (skip tasks without it)."""
+        task_ids = await api.annotation_tasks.resolve_bulk_task_ids(
+            session,
+            filters=[filter],
+            annotation_task_ids=body.annotation_task_ids,
+        )
+        return await api.annotation_tasks.bulk_remove_status_badge(
+            session,
+            task_ids=task_ids,
+            state=body.state,
+            user_id=body.user_id,
+        )
+
+    @annotation_tasks_router.post(
+        "/bulk/ids/",
+        response_model=list[int],
+    )
+    async def resolve_bulk_annotation_task_ids(
+        session: Session,
+        filter: Annotated[AnnotationTaskFilter, Depends(AnnotationTaskFilter)],  # type: ignore
+        body: schemas.AnnotationTaskBulkResolve,
+    ):
+        """List the IDs a bulk action would target, so clients can send them in batches."""
+        return await api.annotation_tasks.resolve_bulk_task_ids(
+            session,
+            filters=[filter],
+            annotation_task_ids=body.annotation_task_ids,
+        )
+
+    @annotation_tasks_router.post(
         "/bulk/tags/",
         response_model=schemas.AnnotationTaskBulkResult,
     )
