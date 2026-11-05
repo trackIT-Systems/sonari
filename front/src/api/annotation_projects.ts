@@ -26,6 +26,8 @@ const SpeciesTagCountSchema = z.object({
   unsure: z.number(),
   rejected: z.number(),
   no_status: z.number(),
+  task_count: z.number().default(0),
+  recording_count: z.number().default(0),
 });
 
 type SpeciesTagCount = z.infer<typeof SpeciesTagCountSchema>;
