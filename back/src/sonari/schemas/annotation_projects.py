@@ -194,6 +194,15 @@ class SpeciesTagCount(BaseModel):
     no_status: int = 0
     """Annotations on tasks with no status badges."""
 
+    task_count: int = 0
+    """Number of distinct tasks with at least one annotation with this tag."""
+
+    recording_count: int = 0
+    """Number of distinct recordings with at least one annotation with this tag.
+
+    Lower than ``task_count`` when a recording is split into several tasks.
+    """
+
 
 class PredictionCorrectionTarget(BaseModel):
     """A tag and how often reviewers chose it."""
@@ -277,12 +286,3 @@ class PredictionCorrectionStats(BaseModel):
 
     added: list[PredictionCorrectionTarget]
     """Tags reviewers added that no prediction covered."""
-
-    task_count: int = 0
-    """Number of distinct tasks with at least one annotation with this tag."""
-
-    recording_count: int = 0
-    """Number of distinct recordings with at least one annotation with this tag.
-
-    Lower than ``task_count`` when a recording is split into several tasks.
-    """
