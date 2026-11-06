@@ -17,7 +17,6 @@ from sqlalchemy.orm import aliased
 from sonari import exceptions, models, schemas
 from sonari.api.species_catalog import normalize_name
 from sonari.cache import invalidate_cache
-from sonari.services import sound_event_history
 from sonari.shared_cache_global import get_shared_cache
 
 __all__ = [
@@ -89,8 +88,14 @@ async def _invalidate_all_species_counts(session: AsyncSession) -> None:
 
 
 def _usage_columns():
+    # Only live sound events: versions keep tag links for the edit history.
     sea_count = (
-        select(func.count()).where(SeaTag.tag_id == Tag.id).correlate(Tag).scalar_subquery()
+        select(func.count())
+        .select_from(SeaTag)
+        .join(models.SoundEventAnnotation, models.SoundEventAnnotation.id == SeaTag.sound_event_annotation_id)
+        .where(SeaTag.tag_id == Tag.id)
+        .correlate(Tag)
+        .scalar_subquery()
     )
     task_count = (
         select(func.count()).where(TaskTag.tag_id == Tag.id).correlate(Tag).scalar_subquery()
@@ -328,7 +333,6 @@ async def merge_tags(
     task_moved, task_removed = await _merge_association(
         session, TaskTag, "annotation_task_id", source_ids, target_tag_id
     )
-    await sound_event_history.move_tags(session, source_ids, target_tag_id)
 
     # Presets that contained a source tag now contain the target tag.
     preset_ids = (

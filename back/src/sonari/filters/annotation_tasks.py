@@ -584,8 +584,10 @@ class EmptyFilter(base.Filter):
         if self.eq is None:
             return query
 
+        # select_from keeps the live-event filter on (it doesn't reach a FROM inferred from WHERE).
         has_sound_events = exists(
             select(1)
+            .select_from(models.SoundEventAnnotation)
             .where(models.SoundEventAnnotation.annotation_task_id == models.AnnotationTask.id)
             .correlate(models.AnnotationTask)
         )

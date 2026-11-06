@@ -264,7 +264,7 @@ async def test_prediction_corrections_routes(auth_client: AsyncClient, reviewed_
 
 
 @pytest.mark.asyncio
-async def test_guano_backfill_creates_originals_for_earlier_edits(
+async def test_guano_backfill_creates_versions_for_earlier_edits(
     auth_client: AsyncClient, db_session: AsyncSession, reviewed_project, test_user
 ):
     """Edits from before the history: relabeled and moved events belong to the reviewer, no confidence."""
@@ -312,18 +312,33 @@ async def test_guano_backfill_creates_originals_for_earlier_edits(
     assert [(a.value, a.count) for a in stats.added] == [("Eptesicus serotinus", 1)]
     assert (stats.reviewed_tasks, stats.predicted_events, stats.edited_events) == (1, 4, 3)
 
-    # A rerun skips the task, which already has GUANO originals.
+    # A rerun skips the task, which already has GUANO versions.
     response = await auth_client.post(
         "/api/v1/annotation_projects/detail/prediction_history/backfill/",
         params={"annotation_project_id": project.id},
     )
     assert response.status_code == 200, response.text
-    originals = (
+    versions = (
         await db_session.scalars(
-            select(models.SoundEventOriginal).where(models.SoundEventOriginal.annotation_task_id == reviewed.id)
+            select(models.SoundEventAnnotation)
+            .where(
+                models.SoundEventAnnotation.annotation_task_id == reviewed.id,
+                models.SoundEventAnnotation.version_reason == "guano",
+            )
+            .execution_options(**models.INCLUDE_VERSIONS)
         )
     ).all()
-    assert len(originals) == 3
+    assert len(versions) == 3
+    # The deleted prediction has no event any more.
+    assert sorted(v.version_of_id is None for v in versions) == [False, False, True]
+
+    # Versions stay out of the task's events.
+    response = await auth_client.get(
+        "/api/v1/annotation_tasks/detail/",
+        params={"annotation_task_id": reviewed.id, "include_sound_event_annotations": True},
+    )
+    assert response.status_code == 200, response.text
+    assert len(response.json()["sound_event_annotations"]) == len(events)
 
 
 @pytest.mark.asyncio

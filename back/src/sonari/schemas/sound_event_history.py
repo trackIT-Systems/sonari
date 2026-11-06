@@ -1,10 +1,11 @@
-"""Schemas for the original state and edit history of sound events."""
+"""Schemas for sound event versions (edit history) and prediction stats."""
 
 import datetime
 from typing import Optional
 from uuid import UUID
 
 from pydantic import Field
+from soundevent import Geometry
 
 from sonari.schemas.annotation_projects import PredictionCorrectionCount, PredictionCorrectionTarget
 from sonari.schemas.base import BaseSchema
@@ -12,97 +13,75 @@ from sonari.schemas.base import BaseSchema
 __all__ = [
     "PredictionBackfillStatus",
     "PredictionHistoryStats",
-    "SoundEventChange",
-    "SoundEventOriginal",
-    "SoundEventOriginalTag",
+    "SoundEventLiveState",
     "SoundEventTaskHistory",
+    "SoundEventVersion",
+    "SoundEventVersionTag",
 ]
 
 
-class SoundEventOriginalTag(BaseSchema):
-    """A tag of a sound event's state before its first user edit."""
+class SoundEventVersionTag(BaseSchema):
+    """A tag of a sound event version."""
 
-    tag_id: Optional[int] = None
-    """Current id of the tag, None once it was deleted."""
-
-    tag_key: str
-    """Key of the tag at that time."""
-
-    tag_value: str
-    """Value of the tag at that time."""
+    key: str
+    value: str
 
     confidence: Optional[float] = None
-    """Detector confidence for this tag, if the import had one."""
+    """Detector confidence for this tag, if the version had one."""
 
 
-class SoundEventOriginal(BaseSchema):
-    """State of an imported sound event before its first user edit."""
+class SoundEventVersion(BaseSchema):
+    """An old state of a sound event, replaced by an edit or ended by a delete."""
 
     id: int
-    annotation_task_id: int
 
-    sound_event_annotation_id: Optional[int] = None
-    """None if the event was already gone when the original was recorded."""
+    version_of_id: Optional[int] = None
+    """The event's id; None for GUANO predictions whose event was already gone."""
+
+    annotation_task_id: int
+    geometry_type: str
+    geometry: Geometry = Field(..., discriminator="type")
+    tags: list[SoundEventVersionTag] = Field(default_factory=list)
 
     created_by_id: Optional[UUID] = None
-    """Owner before the edit, e.g. the detector user."""
+    """Owner of this state, e.g. the detector user for an import."""
 
     created_by_username: Optional[str] = None
 
-    source: str
-    """``first_edit`` or ``guano``."""
-
-    geometry_type: str
-    start_time: float
-    end_time: float
-    low_freq: Optional[float] = None
-    high_freq: Optional[float] = None
     created_on: datetime.datetime
-    tags: list[SoundEventOriginalTag] = Field(default_factory=list)
+    """When the event was created."""
+
+    edit_id: Optional[UUID] = None
+    """Edit session that produced this state; None for imports."""
+
+    superseded_on: datetime.datetime
+    superseded_by_id: Optional[UUID] = None
+    superseded_by_username: Optional[str] = None
+
+    superseded_edit_id: Optional[UUID] = None
+    """Edit session that replaced this state; None for GUANO versions."""
+
+    version_reason: str
+    """``edited``, ``deleted`` (the event's last state) or ``guano``."""
 
 
-class SoundEventChange(BaseSchema):
-    """One user edit, merged per event and edit session."""
+class SoundEventLiveState(BaseSchema):
+    """When a task's live sound event got its current state."""
 
     id: int
-    annotation_task_id: int
-    sound_event_annotation_id: int
-    user_id: Optional[UUID] = None
-    username: Optional[str] = None
-    edit_id: UUID
-
-    action: str
-    """created, deleted, geometry_changed, tag_added, tag_removed or tag_replaced."""
-
-    old_tag_id: Optional[int] = None
-    old_tag_key: Optional[str] = None
-    old_tag_value: Optional[str] = None
-    new_tag_id: Optional[int] = None
-    new_tag_key: Optional[str] = None
-    new_tag_value: Optional[str] = None
-
-    old_start_time: Optional[float] = None
-    old_end_time: Optional[float] = None
-    old_low_freq: Optional[float] = None
-    old_high_freq: Optional[float] = None
-    new_start_time: Optional[float] = None
-    new_end_time: Optional[float] = None
-    new_low_freq: Optional[float] = None
-    new_high_freq: Optional[float] = None
+    edit_id: Optional[UUID] = None
+    """Edit session that produced the state; None for imports and older edits."""
 
     created_on: datetime.datetime
-    """Time of the first edit in this row."""
-
-    updated_on: Optional[datetime.datetime] = None
-    """Time of the last edit merged into this row."""
+    created_by_username: Optional[str] = None
 
 
 class SoundEventTaskHistory(BaseSchema):
-    """Originals and edit history of one annotation task's sound events."""
+    """Versions of one annotation task's sound events, oldest replaced first."""
 
     annotation_task_id: int
-    originals: list[SoundEventOriginal]
-    changes: list[SoundEventChange]
+    versions: list[SoundEventVersion]
+    live: list[SoundEventLiveState]
 
 
 class PredictionBackfillStatus(BaseSchema):
@@ -124,6 +103,8 @@ class PredictionBackfillStatus(BaseSchema):
     """Share of the detector's events that matched a GUANO detection exactly."""
 
     originals_created: int = 0
+    """GUANO versions stored by the run."""
+
     error: Optional[str] = None
 
     stale: bool = False
@@ -134,14 +115,14 @@ class PredictionHistoryStats(BaseSchema):
     """What reviewers did with the predictions in a project's completed and verified tasks.
 
     A prediction is an imported sound event with a detector confidence. Untouched ones count
-    as confirmed; edited ones are compared with their stored original.
+    as confirmed; edited ones are compared with their oldest version.
     """
 
     reviewed_tasks: int
     """Tasks marked completed or verified."""
 
     predicted_events: int
-    """Predicted sound events in the reviewed tasks, including deleted ones with an original."""
+    """Predicted sound events in the reviewed tasks, including deleted ones with a version."""
 
     edited_events: int
     """Predicted sound events that reviewers changed or deleted."""

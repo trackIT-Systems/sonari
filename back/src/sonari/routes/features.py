@@ -31,7 +31,15 @@ async def get_features_names(
     # Task duration is a column now, but its name stays selectable as a feature.
     recording_features = select(models.RecordingFeature.name).distinct()
     task_features = select(literal("duration").label("name"))
-    sound_event_features = select(models.SoundEventAnnotationFeature.name).distinct()
+    # Joined with the event, so features of old versions don't count.
+    sound_event_features = (
+        select(models.SoundEventAnnotationFeature.name)
+        .join(
+            models.SoundEventAnnotation,
+            models.SoundEventAnnotation.id == models.SoundEventAnnotationFeature.sound_event_annotation_id,
+        )
+        .distinct()
+    )
 
     all_features = union(recording_features, task_features, sound_event_features).subquery()
 

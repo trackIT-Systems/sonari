@@ -22,12 +22,14 @@ import TagVisibilityControls from "@/components/annotation_tasks/TagVisibilityCo
 import useAnnotateTask from "@/hooks/annotation/useAnnotateTask";
 import useAudio from "@/hooks/audio/useAudio";
 import useCanvas from "@/hooks/draw/useCanvas";
+import useTimelineDraw from "@/hooks/annotation/useTimelineDraw";
 import useSpectrogram, { clampSamplerate } from "@/hooks/spectrogram/useSpectrogram";
 import useSpectrogramTrackAudio from "@/hooks/spectrogram/useSpectrogramTrackAudio";
 import { getInitialViewingWindow } from "@/utils/windows";
 import useKeyFilter from "@/hooks/utils/useKeyFilter";
 import { RESET_ZOOM_SHORTCUT, SAVE_DEFAULT_ZOOM_SHORTCUT } from "@/utils/keyboard";
 import { getPassSiblingIds } from "@/utils/passes";
+import type { TimelinePreview } from "@/utils/soundEventTimeline";
 import type { TagVisibilityFilter } from "@/utils/passes";
 import type { AnnotateMode } from "@/hooks/annotation/useAnnotateTask";
 import type { MotionMode as SpectrogramMode } from "@/hooks/spectrogram/useSpectrogramMotions";
@@ -75,7 +77,7 @@ function audioChannelFor(
 export default function AnnotationTaskSpectrogram({
   annotationTask,
   parameters = DEFAULT_SPECTROGRAM_PARAMETERS,
-  disabled = false,
+  disabled: disabledProp = false,
   withBar = true,
   withPlayer = true,
   withControls = true,
@@ -110,6 +112,7 @@ export default function AnnotationTaskSpectrogram({
   onRemoveSoundEventAnnotation,
   onUpdateSoundEventAnnotation,
   soundEventAnnotationsOverride,
+  timelinePreview,
   selectedSoundEventAnnotationTask,
   onDeselectSoundEventAnnotation,
   mainSpectrogramWindow,
@@ -158,6 +161,8 @@ export default function AnnotationTaskSpectrogram({
   onRemoveSoundEventAnnotation?: (annotation: SoundEventAnnotation) => void;
   onUpdateSoundEventAnnotation?: (params: { soundEventAnnotation: SoundEventAnnotation; geometry: Geometry }) => void;
   soundEventAnnotationsOverride?: SoundEventAnnotation[];
+  /** A past edit history step to show instead of the current events; read-only. */
+  timelinePreview?: TimelinePreview | null;
   /** Task that owns the selected sound event (main vs source task) */
   selectedSoundEventAnnotationTask?: AnnotationTask | null;
   onDeselectSoundEventAnnotation?: () => void;
@@ -166,6 +171,8 @@ export default function AnnotationTaskSpectrogram({
   onTagVisibilityChange: (visibility: TagVisibilityFilter) => void;
 }) {
   
+  // A past edit history step is read-only.
+  const disabled = disabledProp || timelinePreview != null;
   const [isAnnotating, setIsAnnotating] = useState(false);
   const spectrogramCanvasRef = useRef<HTMLCanvasElement>(null);
   const waveformCanvasRef = useRef<HTMLCanvasElement>(null);
@@ -424,7 +431,7 @@ export default function AnnotationTaskSpectrogram({
     selectedTag,
     onModeChange: handleAnnotationModeChange,
     onDeselect: handleAnnotationDeselect,
-    active: isAnnotating && !audio.isPlaying,
+    active: isAnnotating && !audio.isPlaying && timelinePreview == null,
     onSelectSoundEventAnnotation,
     disabled,
     withSoundEvent,
@@ -474,6 +481,18 @@ export default function AnnotationTaskSpectrogram({
   // Draw progressively: chunks appear as they arrive. Skipping the draw while
   // any visible chunk is pending would freeze the view (and the playhead)
   // until the slowest request finished.
+  const drawTimeline = useTimelineDraw({ window: spectrogram.window, preview: timelinePreview });
+  const drawEvents = useCallback(
+    (ctx: CanvasRenderingContext2D) => {
+      if (timelinePreview != null) {
+        if (withSoundEvent) drawTimeline(ctx);
+      } else {
+        annotate?.drawSpectrogram(ctx);
+      }
+    },
+    [timelinePreview, withSoundEvent, drawTimeline, annotate],
+  );
+
   const drawSpectrogramCanvas = useMemo(() => {
     const cursor = spectrogramIsLoading ? "wait" : "default";
     if (trackingAudio) {
@@ -481,7 +500,7 @@ export default function AnnotationTaskSpectrogram({
         ctx.canvas.style.cursor = cursor;
         drawSpectrogram(ctx);
         drawTrackAudio(ctx);
-        annotate?.drawSpectrogram(ctx);
+        drawEvents(ctx);
       };
     }
     return (ctx: CanvasRenderingContext2D) => {
@@ -489,13 +508,13 @@ export default function AnnotationTaskSpectrogram({
       drawSpectrogram(ctx);
       // Draw the onset line even when not playing
       drawOnsetAt?.(ctx, audio.currentTime);
-      annotate?.drawSpectrogram(ctx);
+      drawEvents(ctx);
     };
   }, [
     drawSpectrogram,
     drawTrackAudio,
     drawOnsetAt,
-    annotate,
+    drawEvents,
     spectrogramIsLoading,
     trackingAudio,
     audio.currentTime,

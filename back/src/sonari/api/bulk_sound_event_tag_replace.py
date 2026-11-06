@@ -145,6 +145,8 @@ async def _insert_tags(
         )
         .where(Sea.id.in_(target_sea_ids))
         .where(~already_has_new_tag)
+        # INSERT ... SELECT doesn't get the ORM's live-event filter.
+        .where(models.live())
     )
 
     stmt = (
@@ -230,25 +232,17 @@ async def process_bulk_tag_replace_chunk(
         return BulkTagReplaceChunkResult(0, 0, failures)
 
     sea_to_task = {row[0]: row[1] for row in target_rows}
-    target_sea_ids = select(Sea.id).where(Sea.id.in_(sea_to_task.keys())).scalar_subquery()
+    # live() explicitly: this subquery also runs inside an INSERT ... SELECT, which the ORM filter skips.
+    target_sea_ids = select(Sea.id).where(Sea.id.in_(sea_to_task.keys()), models.live()).scalar_subquery()
 
-    pending = await history.capture_originals(session, sea_to_task.keys())
+    ctx = edit or history.EditContext(user_id=params.user_id)
+    pending = await history.capture(session, sea_to_task.keys(), ctx)
     deleted_pairs = await _delete_tags(session, params, target_sea_ids)
     inserted_sea_ids = await _insert_tags(session, params, target_sea_ids)
     changed_sea_ids = {sea_id for sea_id, _ in deleted_pairs} | inserted_sea_ids
 
     await _mark_seas_edited(session, changed_sea_ids, params)
-
-    await history.save_originals(session, pending, changed_sea_ids)
-    replaces = not (params.add_only or params.add_to_tagged)
-    await history.record_bulk_tag_changes(
-        session,
-        edit or history.EditContext(user_id=params.user_id),
-        sea_to_task,
-        removed=deleted_pairs,
-        added=[(sea_id, params.new_tag_id) for sea_id in inserted_sea_ids],
-        replacement_tag_id=params.new_tag_id if replaces else None,
-    )
+    await history.save(session, pending, ctx, changed_sea_ids)
 
     tasks_with_changes = {sea_to_task[sea_id] for sea_id in changed_sea_ids if sea_id in sea_to_task}
 
@@ -312,13 +306,7 @@ async def process_bulk_delete_sound_events_chunk(
         return BulkTagReplaceChunkResult(0, 0, failures, sound_events_skipped=skipped)
 
     sea_ids = list(sea_to_task.keys())
-    await history.ensure_originals(session, sea_ids)
-    geometries = (await session.execute(select(Sea.id, Sea.geometry).where(Sea.id.in_(sea_ids)))).all()
-    await history.record_bulk_deleted(
-        session,
-        edit or history.EditContext(user_id=None),
-        [(sea_id, sea_to_task[sea_id], geometry) for sea_id, geometry in geometries],
-    )
+    await history.record_deleted(session, sea_ids, edit or history.EditContext(user_id=None))
     # Explicit child deletes so this does not rely on DB-level ON DELETE CASCADE.
     await session.execute(delete(SeaTag).where(SeaTag.sound_event_annotation_id.in_(sea_ids)))
     await session.execute(

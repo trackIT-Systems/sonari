@@ -45,7 +45,7 @@ def get_sound_event_annotations_router(settings: SonariSettings) -> APIRouter:
             geometry=data.geometry,
             created_by=user,
         )
-        await history.record_created(session, edit, sound_event_annotation)
+        await history.mark_produced(session, [sound_event_annotation.id], edit)
 
         # Add tags
         for tag_data in data.tags:
@@ -56,7 +56,6 @@ def get_sound_event_annotations_router(settings: SonariSettings) -> APIRouter:
                 tag,
                 user,
             )
-            await history.record_tag_added(session, edit, sound_event_annotation, tag)
 
         await session.commit()
         return sound_event_annotation
@@ -129,7 +128,7 @@ def get_sound_event_annotations_router(settings: SonariSettings) -> APIRouter:
             include_features=True,
         )
         before = sound_event_annotation
-        await history.ensure_originals(session, [sound_event_annotation.id])
+        pending = await history.capture(session, [sound_event_annotation.id], edit)
 
         # Update geometry
         sound_event_annotation = await api.sound_event_annotations.update_geometry(
@@ -144,7 +143,8 @@ def get_sound_event_annotations_router(settings: SonariSettings) -> APIRouter:
             sound_event_annotation,
             user,
         )
-        await history.record_geometry_changed(session, edit, before, data.geometry)
+        if history.geometry_bounds(before.geometry) != history.geometry_bounds(sound_event_annotation.geometry):
+            await history.save(session, pending, edit)
 
         await session.commit()
         return sound_event_annotation
@@ -166,8 +166,7 @@ def get_sound_event_annotations_router(settings: SonariSettings) -> APIRouter:
             include_features=True,
             include_tags=True,
         )
-        await history.ensure_originals(session, [sound_event_annotation.id])
-        await history.record_deleted(session, edit, sound_event_annotation)
+        await history.record_deleted(session, [sound_event_annotation.id], edit)
         sound_event_annotation = await api.sound_event_annotations.delete(
             session,
             sound_event_annotation,
@@ -195,15 +194,16 @@ def get_sound_event_annotations_router(settings: SonariSettings) -> APIRouter:
             include_features=True,
         )
         tag = await api.tags.get(session, (key, value))
-        pending = await history.capture_originals(session, [sound_event_annotation.id])
+        had_tag = any((t.key, t.value) == (tag.key, tag.value) for t in sound_event_annotation.tags)
+        pending = await history.capture(session, [sound_event_annotation.id], edit)
         sound_event_annotation = await api.sound_event_annotations.add_tag(
             session,
             sound_event_annotation,
             tag,
             user,
         )
-        await history.save_originals(session, pending)
-        await history.record_tag_added(session, edit, sound_event_annotation, tag)
+        if not had_tag:
+            await history.save(session, pending, edit)
 
         # Mark as edited by user (remove confidence and update ownership)
         sound_event_annotation = await api.sound_event_annotations.mark_as_edited_by_user(
@@ -240,14 +240,15 @@ def get_sound_event_annotations_router(settings: SonariSettings) -> APIRouter:
             include_features=True,
         )
         tag = await api.tags.get(session, (key, value))
-        pending = await history.capture_originals(session, [sound_event_annotation.id])
+        had_tag = any((t.key, t.value) == (tag.key, tag.value) for t in sound_event_annotation.tags)
+        pending = await history.capture(session, [sound_event_annotation.id], edit)
         sound_event_annotation = await api.sound_event_annotations.remove_tag(
             session,
             sound_event_annotation,
             tag,
         )
-        await history.save_originals(session, pending)
-        await history.record_tag_removed(session, edit, sound_event_annotation, tag)
+        if had_tag:
+            await history.save(session, pending, edit)
 
         # Mark as edited by user (remove confidence and update ownership)
         sound_event_annotation = await api.sound_event_annotations.mark_as_edited_by_user(

@@ -6,6 +6,7 @@ import {
   AnnotationProjectSchema,
   AnnotationTaskSchema,
   DatasetSchema,
+  GeometrySchema,
   TagSchema,
   UserSchema,
   FloatEqFilterSchema,
@@ -329,72 +330,51 @@ const SoundEventTagBulkCountSchema = z.object({
 
 export type SoundEventTagBulkCount = z.infer<typeof SoundEventTagBulkCountSchema>;
 
-const SoundEventOriginalTagSchema = z.object({
-  tag_id: z.number().nullish(),
-  tag_key: z.string(),
-  tag_value: z.string(),
+const SoundEventVersionTagSchema = z.object({
+  key: z.string(),
+  value: z.string(),
+  /** Detector confidence for this tag, if the version had one. */
   confidence: z.number().nullish(),
 });
 
-const SoundEventOriginalSchema = z.object({
+/** An old state of a sound event, replaced by an edit or ended by a delete. */
+const SoundEventVersionSchema = z.object({
   id: z.number(),
+  /** The event's id; null for GUANO predictions whose event was already gone. */
+  version_of_id: z.number().nullish(),
   annotation_task_id: z.number(),
-  sound_event_annotation_id: z.number().nullish(),
+  geometry_type: z.string(),
+  geometry: GeometrySchema,
+  tags: z.array(SoundEventVersionTagSchema),
   created_by_id: z.string().nullish(),
   created_by_username: z.string().nullish(),
-  source: z.string(),
-  geometry_type: z.string(),
-  start_time: z.number(),
-  end_time: z.number(),
-  low_freq: z.number().nullish(),
-  high_freq: z.number().nullish(),
   created_on: z.coerce.date(),
-  tags: z.array(SoundEventOriginalTagSchema),
+  /** Edit session that produced this state; null for imports. */
+  edit_id: z.string().nullish(),
+  superseded_on: z.coerce.date(),
+  superseded_by_id: z.string().nullish(),
+  superseded_by_username: z.string().nullish(),
+  /** Edit session that replaced this state; null for GUANO versions. */
+  superseded_edit_id: z.string().nullish(),
+  version_reason: z.enum(["edited", "deleted", "guano"]),
 });
 
-export const SoundEventChangeActionSchema = z.enum([
-  "created",
-  "deleted",
-  "geometry_changed",
-  "tag_added",
-  "tag_removed",
-  "tag_replaced",
-]);
-
-const SoundEventChangeSchema = z.object({
+/** When a live sound event got its current state. */
+const SoundEventLiveStateSchema = z.object({
   id: z.number(),
-  annotation_task_id: z.number(),
-  sound_event_annotation_id: z.number(),
-  user_id: z.string().nullish(),
-  username: z.string().nullish(),
-  edit_id: z.string(),
-  action: SoundEventChangeActionSchema,
-  old_tag_id: z.number().nullish(),
-  old_tag_key: z.string().nullish(),
-  old_tag_value: z.string().nullish(),
-  new_tag_id: z.number().nullish(),
-  new_tag_key: z.string().nullish(),
-  new_tag_value: z.string().nullish(),
-  old_start_time: z.number().nullish(),
-  old_end_time: z.number().nullish(),
-  old_low_freq: z.number().nullish(),
-  old_high_freq: z.number().nullish(),
-  new_start_time: z.number().nullish(),
-  new_end_time: z.number().nullish(),
-  new_low_freq: z.number().nullish(),
-  new_high_freq: z.number().nullish(),
+  edit_id: z.string().nullish(),
   created_on: z.coerce.date(),
-  updated_on: z.coerce.date().nullish(),
+  created_by_username: z.string().nullish(),
 });
 
 export const SoundEventTaskHistorySchema = z.object({
   annotation_task_id: z.number(),
-  originals: z.array(SoundEventOriginalSchema),
-  changes: z.array(SoundEventChangeSchema),
+  versions: z.array(SoundEventVersionSchema),
+  live: z.array(SoundEventLiveStateSchema),
 });
 
-export type SoundEventOriginal = z.infer<typeof SoundEventOriginalSchema>;
-export type SoundEventChange = z.infer<typeof SoundEventChangeSchema>;
+export type SoundEventVersion = z.infer<typeof SoundEventVersionSchema>;
+export type SoundEventLiveState = z.infer<typeof SoundEventLiveStateSchema>;
 export type SoundEventTaskHistory = z.infer<typeof SoundEventTaskHistorySchema>;
 
 const DEFAULT_ENDPOINTS = {

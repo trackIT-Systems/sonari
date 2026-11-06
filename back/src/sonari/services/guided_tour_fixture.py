@@ -201,7 +201,8 @@ async def export_template_fixture(
     events = (
         await session.execute(
             select(sea_t.c.id, sea_t.c.annotation_task_id, sea_t.c.geometry)
-            .where(sea_t.c.annotation_task_id.in_(task_ids))
+            # Live events only; old versions are not part of a fixture.
+            .where(sea_t.c.annotation_task_id.in_(task_ids), sea_t.c.superseded_on.is_(None))
             .order_by(sea_t.c.id),
         )
     ).all()

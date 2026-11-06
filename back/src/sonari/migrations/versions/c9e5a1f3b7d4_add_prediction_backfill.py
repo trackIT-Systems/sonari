@@ -1,7 +1,7 @@
 """Add the GUANO backfill status per annotation project.
 
 Revision ID: c9e5a1f3b7d4
-Revises: b8d4f0e2a6c3
+Revises: d2f6b8a4c0e1
 Create Date: 2026-11-04
 
 """
@@ -12,7 +12,7 @@ import sqlalchemy as sa
 from alembic import op
 
 revision: str = "c9e5a1f3b7d4"
-down_revision: Union[str, None] = "b8d4f0e2a6c3"
+down_revision: Union[str, None] = "d2f6b8a4c0e1"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 

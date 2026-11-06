@@ -52,6 +52,8 @@ import type {
 } from "@/types";
 import AnnotationTaskNotes from "./AnnotationTaskNotes";
 import AnnotationTaskHistory from "./AnnotationTaskHistory";
+
+import type { TimelinePreview } from "@/utils/soundEventTimeline";
 import AnnotationTaskTags from "@/components/annotation_tasks/AnnotationTaskTags";
 import { SPECTROGRAM_CONTAINER_WIDTH } from "@/constants";
 import { DEFAULT_TAG_VISIBILITY } from "@/utils/passes";
@@ -308,6 +310,15 @@ export default function AnnotateTasks({
     sourceAnnotationTask,
     annotationTask?.sound_event_annotations,
   ]);
+
+  // A past step of the edit history, shown read-only in the spectrogram.
+  const [timelinePreview, setTimelinePreview] = useState<TimelinePreview | null>(null);
+  const shownTimelinePreview = isUsingSource ? null : timelinePreview;
+  useEffect(() => {
+    if (shownTimelinePreview == null) return;
+    setSelectedSoundEventAnnotation(null);
+    setMultiSelectedIds(NO_IDS);
+  }, [shownTimelinePreview != null]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const multiSelectedSoundEventAnnotations = useMemo(
     () =>
@@ -997,7 +1008,10 @@ export default function AnnotateTasks({
                     onAddSoundEventAnnotation={activeAddSoundEventAnnotation}
                     onRemoveSoundEventAnnotation={activeRemoveSoundEventAnnotation}
                     onUpdateSoundEventAnnotation={activeUpdateSoundEventAnnotation}
-                    soundEventAnnotationsOverride={displayedSoundEventAnnotations}
+                    soundEventAnnotationsOverride={
+                      shownTimelinePreview?.soundEventAnnotations ?? displayedSoundEventAnnotations
+                    }
+                    timelinePreview={shownTimelinePreview}
                     selectedSoundEventAnnotationTask={
                       selectedSoundEventAnnotation != null
                         ? selectedSoundEventAnnotationTask
@@ -1102,6 +1116,7 @@ export default function AnnotateTasks({
             </div>
             <AnnotationTaskHistory
               annotationTask={annotationTask}
+              onPreviewChange={setTimelinePreview}
               onSelectSoundEventAnnotation={(id) => {
                 const annotation = annotationTask.sound_event_annotations?.find((sea) => sea.id === id);
                 if (annotation != null) handleSelectSoundEventAnnotation(annotation);

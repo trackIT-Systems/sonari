@@ -1,6 +1,7 @@
 """Pytest configuration and fixtures for API endpoint tests."""
 
 import os
+import re
 import tempfile
 import tomllib
 import uuid
@@ -10,11 +11,12 @@ from typing import Any, AsyncGenerator
 import bcrypt
 import pytest
 from httpx import ASGITransport, AsyncClient
-from sqlalchemy import create_engine, select, text
-from sqlalchemy.engine import URL
+from sqlalchemy import create_engine, event, select, text
+from sqlalchemy.engine import URL, Engine
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from sonari import api, schemas
+from sonari.models.sound_event_versions import INCLUDE_VERSIONS_OPTION
 from sonari.models.user import User
 from sonari.system import create_app
 from sonari.system.database import (
@@ -28,6 +30,53 @@ from sonari.system.database import (
 )
 from sonari.system.oidc import get_current_user, get_current_user_oidc
 from sonari.system.settings import Settings, get_settings
+
+# ---------------------------------------------------------------------------
+# Guard: every statement on sound events must see live events only
+# ---------------------------------------------------------------------------
+
+# A FROM/JOIN of the sound event table itself (not its _tag/_feature tables).
+_SEA_TABLE = re.compile(r"(?:\bFROM|\bJOIN|,)\s+\"?sound_event_annotation\"?(?![\w\".])", re.IGNORECASE)
+_SUPERSEDED = re.compile(r"superseded_on\"?\s+IS\b", re.IGNORECASE)
+# The ORM refreshing an object it loaded already, by primary key (live or version).
+_REFRESH = re.compile(
+    r"FROM \"?sound_event_annotation\"?\s+WHERE \"?sound_event_annotation\"?\.id = (?:\?|\$\d+(?:::\w+)?|%\(\w+\)s)\s*$",
+    re.IGNORECASE,
+)
+_live_guard_active = False
+
+
+@event.listens_for(Engine, "before_cursor_execute")
+def _check_live_sound_events(conn, cursor, statement, parameters, context, executemany):
+    """Fail statements that read sound events without the live filter.
+
+    Old states of edited events are rows of the same table; the ORM adds
+    ``superseded_on IS NULL`` (sonari.models.sound_event_versions). A statement that reads
+    the table more often than it mentions ``superseded_on`` slipped past it, unless it
+    opted in to versions.
+    """
+    if not _live_guard_active or context is None:
+        return
+    if context.execution_options.get(INCLUDE_VERSIONS_OPTION):
+        return
+    head = statement.lstrip()[:6].upper()
+    if head not in ("SELECT", "UPDATE", "DELETE", "WITH") and not (head == "INSERT" and "SELECT" in statement.upper()):
+        return
+    if _REFRESH.search(statement):
+        return
+    reads = len(_SEA_TABLE.findall(statement))
+    if reads > len(_SUPERSEDED.findall(statement)):
+        raise AssertionError(f"Sound events read without the live filter:\n{statement}")
+
+
+@pytest.fixture(autouse=True)
+def live_sound_event_guard(setup_test_db):
+    """Active during each test, after the migrations ran."""
+    global _live_guard_active
+    _live_guard_active = True
+    yield
+    _live_guard_active = False
+
 
 # Config file path (tests/pytest_config.toml)
 TEST_CONFIG_PATH = Path(__file__).parent / "pytest_config.toml"

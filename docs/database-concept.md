@@ -235,7 +235,7 @@ dashboard or ecohub process reads them.
 
 ### 2.3 Correction stats (done, no schema change)
 
-> **To be replaced by §7.3:** once originals and history are in the database, the stats
+> **Replaced by §7.3:** with versions in the database, the stats
 > read from there and the GUANO files are only read by the backfill in §7.4.
 
 The correction stats on the project overview and the corrections export compare the
@@ -456,7 +456,7 @@ Steps A–G need no ecohub code change; at most new credentials or pool values.
 | J | §2.1 step 2: confidence on the tag link, with ecohub writer and clone changes | Medium: two-project release | None |
 | **Originals and history (§7), replaces I** | | | |
 | K | §7.2 steps 1–3: geometry columns, bridge trigger, batched backfill, filters on columns | Medium: trigger and backfill on the largest table | None |
-| L | §7.3 original and change tables, recording in the routes, tag replace route, task timeline, project stats from the database | Medium: new feature | None (new tables) |
+| L | §7.3 sound event versions, written in the routes, task timeline, project stats from the database | Medium: new feature, every sound event query filtered | Raise the pin together (§7.5) |
 | M | §7.4 GUANO backfill per project, on request | Low | None |
 | N | §7.2 steps 4–5 after ecohub raises the `sonari` pin: drop trigger, JSON column and derived feature rows | Medium: needs ecohub on the new pin first | None |
 
@@ -465,65 +465,57 @@ compare after each later step. That also decides whether H–J are needed at all
 
 ---
 
-## 7. Originals and edit history
+## 7. Sound event versions (edit history)
 
 Goal: show per task and per project what reviewers changed compared with the model's
 predictions (yolobat, birdedge, anuravox), and who changed it when. The database becomes
 the source. The GUANO files are only read once per project, when someone asks for it
 (§7.4).
 
-### 7.0 Status and corrections (steps 1–4 done)
+### 7.0 Status
 
-**Step 1 (backend) is implemented:** migration `b8d4f0e2a6c3`, the tables
-`sound_event_original`, `sound_event_original_tag` and `sound_event_change`, recording
-in the five sound event routes and in the bulk tag replace and delete, tag merges moving
-history rows, and `GET /annotation_tasks/detail/history/`.
-
-**Steps 2–4 are implemented:**
-- The frontend sends one `X-Sonari-Edit-Id` per event in edit mode, and one per grouped
-  action (`runBatch`). The annotate view has an "Edit history" panel, loaded only when opened.
+**Implemented** (migration `d2f6b8a4c0e1`, replacing the first design with separate
+history tables, `b8d4f0e2a6c3`, which was never deployed):
+- Old states of edited sound events are versions: rows of `sound_event_annotation` itself
+  (§7.3). About 10 % of events are expected to be edited, so the table grows by roughly
+  10–20 %.
+- The five sound event routes and the bulk tag replace and delete write versions. Tag
+  merges move version tags like any other tag link.
+- `GET /annotation_tasks/detail/history/` returns a task's versions; the annotate view's
+  "Edit history" panel shows a log and a time slider that draws past states in the
+  spectrogram.
 - The project overview's "Correction stats" read the database
-  (`GET /annotation_projects/detail/prediction_history/`) instead of the GUANO files. A
-  prediction is an imported event with a detector confidence. Without an original, the
-  confidence feature names (`detection_confidence:<species>`) give the predicted species,
-  so earlier relabels that kept the confidence show up without a backfill.
-- "Load predictions from GUANO" starts the backfill
-  (`POST …/prediction_history/backfill/`, migration `c9e5a1f3b7d4`, table
-  `prediction_backfill`). It runs as a background task, commits every 50 tasks, refuses
-  match rates below 80 %, and skips tasks that already have GUANO originals on a rerun.
+  (`GET /annotation_projects/detail/prediction_history/`). A prediction is an imported
+  event with a detector confidence. Without a version, the confidence feature names
+  (`detection_confidence:<species>`) give the predicted species, so earlier relabels that
+  kept the confidence show up without a backfill.
+- "Load predictions from GUANO" (`POST …/prediction_history/backfill/`, migration
+  `c9e5a1f3b7d4`, table `prediction_backfill`) stores GUANO predictions as versions (§7.4).
 
 Still open: the corrections CSV export reads the GUANO files at runtime; §7.2 geometry
-columns.
+columns; ecohub's pin (§7.5).
 
-Corrections to the assumptions below, found while implementing:
+Facts found while implementing:
 - **Edits change the owner.** Every geometry or tag edit calls `mark_as_edited_by_user`,
   which sets `created_by_id` to the editor and deletes the confidence features (except
-  for the users `birdedge` and `yolobat`). The original is therefore copied *before* that
-  call; it's the only place where the detector owner and the confidence survive.
+  for the users `birdedge` and `yolobat`). The version is copied *before* that call; it's
+  the only place where the detector owner and the confidence survive.
 - **Reprocessing doesn't delete edited events.** ecohub deletes only events still owned by
-  the detector user, so edited events survive. The "replaced by reprocessing" outcome
-  doesn't occur and is dropped. Side effect for ecohub: re-adding detections next to
-  surviving edited events probably creates duplicates.
-- **Bulk edits** (`/annotation_tasks/bulk/sound_event_tags/replace/`,
-  `/annotation_tasks/bulk/sound_events/delete/`) also change events. They record history
-  set-wise, one edit id per request. A bulk replace records every removed tag as
-  replaced by the new tag.
-- **Edit sessions (decided):** every change is saved immediately. The frontend sends one
-  `X-Sonari-Edit-Id` per edit-mode session; the history keeps the net effect per event and
-  session (resizes merge, remove + add with the same key, or species ↔ group, becomes a
-  replacement, add + remove cancels). Without the header, each request is its own edit.
+  the detector user, so edited events survive. Side effect for ecohub: re-adding
+  detections next to surviving edited events probably creates duplicates.
 - **SQLite reuses ids** after deleting the newest row. The migration rebuilds
-  `sound_event_annotation` on SQLite once with `AUTOINCREMENT`; Postgres is unchanged.
+  `sound_event_annotation` on SQLite once with `AUTOINCREMENT`; Postgres only gets columns.
 
 ### 7.1 Decisions
 
 | Question | Decision |
 |---|---|
-| What is the "before" state? | **Copied on first edit, for every imported event.** Just before a user first changes or deletes an event that came from an import (any owner, not only the detector user), Sonari stores the event's state at that moment in `sound_event_original`. Events created in Sonari need no copy: their `created` history row is their original. Events nobody touched are their own original. |
-| How detailed is the history? | **Log of user edits.** One row per change made through Sonari's routes, with user, time, and before/after. ecohub's imports write no history rows. |
-| How are tags stored? | **As first-class history rows.** Replacing a tag is one `tag_replaced` row with the old and the new tag, not a removal plus an addition. Each row keeps the tag id *and* the tag's key and value as text, so the history stays readable after tag merges and deletions (§7.3). |
-| Geometry | **Columns, JSON dropped later** (§7.2). |
-| ecohub reprocessing | **Allowed to delete as today.** Originals and history survive the deletion, and the task view shows that a run replaced the events. |
+| Where do old states live? | **In `sound_event_annotation`, as versions.** One copy per event and edit session, made before the session's first change. The live event keeps its id. |
+| How detailed is the history? | **One state per edit session.** The frontend sends one `X-Sonari-Edit-Id` per sound event edit mode and one per grouped action (`runBatch`); a bulk request is one session. Without the header, each request is its own session. The log shows the difference between consecutive states. |
+| Deletes | **Copy, then delete.** The copy has `version_reason = 'deleted'` and holds the event's last state. An event created and deleted in the same session leaves nothing. |
+| Which events? | **All edited events**, imported or drawn in Sonari. |
+| Tags | **Normal tag links** on the version row. Merges move them with the others; the history shows today's tag names. |
+| ecohub reprocessing | **Allowed to delete as today.** Only live events are affected (§7.5). |
 | GUANO backfill | **Background task in the app**, restartable (§7.4). |
 
 Facts these rely on (dev database, ecohub at the time of writing):
@@ -531,22 +523,12 @@ Facts these rely on (dev database, ecohub at the time of writing):
   `sonari` package pinned in ecohub's `pyproject.toml` (`tag = "2026.7.1"`). A schema change
   reaches ecohub only when that pin is raised.
 - Model events are owned by a user named after the detector (`yolobat`: 4,419 events,
-  `birdedge`: 12). User edits keep that owner. The project name gives the detector
-  (`parse_project_name`), so no static list of detector users is needed.
+  `birdedge`: 12). The project name gives the detector (`parse_project_name`).
 - On reprocessing into an existing project, ecohub deletes all of the detector user's
-  events in the task and re-adds them (`sonari_writer._create_event`), including events
-  users have relabeled.
-- Tag replacement is the most common edit. The frontend does it as two requests per event,
-  remove then add (`handleReplaceTagInSoundEventAnnotations` in
-  [AnnotateTasks.tsx](../front/src/components/annotation_tasks/AnnotateTasks.tsx)), often for
-  many events at once inside one undo step (`runBatch`). The server can't tell a
-  replacement from an unrelated removal and addition.
-- `POST /tags/merge/` moves links to the target tag and deletes the source tags, across
-  all projects.
-- All user edits go through [routes/sound_event_annotations.py](../back/src/sonari/routes/sound_event_annotations.py):
-  create, update geometry, delete, add tag, remove tag. ecohub uses `api.sound_event_annotations`
-  directly, never these routes. Recording history in the routes therefore catches every
-  user edit and none of ecohub's writes.
+  events in the task and re-adds them (`sonari_writer._create_event`).
+- All user edits go through [routes/sound_event_annotations.py](../back/src/sonari/routes/sound_event_annotations.py)
+  or the bulk routes. ecohub uses `api.sound_event_annotations` directly, never these
+  routes, so versions catch every user edit and none of ecohub's writes.
 - Dev has only `BoundingBox` (5,676) and `TimeInterval` (110) geometries.
 
 ### 7.2 Geometry as columns
@@ -582,162 +564,102 @@ Steps:
 The derived feature rows (`low_freq`, `high_freq`, `duration`, `bandwidth`) can be deleted
 in step 5 too, after the check in open question 2.
 
-### 7.3 New tables
-
-Event ids are kept as plain integers **without** a foreign key, for two reasons:
-- The history must outlive the event when a user or ecohub deletes it.
-- ecohub's mass deletes on reprocessing shouldn't get slower because Postgres would
-  otherwise have to look up referencing rows. Event ids come from a sequence and are
-  never reused.
+### 7.3 Versions in `sound_event_annotation`
 
 ```sql
--- State of an imported event just before its first user edit.
-CREATE TABLE sound_event_original (
-  id                        bigserial PRIMARY KEY,
-  annotation_task_id        int  NOT NULL REFERENCES annotation_task(id) ON DELETE CASCADE,
-  sound_event_annotation_id int  UNIQUE,          -- no FK, see above; NULL if the event was gone before the backfill
-  created_by_id             uuid REFERENCES "user"(id),  -- the event's owner, e.g. the detector user
-  source                    text NOT NULL,        -- 'first_edit' | 'guano'
-  geometry_type             text NOT NULL,
-  start_time                float8 NOT NULL,
-  end_time                  float8 NOT NULL,
-  low_freq                  float8,
-  high_freq                 float8,
-  created_on                timestamptz NOT NULL DEFAULT now()
-);
-CREATE INDEX ON sound_event_original (annotation_task_id);
-
-CREATE TABLE sound_event_original_tag (
-  original_id bigint NOT NULL REFERENCES sound_event_original(id) ON DELETE CASCADE,
-  tag_id      int    REFERENCES tag(id) ON DELETE SET NULL,
-  tag_key     text   NOT NULL,                    -- copy of the tag at that time
-  tag_value   text   NOT NULL,
-  confidence  float8,                             -- from the detection_/species_confidence feature
-  UNIQUE (original_id, tag_key, tag_value)
-);
-CREATE INDEX ON sound_event_original_tag (tag_id);
-
--- One row per user edit.
-CREATE TABLE sound_event_change (
-  id                        bigserial PRIMARY KEY,
-  annotation_task_id        int  NOT NULL REFERENCES annotation_task(id) ON DELETE CASCADE,
-  sound_event_annotation_id int  NOT NULL,        -- no FK, see above
-  user_id                   uuid REFERENCES "user"(id),
-  edit_id                   uuid NOT NULL,        -- groups the rows of one user action (one undo step)
-  action                    text NOT NULL,        -- created | deleted | geometry_changed | tag_added | tag_removed | tag_replaced
-  old_tag_id    int  REFERENCES tag(id) ON DELETE SET NULL,
-  old_tag_key   text, old_tag_value text,
-  new_tag_id    int  REFERENCES tag(id) ON DELETE SET NULL,
-  new_tag_key   text, new_tag_value text,
-  old_start_time float8, old_end_time float8, old_low_freq float8, old_high_freq float8,
-  new_start_time float8, new_end_time float8, new_low_freq float8, new_high_freq float8,
-  created_on                timestamptz NOT NULL DEFAULT now()
-);
-CREATE INDEX ON sound_event_change (annotation_task_id, created_on);
-CREATE INDEX ON sound_event_change (sound_event_annotation_id);
-CREATE INDEX ON sound_event_change (old_tag_id) WHERE old_tag_id IS NOT NULL;
-CREATE INDEX ON sound_event_change (new_tag_id) WHERE new_tag_id IS NOT NULL;
+ALTER TABLE sound_event_annotation
+  ADD COLUMN edit_id            uuid,       -- session that produced this state; NULL for imports
+  ADD COLUMN version_of_id      int,        -- on versions: the live event's id (no FK)
+  ADD COLUMN superseded_on      timestamp,  -- NULL = live event
+  ADD COLUMN superseded_by_id   uuid REFERENCES "user"(id) ON DELETE SET NULL,
+  ADD COLUMN superseded_edit_id uuid,       -- session that replaced this state
+  ADD COLUMN version_reason     text;       -- edited | deleted | guano
+CREATE INDEX ix_sound_event_annotation_version_of_id ON sound_event_annotation (version_of_id);
 ```
 
-**Tags in the history.**
+`version_of_id` has no foreign key: versions outlive the event, and ecohub's mass deletes
+don't have to look up referencing rows. Event ids are never reused. On Postgres the
+columns are nullable without default, so adding them doesn't rewrite the table.
 
-| Case | Stored as |
-|---|---|
-| Tag added / removed | `tag_added` with `new_tag_*`, `tag_removed` with `old_tag_*` |
-| Tag replaced | one `tag_replaced` row with `old_tag_*` and `new_tag_*` |
-| Replaced on 40 events at once | 40 `tag_replaced` rows sharing one `edit_id`, shown as one entry ("A → B on 40 events") |
-| Tag merged (`/tags/merge/`) | the merge rewrites `tag_id`/`old_tag_id`/`new_tag_id` to the target tag, so stats group under the surviving tag. The key and value text keep what the reviewer actually saw. |
-| Tag deleted | `ON DELETE SET NULL` on the ids; the key and value text remain. Deleting tags isn't blocked. |
+**Writing** ([services/sound_event_history.py](../back/src/sonari/services/sound_event_history.py)),
+in the same transaction as the edit:
+1. `capture` reads the live rows, tag links and features of the events about to change,
+   skipping events whose `edit_id` is already the current session.
+2. After the change, `save` inserts a version for each event that actually changed
+   (`superseded_*` set, `version_of_id` = the event), copies its tag links and features,
+   and sets the live event's `edit_id` to the session.
+3. Deletes call `record_deleted` first (reason `deleted`).
 
-The tag id is for grouping and joins ("most corrected species"). The text is for showing
-history that is still correct after merges and deletions. The partial indexes on the tag
-ids keep merges and deletions from scanning the history.
+**Hiding versions.** Every ORM query must see live events only. A `do_orm_execute` hook
+([models/sound_event_versions.py](../back/src/sonari/models/sound_event_versions.py))
+adds `superseded_on IS NULL` to every ORM SELECT, UPDATE and DELETE involving the entity,
+in joins, subqueries and relationship loads. It's registered on SQLAlchemy's `Session`
+class when `sonari.models` is imported, so it covers ecohub's sessions too. Code that
+needs versions opts in with `execution_options(**INCLUDE_VERSIONS)`.
 
-**Replacing a tag in one request.** A new route
-`POST /sound_event_annotations/tags/replace/` takes a list of events, the old tag and the
-new tag, and an `edit_id`. In one transaction it swaps the tag on each event, copies the
-originals where needed and writes one `tag_replaced` row per event.
-`handleReplaceTagInSoundEventAnnotations` and the group replacement switch to it. Undo
-calls the same route with the tags swapped. A replacement on 40 events becomes one request
-instead of 80, which also takes load off the database during review.
+Not covered, and handled explicitly:
+- Subqueries whose only reference to the entity is in `WHERE`
+  (`select(1).where(Sea...)`, `exists().where(...)`): use `select_from(Sea)`.
+- `INSERT … SELECT`: add `models.live()`.
+- Core statements on the bare table (guided tour clone, fixture export): add
+  `superseded_on IS NULL`.
+- Queries on `sound_event_annotation_tag` or `_feature` alone (tag usage counts, feature
+  names): join the event.
 
-The other routes accept an optional `edit_id` (request header `X-Sonari-Edit-Id`, set by
-`runBatch`) so that batched removals or deletions group the same way. Without it, every
-request gets its own id.
-
-**Writing.** A small service called from the routes, in the same transaction as the edit:
-1. If the event has no `created` history row (it came from an import) and no original
-   yet, insert the original and its tags (with confidence from the features) from the
-   state *before* the edit.
-2. Insert the history rows.
-
-This adds two to four small inserts per edited event, and nothing during imports.
+A test guard ([tests/conftest.py](../back/tests/conftest.py)) checks every statement the
+test suite executes: one that reads `sound_event_annotation` more often than it filters
+on `superseded_on` fails, unless it opted in.
 
 **Reading.**
+- **Task view:** the versions of the task plus the live events. An event's states are
+  its versions (oldest first) and the live event; each version names the session that
+  replaced it, so the state after any session is known exactly. The slider shows these
+  states, the log the differences between them.
+- **Project stats:** the oldest version of each event against the live event (or its
+  delete). A version with a confidence feature, or a GUANO version, is a prediction.
 
 | Outcome | How it's derived |
 |---|---|
-| confirmed | model event without an original, or with an original equal to its current state |
-| relabeled | original's tag differs from the current tag, usually from a `tag_replaced` row |
-| tag removed / box changed | original differs from the current event |
-| deleted by a user | original plus a `deleted` history row |
-| replaced by reprocessing | original whose event no longer exists and no `deleted` history row |
-| added | event with a `created` history row, or owned by a human user |
-
-"Model event" means `created_by_id` is the project's detector user. Originals of other
-imported events (for example from a manual import) are kept and appear in the task
-history, but don't count in the model stats.
-
-- **Task view:** the timeline is `sound_event_change` grouped by `edit_id`, ordered by
-  time. "Model vs. now" is the originals next to the current events. Both are index
-  lookups on `annotation_task_id`.
-- **Project stats and export:** one SQL aggregate over tasks that are completed or
-  verified, counting the outcomes above by species. "Most corrected species" and "A was
-  most often replaced by B" are a `GROUP BY old_tag_id, new_tag_id` over `tag_replaced`
-  rows. The GUANO reads from §2.3 go away.
-- **Confidence per species** (mean/median of overwritten predictions) comes from
-  `sound_event_original_tag.confidence`, so the threshold suggestion becomes a query.
-
-**After reprocessing**, the re-added events are new, untouched model events, so they
-count as confirmed until a user edits them again. The task view marks the task as
-"replaced by run", so reviewers can see that.
+| confirmed | prediction without a version, or whose oldest version has the tag still on the live event |
+| relabeled | oldest version's tag replaced by a tag with a pairable key |
+| tag removed / box changed | oldest version differs from the live event |
+| deleted | prediction whose event no longer exists |
+| added | tags of events drawn by reviewers |
 
 ### 7.4 GUANO backfill on request
 
-For edits made before §7.3 ships, the original predictions can only come from the GUANO
-files.
-- A "Load predictions from GUANO" action per project starts the backfill. It reuses the
-  matching in [prediction_corrections.py](../back/src/sonari/services/prediction_corrections.py)
-  (exact box first, then IoU ≥ 0.3).
-- **Only tasks that are completed or verified** are read, as today.
-- **A matched detection** whose event differs and has no `first_edit` original gets an
-  original with `source = 'guano'`. Existing `first_edit` originals are kept.
-- **An unmatched detection** gets an original with `sound_event_annotation_id = NULL`,
-  counted as "deleted before history started".
-- The backfill writes no `sound_event_change` rows: who changed what, and when, before
-  §7.3 isn't known. Those tasks show "model vs. now" without a timeline.
+For edits made before versions existed, the original predictions can only come from the
+GUANO files.
+- "Load predictions from GUANO" per project starts the backfill. It reuses the matching
+  in [prediction_corrections.py](../back/src/sonari/services/prediction_corrections.py)
+  (exact box first, then IoU ≥ 0.3), and refuses match rates below 80 %.
+- **Only tasks that are completed or verified** are read.
+- **A matched detection** whose event changed and has no version yet gets a version with
+  `version_reason = 'guano'` as its oldest state, with the predicted tags and confidence.
+- **An unmatched detection** gets a GUANO version with `version_of_id = NULL`, counted as
+  deleted.
+- Who changed what, and when, before versions existed isn't known: those tasks show
+  "import vs. now" without intermediate steps.
 
-**How it runs (decided):** as a FastAPI background task in the app, not as a separate job
-queue.
-- **Commits per task**, so a worker restart loses at most one task's work.
-- **Restartable:** a rerun skips tasks that already have `guano` originals. If a worker
-  restarts mid-run, clicking the action again continues where it stopped.
-- **One run per project:** the project row stores `predictions_backfill_state`
-  (`running`/`done`/`failed`), start and end time, and the match rate. The action is
-  refused while the state is `running` and was updated in the last few minutes, so a
-  dead run doesn't block a new one forever. The overview shows the state.
-- **Cost:** one small file read per reviewed recording (§2.3: 0.06–0.4 ms per file from
-  cache, roughly 5–10 ms on spinning disks), in a thread so the event loop stays free.
-  20,000 reviewed recordings take seconds on SSD and a few minutes on HDD.
-- The same function is callable from a CLI command, for running it on a server without
-  the UI. That needs no extra infrastructure.
+**How it runs:** a FastAPI background task with its own session, one run per project
+(`prediction_backfill` holds state, progress and match rate). It commits every 50 tasks;
+a rerun skips tasks that already have GUANO versions, and a run without progress for
+10 minutes counts as dead.
 
 ### 7.5 What ecohub has to do
 
-Nothing for §7.3 and §7.4. For §7.2 step 5: raise the `sonari` pin, with no code change
-if the `geometry=` constructor argument is kept. Optional later: copy the new columns
-in `_clone_annotations_from_project`, so that deduplicated projects keep their bounds.
-Originals and history don't need copying: a cloned project starts without edits.
+Raise the `sonari` pin to a version with §7.3, and deploy it together with Sonari:
+- **Reprocess delete** (`sonari_writer.py`, `delete(SoundEventAnnotation).where(created_by_id
+  == detector, annotation_task_id == task)`) is an ORM DELETE, so the hook limits it to live
+  events. Versions keep the detector as owner; without the new pin, this delete would
+  remove them.
+- **Task clone** (`_clone_annotations_from_project`) selects the source task's events with
+  the ORM, so the hook leaves versions out. Without the new pin, it would copy versions
+  into the new task as live events.
+- No code change in ecohub is needed for either, as long as both stay ORM statements.
+
+Stop ecohub during the migration window, so an old ecohub doesn't run against the new
+schema.
 
 ## Open questions
 
