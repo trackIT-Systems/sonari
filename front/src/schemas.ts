@@ -460,6 +460,9 @@ export const SpectrogramParametersSchema = z
     max_rows: z.coerce.number().int().positive().optional(),
     /** Request a lossy (JPEG) image: much smaller, fine for previews */
     lossy: z.boolean().optional(),
+    /** Lowest and highest frequency (Hz) in the image: the server crops it to that band */
+    min_freq: z.coerce.number().nonnegative().optional(),
+    max_freq: z.coerce.number().nonnegative().optional(),
     freqLines: z
       .array(z.coerce.number().int().nonnegative())
       .default([]),

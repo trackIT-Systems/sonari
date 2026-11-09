@@ -75,8 +75,8 @@ async def test_get_spectrogram(auth_client: AsyncClient, test_recording_id: int)
     assert response.headers["content-type"] in ["image/webp", "image/jpeg"]
     # Check that there's content
     assert len(response.content) > 0
-    # Check cache control headers
-    assert "no-store" in response.headers.get("cache-control", "")
+    # Browsers may reuse the image: its URL holds every parameter
+    assert response.headers.get("cache-control", "").startswith("private, max-age=")
 
     # Write image to file in current directory
     content_type = response.headers["content-type"]

@@ -193,6 +193,25 @@ def test_db_name():
 
 
 @pytest.fixture(scope="session", autouse=True)
+def test_spectrogram_cache_dir():
+    """Rendered spectrograms are cached in a temporary directory, not the user's data dir."""
+    from sonari.routes.spectrograms import _cache
+
+    previous = os.environ.get("SONARI_SPECTROGRAM_CACHE_DIR")
+    with tempfile.TemporaryDirectory(prefix="sonari_test_spectrograms_") as tmp:
+        os.environ["SONARI_SPECTROGRAM_CACHE_DIR"] = tmp
+        _cache.cache_clear()
+        try:
+            yield Path(tmp)
+        finally:
+            if previous is None:
+                os.environ.pop("SONARI_SPECTROGRAM_CACHE_DIR", None)
+            else:
+                os.environ["SONARI_SPECTROGRAM_CACHE_DIR"] = previous
+            _cache.cache_clear()
+
+
+@pytest.fixture(scope="session", autouse=True)
 def test_audio_dir():
     """Temporary audio root for this session; removed (with everything tests created in it) afterwards.
 

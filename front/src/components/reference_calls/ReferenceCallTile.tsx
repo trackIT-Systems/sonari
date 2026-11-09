@@ -5,6 +5,7 @@ import useCanvas from "@/hooks/draw/useCanvas";
 import { clampSamplerate } from "@/hooks/spectrogram/useSpectrogram";
 import useSpectrogramPreviewImage from "@/hooks/spectrogram/useSpectrogramPreviewImage";
 import useStore from "@/store";
+import { createLoadQueue } from "@/utils/loadQueue";
 
 import type { ReferenceCall } from "@/api/annotation_projects";
 import type { SpectrogramWindow } from "@/types";
@@ -14,6 +15,8 @@ const TILE_HEIGHT = 120;
 /** Image size requested from the backend, ~2x the canvas for smooth downscaling */
 const TARGET_COLUMNS = 2 * TILE_WIDTH;
 const TARGET_ROWS = 2 * TILE_HEIGHT;
+/** The tiles of a gallery load a few at a time, so the first ones show up soon */
+const TILE_QUEUE = createLoadQueue(3);
 
 const numberFormat = new Intl.NumberFormat(undefined, { maximumFractionDigits: 0 });
 
@@ -55,38 +58,34 @@ export default function ReferenceCallTile({
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const savedParameters = useStore((state) => state.spectrogramSettings);
 
+  const nyquist = clampSamplerate(applyAutoSTFT(savedParameters, call.samplerate), call.samplerate) / 2;
+  const visible = useMemo(() => callWindow(call, nyquist), [call, nyquist]);
+
+  // Only the call's band, at tile size: the server crops and renders it that small
   const parameters = useMemo(() => {
     const auto = applyAutoSTFT(savedParameters, call.samplerate);
-    const nyquist = clampSamplerate(auto, call.samplerate) / 2;
-    const visible = callWindow(call, nyquist);
     return {
       ...auto,
       channel: call.channel < call.channels ? call.channel : 0,
       mix_channels: false,
       overlap_percent: 99,
       max_columns: TARGET_COLUMNS,
-      // Rows for the full range, so the band shown still gets ~TARGET_ROWS
-      max_rows: Math.round((TARGET_ROWS * nyquist) / Math.max(1, visible.freq.max - visible.freq.min)),
+      max_rows: TARGET_ROWS,
+      min_freq: visible.freq.min,
+      max_freq: visible.freq.max,
       lossy: true,
       freqLines: [],
       time_zoom_automatic: true,
       time_zoom_duration_seconds: undefined,
     };
-  }, [savedParameters, call]);
-
-  const nyquist = clampSamplerate(parameters, call.samplerate) / 2;
-  const visible = useMemo(() => callWindow(call, nyquist), [call, nyquist]);
-  // The image covers every frequency; only the call's band is drawn
-  const segment = useMemo<SpectrogramWindow>(
-    () => ({ time: visible.time, freq: { min: 0, max: nyquist } }),
-    [visible.time, nyquist],
-  );
+  }, [savedParameters, call, visible]);
 
   const { image, isError, retry } = useSpectrogramPreviewImage({
     recording_id: call.recording_id,
-    segment,
+    segment: visible,
     parameters,
     enabled: true,
+    queue: TILE_QUEUE,
   });
 
   const draw = useCallback(
@@ -97,10 +96,8 @@ export default function ReferenceCallTile({
       if (!image) return;
       ctx.imageSmoothingEnabled = true;
       ctx.imageSmoothingQuality = "high";
-      // Image row 0 is the Nyquist frequency
-      const top = image.height * (1 - visible.freq.max / nyquist);
-      const bottom = image.height * (1 - visible.freq.min / nyquist);
-      ctx.drawImage(image, 0, top, image.width, bottom - top, 0, 0, width, height);
+      // The image is exactly the visible window
+      ctx.drawImage(image, 0, 0, width, height);
 
       const span = visible.time.max - visible.time.min;
       const band = visible.freq.max - visible.freq.min;
@@ -112,7 +109,7 @@ export default function ReferenceCallTile({
       ctx.lineWidth = 1.5;
       ctx.strokeRect(x0, y0, x1 - x0, y1 - y0);
     },
-    [image, visible, nyquist, call],
+    [image, visible, call],
   );
 
   useCanvas({ ref: canvasRef as React.RefObject<HTMLCanvasElement>, draw });
