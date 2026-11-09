@@ -30,7 +30,7 @@ function formatFilterValue(field: string, value: unknown): string | null {
     return value ? "Yes" : "No";
   }
 
-  if (field === "sound_event_annotation_tag") {
+  if (field === "sound_event_annotation_tag" || field === "task_tag") {
     const tags = (Array.isArray(value) ? value : [value]) as TagLike[];
     if (tags.length === 0) return null;
     return tags

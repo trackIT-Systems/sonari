@@ -4,7 +4,7 @@ from datetime import datetime, timedelta, time
 from typing import Literal
 
 from soundevent import data
-from sqlalchemy import Float, Select, and_, case, exists, false, func, literal, not_, or_, select, union_all
+from sqlalchemy import Float, Select, and_, case, exists, false, func, literal, not_, or_, select
 from sqlalchemy.ext.compiler import compiles
 from sqlalchemy.sql.expression import FunctionElement
 
@@ -18,6 +18,8 @@ __all__ = [
     "StationFilter",
     "AnnotationTaskFilter",
     "SearchRecordingsFilter",
+    "TaskTagCountFilter",
+    "TaskTagFilter",
 ]
 
 
@@ -306,32 +308,31 @@ def _tag_id_subquery(key: str, value: str):
     )
 
 
-def _task_tag_pairs(candidate_task_ids: Select):
-    """(task_id, tag_id, is_event) rows for candidate tasks.
+TagLevel = Literal["sound_event", "task"]
 
-    Sound-event tags (``is_event`` 1) and task-level tags (``is_event`` 0): tag
-    include/exclude matches both, the distinct tag count only sound-event tags.
-    """
-    sound_event_level = (
-        select(
-            models.SoundEventAnnotation.annotation_task_id.label("task_id"),
-            models.SoundEventAnnotationTag.tag_id.label("tag_id"),
-            literal(1).label("is_event"),
+
+def _tag_pairs(candidate_task_ids: Select, level: TagLevel):
+    """(task_id, tag_id) rows for candidate tasks: tags on their sound events, or on the tasks."""
+    if level == "sound_event":
+        pairs = (
+            select(
+                models.SoundEventAnnotation.annotation_task_id.label("task_id"),
+                models.SoundEventAnnotationTag.tag_id.label("tag_id"),
+            )
+            .select_from(models.SoundEventAnnotation)
+            .join(
+                models.SoundEventAnnotationTag,
+                models.SoundEventAnnotationTag.sound_event_annotation_id
+                == models.SoundEventAnnotation.id,
+            )
+            .where(models.SoundEventAnnotation.annotation_task_id.in_(candidate_task_ids))
         )
-        .select_from(models.SoundEventAnnotation)
-        .join(
-            models.SoundEventAnnotationTag,
-            models.SoundEventAnnotationTag.sound_event_annotation_id
-            == models.SoundEventAnnotation.id,
-        )
-        .where(models.SoundEventAnnotation.annotation_task_id.in_(candidate_task_ids))
-    )
-    task_level = select(
-        models.AnnotationTaskTag.annotation_task_id.label("task_id"),
-        models.AnnotationTaskTag.tag_id.label("tag_id"),
-        literal(0).label("is_event"),
-    ).where(models.AnnotationTaskTag.annotation_task_id.in_(candidate_task_ids))
-    return union_all(sound_event_level, task_level).subquery("task_tag_pairs")
+    else:
+        pairs = select(
+            models.AnnotationTaskTag.annotation_task_id.label("task_id"),
+            models.AnnotationTaskTag.tag_id.label("tag_id"),
+        ).where(models.AnnotationTaskTag.annotation_task_id.in_(candidate_task_ids))
+    return pairs.subquery(f"{level}_tag_pairs")
 
 
 def _pairs_have_tag(pairs, key: str, value: str):
@@ -370,6 +371,7 @@ def _count_bounds_admit_zero(count_filter: "SoundEventAnnotationTagCountFilter")
 def _grouped_tag_condition(
     candidate_query: Select,
     *,
+    level: TagLevel = "sound_event",
     include_pairs: list[tuple[str, str]] | None = None,
     include_match: Literal["and", "or"] | None = None,
     exclude_pairs: list[tuple[str, str]] | None = None,
@@ -377,7 +379,8 @@ def _grouped_tag_condition(
 ):
     """Include/exclude tags and distinct tag count as one grouped condition.
 
-    The tag links of the tasks matched by ``candidate_query`` are collected once
+    ``level`` picks the tags looked at: those on the task's sound events or those on
+    the task itself. The tag links of the tasks matched by ``candidate_query`` are collected once
     and checked with a single GROUP BY ... HAVING, instead of running correlated
     subqueries per task. Returns None when no tag condition is active.
     """
@@ -386,7 +389,7 @@ def _grouped_tag_condition(
         return None
 
     candidate_task_ids = candidate_query.with_only_columns(models.AnnotationTask.id)
-    pairs = _task_tag_pairs(candidate_task_ids)
+    pairs = _tag_pairs(candidate_task_ids, level)
 
     conditions = []
     if include_pairs:
@@ -396,11 +399,8 @@ def _grouped_tag_condition(
         conditions.extend(not_(_pairs_have_tag(pairs, k, v)) for k, v in exclude_pairs)
     if count_active:
         assert count_filter is not None
-        # Task tags (e.g. "tour: bulk", recording quality) are not part of the
-        # "distinct tag amount": only tags on sound events count.
-        event_tag_id = case((pairs.c.is_event == 1, pairs.c.tag_id), else_=None)
         conditions.extend(
-            _count_bound_conditions(func.count(event_tag_id.distinct()), count_filter)
+            _count_bound_conditions(func.count(pairs.c.tag_id.distinct()), count_filter)
         )
 
     grouped = select(pairs.c.task_id).group_by(pairs.c.task_id)
@@ -443,7 +443,7 @@ def _tag_count_filter_active(count_filter: "SoundEventAnnotationTagCountFilter")
 
 
 class SoundEventAnnotationTagCountFilter(base.Filter):
-    """Filter tasks by how many distinct tags appear on the task."""
+    """Filter tasks by how many distinct tags their sound events carry."""
 
     eq: int | None = None
     gt: int | None = None
@@ -471,8 +471,8 @@ def _combine_include_tag_conditions(
     return or_(*conditions)
 
 
-class SoundEventAnnotationTagFilter(base.Filter):
-    """Filter for tasks by sound event annotation tag or annotation task tag."""
+class _TagListFilter(base.Filter):
+    """Included and excluded tags, as comma separated keys and values."""
 
     keys: str | None = None
     values: str | None = None
@@ -492,6 +492,10 @@ class SoundEventAnnotationTagFilter(base.Filter):
             zip(self.exclude_keys.split(","), self.exclude_values.split(","), strict=True)
         )
 
+
+class SoundEventAnnotationTagFilter(_TagListFilter):
+    """Filter for tasks by the tags on their sound events (task tags have their own filter)."""
+
     def filter(self, query: Select) -> Select:
         """Filter the query."""
         return _apply_grouped_tag_filters(
@@ -500,6 +504,33 @@ class SoundEventAnnotationTagFilter(base.Filter):
             include_match=self.include_match,
             exclude_pairs=self.exclude_pairs(),
         )
+
+
+class TaskTagFilter(_TagListFilter):
+    """Filter for tasks by the tags on the task itself (e.g. recording quality)."""
+
+    def filter(self, query: Select) -> Select:
+        """Filter the query; with a task tag count, AnnotationTaskFilter groups both."""
+        return _apply_grouped_tag_filters(
+            query,
+            level="task",
+            include_pairs=self.include_pairs(),
+            include_match=self.include_match,
+            exclude_pairs=self.exclude_pairs(),
+        )
+
+
+class TaskTagCountFilter(base.Filter):
+    """Filter tasks by how many distinct tags the task itself carries."""
+
+    eq: int | None = None
+    gt: int | None = None
+    lt: int | None = None
+    ge: int | None = None
+    le: int | None = None
+
+    def filter(self, query: Select) -> Select:
+        return _apply_grouped_tag_filters(query, level="task", count_filter=self)
 
 
 def _task_sound_event_count_expression():
@@ -1121,6 +1152,8 @@ _AnnotationTaskFilterCombined = base.combine(
     annotation_task_tag=AnnotationTaskTagFilter,
     dataset=StationFilter,
     sound_event_annotation_tag=SoundEventAnnotationTagFilter,
+    task_tag=TaskTagFilter,
+    task_tag_count=TaskTagCountFilter,
     sound_event_annotation_tag_count=SoundEventAnnotationTagCountFilter,
     sound_event_annotation_count=SoundEventAnnotationCountFilter,
     date=DateRangeFilter,
@@ -1144,10 +1177,16 @@ class AnnotationTaskFilter(_AnnotationTaskFilterCombined):
         sound_event_count_filter: SoundEventAnnotationCountFilter | None = None
         confidence_filter: ConfidenceFilter | None = None
         median_filter: MedianConfidenceFilter | None = None
+        task_tag_filter: TaskTagFilter | None = None
+        task_tag_count_filter: TaskTagCountFilter | None = None
         other_filters: list[base.Filter] = []
 
         for filter_ in filters:
-            if isinstance(filter_, SoundEventAnnotationTagFilter):
+            if isinstance(filter_, TaskTagFilter):
+                task_tag_filter = filter_
+            elif isinstance(filter_, TaskTagCountFilter):
+                task_tag_count_filter = filter_
+            elif isinstance(filter_, SoundEventAnnotationTagFilter):
                 tag_filter = filter_
             elif isinstance(filter_, SoundEventAnnotationTagCountFilter):
                 tag_count_filter = filter_
@@ -1214,6 +1253,17 @@ class AnnotationTaskFilter(_AnnotationTaskFilterCombined):
         )
         if tag_condition is not None:
             query = query.where(tag_condition)
+
+        task_tag_condition = _grouped_tag_condition(
+            grouped_query,
+            level="task",
+            include_pairs=task_tag_filter.include_pairs() if task_tag_filter else None,
+            include_match=task_tag_filter.include_match if task_tag_filter else None,
+            exclude_pairs=task_tag_filter.exclude_pairs() if task_tag_filter else None,
+            count_filter=task_tag_count_filter,
+        )
+        if task_tag_condition is not None:
+            query = query.where(task_tag_condition)
 
         if sound_event_count_filter is not None and _tag_count_filter_active(
             sound_event_count_filter

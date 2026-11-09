@@ -79,10 +79,19 @@ const AnnotationTaskFilterSchema = z.object({
   ]).optional(),
   /** How multiple included tags combine (default OR when omitted). */
   sound_event_annotation_tag_include_match: z.enum(["and", "or"]).optional(),
-  /** Number of distinct tags on the task (set from the Tag filter UI). */
+  /** Number of distinct tags on the task's sound events (set from the Sound event tags filter UI). */
   sound_event_annotation_tag_count: IntegerFilterSchema.optional(),
   /** Number of sound event annotations on the task (set from the Tag filter UI). */
   sound_event_annotation_count: IntegerFilterSchema.optional(),
+  /** Tags on the task itself, included or excluded (task tags filter). */
+  task_tag: z.union([
+    SoundEventAnnotationTaskFilterTagSchema,
+    z.array(SoundEventAnnotationTaskFilterTagSchema),
+  ]).optional(),
+  /** How multiple included task tags combine (default OR when omitted). */
+  task_tag_include_match: z.enum(["and", "or"]).optional(),
+  /** Number of distinct tags on the task itself (set from the Task tags filter UI). */
+  task_tag_count: IntegerFilterSchema.optional(),
   empty: z.boolean().optional(),
   pending: z.boolean().optional(),
   assigned: z.boolean().optional(),
@@ -182,7 +191,7 @@ export type AnnotationTaskFilter = z.input<typeof AnnotationTaskFilterSchema>;
 
 type ParsedAnnotationTaskFilter = z.infer<typeof AnnotationTaskFilterSchema>;
 
-function soundEventAnnotationTagsForApi(
+function tagFilterEntriesForApi(
   tags: ParsedAnnotationTaskFilter["sound_event_annotation_tag"],
 ) {
   if (tags == null) {
@@ -212,9 +221,10 @@ export function buildAnnotationTaskFilterQueryParams(
   filter: AnnotationTaskFilter,
 ): Record<string, string | number | boolean | undefined> {
   const params = AnnotationTaskFilterSchema.parse(filter) as ParsedAnnotationTaskFilter;
-  const soundEventTags = soundEventAnnotationTagsForApi(
+  const soundEventTags = tagFilterEntriesForApi(
     params.sound_event_annotation_tag,
   );
+  const taskTags = tagFilterEntriesForApi(params.task_tag);
 
   return {
     dataset__lst: params.dataset
@@ -241,6 +251,16 @@ export function buildAnnotationTaskFilterQueryParams(
       params.sound_event_annotation_tag_count?.ge,
     sound_event_annotation_tag_count__le:
       params.sound_event_annotation_tag_count?.le,
+    task_tag__keys: taskTags.includeKeys,
+    task_tag__values: taskTags.includeValues,
+    task_tag__exclude_keys: taskTags.excludeKeys,
+    task_tag__exclude_values: taskTags.excludeValues,
+    task_tag__include_match: params.task_tag_include_match,
+    task_tag_count__eq: params.task_tag_count?.eq,
+    task_tag_count__gt: params.task_tag_count?.gt,
+    task_tag_count__lt: params.task_tag_count?.lt,
+    task_tag_count__ge: params.task_tag_count?.ge,
+    task_tag_count__le: params.task_tag_count?.le,
     sound_event_annotation_count__eq:
       params.sound_event_annotation_count?.eq,
     sound_event_annotation_count__gt:

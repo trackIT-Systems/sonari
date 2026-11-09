@@ -53,6 +53,9 @@ describe("filterAffectedByChange", () => {
     expect(filterAffectedByChange({ assigned_to: { id: "u" } }, "status")).toBe(true);
     expect(filterAffectedByChange({ annotation_task_tag: { key: "a", value: "b" } }, "task_tag")).toBe(true);
     expect(filterAffectedByChange({ annotation_task_tag: { key: "a", value: "b" } }, "sound_event")).toBe(false);
+    expect(filterAffectedByChange({ task_tag: [{ key: "a", value: "b" }] }, "task_tag")).toBe(true);
+    expect(filterAffectedByChange({ task_tag_count: { eq: 1 } }, "task_tag")).toBe(true);
+    expect(filterAffectedByChange({ task_tag: [{ key: "a", value: "b" }] }, "sound_event")).toBe(false);
     expect(filterAffectedByChange({ empty: true }, "sound_event")).toBe(true);
     expect(filterAffectedByChange({ confidence: { gt: 0.5 } }, "sound_event")).toBe(true);
   });

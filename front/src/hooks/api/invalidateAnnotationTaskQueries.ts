@@ -8,7 +8,7 @@ type FilterValues = Record<string, unknown>;
 /** Filter keys whose matching tasks can change after an edit of that kind */
 const FILTER_KEYS_BY_CHANGE: Record<AnnotationTaskChange, readonly string[]> = {
   status: ["pending", "assigned", "verified", "rejected", "completed", "assigned_to"],
-  task_tag: ["annotation_task_tag"],
+  task_tag: ["annotation_task_tag", "task_tag", "task_tag_include_match", "task_tag_count"],
   note: [],
   sound_event: [
     "sound_event_annotation_tag",

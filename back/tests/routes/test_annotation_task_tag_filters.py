@@ -70,6 +70,9 @@ async def tagged_tasks(
     return project, pip, nyct, {name: t.id for name, t in tasks.items()}
 
 
+_ALL = ("none", "pip", "pip_nyct", "pip_task_nyct", "task_only", "pip_twice")
+
+
 def _names(ids: set[int], task_ids: dict[str, int]) -> set[str]:
     return {name for name, task_id in task_ids.items() if task_id in ids}
 
@@ -77,17 +80,14 @@ def _names(ids: set[int], task_ids: dict[str, int]) -> set[str]:
 @pytest.mark.parametrize(
     ("params", "expected"),
     [
+        # Only tags on sound events count: nyct as a task tag is left alone.
         ({"include": ["pip"]}, {"pip", "pip_nyct", "pip_task_nyct", "pip_twice"}),
-        ({"include": ["nyct"]}, {"pip_nyct", "pip_task_nyct", "task_only"}),
-        ({"include": ["pip", "nyct"], "match": "and"}, {"pip_nyct", "pip_task_nyct"}),
-        (
-            {"include": ["pip", "nyct"], "match": "or"},
-            {"pip", "pip_nyct", "pip_task_nyct", "task_only", "pip_twice"},
-        ),
-        ({"exclude": ["nyct"]}, {"none", "pip", "pip_twice"}),
-        ({"exclude": ["pip", "nyct"]}, {"none"}),
-        ({"include": ["pip"], "exclude": ["nyct"]}, {"pip", "pip_twice"}),
-        # The distinct tag amount counts sound-event tags only, not task tags.
+        ({"include": ["nyct"]}, {"pip_nyct"}),
+        ({"include": ["pip", "nyct"], "match": "and"}, {"pip_nyct"}),
+        ({"include": ["pip", "nyct"], "match": "or"}, {"pip", "pip_nyct", "pip_task_nyct", "pip_twice"}),
+        ({"exclude": ["nyct"]}, {"none", "pip", "pip_task_nyct", "task_only", "pip_twice"}),
+        ({"exclude": ["pip", "nyct"]}, {"none", "task_only"}),
+        ({"include": ["pip"], "exclude": ["nyct"]}, {"pip", "pip_task_nyct", "pip_twice"}),
         ({"count": {"eq": 0}}, {"none", "task_only"}),
         ({"count": {"eq": 1}}, {"pip", "pip_task_nyct", "pip_twice"}),
         ({"count": {"eq": 2}}, {"pip_nyct"}),
@@ -107,30 +107,61 @@ async def test_grouped_tag_filters(
     expected: set[str],
 ):
     project, pip, nyct, task_ids = tagged_tasks
-    tags = {"pip": pip, "nyct": nyct}
-
-    filter_params: dict[str, object] = {}
-    if "include" in params:
-        filter_params["sound_event_annotation_tag__keys"] = ",".join(
-            tags[n].key for n in params["include"]
-        )
-        filter_params["sound_event_annotation_tag__values"] = ",".join(
-            tags[n].value for n in params["include"]
-        )
-    if "match" in params:
-        filter_params["sound_event_annotation_tag__include_match"] = params["match"]
-    if "exclude" in params:
-        filter_params["sound_event_annotation_tag__exclude_keys"] = ",".join(
-            tags[n].key for n in params["exclude"]
-        )
-        filter_params["sound_event_annotation_tag__exclude_values"] = ",".join(
-            tags[n].value for n in params["exclude"]
-        )
-    for op, value in params.get("count", {}).items():
-        filter_params[f"sound_event_annotation_tag_count__{op}"] = value
-
+    filter_params = _tag_filter_params("sound_event_annotation_tag", params, {"pip": pip, "nyct": nyct})
     ids = await _fetch_task_ids(auth_client, project.id, **filter_params)
     assert _names(ids, task_ids) == expected
+
+
+def _tag_filter_params(prefix: str, params: dict, tags: dict) -> dict[str, object]:
+    filter_params: dict[str, object] = {}
+    if "include" in params:
+        filter_params[f"{prefix}__keys"] = ",".join(tags[n].key for n in params["include"])
+        filter_params[f"{prefix}__values"] = ",".join(tags[n].value for n in params["include"])
+    if "match" in params:
+        filter_params[f"{prefix}__include_match"] = params["match"]
+    if "exclude" in params:
+        filter_params[f"{prefix}__exclude_keys"] = ",".join(tags[n].key for n in params["exclude"])
+        filter_params[f"{prefix}__exclude_values"] = ",".join(tags[n].value for n in params["exclude"])
+    for op, value in params.get("count", {}).items():
+        filter_params[f"{prefix}_count__{op}"] = value
+    return filter_params
+
+
+@pytest.mark.parametrize(
+    ("params", "expected"),
+    [
+        # Only tags on the task itself count: nyct is a task tag of pip_task_nyct and task_only.
+        ({"include": ["nyct"]}, {"pip_task_nyct", "task_only"}),
+        ({"include": ["pip"]}, set()),
+        ({"include": ["pip", "nyct"], "match": "or"}, {"pip_task_nyct", "task_only"}),
+        ({"include": ["pip", "nyct"], "match": "and"}, set()),
+        ({"exclude": ["nyct"]}, {"none", "pip", "pip_nyct", "pip_twice"}),
+        ({"exclude": ["pip"]}, set(_ALL)),
+        ({"count": {"eq": 0}}, {"none", "pip", "pip_nyct", "pip_twice"}),
+        ({"count": {"eq": 1}}, {"pip_task_nyct", "task_only"}),
+        ({"count": {"gt": 1}}, set()),
+        ({"include": ["nyct"], "count": {"eq": 1}}, {"pip_task_nyct", "task_only"}),
+    ],
+)
+@pytest.mark.asyncio
+async def test_task_tag_filters(auth_client: AsyncClient, tagged_tasks, params: dict, expected: set[str]):
+    project, pip, nyct, task_ids = tagged_tasks
+    filter_params = _tag_filter_params("task_tag", params, {"pip": pip, "nyct": nyct})
+    ids = await _fetch_task_ids(auth_client, project.id, **filter_params)
+    assert _names(ids, task_ids) == expected
+
+
+@pytest.mark.asyncio
+async def test_sound_event_and_task_tag_filters_combine(auth_client: AsyncClient, tagged_tasks):
+    project, pip, nyct, task_ids = tagged_tasks
+    tags = {"pip": pip, "nyct": nyct}
+    ids = await _fetch_task_ids(
+        auth_client,
+        project.id,
+        **_tag_filter_params("sound_event_annotation_tag", {"include": ["pip"]}, tags),
+        **_tag_filter_params("task_tag", {"include": ["nyct"]}, tags),
+    )
+    assert _names(ids, task_ids) == {"pip_task_nyct"}
 
 
 @pytest.mark.asyncio
