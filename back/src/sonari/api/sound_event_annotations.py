@@ -6,6 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from sonari import exceptions, models, schemas
 from sonari.api import common
+from sonari.core.call_levels import CALL_LEVEL_FEATURE_NAMES
 from sonari.api.common import BaseAPI
 
 __all__ = [
@@ -173,12 +174,20 @@ class SoundEventAnnotationAPI(
             geometry=geometry,
         )
 
-        obj = sound_event_annotation.model_copy(
-            update=dict(
-                geometry_type=geometry.type,
-                geometry=geometry,
+        # Call levels were measured inside the old box.
+        await session.execute(
+            delete(models.SoundEventAnnotationFeature).where(
+                models.SoundEventAnnotationFeature.sound_event_annotation_id == sound_event_annotation.id,
+                models.SoundEventAnnotationFeature.name.in_(CALL_LEVEL_FEATURE_NAMES),
             )
         )
+
+        update = dict(geometry_type=geometry.type, geometry=geometry)
+        if sound_event_annotation.features is not None:
+            update["features"] = [
+                f for f in sound_event_annotation.features if f.name not in CALL_LEVEL_FEATURE_NAMES
+            ]
+        obj = sound_event_annotation.model_copy(update=update)
         self._update_cache(obj)
         return obj
 

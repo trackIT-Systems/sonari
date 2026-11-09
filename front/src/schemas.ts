@@ -352,6 +352,10 @@ export const AnnotationProjectSchema = z.object({
   tag_group_id: z.number().int().nullish(),
   tag_preset_id: z.number().int().nullish(),
   created_on: z.coerce.date(),
+  /** Detector that created the project, from ecohub's project name */
+  detector: z.string().nullish(),
+  /** False for detectors whose sound events are classifier windows (birdedge), not call boxes */
+  has_call_boxes: z.boolean().optional().default(true),
 });
 
 // Base schema without circular reference

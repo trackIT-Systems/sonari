@@ -93,6 +93,55 @@ const PredictionHistoryStatsSchema = z.object({
 export type PredictionBackfillStatus = z.infer<typeof PredictionBackfillStatusSchema>;
 export type PredictionHistoryStats = z.infer<typeof PredictionHistoryStatsSchema>;
 
+const CallLevelJobStatusSchema = z.object({
+  state: z.enum(["running", "done", "failed"]),
+  started_on: z.coerce.date(),
+  updated_on: z.coerce.date(),
+  finished_on: z.coerce.date().nullish(),
+  total: z.number(),
+  done: z.number(),
+  failed: z.number(),
+  error: z.string().nullish(),
+  stale: z.boolean(),
+});
+
+export type CallLevelJobStatus = z.infer<typeof CallLevelJobStatusSchema>;
+
+const ReferenceCallSchema = z.object({
+  sound_event_annotation_id: z.number(),
+  annotation_task_id: z.number(),
+  recording_id: z.number(),
+  recording_path: z.string(),
+  samplerate: z.number(),
+  channels: z.number(),
+  time_expansion: z.number(),
+  recording_duration: z.number(),
+  start_time: z.number(),
+  end_time: z.number(),
+  low_freq: z.number(),
+  high_freq: z.number(),
+  peak_dbfs: z.number(),
+  rms_dbfs: z.number().nullish(),
+  snr_db: z.number().nullish(),
+  clipped: z.boolean(),
+  /** Channel the call was measured on, where it is clearest */
+  channel: z.number(),
+});
+
+const ReferenceCallsSchema = z.object({
+  calls: z.array(ReferenceCallSchema),
+  /** Recordings holding calls with the tag */
+  recordings: z.number(),
+  /** Recordings in which some call is measured */
+  searched_recordings: z.number(),
+  total_calls: z.number(),
+  measured_calls: z.number(),
+  job: CallLevelJobStatusSchema.nullish(),
+});
+
+export type ReferenceCall = z.infer<typeof ReferenceCallSchema>;
+export type ReferenceCalls = z.infer<typeof ReferenceCallsSchema>;
+
 const GuidedTourVariantSchema = z.enum(["bird", "bat"]);
 export type GuidedTourVariant = z.infer<typeof GuidedTourVariantSchema>;
 
@@ -139,6 +188,7 @@ const DEFAULT_ENDPOINTS = {
   getPredictionCorrections: "/api/v1/annotation_projects/detail/prediction_corrections/",
   getPredictionHistory: "/api/v1/annotation_projects/detail/prediction_history/",
   startPredictionBackfill: "/api/v1/annotation_projects/detail/prediction_history/backfill/",
+  referenceCalls: "/api/v1/annotation_projects/detail/reference_calls/",
   getTagScope: "/api/v1/annotation_projects/detail/tag_scope/",
   ensureGuidedTour: "/api/v1/annotation_projects/guided_tour/",
 };
@@ -213,6 +263,26 @@ export function registerAnnotationProjectAPI(
     return PredictionBackfillStatusSchema.parse(data);
   }
 
+  /** The clearest, loudest calls of a tag found so far, one per recording where possible. */
+  async function getReferenceCalls(
+    id: number,
+    tag: { key: string; value: string },
+    limit?: number,
+  ): Promise<ReferenceCalls> {
+    const { data } = await instance.get(endpoints.referenceCalls, {
+      params: { annotation_project_id: id, tag_key: tag.key, tag_value: tag.value, limit },
+    });
+    return ReferenceCallsSchema.parse(data);
+  }
+
+  /** Start searching for reference calls of a tag; a rerun searches further recordings. */
+  async function startReferenceCalls(id: number, tag: { key: string; value: string }): Promise<ReferenceCalls> {
+    const { data } = await instance.post(endpoints.referenceCalls, null, {
+      params: { annotation_project_id: id, tag_key: tag.key, tag_value: tag.value },
+    });
+    return ReferenceCallsSchema.parse(data);
+  }
+
   async function getPredictionCorrections(id: number): Promise<PredictionCorrectionStats> {
     const { data } = await instance.get(endpoints.getPredictionCorrections, {
       params: { annotation_project_id: id },
@@ -260,6 +330,8 @@ export function registerAnnotationProjectAPI(
     getPredictionCorrections,
     getPredictionHistory,
     startPredictionBackfill,
+    getReferenceCalls,
+    startReferenceCalls,
     update,
     getTagScope,
     getGuidedTourAvailable,

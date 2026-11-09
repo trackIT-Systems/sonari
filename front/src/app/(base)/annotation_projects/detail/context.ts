@@ -9,6 +9,7 @@ const AnnotationProjectContext = createContext<AnnotationProject>({
   id: -1,
   is_guided_tour: false,
   tag_scope: "auto",
+  has_call_boxes: true,
 });
 
 export default AnnotationProjectContext;

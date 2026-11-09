@@ -70,6 +70,7 @@ from sonari.schemas.sound_event_annotations import (
     SoundEventAnnotationTag,
     SoundEventAnnotationUpdate,
 )
+from sonari.schemas.call_levels import CallLevelJobStatus, ReferenceCall, ReferenceCalls
 from sonari.schemas.sound_event_history import (
     PredictionBackfillStatus,
     PredictionHistoryStats,
@@ -163,6 +164,9 @@ __all__ = [
     "SoundEventAnnotationTag",
     "SoundEventAnnotationUpdate",
     "PredictionBackfillStatus",
+    "CallLevelJobStatus",
+    "ReferenceCall",
+    "ReferenceCalls",
     "PredictionHistoryStats",
     "SoundEventLiveState",
     "SoundEventTaskHistory",

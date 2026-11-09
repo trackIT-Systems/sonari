@@ -39,7 +39,10 @@ import useStore from "@/store";
 import { findTemporallyRelatedTasks } from "@/utils/temporalClusters";
 import { emitGuidedTourEvent } from "@/components/workshop/guidedTour/events";
 import Button from "../Button";
-import { FilterIcon } from "../icons";
+import { FilterIcon, VolumeIcon } from "../icons";
+import ReferenceCallsPanel from "@/components/reference_calls/ReferenceCallsPanel";
+import usePinnedReferenceSpecies from "@/components/reference_calls/usePinnedReferenceSpecies";
+import { includedSpecies } from "@/components/reference_calls/includedSpecies";
 
 /**
  * Scrolls the one real scroll container so a table row (and its expanded
@@ -128,6 +131,11 @@ export default function AnnotationTaskTable({
   const [relatedWindow, setRelatedWindow] = useState(5);
 
   const activeFilter = annotationTasks.filter.filter;
+  const projectId = activeFilter.annotation_project?.id;
+  // birdedge's sound events are classifier windows: there are no calls to compare
+  const hasCallBoxes = activeFilter.annotation_project?.has_call_boxes ?? true;
+  const [referencesOpen, setReferencesOpen] = useState(false);
+  const { pinned: pinnedSpecies, setPinned: setPinnedSpecies } = usePinnedReferenceSpecies(projectId);
 
   // Guided tour: bulk actions may only touch the bulk-lesson material, never a
   // lesson task (a badge there would skip the lesson). The server intersects
@@ -639,6 +647,17 @@ export default function AnnotationTaskTable({
             filter={annotationTasks.filter}
             normalizeForPreset={normalizeDateRangeForPreset}
           />
+          {projectId != null && hasCallBoxes && (
+            <Button
+              mode={referencesOpen || pinnedSpecies ? "filled" : "outline"}
+              variant="secondary"
+              padding="px-3 py-2"
+              onClick={() => setReferencesOpen((open) => !open)}
+              title="The clearest, loudest calls of a species, side by side"
+            >
+              <VolumeIcon className="inline-block h-5 w-5 align-middle" /> Reference calls
+            </Button>
+          )}
           <div data-guided-tour="task-shortcuts">
             <ShortcutHelper shortcuts={TASK_TABLE_SHORTCUTS} />
           </div>
@@ -668,6 +687,18 @@ export default function AnnotationTaskTable({
           s
         </label>
       </div>
+      {projectId != null && hasCallBoxes && (referencesOpen || pinnedSpecies != null) && (
+        <ReferenceCallsPanel
+          annotationProjectId={projectId}
+          initialSpecies={includedSpecies(annotationTasks.filter) ?? null}
+          pinned={pinnedSpecies}
+          onPinnedChange={setPinnedSpecies}
+          onClose={() => {
+            setReferencesOpen(false);
+            setPinnedSpecies(null);
+          }}
+        />
+      )}
       <FilterBar
         filter={annotationTasks.filter}
         total={annotationTasks.total}

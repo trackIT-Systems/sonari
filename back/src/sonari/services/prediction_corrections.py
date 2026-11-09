@@ -40,6 +40,7 @@ from sqlalchemy import String, select, type_coerce
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from sonari import models, schemas
+from sonari.schemas.annotation_projects import parse_project_name
 from sonari.services.detector_taxonomy import BAT_CALL_TYPES, bat_short_long_mapping, bird_ger_sci_mapping
 
 __all__ = [
@@ -271,14 +272,6 @@ class ProjectSource:
     run_id: int | None = None
     model_version: str | None = None
     detection_threshold: float | None = None
-
-
-def parse_project_name(name: str) -> tuple[str | None, int | None]:
-    """Detector and run id from ecohub's ``{processor} {detector} {station} {run_id}``."""
-    parts = name.split(" ")
-    if len(parts) >= 4 and parts[-1].isdigit():
-        return parts[-3], int(parts[-1])
-    return None, None
 
 
 def _read_id_file(path: Path, project_id: int) -> dict[str, Any] | None:

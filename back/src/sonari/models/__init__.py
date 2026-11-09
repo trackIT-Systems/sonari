@@ -28,6 +28,7 @@ from sonari.models.sound_event_annotation import (
     SoundEventAnnotationTag,
 )
 from sonari.models.prediction_backfill import PredictionBackfill
+from sonari.models.call_level_job import CallLevelJob
 from sonari.models.sound_event_versions import INCLUDE_VERSIONS, live
 from sonari.models.tag import Tag
 from sonari.models.tag_group import Species, SpeciesName, TagGroup, TagPreset, TagPresetTag
@@ -51,6 +52,7 @@ __all__ = [
     "SoundEventAnnotationTag",
     "INCLUDE_VERSIONS",
     "PredictionBackfill",
+    "CallLevelJob",
     "live",
     "Species",
     "SpeciesName",

@@ -3,7 +3,7 @@
 from typing import TYPE_CHECKING, Literal, Optional
 from uuid import UUID
 
-from pydantic import BaseModel
+from pydantic import BaseModel, computed_field
 
 from sonari.schemas.base import BaseSchema
 from sonari.schemas.tags import Tag, TagScope
@@ -38,6 +38,19 @@ class AnnotationProjectCreate(BaseModel):
 
     annotation_instructions: str | None = None
     """Project instructions for annotating."""
+
+
+#: Detectors whose sound events are classifier windows, not boxes drawn around calls:
+#: call levels and reference calls mean nothing there.
+DETECTORS_WITHOUT_CALL_BOXES = frozenset({"birdedge"})
+
+
+def parse_project_name(name: str) -> tuple[str | None, int | None]:
+    """Detector and run id from ecohub's ``{processor} {detector} {station} {run_id}``."""
+    parts = name.split(" ")
+    if len(parts) >= 4 and parts[-1].isdigit():
+        return parts[-3], int(parts[-1])
+    return None, None
 
 
 class AnnotationProject(BaseSchema):
@@ -78,6 +91,18 @@ class AnnotationProject(BaseSchema):
 
     annotation_tasks: Optional[list["AnnotationTask"]] = None
     """Annotation tasks related to this project the annotation project."""
+
+    @computed_field  # type: ignore[prop-decorator]
+    @property
+    def detector(self) -> str | None:
+        """Detector that created the project, from ecohub's project name; None for other projects."""
+        return parse_project_name(self.name)[0]
+
+    @computed_field  # type: ignore[prop-decorator]
+    @property
+    def has_call_boxes(self) -> bool:
+        """Whether the sound events are boxes around calls, so call levels can be measured."""
+        return self.detector not in DETECTORS_WITHOUT_CALL_BOXES
 
 
 class AnnotationProjectUpdate(BaseModel):
