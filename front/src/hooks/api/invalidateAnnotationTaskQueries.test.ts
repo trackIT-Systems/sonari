@@ -1,11 +1,13 @@
 import { QueryClient, type QueryKey } from "@tanstack/react-query";
-import { describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
   type AnnotationTaskChange,
   filterAffectedByChange,
   filterFromQueryKey,
   invalidateAnnotationTaskQueries,
+  DEFERRED_INVALIDATION_MS,
+  scheduleAnnotationTaskQueriesInvalidation,
 } from "./invalidateAnnotationTaskQueries";
 
 const project = { annotation_project: { id: 1 } };
@@ -121,5 +123,70 @@ describe("invalidateAnnotationTaskQueries", () => {
       false,
       false,
     ]);
+  });
+});
+
+describe("scheduleAnnotationTaskQueriesInvalidation", () => {
+  beforeEach(() => vi.useFakeTimers());
+  afterEach(() => vi.useRealTimers());
+
+  const pendingIndex = pagedIndexKey({ ...project, pending: true });
+  const stats = statsKey(project);
+
+  function clientWith(keys: QueryKey[]) {
+    const client = new QueryClient();
+    for (const key of keys) client.setQueryData(key, { items: [] });
+    return client;
+  }
+  const invalidated = (client: QueryClient, key: QueryKey) => client.getQueryState(key)?.isInvalidated ?? false;
+
+  it("refetches once the edits pause, not after each one", () => {
+    const client = clientWith([pendingIndex, stats]);
+    const invalidate = vi.spyOn(client, "invalidateQueries");
+
+    for (let i = 0; i < 5; i++) {
+      scheduleAnnotationTaskQueriesInvalidation(client, "status");
+      vi.advanceTimersByTime(DEFERRED_INVALIDATION_MS / 2);
+    }
+    expect(invalidated(client, pendingIndex)).toBe(false);
+    expect(invalidate).not.toHaveBeenCalled();
+
+    vi.advanceTimersByTime(DEFERRED_INVALIDATION_MS);
+    expect(invalidated(client, pendingIndex)).toBe(true);
+    expect(invalidated(client, stats)).toBe(true);
+    // One round of invalidation (lists, index, stats), not five
+    expect(invalidate).toHaveBeenCalledTimes(3);
+  });
+
+  it("covers every kind of edit made before the pause", () => {
+    const tagIndex = pagedIndexKey({ ...project, annotation_task_tag: { key: "a", value: "b" } });
+    const client = clientWith([pendingIndex, tagIndex]);
+    scheduleAnnotationTaskQueriesInvalidation(client, "status");
+    scheduleAnnotationTaskQueriesInvalidation(client, "task_tag");
+    vi.advanceTimersByTime(DEFERRED_INVALIDATION_MS);
+    expect(invalidated(client, pendingIndex)).toBe(true);
+    expect(invalidated(client, tagIndex)).toBe(true);
+  });
+
+  it("cancels a running refetch that the edit will repeat, and only that one", async () => {
+    const otherIndex = pagedIndexKey({ ...project, date_range: { start_date: "2026-01-01" } });
+    const client = clientWith([pendingIndex, otherIndex]);
+    const signals = new Map<string, AbortSignal>();
+    for (const key of [pendingIndex, otherIndex]) {
+      void client.fetchQuery({
+        queryKey: key,
+        queryFn: ({ signal }) => {
+          signals.set(JSON.stringify(key), signal);
+          return new Promise(() => {});
+        },
+      });
+    }
+    await Promise.resolve();
+
+    scheduleAnnotationTaskQueriesInvalidation(client, "status");
+    expect(signals.get(JSON.stringify(pendingIndex))?.aborted).toBe(true);
+    // A status edit cannot change this list: its refetch keeps going
+    expect(signals.get(JSON.stringify(otherIndex))?.aborted).toBe(false);
+    void client.cancelQueries();
   });
 });

@@ -145,3 +145,48 @@ export function invalidateAnnotationTaskQueries(
     client.invalidateQueries({ queryKey: ["annotation_task_history"] });
   }
 }
+
+/** Quiet time after the last edit before the lists, index and stats are refetched */
+export const DEFERRED_INVALIDATION_MS = 2000;
+
+type PendingInvalidation = { timer: ReturnType<typeof setTimeout>; changes: Set<AnnotationTaskChange> };
+const pendingInvalidations = new WeakMap<QueryClient, PendingInvalidation>();
+
+/**
+ * Like `invalidateAnnotationTaskQueries`, but once the edits pause: for edits
+ * that come in fast, such as badges set while tabbing through tasks. Each
+ * edit still saves at once; only the refetch of the affected task lists,
+ * index and stats waits until no edit came for `DEFERRED_INVALIDATION_MS`.
+ * Twenty quick badges then cause one refetch instead of twenty full ones
+ * that pile up on the server.
+ *
+ * A refetch already running when another edit comes is cancelled: its result
+ * is outdated, and the next one follows after the pause.
+ */
+export function scheduleAnnotationTaskQueriesInvalidation(
+  client: QueryClient,
+  change: AnnotationTaskChange,
+) {
+  const pending = pendingInvalidations.get(client);
+  if (pending) clearTimeout(pending.timer);
+  const changes = pending?.changes ?? new Set<AnnotationTaskChange>();
+  changes.add(change);
+
+  // Cancel the running refetches this edit will repeat after the pause. Not a
+  // first load (no data yet): that one keeps going.
+  const willRefetch = (query: { queryKey: QueryKey; state: { data: unknown } }) =>
+    query.state.data !== undefined
+    && ((query.queryKey[0] === "annotation_tasks_stats" && change === "status")
+      || filterAffectedByChange(filterFromQueryKey(query.queryKey), change));
+  for (const queryKey of [["annotation_tasks"], ["annotation_tasks_index"], ["annotation_tasks_stats"]]) {
+    void client.cancelQueries({ queryKey, predicate: willRefetch });
+  }
+
+  pendingInvalidations.set(client, {
+    changes,
+    timer: setTimeout(() => {
+      pendingInvalidations.delete(client);
+      changes.forEach((pendingChange) => invalidateAnnotationTaskQueries(client, pendingChange));
+    }, DEFERRED_INVALIDATION_MS),
+  });
+}

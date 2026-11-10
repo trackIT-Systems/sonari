@@ -1,10 +1,14 @@
+import { useCallback } from "react";
 import { type AxiosError } from "axios";
 
 import api from "@/app/api";
 import useObject from "@/hooks/utils/useObject";
 
 import type { AnnotationTask } from "@/types";
-import { invalidateAnnotationTaskQueries } from "./invalidateAnnotationTaskQueries";
+import {
+  invalidateAnnotationTaskQueries,
+  scheduleAnnotationTaskQueriesInvalidation,
+} from "./invalidateAnnotationTaskQueries";
 import useSoundEventMutations from "./useSoundEventMutations";
 
 export default function useAnnotationTask({
@@ -69,18 +73,30 @@ export default function useAnnotationTask({
     mutationFn: api.annotationTasks.delete,
   });
 
+  // The badge endpoints return the task with its badges only (they load no
+  // sound events, so they stay cheap): take over just the badges. Badges are
+  // set in quick succession while annotating, so the task lists, index and
+  // stats are refetched once the badges pause, not after each one.
+  const onBadgesChanged = useCallback(
+    (updated: AnnotationTask) => {
+      client.setQueryData<AnnotationTask>(["annotation_task", updated.id], (current) =>
+        current == null ? current : { ...current, status_badges: updated.status_badges },
+      );
+      scheduleAnnotationTaskQueriesInvalidation(client, "status");
+    },
+    [client],
+  );
+
   const addBadge = useMutation({
     mutationFn: api.annotationTasks.addBadge,
-    onSuccess: () => {
-      invalidateAnnotationTaskQueries(client, "status");
-    },
+    withUpdate: false,
+    onSuccess: onBadgesChanged,
   });
 
   const removeBadge = useMutation({
     mutationFn: api.annotationTasks.removeBadge,
-    onSuccess: () => {
-      invalidateAnnotationTaskQueries(client, "status");
-    },
+    withUpdate: false,
+    onSuccess: onBadgesChanged,
   });
 
   const addNote = useMutation({

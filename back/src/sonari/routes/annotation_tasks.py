@@ -434,20 +434,17 @@ def get_annotation_tasks_router(settings: SonariSettings):
         state: AnnotationState,
         user: CurrentUser,
     ):
-        """Add a badge to an annotation task."""
+        """Add a badge to an annotation task.
+
+        Returns the task with its status badges only: no other relationship is
+        loaded, so the request stays cheap however many sound events the task
+        has. Clients update just the badges of the task they hold.
+        """
         annotation_task = await api.annotation_tasks.get(
             session,
             annotation_task_id,
-            include_notes=True,
-            include_recording=True,
-            include_sound_event_annotations=True,
             include_status_badges=True,
             include_status_badge_users=True,
-            include_tags=True,
-            include_features=True,
-            include_note_users=True,
-            include_sound_event_annotation_features=True,
-            include_sound_event_annotation_users=True,
         )
         updated = await api.annotation_tasks.add_status_badge(
             session,
@@ -631,20 +628,15 @@ def get_annotation_tasks_router(settings: SonariSettings):
         state: AnnotationState,
         user_id: str | None = None,
     ):
-        """Remove a badge from an annotation task."""
+        """Remove a badge from an annotation task.
+
+        Returns the task with its status badges only (see adding a badge).
+        """
         annotation_task = await api.annotation_tasks.get(
             session,
             annotation_task_id,
-            include_notes=True,
-            include_recording=True,
-            include_sound_event_annotations=True,
-            include_tags=True,
-            include_features=True,
             include_status_badges=True,
             include_status_badge_users=True,
-            include_note_users=True,
-            include_sound_event_annotation_features=True,
-            include_sound_event_annotation_users=True,
         )
         updated = await api.annotation_tasks.remove_status_badge(
             session,

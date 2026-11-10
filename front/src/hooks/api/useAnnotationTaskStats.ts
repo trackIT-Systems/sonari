@@ -14,7 +14,7 @@ export default function useAnnotationTaskStats({
   
   const query = useQuery<AnnotationTaskStats, Error>({
     queryKey,
-    queryFn: () => api.annotationTasks.getStats(filter),
+    queryFn: ({ signal }) => api.annotationTasks.getStats(filter, signal),
     enabled,
     refetchOnWindowFocus: false,
   });

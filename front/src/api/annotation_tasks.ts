@@ -454,10 +454,12 @@ export function registerAnnotationTasksAPI(
 
   async function getIndex(
     query: GetAnnotationTasksQuery,
+    signal?: AbortSignal,
   ): Promise<AnnotationTaskIndexPage> {
     const params = GetAnnotationTasksQuerySchema.parse(query);
 
     const response = await instance.get(endpoints.getIndex, {
+      signal,
       params: {
         limit: params.limit,
         offset: params.offset,
@@ -470,10 +472,12 @@ export function registerAnnotationTasksAPI(
 
   async function getStats(
     filter: AnnotationTaskFilter,
+    signal?: AbortSignal,
   ): Promise<AnnotationTaskStats> {
     const params = AnnotationTaskFilterSchema.parse(filter);
 
     const response = await instance.get(endpoints.getStats, {
+      signal,
       params: buildAnnotationTaskFilterQueryParams(params),
     });
     return response.data as AnnotationTaskStats;
