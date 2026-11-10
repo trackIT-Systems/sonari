@@ -5,7 +5,7 @@ import useWindowDrag from "@/hooks/window/useWindowDrag";
 import { getWindowPosition } from "@/utils/windows";
 
 import type { SpectrogramWindow, SpectrogramParameters } from "@/types";
-import useSpectrogramOverview from "@/hooks/spectrogram/useSpectrogramOverview";
+import useSpectrogramOverview, { getOverviewParameters } from "@/hooks/spectrogram/useSpectrogramOverview";
 
 export default function SpectrogramBar({
   recordingId,
@@ -53,7 +53,7 @@ export default function SpectrogramBar({
 
   // Memoize parameters to prevent creating new object on every render
   const overviewParameters = useMemo(
-    () => ({ ...parameters, window_size_samples: 128, overlap_percent: 1 }),
+    () => getOverviewParameters(parameters),
     [parameters]
   );
 

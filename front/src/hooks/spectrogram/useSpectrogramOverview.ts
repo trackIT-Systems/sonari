@@ -1,6 +1,6 @@
-import { useEffect, useState, useCallback, useRef } from "react";
-import api from "@/app/api";
-import { spectrogramCache } from "@/utils/spectrogram_cache";
+import { useEffect, useState, useCallback, useMemo } from "react";
+
+import { isAbortError, loadImage, type ImageRequest } from "@/utils/spectrogram_images";
 
 import type {
   SpectrogramParameters,
@@ -15,10 +15,49 @@ interface ChunkData {
   timeRange: { min: number; max: number };
 }
 
+/** The overview is coarse: a short window with almost no overlap is enough */
+export function getOverviewParameters(parameters: SpectrogramParameters): SpectrogramParameters {
+  return { ...parameters, window_size_samples: 128, overlap_percent: 1 };
+}
+
+/**
+ * The images of an overview of `segment`, in loading order: one image, or one
+ * per minute for segments longer than three minutes.
+ */
+export function getOverviewRequests({
+  recording_id,
+  segment,
+  parameters,
+}: {
+  recording_id: number;
+  segment: SpectrogramWindow;
+  /** Overview parameters (see `getOverviewParameters`) */
+  parameters: SpectrogramParameters;
+}): ImageRequest[] {
+  const duration = segment.time.max - segment.time.min;
+  if (duration <= CHUNK_THRESHOLD) {
+    return [{ kind: "spectrogram", recording_id, segment, parameters }];
+  }
+  const numChunks = Math.ceil(duration / CHUNK_DURATION);
+  return Array.from({ length: numChunks }, (_, i) => ({
+    kind: "spectrogram" as const,
+    recording_id,
+    segment: {
+      time: {
+        min: segment.time.min + i * CHUNK_DURATION,
+        max: Math.min(segment.time.min + (i + 1) * CHUNK_DURATION, segment.time.max),
+      },
+      freq: segment.freq,
+    },
+    parameters,
+  }));
+}
+
 /**
  * Hook to load spectrogram overview for minimap purposes
  * Automatically uses chunked loading for long recordings (>180s)
- * and single image loading for shorter recordings
+ * and single image loading for shorter recordings. Images load one after the
+ * other through the shared image cache (see `spectrogram_images`).
  */
 export default function useSpectrogramOverview({
   recording_id,
@@ -35,11 +74,14 @@ export default function useSpectrogramOverview({
   const [chunks, setChunks] = useState<ChunkData[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isError, setIsError] = useState(false);
-  const cancelledRef = useRef(false);
 
-  // Determine if we should use chunked loading
   const duration = segment.time.max - segment.time.min;
   const useChunkedLoading = duration > CHUNK_THRESHOLD;
+
+  const requests = useMemo(
+    () => getOverviewRequests({ recording_id, segment, parameters }),
+    [recording_id, segment, parameters],
+  );
 
   useEffect(() => {
     if (!withSpectrogram) {
@@ -48,164 +90,40 @@ export default function useSpectrogramOverview({
       return;
     }
 
-    cancelledRef.current = false;
+    const controller = new AbortController();
+    const { signal } = controller;
     setIsLoading(true);
     setIsError(false);
+    setChunks([]);
 
-    // Single image loading for short recordings
-    const loadSingleImage = async () => {
-      try {
-        const loadedImage = await spectrogramCache.getOrLoad(
-          recording_id,
-          segment,
-          parameters,
-          async () => {
-            // Use authenticated API method to get blob
-            const blob = await api.spectrograms.getBlob({
-              recording_id,
-              segment: {
-                min: segment.time.min,
-                max: segment.time.max,
-              },
-              parameters,
-            });
-
-            const size = blob.size;
-            const objectUrl = URL.createObjectURL(blob);
-
-            try {
-              const img = new Image();
-              await new Promise<void>((resolve, reject) => {
-                img.onload = async () => {
-                  try {
-                    await img.decode();
-                    resolve();
-                  } catch (err) {
-                    reject(err);
-                  }
-                };
-                img.onerror = reject;
-                img.src = objectUrl;
-              });
-              return { image: img, size };
-            } finally {
-              URL.revokeObjectURL(objectUrl);
-            }
-          },
-        );
-
-        if (!cancelledRef.current) {
-          setImage(loadedImage);
-          setIsLoading(false);
-        }
-      } catch (error) {
-        console.error("Failed to load overview spectrogram:", error);
-        if (!cancelledRef.current) {
-          setIsError(true);
-          setIsLoading(false);
-        }
-      }
-    };
-
-    // Chunked loading for long recordings
-    const loadChunkedImages = async () => {
-      setChunks([]);
-      const numChunks = Math.ceil(duration / CHUNK_DURATION);
-
-      try {
-        // Load chunks sequentially to avoid overwhelming the server
-        for (let i = 0; i < numChunks; i++) {
-          if (cancelledRef.current) break;
-
-          const chunkStart = segment.time.min + i * CHUNK_DURATION;
-          const chunkEnd = Math.min(
-            segment.time.min + (i + 1) * CHUNK_DURATION,
-            segment.time.max
-          );
-
-          const chunkSegment: SpectrogramWindow = {
-            time: { min: chunkStart, max: chunkEnd },
-            freq: segment.freq,
-          };
-
-          try {
-            const loadedImage = await spectrogramCache.getOrLoad(
-              recording_id,
-              chunkSegment,
-              parameters,
-              async () => {
-                // Use authenticated API method to get blob
-                const blob = await api.spectrograms.getBlob({
-                  recording_id,
-                  segment: {
-                    min: chunkSegment.time.min,
-                    max: chunkSegment.time.max,
-                  },
-                  parameters,
-                });
-
-                const size = blob.size;
-                const objectUrl = URL.createObjectURL(blob);
-
-                try {
-                  const img = new Image();
-                  await new Promise<void>((resolve, reject) => {
-                    img.onload = async () => {
-                      try {
-                        await img.decode();
-                        resolve();
-                      } catch (err) {
-                        reject(err);
-                      }
-                    };
-                    img.onerror = reject;
-                    img.src = objectUrl;
-                  });
-                  return { image: img, size };
-                } finally {
-                  URL.revokeObjectURL(objectUrl);
-                }
-              },
-            );
-
-            if (!cancelledRef.current) {
-              setChunks((prev) => [
-                ...prev,
-                {
-                  image: loadedImage,
-                  timeRange: { min: chunkStart, max: chunkEnd },
-                },
-              ]);
-            }
-          } catch (error) {
-            console.error(`Failed to load chunk ${i}:`, error);
-            // Continue loading other chunks even if one fails
+    (async () => {
+      let failed = false;
+      // One after the other, to avoid overwhelming the server
+      for (const request of requests) {
+        if (signal.aborted) return;
+        try {
+          const loaded = await loadImage(request, { signal });
+          if (signal.aborted) return;
+          if (useChunkedLoading) {
+            setChunks((prev) => [...prev, { image: loaded, timeRange: request.segment.time }]);
+          } else {
+            setImage(loaded);
           }
-        }
-
-        if (!cancelledRef.current) {
-          setIsLoading(false);
-        }
-      } catch (error) {
-        console.error("Failed to load chunked overview spectrogram:", error);
-        if (!cancelledRef.current) {
-          setIsError(true);
-          setIsLoading(false);
+        } catch (error) {
+          if (signal.aborted || isAbortError(error)) return;
+          // Continue with the other chunks even if one fails
+          console.error("Failed to load overview spectrogram:", error);
+          failed = true;
         }
       }
-    };
+      if (!signal.aborted) {
+        setIsError(failed && !useChunkedLoading);
+        setIsLoading(false);
+      }
+    })();
 
-    // Choose loading strategy based on duration
-    if (useChunkedLoading) {
-      loadChunkedImages();
-    } else {
-      loadSingleImage();
-    }
-
-    return () => {
-      cancelledRef.current = true;
-    };
-  }, [recording_id, segment, parameters, withSpectrogram, useChunkedLoading, duration]);
+    return () => controller.abort();
+  }, [requests, withSpectrogram, useChunkedLoading]);
 
   // Draw function that renders the loaded image(s)
   const draw = useCallback(
@@ -233,7 +151,7 @@ export default function useSpectrogramOverview({
         chunks.forEach((chunk) => {
           const chunkStart = chunk.timeRange.min - window.time.min;
           const chunkDuration = chunk.timeRange.max - chunk.timeRange.min;
-          
+
           // Calculate position and size on canvas
           const x = (chunkStart / totalDuration) * canvasWidth;
           const width = (chunkDuration / totalDuration) * canvasWidth;

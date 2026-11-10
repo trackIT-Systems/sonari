@@ -7,6 +7,10 @@ import AnnotationTaskTable from "@/components/annotation_tasks/AnnotationTaskTab
 
 const push = vi.fn();
 const bulkAddBadge = vi.fn();
+// Spectrogram requests fail at once, so prefetches don't hold the queue between tests
+const getBlob = vi.fn(async (_request: { recording_id: number; signal?: AbortSignal }) => {
+  throw new Error("offline");
+});
 
 vi.mock("next/navigation", () => ({ useRouter: () => ({ push }) }));
 
@@ -16,6 +20,9 @@ vi.mock("@/app/api", () => ({
       getIndex: async () => ({ items: [] }),
       bulkSoundEventTagSummary: async () => [],
       bulkAddBadge: (...args: unknown[]) => bulkAddBadge(...args),
+    },
+    spectrograms: {
+      getBlob: (request: { recording_id: number; signal?: AbortSignal }) => getBlob(request),
     },
   },
 }));
@@ -133,6 +140,8 @@ function renderTable() {
 }
 
 beforeEach(() => {
+  // The failing prefetches warn
+  vi.spyOn(console, "warn").mockImplementation(() => {});
   push.mockClear();
   bulkAddBadge.mockReset().mockResolvedValue({
     tasks_updated: 1, tasks_skipped: 0, sound_events_updated: 0,
@@ -255,6 +264,45 @@ describe("loading the active preview", () => {
     expect(preview(3)!.getAttribute("data-deferred")).toBe("true");
     await act(() => new Promise<void>((r) => setTimeout(r, 250)));
     expect(preview(3)!.getAttribute("data-deferred")).toBe("false");
+  });
+
+  it("prefetches the next previews once the cursor rests, in the direction it moved", async () => {
+    renderTable();
+    clickRow(1);
+    press("ArrowDown");
+    press("ArrowDown");
+    getBlob.mockClear();
+    await act(() => new Promise<void>((r) => setTimeout(r, 250)));
+    // Three ahead, then the one behind
+    await waitFor(() => expect(getBlob.mock.calls.map(([r]) => r.recording_id)).toEqual([4, 5, 6, 2]));
+
+    getBlob.mockClear();
+    press("ArrowUp");
+    await waitFor(() => expect(getBlob.mock.calls.map(([r]) => r.recording_id)).toEqual([1, 3]));
+  });
+
+  it("loads at once on a click or a single key press after a rest", async () => {
+    renderTable();
+    clickRow(1);
+    expect(preview(1)!.getAttribute("data-deferred")).toBe("false");
+    await act(() => new Promise<void>((r) => setTimeout(r, 250)));
+    press("ArrowDown");
+    expect(preview(2)!.getAttribute("data-deferred")).toBe("false");
+  });
+
+  it("does not prefetch while the cursor is moving", async () => {
+    renderTable();
+    clickRow(1);
+    await act(() => new Promise<void>((r) => setTimeout(r, 250)));
+    // The first keydown of a hold looks like a single press and loads at once
+    act(() => keyEvent("keydown", "ArrowDown"));
+    getBlob.mockClear();
+    // The auto-repeats that follow do not
+    for (let i = 0; i < 4; i++) act(() => keyEvent("keydown", "ArrowDown", { repeat: true }));
+    act(() => keyEvent("keyup", "ArrowDown"));
+    await act(() => new Promise<void>((r) => setTimeout(r, 50)));
+    expect(getBlob).not.toHaveBeenCalled();
+    expect(preview(6)!.getAttribute("data-deferred")).toBe("true");
   });
 
   it("never defers a pinned preview", () => {

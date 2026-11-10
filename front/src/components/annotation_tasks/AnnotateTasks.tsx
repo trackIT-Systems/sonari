@@ -57,6 +57,7 @@ import type { TimelinePreview } from "@/utils/soundEventTimeline";
 import AnnotationTaskTags from "@/components/annotation_tasks/AnnotationTaskTags";
 import { SPECTROGRAM_CONTAINER_WIDTH } from "@/constants";
 import { DEFAULT_TAG_VISIBILITY } from "@/utils/passes";
+import usePreloadUpcomingTasks from "@/hooks/annotation/usePreloadUpcomingTasks";
 import type { TagVisibilityFilter } from "@/utils/passes";
 
 const NO_IDS = new Set<number>();
@@ -283,6 +284,15 @@ export default function AnnotateTasks({
     onRejectTask,
     onVerifyTask,
     onDeselectSoundEventAnnotation,
+  });
+
+  // Once this task's spectrogram shows, load the next tasks' images
+  const upcomingTaskIds = useMemo(() => tasks.upcomingTasks.map((task) => task.id), [tasks.upcomingTasks]);
+  const handleCurrentTaskLoaded = usePreloadUpcomingTasks({
+    currentTaskId: annotationTask?.id ?? null,
+    upcomingTaskIds,
+    parameters,
+    enabled: withSpectrogram,
   });
 
   // The guided tour asks users to undo what they toggled (hidden spectrogram or
@@ -998,7 +1008,7 @@ export default function AnnotateTasks({
                     onWithAutoplayChange={onWithAutoplayChange}
                     fixedAspectRatio={fixedAspectRatio}
                     toggleFixedAspectRatio={toggleFixedAspectRatio}
-                    onSegmentsLoaded={tasks.handleCurrentSegmentsLoaded}
+                    onSegmentsLoaded={handleCurrentTaskLoaded}
                     onWindowChange={handleMainWindowChange}
                     fullscreen={fullscreen}
                     showTools={fullscreen ? showTools : true}

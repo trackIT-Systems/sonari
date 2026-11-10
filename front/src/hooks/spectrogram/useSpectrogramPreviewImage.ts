@@ -1,24 +1,23 @@
-import { useCallback, useEffect, useState } from "react";
-import api from "@/app/api";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+
 import type { LoadQueue } from "@/utils/loadQueue";
-import { spectrogramCache } from "@/utils/spectrogram_cache";
+import {
+  MAX_IMAGE_RETRIES,
+  getCachedImage,
+  imageRetryDelay,
+  isAbortError,
+  loadImage,
+  type ImageRequest,
+} from "@/utils/spectrogram_images";
 
 import type { SpectrogramParameters, SpectrogramWindow } from "@/types";
 
-function isCancel(error: unknown): boolean {
-  const name = (error as { name?: string } | null)?.name;
-  return name === "CanceledError" || name === "AbortError";
-}
-
-/** A failed load is retried this many times before the error is shown */
-const MAX_AUTO_RETRIES = 2;
-const RETRY_DELAY_MS = 1500;
-
 /**
  * Loads the whole segment as one spectrogram image (no chunking).
- * Intended for small static previews of short segments. The request is cancelled
- * when the preview goes away or changes, so the server skips it if it has not
- * started rendering yet.
+ * Intended for small static previews of short segments. Loading, caching and
+ * retries work as for the chunks of the annotate view (see `spectrogram_images`).
+ * The request is cancelled when the preview goes away or changes, so the server
+ * skips it if it has not started rendering yet.
  */
 export default function useSpectrogramPreviewImage({
   recording_id,
@@ -38,10 +37,40 @@ export default function useSpectrogramPreviewImage({
   const [isError, setIsError] = useState(false);
   // Bumped to load again after a failure (automatic or via `retry`).
   const [attempt, setAttempt] = useState(0);
-  const retry = useCallback(() => setAttempt((n) => n + 1), []);
+  const failuresRef = useRef(0);
+  const retry = useCallback(() => {
+    failuresRef.current = 0;
+    setAttempt((n) => n + 1);
+  }, []);
+
+  const request = useMemo<ImageRequest>(
+    () => ({ kind: "spectrogram", recording_id, segment, parameters }),
+    [recording_id, segment, parameters],
+  );
+
+  // A new image starts with a fresh set of retries
+  const requestRef = useRef(request);
+  if (requestRef.current !== request) {
+    requestRef.current = request;
+    failuresRef.current = 0;
+  }
+
+  // An image already in the cache (e.g. prefetched) shows at once, even before
+  // the preview is enabled
+  const cached = useMemo(
+    () => getCachedImage(request),
+    // `image` changes when a load finished, which may have filled the cache
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [request, image],
+  );
 
   useEffect(() => {
     if (!enabled) return;
+    if (cached) {
+      setImage(cached);
+      setIsError(false);
+      return;
+    }
 
     let cancelled = false;
     let retryTimer: number | undefined;
@@ -49,47 +78,26 @@ export default function useSpectrogramPreviewImage({
     setImage(null);
     setIsError(false);
 
-    const fetchBlob = () =>
-      api.spectrograms.getBlob({
-        recording_id,
-        segment: { min: segment.time.min, max: segment.time.max },
-        parameters,
-        signal: controller.signal,
-      });
-
-    spectrogramCache
-      .getOrLoad(recording_id, segment, parameters, async () => {
-        const blob = await (queue ? queue.run(fetchBlob, controller.signal) : fetchBlob());
-
-        const size = blob.size;
-        const objectUrl = URL.createObjectURL(blob);
-        try {
-          const img = new Image();
-          await new Promise<void>((resolve, reject) => {
-            img.onload = () => img.decode().then(resolve, reject);
-            img.onerror = reject;
-            img.src = objectUrl;
-          });
-          return { image: img, size };
-        } finally {
-          URL.revokeObjectURL(objectUrl);
-        }
-      }, controller.signal)
+    loadImage(request, { signal: controller.signal, queue })
       .then((loaded) => {
         if (!cancelled) setImage(loaded);
       })
       .catch((error) => {
         if (cancelled) return;
-        if (isCancel(error)) {
-          // Joined a load that another preview of the same image cancelled
+        if (isAbortError(error)) {
+          // Joined a load that someone else cancelled: load it ourselves
           setAttempt((n) => n + 1);
           return;
         }
-        console.error("Failed to load spectrogram preview:", error);
-        if (attempt < MAX_AUTO_RETRIES) {
-          retryTimer = window.setTimeout(() => setAttempt((n) => n + 1), RETRY_DELAY_MS);
-        } else {
+        failuresRef.current += 1;
+        if (failuresRef.current > MAX_IMAGE_RETRIES) {
+          console.error("Failed to load spectrogram preview:", error);
           setIsError(true);
+        } else {
+          retryTimer = window.setTimeout(
+            () => setAttempt((n) => n + 1),
+            imageRetryDelay(failuresRef.current),
+          );
         }
       });
 
@@ -99,7 +107,8 @@ export default function useSpectrogramPreviewImage({
       controller.abort();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps -- `attempt` only re-triggers the load
-  }, [recording_id, segment, parameters, enabled, attempt, queue]);
+  }, [request, enabled, attempt, queue, cached]);
 
-  return { image, isError, isLoading: enabled && image == null && !isError, retry };
+  const shown = cached ?? image;
+  return { image: shown, isError, isLoading: enabled && shown == null && !isError, retry };
 }

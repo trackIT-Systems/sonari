@@ -32,9 +32,11 @@ import ShortcutHelper from "@/components/ShortcutHelper";
 import { getScrollParent } from "@/utils/focus";
 import { ANNOTATE_SELECTION_SHORTCUT, PIN_PREVIEW_SHORTCUT, PREVIEW_CHANNEL_SHORTCUT, TASK_TABLE_SHORTCUTS, LIST_OVERVIEW_DOWN_SHORTCUT, SEARCH_BAR_LEAVE_SHORTCUT, FILTER_POPOVER_SHORTCUT } from "@/utils/keyboard";
 import AnnotationTaskSpectrogramPreview, {
+  getPreviewImageRequest,
   nextPreviewChannel,
   type PreviewChannel,
 } from "@/components/annotation_tasks/AnnotationTaskSpectrogramPreview";
+import { prefetchImages, type ImageRequest } from "@/utils/spectrogram_images";
 import useStore from "@/store";
 import { findTemporallyRelatedTasks } from "@/utils/temporalClusters";
 import { emitGuidedTourEvent } from "@/components/workshop/guidedTour/events";
@@ -80,6 +82,9 @@ function scrollRowIntoView(taskId: number, topInset: number) {
 const MAX_PINNED_PREVIEWS = 5;
 /** The active preview only loads once the cursor has rested this long (holding an arrow key) */
 const PREVIEW_SETTLE_MS = 150;
+/** Previews prefetched ahead of the cursor (in the direction it last moved) and behind it */
+const PREFETCH_AHEAD = 3;
+const PREFETCH_BEHIND = 1;
 
 /** Task tag of the guided tour's bulk-lesson material. */
 const TOUR_BULK_TAG = { key: "tour", value: "bulk" };
@@ -465,13 +470,54 @@ export default function AnnotationTaskTable({
       ? annotationTasks.items[focusedElement]?.id ?? null
       : null;
 
-  // Don't request spectrograms for rows the cursor only passes through.
-  const [activeSettled, setActiveSettled] = useState(true);
+  // Don't request spectrograms for rows the cursor only passes through: while it
+  // moves fast (a held arrow key), a row only counts once the cursor rested on it.
+  // A click or a single key press loads at once. Settled is tied to the row, so it
+  // is false in the very render the cursor moves.
+  const [settledTaskId, setSettledTaskId] = useState<number | null>(null);
+  const lastMoveRef = useRef(-Infinity);
   useEffect(() => {
-    setActiveSettled(false);
-    const timer = setTimeout(() => setActiveSettled(true), PREVIEW_SETTLE_MS);
+    // Only moves onto a row count (not mounting or closing the preview)
+    if (activeTaskId == null) return;
+    const now = performance.now();
+    const moving = now - lastMoveRef.current < PREVIEW_SETTLE_MS;
+    lastMoveRef.current = now;
+    if (!moving) {
+      setSettledTaskId(activeTaskId);
+      return;
+    }
+    const timer = setTimeout(() => setSettledTaskId(activeTaskId), PREVIEW_SETTLE_MS);
     return () => clearTimeout(timer);
   }, [activeTaskId]);
+  const activeSettled = activeTaskId != null && settledTaskId === activeTaskId;
+
+  // Once the cursor rests on a row, prefetch the previews of the next rows (in the
+  // direction it last moved) and of the row behind it, so they show at once when
+  // the cursor gets there. Moving on drops the prefetches still waiting.
+  const directionRef = useRef<1 | -1>(1);
+  useEffect(() => {
+    if (activeTaskId == null || !activeSettled || typeof focusedElement !== "number") return;
+    const items = annotationTasks.items;
+    const direction = directionRef.current;
+    const offsets = [
+      ...Array.from({ length: PREFETCH_AHEAD }, (_, i) => direction * (i + 1)),
+      ...Array.from({ length: PREFETCH_BEHIND }, (_, i) => -direction * (i + 1)),
+    ];
+    const requests = offsets
+      .map((offset) => items[focusedElement + offset])
+      .filter((task): task is AnnotationTask => task != null)
+      .map((task) => ({ task, ...getPreviewImageRequest(task, savedSettings, previewChannel) }))
+      .filter(({ previewable }) => previewable)
+      .map(({ task, segment, imageParameters }): ImageRequest => ({
+        kind: "spectrogram",
+        recording_id: task.recording_id,
+        segment,
+        parameters: imageParameters,
+      }));
+    const controller = new AbortController();
+    prefetchImages(requests, controller.signal);
+    return () => controller.abort();
+  }, [activeTaskId, activeSettled, focusedElement, annotationTasks.items, savedSettings, previewChannel]);
 
   // After the cursor moved and the previews re-rendered (previous one collapsed,
   // new one expanded), scroll the current row into view.
@@ -551,6 +597,7 @@ export default function AnnotationTaskTable({
           setFocusedElement("search");
           searchInputRef.current?.focus();
         } else if (next !== cursor) {
+          directionRef.current = next > cursor ? 1 : -1;
           moveCursorTo(next);
         }
         return;

@@ -1,10 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import type { Chunk } from "@/utils/chunks";
+import { MAX_IMAGE_RETRIES as MAX_RETRIES, imageRetryDelay, isAbortError } from "@/utils/spectrogram_images";
 
-/** How often a failed chunk is retried before it is marked as errored. */
-const MAX_RETRIES = 3;
-const RETRY_BASE_DELAY_MS = 500;
+export { blobToImage } from "@/utils/spectrogram_images";
 
 type ChunkStatus = "loading" | "ready" | "error";
 
@@ -131,6 +130,19 @@ export default function useChunkImageLoader({
               setStatus(index, null);
               return;
             }
+            if (isAbortError(error)) {
+              // Joined a load that someone else cancelled (e.g. a dropped
+              // prefetch): not a failure, load it again right away
+              setStatus(index, null);
+              retryTimersRef.current.set(
+                index,
+                setTimeout(() => {
+                  retryTimersRef.current.delete(index);
+                  pumpRef.current();
+                }, 0),
+              );
+              return;
+            }
             const failures = (failuresRef.current.get(index) ?? 0) + 1;
             failuresRef.current.set(index, failures);
             if (failures > MAX_RETRIES) {
@@ -138,7 +150,7 @@ export default function useChunkImageLoader({
               setStatus(index, "error");
               return;
             }
-            const delay = RETRY_BASE_DELAY_MS * 2 ** (failures - 1);
+            const delay = imageRetryDelay(failures);
             retryTimersRef.current.set(
               index,
               setTimeout(() => {
@@ -320,22 +332,4 @@ function prioritize(chunksToLoad: Chunk[], visibleChunks: Chunk[]): Chunk[] {
     if (aVisible !== bVisible) return aVisible - bVisible;
     return Math.abs(a.index - centre) - Math.abs(b.index - centre);
   });
-}
-
-/** Decode an image blob into a ready-to-draw `HTMLImageElement`. */
-export async function blobToImage(
-  blob: Blob,
-): Promise<{ image: HTMLImageElement; size: number }> {
-  const objectUrl = URL.createObjectURL(blob);
-  try {
-    const img = new Image();
-    await new Promise<void>((resolve, reject) => {
-      img.onload = () => img.decode().then(resolve, reject);
-      img.onerror = reject;
-      img.src = objectUrl;
-    });
-    return { image: img, size: blob.size };
-  } finally {
-    URL.revokeObjectURL(objectUrl);
-  }
 }

@@ -17,14 +17,12 @@ class SpectrogramCache {
     private loadingPromises: Map<string, Promise<HTMLImageElement>>;
     private totalSize: number;
     private maxSize: number;
-    private insertOrder: SpectrogramSegmentKey[];
 
     constructor(maxSizeInMB: number = 10) {
         this.cache = new Map();
         this.loadingPromises = new Map();
         this.totalSize = 0;
         this.maxSize = maxSizeInMB * 1024 * 1024; // Convert MB to bytes
-        this.insertOrder = [];
     }
 
     /**
@@ -36,18 +34,17 @@ class SpectrogramCache {
     }
 
     /**
-     * Remove oldest entries until we're under the size limit
+     * Remove the least recently used entries until we're under the size limit
      */
     private enforceMaxSize(): void {
-        while (this.totalSize > this.maxSize && this.insertOrder.length > 0) {
-            const oldestKey = this.insertOrder.shift();
-            if (oldestKey) {
-                const entry = this.cache.get(oldestKey);
-                if (entry) {
-                    this.totalSize -= entry.size;
-                    this.cache.delete(oldestKey);
-                }
-            }
+        // A Map iterates in insertion order, and `get` re-inserts what it
+        // returns: the first entries are the least recently used.
+        const keys = this.cache.keys();
+        while (this.totalSize > this.maxSize) {
+            const next = keys.next();
+            if (next.done) break;
+            this.totalSize -= this.cache.get(next.value)!.size;
+            this.cache.delete(next.value);
         }
     }
 
@@ -78,6 +75,10 @@ class SpectrogramCache {
         const entry = this.cache.get(key);
 
         if (entry) {
+            // Most recently used last: eviction drops the least recently used
+            this.cache.delete(key);
+            this.cache.set(key, entry);
+            entry.timestamp = Date.now();
             return entry.image;
         }
 
@@ -158,10 +159,7 @@ class SpectrogramCache {
             const existingEntry = this.cache.get(key);
             if (existingEntry) {
                 this.totalSize -= existingEntry.size;
-                const index = this.insertOrder.indexOf(key);
-                if (index > -1) {
-                    this.insertOrder.splice(index, 1);
-                }
+                this.cache.delete(key);
             }
 
             // Add new entry
@@ -171,7 +169,6 @@ class SpectrogramCache {
                 size: imageSize,
                 timestamp: Date.now(),
             });
-            this.insertOrder.push(key);
 
             // Enforce size limit
             this.enforceMaxSize();
@@ -187,7 +184,6 @@ class SpectrogramCache {
      */
     clear(): void {
         this.cache.clear();
-        this.insertOrder = [];
         this.totalSize = 0;
     }
 
