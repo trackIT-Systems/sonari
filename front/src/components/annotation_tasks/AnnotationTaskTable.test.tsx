@@ -7,6 +7,7 @@ import AnnotationTaskTable from "@/components/annotation_tasks/AnnotationTaskTab
 
 const push = vi.fn();
 const bulkAddBadge = vi.fn();
+const filterSet = vi.fn();
 // Spectrogram requests fail at once, so prefetches don't hold the queue between tests
 const getBlob = vi.fn(async (_request: { recording_id: number; signal?: AbortSignal }) => {
   throw new Error("offline");
@@ -83,7 +84,7 @@ vi.mock("@/hooks/api/useAnnotationTasks", () => ({
     items: tasks,
     total: tasks.length,
     pagination: { page: 0, pageSize: 100 },
-    filter: { filter: {}, get: () => undefined, set: () => {} },
+    filter: { filter: {}, get: () => undefined, set: (...args: unknown[]) => filterSet(...args) },
   }),
 }));
 
@@ -143,6 +144,7 @@ beforeEach(() => {
   // The failing prefetches warn
   vi.spyOn(console, "warn").mockImplementation(() => {});
   push.mockClear();
+  filterSet.mockClear();
   bulkAddBadge.mockReset().mockResolvedValue({
     tasks_updated: 1, tasks_skipped: 0, sound_events_updated: 0,
     sound_events_skipped: 0, failures: [],
@@ -424,54 +426,116 @@ describe("pinning previews", () => {
   });
 });
 
-describe("Shift selection", () => {
-  it("toggles the checkbox of the current row", () => {
+describe("selection following the cursor", () => {
+  /** As a browser does it: mousedown, then click */
+  const shiftClickRow = (id: number) => {
+    const cell = row(id).querySelector("td:nth-child(3)")!;
+    fireEvent.mouseDown(cell, { shiftKey: true, button: 0 });
+    fireEvent.mouseUp(cell, { shiftKey: true, button: 0 });
+    fireEvent.click(cell, { shiftKey: true });
+  };
+  const shiftArrow = (key: "ArrowDown" | "ArrowUp") => {
+    act(() => keyEvent("keydown", "Shift"));
+    press(key, { shiftKey: true });
+    act(() => keyEvent("keyup", "Shift"));
+  };
+
+  it("clicking a row ticks only that row", () => {
+    renderTable();
+    clickRow(1);
+    expect(checked()).toEqual([1]);
+    clickRow(3);
+    expect(checked()).toEqual([3]);
+  });
+
+  it("the arrow keys tick the row they move to, and only that one", () => {
+    renderTable();
+    clickRow(1);
+    press("ArrowDown");
+    expect(checked()).toEqual([2]);
+    press("ArrowDown");
+    press("ArrowUp");
+    expect(checked()).toEqual([2]);
+  });
+
+  it("ticks the right row when keys arrive faster than React renders", () => {
+    renderTable();
+    clickRow(1);
+    holdKeys(["ArrowDown", "ArrowDown", "ArrowDown"]);
+    expect(checked()).toEqual([4]);
+  });
+
+  it("Shift + click ticks the rows from the last clicked one", () => {
+    renderTable();
+    clickRow(2);
+    shiftClickRow(5);
+    expect(checked()).toEqual([2, 3, 4, 5]);
+    // Back towards the anchor: the range shrinks
+    shiftClickRow(3);
+    expect(checked()).toEqual([2, 3]);
+    // Upwards from the anchor
+    shiftClickRow(1);
+    expect(checked()).toEqual([1, 2]);
+  });
+
+  it("Shift + arrow keys extend the ticked rows", () => {
+    renderTable();
+    clickRow(2);
+    shiftArrow("ArrowDown");
+    shiftArrow("ArrowDown");
+    expect(checked()).toEqual([2, 3, 4]);
+    shiftArrow("ArrowUp");
+    expect(checked()).toEqual([2, 3]);
+    // A plain move starts over
+    press("ArrowDown");
+    expect(checked()).toEqual([4]);
+  });
+
+  it("a Shift range adds to rows ticked with their checkbox", () => {
+    renderTable();
+    fireEvent.click(row(6).querySelector("input[type=checkbox]")!);
+    expect(checked()).toEqual([6]);
+    clickRow(1);
+    expect(checked()).toEqual([1]);
+    fireEvent.click(row(6).querySelector("input[type=checkbox]")!);
+    shiftClickRow(3);
+    expect(checked()).toEqual([1, 2, 3, 6]);
+  });
+
+  it("tapping Shift unticks and ticks the current row again", () => {
     renderTable();
     clickRow(1);
     press("Shift");
-    expect(checked()).toEqual([1]);
-    press("Shift");
     expect(checked()).toEqual([]);
+    press("Shift");
+    expect(checked()).toEqual([1]);
+  });
+
+  it("Shift held for a click or an arrow key is no tap", () => {
+    renderTable();
+    clickRow(1);
+    shiftArrow("ArrowDown");
+    expect(checked()).toEqual([1, 2]);
+    act(() => keyEvent("keydown", "Shift"));
+    shiftClickRow(4);
+    act(() => keyEvent("keyup", "Shift"));
+    expect(checked()).toEqual([1, 2, 3, 4]);
   });
 
   it("ignores key auto-repeat of Shift", () => {
     renderTable();
     clickRow(1);
-    press("Shift");
-    press("Shift", { repeat: true });
-    expect(checked()).toEqual([1]);
+    act(() => keyEvent("keydown", "Shift"));
+    act(() => keyEvent("keydown", "Shift", { repeat: true }));
+    act(() => keyEvent("keyup", "Shift"));
+    expect(checked()).toEqual([]);
   });
 
-  it("selects the row reached by arrow navigation", () => {
+  it("a Shift tap does nothing when the current row's preview is closed", () => {
     renderTable();
     clickRow(1);
-    press("ArrowDown");
+    clickRow(1); // close
     press("Shift");
-    expect(checked()).toEqual([2]);
-  });
-
-  it("selects the right row when arrow and Shift arrive in the same batch", () => {
-    renderTable();
-    clickRow(1);
-    // Two distinct key presses landing before React re-renders
-    act(() => {
-      keyEvent("keydown", "ArrowDown");
-      keyEvent("keydown", "Shift");
-    });
-    act(() => {
-      keyEvent("keyup", "ArrowDown");
-      keyEvent("keyup", "Shift");
-    });
-    expect(checked()).toEqual([2]);
-  });
-
-  it("works on a pinned row whose preview is the only one open there", () => {
-    renderTable();
-    clickRow(1);
-    press("p");
-    press("Shift");
-    press("ArrowDown");
-    press("ArrowUp");
     expect(checked()).toEqual([1]);
   });
 
@@ -481,18 +545,36 @@ describe("Shift selection", () => {
     expect(checked()).toEqual([]);
   });
 
-  it("does nothing when the current row's preview is closed", () => {
+  it("keeps every filtered task selected (All N) while moving", () => {
     renderTable();
-    clickRow(1);
-    clickRow(1); // close
-    press("Shift");
+    fireEvent.click(screen.getByRole("button", { name: /^All \d+/ }));
+    clickRow(2);
+    press("ArrowDown");
     expect(checked()).toEqual([]);
+    expect(screen.getByRole("button", { name: /^All \d+/ }).getAttribute("aria-pressed")).toBe("true");
+  });
+
+  it("opening the current row with only its automatic tick keeps the whole filter", () => {
+    const open = vi.spyOn(window, "open").mockReturnValue(null);
+    renderTable();
+    clickRow(3);
+    press("Enter");
+    expect(open).toHaveBeenCalledTimes(1);
+    expect(filterSet).not.toHaveBeenCalledWith("annotation_task_ids", expect.anything());
+  });
+
+  it("opening a row of a deliberate selection annotates the ticked tasks", () => {
+    vi.spyOn(window, "open").mockReturnValue(null);
+    renderTable();
+    clickRow(2);
+    shiftClickRow(3);
+    press("Enter");
+    expect(filterSet).toHaveBeenCalledWith("annotation_task_ids", [2, 3]);
   });
 
   it("Escape drops the selection", () => {
     renderTable();
     clickRow(1);
-    press("Shift");
     expect(checked()).toEqual([1]);
     press("Escape");
     expect(checked()).toEqual([]);
@@ -500,10 +582,9 @@ describe("Shift selection", () => {
 });
 
 describe("bulk shortcuts", () => {
-  it("with a selection, 1 sets the status instead of opening a task", async () => {
+  it("with a selection (the current row), 1 sets the status instead of opening a task", async () => {
     renderTable();
     clickRow(1);
-    press("Shift");
     press("1");
     await waitFor(() => expect(bulkAddBadge).toHaveBeenCalled());
     expect(bulkAddBadge.mock.calls[0][0]).toMatchObject({
@@ -544,7 +625,6 @@ describe("bulk shortcuts", () => {
   it("opens the replace panel with r", async () => {
     renderTable();
     clickRow(1);
-    press("Shift");
     press("r");
     await waitFor(() => expect(screen.queryByText(/Loading tags/i) ?? document.querySelector("[data-headlessui-state~=open]")).toBeTruthy());
   });

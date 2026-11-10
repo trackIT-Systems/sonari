@@ -266,7 +266,11 @@ export default function Table<S>({
             <Fragment key={row.id}>
               <tr
                 data-row-id={row.id}
-                onMouseDown={dragSelect ? (event) => startDragSelect(event, row.id) : undefined}
+                onMouseDown={(dragSelect || onRowClick) ? (event) => {
+                  // Shift + click on a row selects rows, not the page text in between
+                  if (event.shiftKey && onRowClick) event.preventDefault();
+                  if (dragSelect) startDragSelect(event, row.id);
+                } : undefined}
                 onClick={onRowClick && ((event) => {
                   if (suppressClickRef.current) return;
                   // Keep links, checkboxes and buttons working as usual

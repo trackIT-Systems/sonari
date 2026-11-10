@@ -162,11 +162,59 @@ export default function AnnotationTaskTable({
     return ids;
   }, [rowSelection]);
 
+  // Selection that follows the cursor: moving to a row (click, arrow keys)
+  // ticks only that row; with Shift held, the rows from the anchor to it. The
+  // anchor is where the last plain move (or checkbox/drag edit) happened;
+  // `selectionBaseRef` holds what was ticked then, which a Shift range adds to.
+  const selectionAnchorIdRef = useRef<number | null>(null);
+  const selectionBaseRef = useRef<RowSelectionState>({});
+  /** The selection the cursor ticked by itself (one row), while it is unchanged */
+  const automaticSelectionRef = useRef<RowSelectionState | null>(null);
+  const targetModeRef = useRef(targetMode);
+  targetModeRef.current = targetMode;
+
+  /** Checkbox, drag, header and Shift-tap edits: kept as they are, and a later Shift range adds to them */
   const handleRowSelectionChange: OnChangeFn<RowSelectionState> = useCallback((updater) => {
     setTargetMode("selected");
-    setRowSelection((prev) =>
-      typeof updater === "function" ? updater(prev) : updater,
-    );
+    setRowSelection((prev) => {
+      const next = typeof updater === "function" ? updater(prev) : updater;
+      selectionBaseRef.current = next;
+      automaticSelectionRef.current = null;
+      return next;
+    });
+    const cursor = cursorRef.current;
+    selectionAnchorIdRef.current =
+      typeof cursor === "number" ? itemsRef.current[cursor]?.id ?? null : null;
+  }, []);
+
+  /**
+   * Tick the row the cursor moved to: only that row, or with `extend` (Shift
+   * held) the rows from the anchor to it in addition to what was ticked at the
+   * anchor. With every task of the filter selected ("All N"), moving changes
+   * nothing.
+   */
+  const selectCursorRow = useCallback((index: number, extend: boolean) => {
+    if (targetModeRef.current === "filter_all") return;
+    const items = itemsRef.current;
+    const task = items[index];
+    if (!task) return;
+    const anchorIndex = extend
+      ? items.findIndex((item) => item.id === selectionAnchorIdRef.current)
+      : -1;
+    let next: RowSelectionState;
+    if (anchorIndex < 0) {
+      next = { [String(task.id)]: true };
+      selectionAnchorIdRef.current = task.id;
+      selectionBaseRef.current = {};
+      automaticSelectionRef.current = next;
+    } else {
+      next = { ...selectionBaseRef.current };
+      const [from, to] = anchorIndex < index ? [anchorIndex, index] : [index, anchorIndex];
+      for (const item of items.slice(from, to + 1)) next[String(item.id)] = true;
+      automaticSelectionRef.current = null;
+    }
+    setTargetMode("selected");
+    setRowSelection(next);
   }, []);
 
   const handleSelectAllMatchingFilter = useCallback(() => {
@@ -197,6 +245,9 @@ export default function AnnotationTaskTable({
   useEffect(() => {
     setRowSelection({});
     setTargetMode("selected");
+    selectionAnchorIdRef.current = null;
+    selectionBaseRef.current = {};
+    automaticSelectionRef.current = null;
   }, [filterKey]);
 
   const bulkTagSummaryQuery = useQuery({
@@ -318,8 +369,13 @@ export default function AnnotationTaskTable({
     [targetMode, selectedTaskIds, activeFilter, annotationTasks.filter, annotationTasks.items, allTasks],
   );
 
+  // The cursor's own tick does not count: opening the current task then
+  // annotates the whole filter as before, not just that one task.
   const isTicked = useCallback(
-    (task: AnnotationTask) => targetMode === "selected" && Boolean(rowSelection[String(task.id)]),
+    (task: AnnotationTask) =>
+      targetMode === "selected"
+      && rowSelection !== automaticSelectionRef.current
+      && Boolean(rowSelection[String(task.id)]),
     [targetMode, rowSelection],
   );
 
@@ -530,14 +586,15 @@ export default function AnnotationTaskTable({
   }, [focusedElement, activeOpen, pinnedIds]);
 
   const moveCursorTo = useCallback(
-    (index: number) => {
+    (index: number, { extendSelection = false }: { extendSelection?: boolean } = {}) => {
       const task = itemsRef.current[index];
       if (!task) return;
       setFocusedElement(index);
       setActiveOpen(true);
+      selectCursorRow(index, extendSelection);
       pendingScrollIdRef.current = task.id;
     },
-    [setFocusedElement, setActiveOpen],
+    [setFocusedElement, setActiveOpen, selectCursorRow],
   );
 
   const handleSearchKeyDown = useCallback((e: React.KeyboardEvent) => {
@@ -551,7 +608,15 @@ export default function AnnotationTaskTable({
   }, [annotationTasks.items.length, moveCursorTo]);
 
   const handleRowClick = useCallback(
-    (task: AnnotationTask, { index }: { index: number }) => {
+    (task: AnnotationTask, { index, event }: { index: number; event: React.MouseEvent }) => {
+      if (event.shiftKey) {
+        // Shift + click ticks the rows from the anchor to this one
+        setFocusedElement(index);
+        setActiveOpen(true);
+        selectCursorRow(index, true);
+        emitGuidedTourEvent("task-preview-opened");
+        return;
+      }
       if (cursorRef.current === index) {
         // Clicking the current row closes its preview (pinned or not)
         updatePinned((prev) => prev.filter((id) => id !== task.id));
@@ -561,10 +626,11 @@ export default function AnnotationTaskTable({
       } else {
         setFocusedElement(index);
         setActiveOpen(true);
+        selectCursorRow(index, false);
         emitGuidedTourEvent("task-preview-opened");
       }
     },
-    [setFocusedElement, setActiveOpen, updatePinned],
+    [setFocusedElement, setActiveOpen, updatePinned, selectCursorRow],
   );
 
   // One keyboard handler for moving the cursor, pinning and ticking the
@@ -572,9 +638,18 @@ export default function AnnotationTaskTable({
   //   ArrowUp / ArrowDown  move the cursor (its preview follows, the page scrolls)
   //   p                    pin / unpin the current row's preview
   //   c                    cycle the channel shown in the previews
+  //   Shift + ↑ / ↓        move and tick the rows from the anchor to the new one
   //   Shift (tap)          tick / untick the checkbox of the current row
+  // A Shift tap counts on release, and only if no other key or click came
+  // while it was held: Shift + click and Shift + arrow must not toggle.
+  const shiftTapRef = useRef(false);
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Shift") {
+        if (!event.repeat) shiftTapRef.current = true;
+      } else {
+        shiftTapRef.current = false;
+      }
       if (event.ctrlKey || event.metaKey || event.altKey) return;
       const cursor = cursorRef.current;
       if (typeof cursor !== "number" || cursor < 0) return;
@@ -598,7 +673,7 @@ export default function AnnotationTaskTable({
           searchInputRef.current?.focus();
         } else if (next !== cursor) {
           directionRef.current = next > cursor ? 1 : -1;
-          moveCursorTo(next);
+          moveCursorTo(next, { extendSelection: event.shiftKey });
         }
         return;
       }
@@ -621,20 +696,43 @@ export default function AnnotationTaskTable({
         return;
       }
 
-      if (event.key === "Shift" && !event.repeat) {
-        const previewOpen = activeOpenRef.current || pinnedRef.current.includes(current.id);
-        if (!previewOpen) return;
-        handleRowSelectionChange((prev) => {
-          const next = { ...prev };
-          const id = String(current.id);
-          if (next[id]) delete next[id];
-          else next[id] = true;
-          return next;
-        });
-      }
+    };
+    const onKeyUp = (event: KeyboardEvent) => {
+      if (event.key !== "Shift" || !shiftTapRef.current) return;
+      shiftTapRef.current = false;
+      if (event.ctrlKey || event.metaKey || event.altKey) return;
+      const cursor = cursorRef.current;
+      if (typeof cursor !== "number" || cursor < 0) return;
+      const target = event.target;
+      if (
+        target instanceof HTMLInputElement
+        && !["checkbox", "radio", "button"].includes(target.type)
+      ) return;
+      if (target instanceof HTMLTextAreaElement) return;
+      if (document.querySelector('[role="dialog"]')) return;
+      const current = itemsRef.current[cursor];
+      if (!current) return;
+      const previewOpen = activeOpenRef.current || pinnedRef.current.includes(current.id);
+      if (!previewOpen) return;
+      handleRowSelectionChange((prev) => {
+        const next = { ...prev };
+        const id = String(current.id);
+        if (next[id]) delete next[id];
+        else next[id] = true;
+        return next;
+      });
+    };
+    const onPointerDown = () => {
+      shiftTapRef.current = false;
     };
     window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
+    window.addEventListener("keyup", onKeyUp);
+    window.addEventListener("mousedown", onPointerDown, true);
+    return () => {
+      window.removeEventListener("keydown", onKeyDown);
+      window.removeEventListener("keyup", onKeyUp);
+      window.removeEventListener("mousedown", onPointerDown, true);
+    };
   }, [moveCursorTo, setFocusedElement, togglePin, handleRowSelectionChange, setPreviewChannel]);
 
   const renderExpandedRow = useCallback(
