@@ -114,6 +114,23 @@ async def test_rerun_reuses_levels(db_session, test_settings, species_project):
     assert (again.probed_recordings, again.measured) == (0, 0)
 
 
+@pytest.mark.asyncio
+async def test_rejected_tasks_give_no_reference_calls(db_session, test_settings, test_user, species_project):
+    project, species, events = species_project
+    loud_event = await api.sound_event_annotations.get(db_session, events["loud"][0])
+    task = await api.annotation_tasks.get(db_session, loud_event.annotation_task_id)
+    user = schemas.SimpleUser.model_validate(test_user)
+    await api.annotation_tasks.add_status_badge(db_session, task, data.AnnotationState.rejected, user)
+    await db_session.commit()
+
+    search = await find_reference_calls(
+        db_session, tag_id=species.id, annotation_project_id=project.id, audio_dir=test_settings.audio_dir, seed=1
+    )
+    assert search.probed_recordings == 4
+    calls = await get_reference_calls(db_session, tag_id=species.id, annotation_project_id=project.id, limit=20)
+    assert calls and not set(events["loud"]) & {c.sound_event_annotation_id for c in calls}
+
+
 def test_probes_per_run():
     assert probes_per_run(30) == 30
     assert probes_per_run(400) == 400

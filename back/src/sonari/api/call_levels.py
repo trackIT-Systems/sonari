@@ -20,7 +20,7 @@ from collections.abc import Awaitable, Callable, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 
-from soundevent import Geometry
+from soundevent import Geometry, data
 from soundevent.arrays import Dimensions, get_dim_step
 from sqlalchemy import and_, delete, exists, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -133,7 +133,7 @@ class CallLevelsRun:
 
 
 def call_scope(*, tag_id: int, annotation_project_id: int):
-    """Live BoundingBox events carrying a tag in an annotation project."""
+    """Live BoundingBox events carrying a tag in an annotation project, outside rejected tasks."""
     sea = models.SoundEventAnnotation
     return and_(
         sea.superseded_on.is_(None),
@@ -141,6 +141,10 @@ def call_scope(*, tag_id: int, annotation_project_id: int):
         exists().where(
             models.AnnotationTask.id == sea.annotation_task_id,
             models.AnnotationTask.annotation_project_id == annotation_project_id,
+        ),
+        ~exists().where(
+            models.AnnotationStatusBadge.annotation_task_id == sea.annotation_task_id,
+            models.AnnotationStatusBadge.state == data.AnnotationState.rejected,
         ),
         exists().where(
             models.SoundEventAnnotationTag.sound_event_annotation_id == sea.id,
