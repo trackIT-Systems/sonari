@@ -22,8 +22,6 @@ import useAnnotationUndoKeyShortcuts from "@/hooks/annotation/useAnnotationUndoK
 import type { AnnotationHistoryControls } from "@/hooks/annotation/useAnnotationUndoKeyShortcuts";
 import type { HistoryReplayEvent } from "@/hooks/annotation/annotationHistoryTypes";
 
-import { Popover, PopoverButton, PopoverPanel } from "@headlessui/react";
-import SearchMenu from "@/components/search/SearchMenu";
 import TagComponent, { getTagKey } from "@/components/tags/Tag";
 
 import { blurActiveElement } from "@/utils/focus";
@@ -34,7 +32,9 @@ import {
   isSpeciesOfGroup,
   soundEventAnnotationsForTagReplace,
 } from "@/utils/soundEventTagReplace";
-import { SOUND_EVENT_CYCLE_FILTER_SHORTCUT, DELETE_TAG_SHORTCUT, ABORT_SHORTCUT, FULLSCREEN_SHORTCUT } from "@/utils/keyboard";
+import { SOUND_EVENT_CYCLE_FILTER_SHORTCUT, DELETE_TAG_SHORTCUT, DELETE_SOUND_EVENTS_BY_TAG_SHORTCUT, ABORT_SHORTCUT, FULLSCREEN_SHORTCUT } from "@/utils/keyboard";
+import TagPickerOverlay, { ConfirmOverlay } from "@/components/tags/TagPickerOverlay";
+import { countSoleTags, soundEventsTaggedOnlyWith } from "@/utils/soleTags";
 import useKeyFilter from "@/hooks/utils/useKeyFilter";
 
 import type { AnnotationTaskFilter } from "@/api/annotation_tasks";
@@ -51,9 +51,13 @@ import type {
   Geometry,
 } from "@/types";
 import AnnotationTaskNotes from "./AnnotationTaskNotes";
-import AnnotationTaskTags from "@/components/annotation_tasks/AnnotationTaskTags";
+import AnnotationTaskHistory from "./AnnotationTaskHistory";
+
+import type { TimelinePreview } from "@/utils/soundEventTimeline";
+import AnnotationTaskTags, { SoundEventTagStrip } from "@/components/annotation_tasks/AnnotationTaskTags";
 import { SPECTROGRAM_CONTAINER_WIDTH } from "@/constants";
 import { DEFAULT_TAG_VISIBILITY } from "@/utils/passes";
+import usePreloadUpcomingTasks from "@/hooks/annotation/usePreloadUpcomingTasks";
 import type { TagVisibilityFilter } from "@/utils/passes";
 
 const NO_IDS = new Set<number>();
@@ -282,6 +286,15 @@ export default function AnnotateTasks({
     onDeselectSoundEventAnnotation,
   });
 
+  // Once this task's spectrogram shows, load the next tasks' images
+  const upcomingTaskIds = useMemo(() => tasks.upcomingTasks.map((task) => task.id), [tasks.upcomingTasks]);
+  const handleCurrentTaskLoaded = usePreloadUpcomingTasks({
+    currentTaskId: annotationTask?.id ?? null,
+    upcomingTaskIds,
+    parameters,
+    enabled: withSpectrogram,
+  });
+
   // The guided tour asks users to undo what they toggled (hidden spectrogram or
   // events, full page view), so report the way back, not the first toggle.
   useGuidedTourReturnEvent(withSpectrogram, true, "spectrogram-shown");
@@ -307,6 +320,15 @@ export default function AnnotateTasks({
     sourceAnnotationTask,
     annotationTask?.sound_event_annotations,
   ]);
+
+  // A past step of the edit history, shown read-only in the spectrogram.
+  const [timelinePreview, setTimelinePreview] = useState<TimelinePreview | null>(null);
+  const shownTimelinePreview = isUsingSource ? null : timelinePreview;
+  useEffect(() => {
+    if (shownTimelinePreview == null) return;
+    setSelectedSoundEventAnnotation(null);
+    setMultiSelectedIds(NO_IDS);
+  }, [shownTimelinePreview != null]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const multiSelectedSoundEventAnnotations = useMemo(
     () =>
@@ -587,12 +609,20 @@ export default function AnnotateTasks({
 
   const [isDeletePopoverOpen, setIsDeletePopoverOpen] = useState(false);
   const [isTagPopoverOpen, setIsTagPopoverOpen] = useState(false);
+  const [isDeleteEventsPickerOpen, setIsDeleteEventsPickerOpen] = useState(false);
+  /** Sound events about to be deleted by tag, waiting for confirmation */
+  const [deleteEventsConfirm, setDeleteEventsConfirm] = useState<{
+    tag: Tag;
+    soundEventAnnotations: SoundEventAnnotation[];
+  } | null>(null);
 
   useEffect(() => {
     const handleKeyPress = (event: KeyboardEvent) => {
       if (event.key === ABORT_SHORTCUT) {
         setIsDeletePopoverOpen(false);
         setIsTagPopoverOpen(false);
+        setIsDeleteEventsPickerOpen(false);
+        setDeleteEventsConfirm(null);
         if (document.activeElement instanceof HTMLElement) {
           document.activeElement.blur();
         }
@@ -606,6 +636,16 @@ export default function AnnotateTasks({
       ) {
         event.preventDefault();
         setIsDeletePopoverOpen(true);
+      }
+
+      if (
+        event.key === DELETE_SOUND_EVENTS_BY_TAG_SHORTCUT &&
+        !event.ctrlKey && !event.metaKey && !event.altKey &&
+        !(event.target instanceof HTMLInputElement) &&
+        !(event.target instanceof HTMLTextAreaElement)
+      ) {
+        event.preventDefault();
+        setIsDeleteEventsPickerOpen(true);
       }
 
       if (
@@ -626,22 +666,6 @@ export default function AnnotateTasks({
     return () => document.removeEventListener('keydown', handleKeyPress);
   }, [setIsTagPopoverOpen, setIsDeletePopoverOpen, selectedTag, setSelectedTag]);
 
-
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      const popoverElement = document.querySelector('[role="dialog"]');
-      if (
-        popoverElement &&
-        !popoverElement.contains(event.target as Node) &&
-        isDeletePopoverOpen
-      ) {
-        setIsDeletePopoverOpen(false);
-      }
-    };
-
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [isDeletePopoverOpen]);
 
   const tagsWithCount = useMemo(() => {
     if (!displayedSoundEventAnnotations.length) return [];
@@ -690,6 +714,34 @@ export default function AnnotateTasks({
     },
     [handleRemoveTagFromSoundEventAnnotations, activeRemoveTagFromSoundEventAnnotation, selectedSoundEventAnnotation, isMultiSelect, multiSelectedSoundEventAnnotations, activeHistory]
   );
+
+  /**
+   * Delete by tag, as in the tasks table: the sound events whose only tag is
+   * the picked one. Among the selected sound events when several are
+   * selected, else among all shown. One undo step.
+   */
+  const deleteByTagScope = isMultiSelect ? multiSelectedSoundEventAnnotations : displayedSoundEventAnnotations;
+  const soleTagOptions = useMemo(() => countSoleTags(deleteByTagScope), [deleteByTagScope]);
+
+  const handlePickTagToDeleteSoundEvents = useCallback(
+    ({ tag }: { tag: Tag }) => {
+      const soundEventAnnotations = soundEventsTaggedOnlyWith(deleteByTagScope, tag);
+      setIsDeleteEventsPickerOpen(false);
+      if (soundEventAnnotations.length > 0) setDeleteEventsConfirm({ tag, soundEventAnnotations });
+    },
+    [deleteByTagScope],
+  );
+
+  const handleConfirmDeleteSoundEvents = useCallback(async () => {
+    const pending = deleteEventsConfirm;
+    setDeleteEventsConfirm(null);
+    if (pending == null || !activeRemoveSoundEventAnnotation) return;
+    const run = activeHistory?.runBatch ?? (async (_label, fn) => fn());
+    await run("Delete sound events", async () => {
+      await Promise.all(pending.soundEventAnnotations.map((sea) => activeRemoveSoundEventAnnotation(sea)));
+    });
+    setMultiSelectedIds(NO_IDS);
+  }, [deleteEventsConfirm, activeRemoveSoundEventAnnotation, activeHistory]);
 
   const handleAddTagToPalette = useCallback((tag: Tag) => {
     setTagPalette((tags) => {
@@ -852,7 +904,6 @@ export default function AnnotateTasks({
     [displayedSoundEventAnnotations, activeAddTagToSoundEventAnnotation, activeHistory, isMultiSelect, multiSelectedSoundEventAnnotations],
   );
 
-  const menuRef = useRef<HTMLDivElement>(null);
 
   if (tasks.isLoading) {
     return <Loading />;
@@ -919,6 +970,15 @@ export default function AnnotateTasks({
           )
         }
       />
+      {fullscreen && displayAnnotationTask != null && (
+        <SoundEventTagStrip
+          soundEventAnnotations={displayAnnotationTask.sound_event_annotations ?? []}
+          tagVisibility={tagVisibility}
+          onRemoveTag={(tag) =>
+            void handleReplaceTagInSoundEventAnnotations(tag, null, selectedSoundEventAnnotation)
+          }
+        />
+      )}
       {/*
         From xl: main column (recording, spectrogram; at most the spectrogram's
         natural width, it shrinks to fit) | side column (selected sound event,
@@ -986,7 +1046,7 @@ export default function AnnotateTasks({
                     onWithAutoplayChange={onWithAutoplayChange}
                     fixedAspectRatio={fixedAspectRatio}
                     toggleFixedAspectRatio={toggleFixedAspectRatio}
-                    onSegmentsLoaded={tasks.handleCurrentSegmentsLoaded}
+                    onSegmentsLoaded={handleCurrentTaskLoaded}
                     onWindowChange={handleMainWindowChange}
                     fullscreen={fullscreen}
                     showTools={fullscreen ? showTools : true}
@@ -996,7 +1056,10 @@ export default function AnnotateTasks({
                     onAddSoundEventAnnotation={activeAddSoundEventAnnotation}
                     onRemoveSoundEventAnnotation={activeRemoveSoundEventAnnotation}
                     onUpdateSoundEventAnnotation={activeUpdateSoundEventAnnotation}
-                    soundEventAnnotationsOverride={displayedSoundEventAnnotations}
+                    soundEventAnnotationsOverride={
+                      shownTimelinePreview?.soundEventAnnotations ?? displayedSoundEventAnnotations
+                    }
+                    timelinePreview={shownTimelinePreview}
                     selectedSoundEventAnnotationTask={
                       selectedSoundEventAnnotation != null
                         ? selectedSoundEventAnnotationTask
@@ -1077,6 +1140,7 @@ export default function AnnotateTasks({
                   selectedSoundEventAnnotation={selectedSoundEventAnnotation}
                   selectedSoundEventAnnotations={isMultiSelect ? multiSelectedSoundEventAnnotations : undefined}
                   tagVisibility={tagVisibility}
+                  onDeleteSoundEventsByTag={() => setIsDeleteEventsPickerOpen(true)}
                 />
               </div>
             )}
@@ -1099,6 +1163,14 @@ export default function AnnotateTasks({
                 currentUser={currentUser}
               />
             </div>
+            <AnnotationTaskHistory
+              annotationTask={annotationTask}
+              onPreviewChange={setTimelinePreview}
+              onSelectSoundEventAnnotation={(id) => {
+                const annotation = annotationTask.sound_event_annotations?.find((sea) => sea.id === id);
+                if (annotation != null) handleSelectSoundEventAnnotation(annotation);
+              }}
+            />
           </div>
         )}
       </div>
@@ -1118,60 +1190,46 @@ export default function AnnotateTasks({
     </div>
 
       {isDeletePopoverOpen && (
-        <Popover as="div">
-          {({ open, close }) => {
+        <TagPickerOverlay
+          title={`Select a tag to remove from ${isMultiSelect ? `the ${multiSelectedSoundEventAnnotations.length} selected sound events` : selectedSoundEventAnnotation ? "the selected sound event annotation" : "all sound event annotations"}`}
+          options={isMultiSelect
+            ? countTags(multiSelectedSoundEventAnnotations)
+            : selectedSoundEventAnnotation
+              ? (selectedSoundEventAnnotation.tags || []).map((tag) => ({ tag, count: 1 }))
+              : tagsWithCount}
+          onSelect={(tagWithCount) => handleDeleteTagFromAll(tagWithCount, true)}
+          onClose={() => setIsDeletePopoverOpen(false)}
+        />
+      )}
 
-            const handleOverlayClick = (e: React.MouseEvent) => {
-              // Check if click is inside menu
-              if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
-                setIsDeletePopoverOpen(false);
-              }
-            };
+      {isDeleteEventsPickerOpen && (
+        <TagPickerOverlay
+          accent="red"
+          title={`Delete ${isMultiSelect ? "selected " : ""}sound events tagged only with ...`}
+          options={soleTagOptions}
+          onSelect={handlePickTagToDeleteSoundEvents}
+          onClose={() => setIsDeleteEventsPickerOpen(false)}
+          empty="No sound event has a single tag"
+        />
+      )}
 
-            return (
-              <>
-                <PopoverButton as="div" className="hidden" />
-                <PopoverPanel static={true} className="fixed inset-0 z-50">
-                  <div className="fixed inset-0 flex items-center justify-center" onClick={handleOverlayClick}>
-                    <div ref={menuRef} className="relative w-96 divide-y divide-stone-100 rounded-md bg-stone-50 dark:bg-stone-700 border border-stone-200 dark:border-stone-500 shadow-md dark:shadow-stone-800 ring-1 ring-stone-900 ring-opacity-5 focus:outline-none">
-                      <div className="p-4">
-                        <div className="mb-2 text-stone-700 dark:text-stone-300 underline underline-offset-2 decoration-amber-500 decoration-2">
-                          Select a tag to remove from {isMultiSelect ? `the ${multiSelectedSoundEventAnnotations.length} selected sound events` : selectedSoundEventAnnotation ? 'selected sound event annotation' : 'all sound event annotations'}
-                        </div>
-                        <SearchMenu
-                          limit={100}
-                          options={isMultiSelect
-                            ? countTags(multiSelectedSoundEventAnnotations)
-                            : selectedSoundEventAnnotation
-                            ? (selectedSoundEventAnnotation.tags || []).map(tag => ({ tag, count: 1 }))
-                            : tagsWithCount}
-                          fields={["tag.key", "tag.value"]}
-                          renderOption={(tagWithCount) => (
-                            <TagComponent
-                              key={getTagKey(tagWithCount.tag)}
-                              tag={tagWithCount.tag}
-                              onClose={() => { }}
-                              count={tagWithCount.count}
-                            />
-                          )}
-                          getOptionKey={(tagWithCount) => `${tagWithCount.tag.key}-${tagWithCount.tag.value}`}
-                          onSelect={(tagWithCount) => {
-                            if (menuRef.current?.contains(document.activeElement)) {
-                              handleDeleteTagFromAll(tagWithCount, true);
-                            }
-                          }}
-                          empty={<div className="text-stone-500 text-center w-full">No tags found</div>}
-                          autoFocus
-                          static={true}
-                        />
-                      </div>
-                    </div>
-                  </div>
-                </PopoverPanel>
-              </>
-            );
-          }}
-        </Popover>
+      {deleteEventsConfirm != null && (
+        <ConfirmOverlay
+          title="Delete sound events"
+          message={
+            <>
+              Delete {deleteEventsConfirm.soundEventAnnotations.length === 1
+                ? "the 1 sound event"
+                : `the ${deleteEventsConfirm.soundEventAnnotations.length} sound events`}{" "}
+              tagged only with{" "}
+              <TagComponent tag={deleteEventsConfirm.tag} count={null} />
+              ? You can undo it with Ctrl+z.
+            </>
+          }
+          confirmLabel="Delete"
+          onConfirm={() => void handleConfirmDeleteSoundEvents()}
+          onCancel={() => setDeleteEventsConfirm(null)}
+        />
       )}
 
       {untaggedWarning != null && (
@@ -1237,58 +1295,16 @@ export default function AnnotateTasks({
       )}
 
       {isTagPopoverOpen && (
-        <Popover as="div">
-          {({ open, close }) => {
-
-            const handleOverlayClick = (e: React.MouseEvent) => {
-              // Check if click is inside menu
-              if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
-                setIsTagPopoverOpen(false);
-              }
-            };
-
-            return (
-              <>
-                <PopoverButton as="div" className="hidden" />
-                <PopoverPanel static={true} className="fixed inset-0 z-50">
-                  <div className="fixed inset-0 flex items-center justify-center" onClick={handleOverlayClick}>
-                    <div ref={menuRef} className="relative w-96 divide-y divide-stone-100 rounded-md bg-stone-50 dark:bg-stone-700 border border-stone-200 dark:border-stone-500 shadow-md dark:shadow-stone-800 ring-1 ring-stone-900 ring-opacity-5 focus:outline-none">
-                      <div className="p-4">
-                        <div className="mb-2 text-stone-700 dark:text-stone-300 underline underline-offset-2 decoration-amber-500 decoration-2">
-                          Select a tag to cycle through
-                        </div>
-                        <SearchMenu
-                          limit={100}
-                          options={tagsWithCount}
-                          fields={["tag.key", "tag.value"]}
-                          renderOption={(tagWithCount) => (
-                            <TagComponent
-                              key={getTagKey(tagWithCount.tag)}
-                              tag={tagWithCount.tag}
-                              onClose={() => { }}
-                              count={tagWithCount.count}
-                            />
-                          )}
-                          getOptionKey={(tagWithCount) => `${tagWithCount.tag.key}-${tagWithCount.tag.value}`}
-                          onSelect={(tagWithCount) => {
-                            if (menuRef.current?.contains(document.activeElement)) {
-                              setSelectedTag(tagWithCount)
-                              setIsTagPopoverOpen(false);
-                              emitGuidedTourEvent("cycle-tag-selected");
-                            }
-                          }}
-                          empty={<div className="text-stone-500 text-center w-full">No tags found</div>}
-                          autoFocus
-                          static={true}
-                        />
-                      </div>
-                    </div>
-                  </div>
-                </PopoverPanel>
-              </>
-            );
+        <TagPickerOverlay
+          title="Select a tag to cycle through"
+          options={tagsWithCount}
+          onSelect={(tagWithCount) => {
+            setSelectedTag(tagWithCount);
+            setIsTagPopoverOpen(false);
+            emitGuidedTourEvent("cycle-tag-selected");
           }}
-        </Popover>
+          onClose={() => setIsTagPopoverOpen(false)}
+        />
       )}
     </>
   );

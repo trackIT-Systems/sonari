@@ -119,6 +119,16 @@ def compute_spectrogram(
             coord_func="min",
         ).max()
 
+    # Crop to the requested band before the per-pixel steps below.
+    if spectrogram_parameters.min_freq is not None or spectrogram_parameters.max_freq is not None:
+        spectrogram = spectrogram.sel(
+            {
+                Dimensions.frequency.value: slice(
+                    spectrogram_parameters.min_freq, spectrogram_parameters.max_freq
+                )
+            }
+        )
+
     # De-noise spectrogram with PCEN
     if not spectrogram_parameters.pcen:
         # NOTE: PCEN expects a spectrogram in amplitude scale so it should be

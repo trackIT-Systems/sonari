@@ -86,6 +86,8 @@ export const ADD_UNTAGGED_TAG_SHORTCUT = "a";
 export const ADD_TO_TAGGED_TAG_SHORTCUT = "t";
 export const REPLACE_TAG_SHORTCUT = "r";
 export const DELETE_TAG_SHORTCUT = "d";
+/** Annotate: delete the sound events whose only tag is the one picked (like `d` in the tasks table). */
+export const DELETE_SOUND_EVENTS_BY_TAG_SHORTCUT = "D";
 
 export const HELP_SHORTCUT = "?";
 
@@ -407,6 +409,11 @@ export const TAG_HANDLING_SHORTCUTS: KeyShortcut[] = [
         description: "Delete a tag from all or the selected sound events",
     },
     {
+        label: "Delete sound events by tag",
+        shortcut: `${getSpecialKeyLabel("Shift")} ${DELETE_TAG_SHORTCUT}`,
+        description: "Delete the sound events tagged only with the tag you pick (among the selected ones when several are selected). You confirm first; Ctrl+z undoes it.",
+    },
+    {
         label: "Replace tag(s)",
         shortcut: REPLACE_TAG_SHORTCUT,
         description: "Replace a tag in all or the selected sound events",
@@ -442,7 +449,7 @@ export const TASK_TABLE_SHORTCUTS: KeyShortcut[] = [
     {
         label: "Move through rows",
         shortcut: "↑ / ↓",
-        description: "Move to the previous / next task. The spectrogram preview follows the current row and the page scrolls with it. ↓ from the top focuses the search; ↑ on the first row returns to it.",
+        description: "Move to the previous / next task. The spectrogram preview follows the current row and the page scrolls with it, and the current row is ticked (only it), so 1–4 act on it. Hold Shift to tick the rows from where you started instead. ↓ from the top focuses the search; ↑ on the first row returns to it.",
     },
     {
         label: "Open task",
@@ -452,7 +459,7 @@ export const TASK_TABLE_SHORTCUTS: KeyShortcut[] = [
     {
         label: "Annotate ticked tasks",
         shortcut: ANNOTATE_SELECTION_SHORTCUT,
-        description: "Open Annotate with only the ticked tasks as filter. Opening a ticked task (Enter or its name) does the same in a new tab. The filter shows as “Selected tasks” and can be removed there.",
+        description: "Open Annotate with only the ticked tasks as filter. Opening a ticked task (Enter or its name) does the same in a new tab, unless only the current row is ticked by moving to it: then Annotate opens with the whole filter. The filter shows as “Selected tasks” and can be removed there.",
     },
     {
         label: "Open task by position",
@@ -462,7 +469,7 @@ export const TASK_TABLE_SHORTCUTS: KeyShortcut[] = [
     {
         label: "Toggle preview",
         shortcut: "Click",
-        description: "Click a row to make it current and show its spectrogram preview there. Click the current row again to close its preview.",
+        description: "Click a row to make it current, tick it (only it) and show its spectrogram preview there. Shift + click ticks the rows from the last clicked one. Click the current row again to close its preview.",
     },
     {
         label: "Pin preview",
@@ -482,7 +489,7 @@ export const TASK_TABLE_SHORTCUTS: KeyShortcut[] = [
     {
         label: "Select row",
         shortcut: "Shift",
-        description: "Tap Shift on a row with an open preview to tick or untick its checkbox.",
+        description: "Tap Shift on a row with an open preview to untick or tick it again. Its checkbox ticks or unticks a row without changing the others.",
     },
     {
         label: "Clear selection",

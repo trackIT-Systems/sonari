@@ -1,9 +1,14 @@
+import { useState } from "react";
+
 import Card from "@/components/Card";
 import Empty from "@/components/Empty";
 import { H4 } from "@/components/Headings";
+import Toggle from "@/components/inputs/Toggle";
 import Loading from "@/components/Loading";
 import { getTagKey } from "@/components/tags/Tag";
 import useAnnotationProjectSpeciesCounts from "@/hooks/api/useAnnotationProjectSpeciesCounts";
+
+import AnnotationProjectPredictionHistory from "./AnnotationProjectPredictionHistory";
 
 import type { AnnotationProject } from "@/types";
 
@@ -143,14 +148,27 @@ export default function AnnotationProjectSpeciesChart({
 }: {
   annotationProject: AnnotationProject;
 }) {
+  const [showCorrections, setShowCorrections] = useState(false);
   const { speciesCounts, isLoading } = useAnnotationProjectSpeciesCounts({
     annotationProjectId: annotationProject.id,
   });
 
   return (
     <Card>
-      <H4>Species</H4>
-      {isLoading && speciesCounts.length === 0 ? (
+      <div className="flex items-center justify-between gap-4">
+        <H4>{showCorrections ? "Corrections of predictions" : "Species"}</H4>
+        <label className="inline-flex items-center gap-2 text-sm text-stone-500">
+          Correction stats
+          <Toggle
+            label="Show corrections of detector predictions"
+            isSelected={showCorrections}
+            onChange={setShowCorrections}
+          />
+        </label>
+      </div>
+      {showCorrections ? (
+        <AnnotationProjectPredictionHistory annotationProjectId={annotationProject.id} />
+      ) : isLoading && speciesCounts.length === 0 ? (
         <Loading />
       ) : speciesCounts.length === 0 ? (
         <Empty padding="p-2">

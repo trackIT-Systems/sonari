@@ -352,6 +352,10 @@ export const AnnotationProjectSchema = z.object({
   tag_group_id: z.number().int().nullish(),
   tag_preset_id: z.number().int().nullish(),
   created_on: z.coerce.date(),
+  /** Detector that created the project, from ecohub's project name */
+  detector: z.string().nullish(),
+  /** False for detectors whose sound events are classifier windows (birdedge), not call boxes */
+  has_call_boxes: z.boolean().optional().default(true),
 });
 
 // Base schema without circular reference
@@ -456,6 +460,9 @@ export const SpectrogramParametersSchema = z
     max_rows: z.coerce.number().int().positive().optional(),
     /** Request a lossy (JPEG) image: much smaller, fine for previews */
     lossy: z.boolean().optional(),
+    /** Lowest and highest frequency (Hz) in the image: the server crops it to that band */
+    min_freq: z.coerce.number().nonnegative().optional(),
+    max_freq: z.coerce.number().nonnegative().optional(),
     freqLines: z
       .array(z.coerce.number().int().nonnegative())
       .default([]),

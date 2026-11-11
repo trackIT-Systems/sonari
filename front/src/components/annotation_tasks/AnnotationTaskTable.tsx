@@ -32,14 +32,19 @@ import ShortcutHelper from "@/components/ShortcutHelper";
 import { getScrollParent } from "@/utils/focus";
 import { ANNOTATE_SELECTION_SHORTCUT, PIN_PREVIEW_SHORTCUT, PREVIEW_CHANNEL_SHORTCUT, TASK_TABLE_SHORTCUTS, LIST_OVERVIEW_DOWN_SHORTCUT, SEARCH_BAR_LEAVE_SHORTCUT, FILTER_POPOVER_SHORTCUT } from "@/utils/keyboard";
 import AnnotationTaskSpectrogramPreview, {
+  getPreviewImageRequest,
   nextPreviewChannel,
   type PreviewChannel,
 } from "@/components/annotation_tasks/AnnotationTaskSpectrogramPreview";
+import { prefetchImages, type ImageRequest } from "@/utils/spectrogram_images";
 import useStore from "@/store";
 import { findTemporallyRelatedTasks } from "@/utils/temporalClusters";
 import { emitGuidedTourEvent } from "@/components/workshop/guidedTour/events";
 import Button from "../Button";
-import { FilterIcon } from "../icons";
+import { FilterIcon, VolumeIcon } from "../icons";
+import ReferenceCallsPanel from "@/components/reference_calls/ReferenceCallsPanel";
+import usePinnedReferenceSpecies from "@/components/reference_calls/usePinnedReferenceSpecies";
+import { includedSpecies } from "@/components/reference_calls/includedSpecies";
 
 /**
  * Scrolls the one real scroll container so a table row (and its expanded
@@ -77,6 +82,9 @@ function scrollRowIntoView(taskId: number, topInset: number) {
 const MAX_PINNED_PREVIEWS = 5;
 /** The active preview only loads once the cursor has rested this long (holding an arrow key) */
 const PREVIEW_SETTLE_MS = 150;
+/** Previews prefetched ahead of the cursor (in the direction it last moved) and behind it */
+const PREFETCH_AHEAD = 3;
+const PREFETCH_BEHIND = 1;
 
 /** Task tag of the guided tour's bulk-lesson material. */
 const TOUR_BULK_TAG = { key: "tour", value: "bulk" };
@@ -128,6 +136,11 @@ export default function AnnotationTaskTable({
   const [relatedWindow, setRelatedWindow] = useState(5);
 
   const activeFilter = annotationTasks.filter.filter;
+  const projectId = activeFilter.annotation_project?.id;
+  // birdedge's sound events are classifier windows: there are no calls to compare
+  const hasCallBoxes = activeFilter.annotation_project?.has_call_boxes ?? true;
+  const [referencesOpen, setReferencesOpen] = useState(false);
+  const { pinned: pinnedSpecies, setPinned: setPinnedSpecies } = usePinnedReferenceSpecies(projectId);
 
   // Guided tour: bulk actions may only touch the bulk-lesson material, never a
   // lesson task (a badge there would skip the lesson). The server intersects
@@ -149,11 +162,59 @@ export default function AnnotationTaskTable({
     return ids;
   }, [rowSelection]);
 
+  // Selection that follows the cursor: moving to a row (click, arrow keys)
+  // ticks only that row; with Shift held, the rows from the anchor to it. The
+  // anchor is where the last plain move (or checkbox/drag edit) happened;
+  // `selectionBaseRef` holds what was ticked then, which a Shift range adds to.
+  const selectionAnchorIdRef = useRef<number | null>(null);
+  const selectionBaseRef = useRef<RowSelectionState>({});
+  /** The selection the cursor ticked by itself (one row), while it is unchanged */
+  const automaticSelectionRef = useRef<RowSelectionState | null>(null);
+  const targetModeRef = useRef(targetMode);
+  targetModeRef.current = targetMode;
+
+  /** Checkbox, drag, header and Shift-tap edits: kept as they are, and a later Shift range adds to them */
   const handleRowSelectionChange: OnChangeFn<RowSelectionState> = useCallback((updater) => {
     setTargetMode("selected");
-    setRowSelection((prev) =>
-      typeof updater === "function" ? updater(prev) : updater,
-    );
+    setRowSelection((prev) => {
+      const next = typeof updater === "function" ? updater(prev) : updater;
+      selectionBaseRef.current = next;
+      automaticSelectionRef.current = null;
+      return next;
+    });
+    const cursor = cursorRef.current;
+    selectionAnchorIdRef.current =
+      typeof cursor === "number" ? itemsRef.current[cursor]?.id ?? null : null;
+  }, []);
+
+  /**
+   * Tick the row the cursor moved to: only that row, or with `extend` (Shift
+   * held) the rows from the anchor to it in addition to what was ticked at the
+   * anchor. With every task of the filter selected ("All N"), moving changes
+   * nothing.
+   */
+  const selectCursorRow = useCallback((index: number, extend: boolean) => {
+    if (targetModeRef.current === "filter_all") return;
+    const items = itemsRef.current;
+    const task = items[index];
+    if (!task) return;
+    const anchorIndex = extend
+      ? items.findIndex((item) => item.id === selectionAnchorIdRef.current)
+      : -1;
+    let next: RowSelectionState;
+    if (anchorIndex < 0) {
+      next = { [String(task.id)]: true };
+      selectionAnchorIdRef.current = task.id;
+      selectionBaseRef.current = {};
+      automaticSelectionRef.current = next;
+    } else {
+      next = { ...selectionBaseRef.current };
+      const [from, to] = anchorIndex < index ? [anchorIndex, index] : [index, anchorIndex];
+      for (const item of items.slice(from, to + 1)) next[String(item.id)] = true;
+      automaticSelectionRef.current = null;
+    }
+    setTargetMode("selected");
+    setRowSelection(next);
   }, []);
 
   const handleSelectAllMatchingFilter = useCallback(() => {
@@ -184,6 +245,9 @@ export default function AnnotationTaskTable({
   useEffect(() => {
     setRowSelection({});
     setTargetMode("selected");
+    selectionAnchorIdRef.current = null;
+    selectionBaseRef.current = {};
+    automaticSelectionRef.current = null;
   }, [filterKey]);
 
   const bulkTagSummaryQuery = useQuery({
@@ -305,8 +369,13 @@ export default function AnnotationTaskTable({
     [targetMode, selectedTaskIds, activeFilter, annotationTasks.filter, annotationTasks.items, allTasks],
   );
 
+  // The cursor's own tick does not count: opening the current task then
+  // annotates the whole filter as before, not just that one task.
   const isTicked = useCallback(
-    (task: AnnotationTask) => targetMode === "selected" && Boolean(rowSelection[String(task.id)]),
+    (task: AnnotationTask) =>
+      targetMode === "selected"
+      && rowSelection !== automaticSelectionRef.current
+      && Boolean(rowSelection[String(task.id)]),
     [targetMode, rowSelection],
   );
 
@@ -457,13 +526,54 @@ export default function AnnotationTaskTable({
       ? annotationTasks.items[focusedElement]?.id ?? null
       : null;
 
-  // Don't request spectrograms for rows the cursor only passes through.
-  const [activeSettled, setActiveSettled] = useState(true);
+  // Don't request spectrograms for rows the cursor only passes through: while it
+  // moves fast (a held arrow key), a row only counts once the cursor rested on it.
+  // A click or a single key press loads at once. Settled is tied to the row, so it
+  // is false in the very render the cursor moves.
+  const [settledTaskId, setSettledTaskId] = useState<number | null>(null);
+  const lastMoveRef = useRef(-Infinity);
   useEffect(() => {
-    setActiveSettled(false);
-    const timer = setTimeout(() => setActiveSettled(true), PREVIEW_SETTLE_MS);
+    // Only moves onto a row count (not mounting or closing the preview)
+    if (activeTaskId == null) return;
+    const now = performance.now();
+    const moving = now - lastMoveRef.current < PREVIEW_SETTLE_MS;
+    lastMoveRef.current = now;
+    if (!moving) {
+      setSettledTaskId(activeTaskId);
+      return;
+    }
+    const timer = setTimeout(() => setSettledTaskId(activeTaskId), PREVIEW_SETTLE_MS);
     return () => clearTimeout(timer);
   }, [activeTaskId]);
+  const activeSettled = activeTaskId != null && settledTaskId === activeTaskId;
+
+  // Once the cursor rests on a row, prefetch the previews of the next rows (in the
+  // direction it last moved) and of the row behind it, so they show at once when
+  // the cursor gets there. Moving on drops the prefetches still waiting.
+  const directionRef = useRef<1 | -1>(1);
+  useEffect(() => {
+    if (activeTaskId == null || !activeSettled || typeof focusedElement !== "number") return;
+    const items = annotationTasks.items;
+    const direction = directionRef.current;
+    const offsets = [
+      ...Array.from({ length: PREFETCH_AHEAD }, (_, i) => direction * (i + 1)),
+      ...Array.from({ length: PREFETCH_BEHIND }, (_, i) => -direction * (i + 1)),
+    ];
+    const requests = offsets
+      .map((offset) => items[focusedElement + offset])
+      .filter((task): task is AnnotationTask => task != null)
+      .map((task) => ({ task, ...getPreviewImageRequest(task, savedSettings, previewChannel) }))
+      .filter(({ previewable }) => previewable)
+      .map(({ task, segment, imageParameters }): ImageRequest => ({
+        kind: "spectrogram",
+        recording_id: task.recording_id,
+        segment,
+        parameters: imageParameters,
+      }));
+    const controller = new AbortController();
+    prefetchImages(requests, controller.signal);
+    return () => controller.abort();
+  }, [activeTaskId, activeSettled, focusedElement, annotationTasks.items, savedSettings, previewChannel]);
 
   // After the cursor moved and the previews re-rendered (previous one collapsed,
   // new one expanded), scroll the current row into view.
@@ -476,14 +586,15 @@ export default function AnnotationTaskTable({
   }, [focusedElement, activeOpen, pinnedIds]);
 
   const moveCursorTo = useCallback(
-    (index: number) => {
+    (index: number, { extendSelection = false }: { extendSelection?: boolean } = {}) => {
       const task = itemsRef.current[index];
       if (!task) return;
       setFocusedElement(index);
       setActiveOpen(true);
+      selectCursorRow(index, extendSelection);
       pendingScrollIdRef.current = task.id;
     },
-    [setFocusedElement, setActiveOpen],
+    [setFocusedElement, setActiveOpen, selectCursorRow],
   );
 
   const handleSearchKeyDown = useCallback((e: React.KeyboardEvent) => {
@@ -497,7 +608,15 @@ export default function AnnotationTaskTable({
   }, [annotationTasks.items.length, moveCursorTo]);
 
   const handleRowClick = useCallback(
-    (task: AnnotationTask, { index }: { index: number }) => {
+    (task: AnnotationTask, { index, event }: { index: number; event: React.MouseEvent }) => {
+      if (event.shiftKey) {
+        // Shift + click ticks the rows from the anchor to this one
+        setFocusedElement(index);
+        setActiveOpen(true);
+        selectCursorRow(index, true);
+        emitGuidedTourEvent("task-preview-opened");
+        return;
+      }
       if (cursorRef.current === index) {
         // Clicking the current row closes its preview (pinned or not)
         updatePinned((prev) => prev.filter((id) => id !== task.id));
@@ -507,10 +626,11 @@ export default function AnnotationTaskTable({
       } else {
         setFocusedElement(index);
         setActiveOpen(true);
+        selectCursorRow(index, false);
         emitGuidedTourEvent("task-preview-opened");
       }
     },
-    [setFocusedElement, setActiveOpen, updatePinned],
+    [setFocusedElement, setActiveOpen, updatePinned, selectCursorRow],
   );
 
   // One keyboard handler for moving the cursor, pinning and ticking the
@@ -518,9 +638,18 @@ export default function AnnotationTaskTable({
   //   ArrowUp / ArrowDown  move the cursor (its preview follows, the page scrolls)
   //   p                    pin / unpin the current row's preview
   //   c                    cycle the channel shown in the previews
+  //   Shift + ↑ / ↓        move and tick the rows from the anchor to the new one
   //   Shift (tap)          tick / untick the checkbox of the current row
+  // A Shift tap counts on release, and only if no other key or click came
+  // while it was held: Shift + click and Shift + arrow must not toggle.
+  const shiftTapRef = useRef(false);
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Shift") {
+        if (!event.repeat) shiftTapRef.current = true;
+      } else {
+        shiftTapRef.current = false;
+      }
       if (event.ctrlKey || event.metaKey || event.altKey) return;
       const cursor = cursorRef.current;
       if (typeof cursor !== "number" || cursor < 0) return;
@@ -543,7 +672,8 @@ export default function AnnotationTaskTable({
           setFocusedElement("search");
           searchInputRef.current?.focus();
         } else if (next !== cursor) {
-          moveCursorTo(next);
+          directionRef.current = next > cursor ? 1 : -1;
+          moveCursorTo(next, { extendSelection: event.shiftKey });
         }
         return;
       }
@@ -566,20 +696,43 @@ export default function AnnotationTaskTable({
         return;
       }
 
-      if (event.key === "Shift" && !event.repeat) {
-        const previewOpen = activeOpenRef.current || pinnedRef.current.includes(current.id);
-        if (!previewOpen) return;
-        handleRowSelectionChange((prev) => {
-          const next = { ...prev };
-          const id = String(current.id);
-          if (next[id]) delete next[id];
-          else next[id] = true;
-          return next;
-        });
-      }
+    };
+    const onKeyUp = (event: KeyboardEvent) => {
+      if (event.key !== "Shift" || !shiftTapRef.current) return;
+      shiftTapRef.current = false;
+      if (event.ctrlKey || event.metaKey || event.altKey) return;
+      const cursor = cursorRef.current;
+      if (typeof cursor !== "number" || cursor < 0) return;
+      const target = event.target;
+      if (
+        target instanceof HTMLInputElement
+        && !["checkbox", "radio", "button"].includes(target.type)
+      ) return;
+      if (target instanceof HTMLTextAreaElement) return;
+      if (document.querySelector('[role="dialog"]')) return;
+      const current = itemsRef.current[cursor];
+      if (!current) return;
+      const previewOpen = activeOpenRef.current || pinnedRef.current.includes(current.id);
+      if (!previewOpen) return;
+      handleRowSelectionChange((prev) => {
+        const next = { ...prev };
+        const id = String(current.id);
+        if (next[id]) delete next[id];
+        else next[id] = true;
+        return next;
+      });
+    };
+    const onPointerDown = () => {
+      shiftTapRef.current = false;
     };
     window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
+    window.addEventListener("keyup", onKeyUp);
+    window.addEventListener("mousedown", onPointerDown, true);
+    return () => {
+      window.removeEventListener("keydown", onKeyDown);
+      window.removeEventListener("keyup", onKeyUp);
+      window.removeEventListener("mousedown", onPointerDown, true);
+    };
   }, [moveCursorTo, setFocusedElement, togglePin, handleRowSelectionChange, setPreviewChannel]);
 
   const renderExpandedRow = useCallback(
@@ -639,6 +792,17 @@ export default function AnnotationTaskTable({
             filter={annotationTasks.filter}
             normalizeForPreset={normalizeDateRangeForPreset}
           />
+          {projectId != null && hasCallBoxes && (
+            <Button
+              mode={referencesOpen || pinnedSpecies ? "filled" : "outline"}
+              variant="secondary"
+              padding="px-3 py-2"
+              onClick={() => setReferencesOpen((open) => !open)}
+              title="The clearest, loudest calls of a species, side by side"
+            >
+              <VolumeIcon className="inline-block h-5 w-5 align-middle" /> Reference calls
+            </Button>
+          )}
           <div data-guided-tour="task-shortcuts">
             <ShortcutHelper shortcuts={TASK_TABLE_SHORTCUTS} />
           </div>
@@ -668,6 +832,18 @@ export default function AnnotationTaskTable({
           s
         </label>
       </div>
+      {projectId != null && hasCallBoxes && (referencesOpen || pinnedSpecies != null) && (
+        <ReferenceCallsPanel
+          annotationProjectId={projectId}
+          initialSpecies={includedSpecies(annotationTasks.filter) ?? null}
+          pinned={pinnedSpecies}
+          onPinnedChange={setPinnedSpecies}
+          onClose={() => {
+            setReferencesOpen(false);
+            setPinnedSpecies(null);
+          }}
+        />
+      )}
       <FilterBar
         filter={annotationTasks.filter}
         total={annotationTasks.total}

@@ -8,12 +8,13 @@ This model merges the previous SoundEvent and SoundEventAnnotation models
 into a single entity, as they were always used in a 1:1 relationship.
 """
 
+import datetime
 from typing import TYPE_CHECKING, Optional
 from uuid import UUID
 
 import sqlalchemy.orm as orm
 from soundevent import Geometry
-from sqlalchemy import ForeignKey, Index, UniqueConstraint
+from sqlalchemy import DateTime, ForeignKey, Index, UniqueConstraint
 
 from sonari.models.base import Base
 from sonari.models.tag import Tag
@@ -69,15 +70,31 @@ class SoundEventAnnotation(Base):
     Notes
     -----
     The geometry attribute is stored as a JSON string in the database.
+
+    Versions
+    --------
+    Before a user edit changes or deletes an event, its state (row, tags and features) is
+    copied into a new row of this table: a *version*. Versions have ``superseded_on`` set;
+    the live event keeps its id and has ``superseded_on`` NULL. ORM queries only see live
+    events unless they opt in (see :mod:`sonari.models.sound_event_versions`).
+
+    ``edit_id`` is the edit session that produced a state (NULL for imports), so one copy
+    per event and session is enough.
     """
 
     __tablename__ = "sound_event_annotation"
+    __table_args__ = (
+        # Serves lookups by task and ecohub's re-import delete by task and creator.
+        Index("ix_sound_event_annotation_task_id_created_by_id", "annotation_task_id", "created_by_id"),
+        Index("ix_sound_event_annotation_version_of_id", "version_of_id"),
+        # Event ids are never reused (versions refer to them); SQLite needs this for it.
+        {"sqlite_autoincrement": True},
+    )
 
     id: orm.Mapped[int] = orm.mapped_column(primary_key=True, init=False)
     annotation_task_id: orm.Mapped[int] = orm.mapped_column(
         ForeignKey("annotation_task.id", ondelete="CASCADE"),
         nullable=False,
-        index=True,
     )
     recording_id: orm.Mapped[int] = orm.mapped_column(
         ForeignKey("recording.id", ondelete="CASCADE"),
@@ -91,6 +108,25 @@ class SoundEventAnnotation(Base):
         index=True,
     )
 
+    # Versions (see the class docstring). All NULL on live events written by imports.
+    edit_id: orm.Mapped[Optional[UUID]] = orm.mapped_column(default=None, kw_only=True)
+    """Edit session that produced this state; NULL for imports and older edits."""
+    version_of_id: orm.Mapped[Optional[int]] = orm.mapped_column(default=None, kw_only=True)
+    """On versions: the live event's id. No foreign key, so versions outlive the event.
+    NULL on GUANO versions of predictions whose event no longer exists."""
+    superseded_on: orm.Mapped[Optional[datetime.datetime]] = orm.mapped_column(
+        DateTime(timezone=True), default=None, kw_only=True
+    )
+    """When this state was replaced; NULL for the live event."""
+    superseded_by_id: orm.Mapped[Optional[UUID]] = orm.mapped_column(
+        ForeignKey("user.id", ondelete="SET NULL"), default=None, kw_only=True
+    )
+    superseded_edit_id: orm.Mapped[Optional[UUID]] = orm.mapped_column(default=None, kw_only=True)
+    """Edit session that replaced this state."""
+    version_reason: orm.Mapped[Optional[str]] = orm.mapped_column(default=None, kw_only=True)
+    """``edited``, ``deleted`` (the event's last state), or ``guano`` (detector prediction
+    read from a GUANO file for an edit made before versions existed)."""
+
     # Relationships
     annotation_task: orm.Mapped["AnnotationTask"] = orm.relationship(
         init=False,
@@ -101,6 +137,7 @@ class SoundEventAnnotation(Base):
         repr=False,
     )
     created_by: orm.Mapped[Optional[User]] = orm.relationship(
+        foreign_keys=[created_by_id],
         init=False,
         repr=False,
     )
@@ -153,7 +190,6 @@ class SoundEventAnnotationFeature(Base):
         ForeignKey("sound_event_annotation.id", ondelete="CASCADE"),
         nullable=False,
         primary_key=True,
-        index=True,
     )
     name: orm.Mapped[str] = orm.mapped_column(nullable=False, primary_key=True)
     value: orm.Mapped[float] = orm.mapped_column(nullable=False)
@@ -197,13 +233,13 @@ class SoundEventAnnotationTag(Base):
     )
 
     id: orm.Mapped[int] = orm.mapped_column(primary_key=True, init=False)
+    # Indexed by the unique constraint, which starts with this column.
     sound_event_annotation_id: orm.Mapped[int] = orm.mapped_column(
         ForeignKey("sound_event_annotation.id", ondelete="CASCADE"),
-        index=True,
     )
+    # Indexed by ix_sound_event_annotation_tag_tag_id_sea_id, which starts with this column.
     tag_id: orm.Mapped[int] = orm.mapped_column(
         ForeignKey("tag.id", ondelete="CASCADE"),
-        index=True,
     )
     created_by_id: orm.Mapped[Optional[UUID]] = orm.mapped_column(
         ForeignKey("user.id"),

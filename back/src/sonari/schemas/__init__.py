@@ -22,6 +22,9 @@ from sonari.schemas.annotation_projects import (
     GuidedTourEnsureResponse,
     GuidedTourProgress,
     GuidedTourVariant,
+    PredictionCorrectionCount,
+    PredictionCorrectionStats,
+    PredictionCorrectionTarget,
     SpeciesTagCount,
 )
 from sonari.schemas.annotation_tasks import (
@@ -67,6 +70,15 @@ from sonari.schemas.sound_event_annotations import (
     SoundEventAnnotationTag,
     SoundEventAnnotationUpdate,
 )
+from sonari.schemas.call_levels import CallLevelJobStatus, ReferenceCall, ReferenceCalls
+from sonari.schemas.sound_event_history import (
+    PredictionBackfillStatus,
+    PredictionHistoryStats,
+    SoundEventLiveState,
+    SoundEventTaskHistory,
+    SoundEventVersion,
+    SoundEventVersionTag,
+)
 from sonari.schemas.spectrograms import (
     AmplitudeParameters,
     Scale,
@@ -107,6 +119,9 @@ __all__ = [
     "GuidedTourEnsureResponse",
     "GuidedTourProgress",
     "GuidedTourVariant",
+    "PredictionCorrectionCount",
+    "PredictionCorrectionStats",
+    "PredictionCorrectionTarget",
     "SpeciesTagCount",
     "AnnotationStatusBadge",
     "AnnotationStatusBadgeUpdate",
@@ -148,6 +163,15 @@ __all__ = [
     "SoundEventAnnotationCreate",
     "SoundEventAnnotationTag",
     "SoundEventAnnotationUpdate",
+    "PredictionBackfillStatus",
+    "CallLevelJobStatus",
+    "ReferenceCall",
+    "ReferenceCalls",
+    "PredictionHistoryStats",
+    "SoundEventLiveState",
+    "SoundEventTaskHistory",
+    "SoundEventVersion",
+    "SoundEventVersionTag",
     "SpectrogramParameters",
     "ProjectTagScope",
     "SpeciesInfo",

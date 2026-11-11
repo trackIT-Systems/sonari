@@ -200,3 +200,14 @@ def test_waveform_columns_span_the_whole_segment(audio_dir, recording):
     # column spans only between its samples, so look for columns far from centre.
     loud = image[:16].any(axis=0) | image[48:].any(axis=0)
     assert abs(int(np.flatnonzero(loud)[0]) - width / 2) <= 2
+
+
+def test_spectrogram_cropped_to_a_band(audio_dir, recording):
+    """min_freq/max_freq keep only the rows of that band."""
+    full = compute_spectrogram(recording, 0, DURATION, AUDIO, parameters(), audio_dir=audio_dir)
+    band = compute_spectrogram(
+        recording, 0, DURATION, AUDIO, parameters(min_freq=40_000, max_freq=80_000), audio_dir=audio_dir
+    )
+    nyquist = SAMPLERATE / 2
+    assert band.shape[1] == full.shape[1]
+    assert band.shape[0] == pytest.approx(full.shape[0] * 40_000 / nyquist, abs=2)

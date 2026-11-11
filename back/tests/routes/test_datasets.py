@@ -113,7 +113,8 @@ async def test_get_datasets_with_filters(
     """Test getting datasets with name filter."""
     response = await auth_client.get(
         "/api/v1/datasets/",
-        params={"name": test_dataset.name},
+        # The route has no name filter: search, so the dataset is found however many exist.
+        params={"search": test_dataset.name},
     )
     assert response.status_code == 200
     data = response.json()

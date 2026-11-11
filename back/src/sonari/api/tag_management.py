@@ -88,8 +88,14 @@ async def _invalidate_all_species_counts(session: AsyncSession) -> None:
 
 
 def _usage_columns():
+    # Only live sound events: versions keep tag links for the edit history.
     sea_count = (
-        select(func.count()).where(SeaTag.tag_id == Tag.id).correlate(Tag).scalar_subquery()
+        select(func.count())
+        .select_from(SeaTag)
+        .join(models.SoundEventAnnotation, models.SoundEventAnnotation.id == SeaTag.sound_event_annotation_id)
+        .where(SeaTag.tag_id == Tag.id)
+        .correlate(Tag)
+        .scalar_subquery()
     )
     task_count = (
         select(func.count()).where(TaskTag.tag_id == Tag.id).correlate(Tag).scalar_subquery()

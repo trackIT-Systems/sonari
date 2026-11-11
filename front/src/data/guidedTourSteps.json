@@ -116,7 +116,7 @@
           {
             "target": "task-table",
             "title": "Tick rows yourself",
-            "hint": "“All N” takes every filtered recording. To take only some, tick them: click a row's checkbox, or move through the rows with `↓` and `↑` (the preview opens) and tap `Shift` to tick or untick the current row. Dragging over several rows ticks them all at once. `Esc` clears the selection."
+            "hint": "“All N” takes every filtered recording. To take only some, tick them: clicking a row or moving with `↓` and `↑` ticks the current row (its preview opens). Hold `Shift` while clicking or pressing `↓` `↑` to tick several in a row, or click rows' checkboxes. Dragging over several rows ticks them all at once. `Esc` clears the selection."
           },
           {
             "target": "tasks-bulk-bar",

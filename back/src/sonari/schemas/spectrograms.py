@@ -133,6 +133,16 @@ class SpectrogramParameters(STFTParameters, AmplitudeParameters):
     lossy: bool = False
     """Encode the image lossy (JPEG): much smaller and faster than lossless WebP."""
 
+    min_freq: float | None = Field(default=None, ge=0)
+    """Lowest frequency (Hz) in the image; by default 0.
+
+    With ``max_freq``, crops the image to a band (e.g. a call's) so it is rendered and
+    sent at the size it is shown, instead of cropping a full-range image afterwards.
+    """
+
+    max_freq: float | None = Field(default=None, ge=0)
+    """Highest frequency (Hz) in the image; by default the Nyquist frequency."""
+
     time_zoom_automatic: bool = True
     """If True, initial time window duration is computed automatically; if False, use time_zoom_duration_seconds."""
 

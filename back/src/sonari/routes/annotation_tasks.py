@@ -9,9 +9,10 @@ from fastapi import Depends
 from soundevent.data import AnnotationState
 
 from sonari import api, schemas
+from sonari.services import sound_event_history
 from sonari.filters.annotation_tasks import AnnotationTaskFilter
 from sonari.filters.recordings import IDFilter as RecordingIDFilter
-from sonari.routes.dependencies import Session
+from sonari.routes.dependencies import CurrentEdit, Session
 from sonari.routes.dependencies.auth import CurrentUser, create_authenticated_router
 from sonari.routes.dependencies.settings import SonariSettings
 from sonari.routes.types import Limit, Offset
@@ -241,6 +242,18 @@ def get_annotation_tasks_router(settings: SonariSettings):
         return annotation_task
 
     @annotation_tasks_router.get(
+        "/detail/history/",
+        response_model=schemas.SoundEventTaskHistory,
+    )
+    async def get_task_history(
+        session: Session,
+        annotation_task_id: int,
+    ):
+        """Original state of the task's imported sound events and every user edit since."""
+        await api.annotation_tasks.get(session, annotation_task_id)
+        return await sound_event_history.get_task_history(session, annotation_task_id)
+
+    @annotation_tasks_router.get(
         "/detail/",
         response_model=schemas.AnnotationTask,
     )
@@ -421,20 +434,17 @@ def get_annotation_tasks_router(settings: SonariSettings):
         state: AnnotationState,
         user: CurrentUser,
     ):
-        """Add a badge to an annotation task."""
+        """Add a badge to an annotation task.
+
+        Returns the task with its status badges only: no other relationship is
+        loaded, so the request stays cheap however many sound events the task
+        has. Clients update just the badges of the task they hold.
+        """
         annotation_task = await api.annotation_tasks.get(
             session,
             annotation_task_id,
-            include_notes=True,
-            include_recording=True,
-            include_sound_event_annotations=True,
             include_status_badges=True,
             include_status_badge_users=True,
-            include_tags=True,
-            include_features=True,
-            include_note_users=True,
-            include_sound_event_annotation_features=True,
-            include_sound_event_annotation_users=True,
         )
         updated = await api.annotation_tasks.add_status_badge(
             session,
@@ -561,6 +571,7 @@ def get_annotation_tasks_router(settings: SonariSettings):
     async def bulk_replace_sound_event_tags(
         session: Session,
         user: CurrentUser,
+        edit: CurrentEdit,
         filter: Annotated[AnnotationTaskFilter, Depends(AnnotationTaskFilter)],  # type: ignore
         body: schemas.AnnotationTaskBulkReplaceSoundEventTags,
     ):
@@ -579,6 +590,7 @@ def get_annotation_tasks_router(settings: SonariSettings):
             add_to_tagged=body.add_to_tagged,
             replace_group=body.replace_group,
             user=user,
+            edit=edit,
         )
         return result
 
@@ -588,6 +600,7 @@ def get_annotation_tasks_router(settings: SonariSettings):
     )
     async def bulk_delete_sound_events_by_tag(
         session: Session,
+        edit: CurrentEdit,
         filter: Annotated[AnnotationTaskFilter, Depends(AnnotationTaskFilter)],  # type: ignore
         body: schemas.AnnotationTaskBulkDeleteSoundEvents,
     ):
@@ -601,6 +614,7 @@ def get_annotation_tasks_router(settings: SonariSettings):
             session,
             task_ids=task_ids,
             tag=body.tag,
+            edit=edit,
         )
         return result
 
@@ -614,20 +628,15 @@ def get_annotation_tasks_router(settings: SonariSettings):
         state: AnnotationState,
         user_id: str | None = None,
     ):
-        """Remove a badge from an annotation task."""
+        """Remove a badge from an annotation task.
+
+        Returns the task with its status badges only (see adding a badge).
+        """
         annotation_task = await api.annotation_tasks.get(
             session,
             annotation_task_id,
-            include_notes=True,
-            include_recording=True,
-            include_sound_event_annotations=True,
-            include_tags=True,
-            include_features=True,
             include_status_badges=True,
             include_status_badge_users=True,
-            include_note_users=True,
-            include_sound_event_annotation_features=True,
-            include_sound_event_annotation_users=True,
         )
         updated = await api.annotation_tasks.remove_status_badge(
             session,

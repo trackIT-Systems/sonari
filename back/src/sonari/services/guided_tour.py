@@ -10,6 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from sonari import api, exceptions, models, schemas
 from sonari.schemas.annotation_projects import GuidedTourVariant
+from sonari.services import sound_event_history
 
 __all__ = [
     "ensure_guided_tour",
@@ -97,7 +98,6 @@ async def _clone_project_tasks(
     """
     task_t = models.AnnotationTask.__table__
     task_tag_t = models.AnnotationTaskTag.__table__
-    task_feature_t = models.AnnotationTaskFeature.__table__
     sea_t = models.SoundEventAnnotation.__table__
     sea_tag_t = models.SoundEventAnnotationTag.__table__
     sea_feature_t = models.SoundEventAnnotationFeature.__table__
@@ -110,7 +110,7 @@ async def _clone_project_tasks(
             select(task_t.c.id, task_t.c.recording_id, task_t.c.start_time, task_t.c.end_time)
             .join(models.Recording.__table__, models.Recording.id == task_t.c.recording_id)
             .where(task_t.c.annotation_project_id == template_id)
-            .order_by(models.Recording.date, models.Recording.time, task_t.c.id),
+            .order_by(models.Recording.recorded_at, task_t.c.id),
         )
     ).all()
     if not source_tasks:
@@ -155,26 +155,6 @@ async def _clone_project_tasks(
             ],
         )
 
-    task_features = (
-        await session.execute(
-            select(task_feature_t.c.annotation_task_id, task_feature_t.c.name, task_feature_t.c.value)
-            .where(task_feature_t.c.annotation_task_id.in_(source_task_ids)),
-        )
-    ).all()
-    if task_features:
-        await session.execute(
-            insert(task_feature_t),
-            [
-                {
-                    "annotation_task_id": task_map[r.annotation_task_id],
-                    "name": r.name,
-                    "value": r.value,
-                    "created_on": now,
-                }
-                for r in task_features
-            ],
-        )
-
     source_events = (
         await session.execute(
             select(
@@ -184,7 +164,8 @@ async def _clone_project_tasks(
                 sea_t.c.geometry_type,
                 sea_t.c.geometry,
             )
-            .where(sea_t.c.annotation_task_id.in_(source_task_ids))
+            # Live events only; old versions stay with the template.
+            .where(sea_t.c.annotation_task_id.in_(source_task_ids), sea_t.c.superseded_on.is_(None))
             .order_by(sea_t.c.id),
         )
     ).all()
@@ -272,10 +253,10 @@ async def _delete_project_tasks(
         (models.SoundEventAnnotationFeature, models.SoundEventAnnotationFeature.sound_event_annotation_id),
     ):
         await session.execute(delete(model).where(column.in_(event_ids)))
+    await sound_event_history.delete_task_versions(session, task_ids)
     for model, column in (
         (models.SoundEventAnnotation, models.SoundEventAnnotation.annotation_task_id),
         (models.AnnotationTaskTag, models.AnnotationTaskTag.annotation_task_id),
-        (models.AnnotationTaskFeature, models.AnnotationTaskFeature.annotation_task_id),
         (models.AnnotationStatusBadge, models.AnnotationStatusBadge.annotation_task_id),
         (models.Note, models.Note.annotation_task_id),
     ):
@@ -375,7 +356,7 @@ async def get_guided_tour_progress(
             select(task_t.c.id, has_badge.label("done"))
             .join(models.Recording.__table__, models.Recording.id == task_t.c.recording_id)
             .where(task_t.c.annotation_project_id == project_id, ~is_bulk)
-            .order_by(models.Recording.date, models.Recording.time, task_t.c.id),
+            .order_by(models.Recording.recorded_at, task_t.c.id),
         )
     ).all()
     if not rows:

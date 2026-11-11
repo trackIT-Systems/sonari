@@ -263,6 +263,8 @@ async def get_objects_from_query(
 
     The total is computed in the same statement with ``count(*) OVER ()`` so
     the filters are evaluated only once. Returned rows exclude that column.
+    Without a limit every matching row is returned, so the total is the
+    number of rows and the window count is skipped.
     """
     for nl in noloads or []:
         query = query.options(noload(nl))
@@ -270,27 +272,23 @@ async def get_objects_from_query(
     query = apply_filters(query, filters)
     filtered_query = query
 
-    query = query.add_columns(func.count().over().label(_TOTAL_COUNT_LABEL))
+    paginated = limit is not None and limit >= 0
+    if paginated:
+        query = query.add_columns(func.count().over().label(_TOTAL_COUNT_LABEL))
 
     if sort_by is not None:
         if isinstance(sort_by, str):
             if sort_by == "recording_datetime":
-                # Join with related tables to access recording date and time
                 query = query.join(
                     models.Recording, models.AnnotationTask.recording_id == models.Recording.id
                 ).order_by(
-                    models.Recording.date.asc(),
-                    models.Recording.time.asc(),
+                    models.Recording.recorded_at.asc(),
                     models.AnnotationTask.id.asc(),  # Add stable secondary sort
                 )
             elif sort_by == "duration" or sort_by == "-duration":
-                # Sort by computed duration (end_time - start_time)
                 descending = sort_by.startswith("-")
-                duration_expr = models.AnnotationTask.end_time - models.AnnotationTask.start_time
-                if descending:
-                    query = query.order_by(duration_expr.desc())
-                else:
-                    query = query.order_by(duration_expr.asc())
+                duration = models.AnnotationTask.duration
+                query = query.order_by(duration.desc() if descending else duration.asc())
             elif sort_by == "recording" or sort_by == "-recording":
                 # Sort by recording path (lexicographical/alphabetical)
                 descending = sort_by.startswith("-")
@@ -308,7 +306,7 @@ async def get_objects_from_query(
     # For recording_datetime sorting, the join shouldn't create duplicates
     # since it's a direct 1:1 relationship (AnnotationTask -> Recording)
 
-    if limit is not None and limit >= 0:
+    if paginated:
         query = query.limit(limit)
 
     if offset is not None:
@@ -316,6 +314,14 @@ async def get_objects_from_query(
 
     result = await session.execute(query)
     rows = result.all()
+
+    if not paginated:
+        # Every row from the offset on was returned.
+        if rows or not offset:
+            count = (offset or 0) + len(rows)
+        else:
+            count = await get_count(session, model, filtered_query)
+        return [tuple(row) for row in rows], count
 
     if rows:
         count = rows[0][-1]

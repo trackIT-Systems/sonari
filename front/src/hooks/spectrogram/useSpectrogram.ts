@@ -628,7 +628,7 @@ export function clampSamplerate(parameters: SpectrogramParameters, samplerate: n
       : samplerate;
 }
 
-function validateParameters(
+export function validateParameters(
   parameters: SpectrogramParameters,
   samplerate: number,
 ): SpectrogramParameters {

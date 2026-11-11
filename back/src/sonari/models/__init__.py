@@ -11,7 +11,6 @@ from sonari.models.annotation_project import AnnotationProject
 from sonari.models.annotation_task import (
     AnnotationStatusBadge,
     AnnotationTask,
-    AnnotationTaskFeature,
     AnnotationTaskTag,
 )
 from sonari.models.app_token import AppToken
@@ -28,6 +27,9 @@ from sonari.models.sound_event_annotation import (
     SoundEventAnnotationFeature,
     SoundEventAnnotationTag,
 )
+from sonari.models.prediction_backfill import PredictionBackfill
+from sonari.models.call_level_job import CallLevelJob
+from sonari.models.sound_event_versions import INCLUDE_VERSIONS, live
 from sonari.models.tag import Tag
 from sonari.models.tag_group import Species, SpeciesName, TagGroup, TagPreset, TagPresetTag
 from sonari.models.user import User
@@ -37,7 +39,6 @@ __all__ = [
     "AnnotationProject",
     "AnnotationStatusBadge",
     "AnnotationTask",
-    "AnnotationTaskFeature",
     "AnnotationTaskTag",
     "Base",
     "Dataset",
@@ -49,6 +50,10 @@ __all__ = [
     "SoundEventAnnotation",
     "SoundEventAnnotationFeature",
     "SoundEventAnnotationTag",
+    "INCLUDE_VERSIONS",
+    "PredictionBackfill",
+    "CallLevelJob",
+    "live",
     "Species",
     "SpeciesName",
     "Tag",

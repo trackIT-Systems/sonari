@@ -6,6 +6,7 @@ import {
   AnnotationProjectSchema,
   AnnotationTaskSchema,
   DatasetSchema,
+  GeometrySchema,
   TagSchema,
   UserSchema,
   FloatEqFilterSchema,
@@ -78,10 +79,19 @@ const AnnotationTaskFilterSchema = z.object({
   ]).optional(),
   /** How multiple included tags combine (default OR when omitted). */
   sound_event_annotation_tag_include_match: z.enum(["and", "or"]).optional(),
-  /** Number of distinct tags on the task (set from the Tag filter UI). */
+  /** Number of distinct tags on the task's sound events (set from the Sound event tags filter UI). */
   sound_event_annotation_tag_count: IntegerFilterSchema.optional(),
   /** Number of sound event annotations on the task (set from the Tag filter UI). */
   sound_event_annotation_count: IntegerFilterSchema.optional(),
+  /** Tags on the task itself, included or excluded (task tags filter). */
+  task_tag: z.union([
+    SoundEventAnnotationTaskFilterTagSchema,
+    z.array(SoundEventAnnotationTaskFilterTagSchema),
+  ]).optional(),
+  /** How multiple included task tags combine (default OR when omitted). */
+  task_tag_include_match: z.enum(["and", "or"]).optional(),
+  /** Number of distinct tags on the task itself (set from the Task tags filter UI). */
+  task_tag_count: IntegerFilterSchema.optional(),
   empty: z.boolean().optional(),
   pending: z.boolean().optional(),
   assigned: z.boolean().optional(),
@@ -181,7 +191,7 @@ export type AnnotationTaskFilter = z.input<typeof AnnotationTaskFilterSchema>;
 
 type ParsedAnnotationTaskFilter = z.infer<typeof AnnotationTaskFilterSchema>;
 
-function soundEventAnnotationTagsForApi(
+function tagFilterEntriesForApi(
   tags: ParsedAnnotationTaskFilter["sound_event_annotation_tag"],
 ) {
   if (tags == null) {
@@ -211,9 +221,10 @@ export function buildAnnotationTaskFilterQueryParams(
   filter: AnnotationTaskFilter,
 ): Record<string, string | number | boolean | undefined> {
   const params = AnnotationTaskFilterSchema.parse(filter) as ParsedAnnotationTaskFilter;
-  const soundEventTags = soundEventAnnotationTagsForApi(
+  const soundEventTags = tagFilterEntriesForApi(
     params.sound_event_annotation_tag,
   );
+  const taskTags = tagFilterEntriesForApi(params.task_tag);
 
   return {
     dataset__lst: params.dataset
@@ -240,6 +251,16 @@ export function buildAnnotationTaskFilterQueryParams(
       params.sound_event_annotation_tag_count?.ge,
     sound_event_annotation_tag_count__le:
       params.sound_event_annotation_tag_count?.le,
+    task_tag__keys: taskTags.includeKeys,
+    task_tag__values: taskTags.includeValues,
+    task_tag__exclude_keys: taskTags.excludeKeys,
+    task_tag__exclude_values: taskTags.excludeValues,
+    task_tag__include_match: params.task_tag_include_match,
+    task_tag_count__eq: params.task_tag_count?.eq,
+    task_tag_count__gt: params.task_tag_count?.gt,
+    task_tag_count__lt: params.task_tag_count?.lt,
+    task_tag_count__ge: params.task_tag_count?.ge,
+    task_tag_count__le: params.task_tag_count?.le,
     sound_event_annotation_count__eq:
       params.sound_event_annotation_count?.eq,
     sound_event_annotation_count__gt:
@@ -329,6 +350,53 @@ const SoundEventTagBulkCountSchema = z.object({
 
 export type SoundEventTagBulkCount = z.infer<typeof SoundEventTagBulkCountSchema>;
 
+const SoundEventVersionTagSchema = z.object({
+  key: z.string(),
+  value: z.string(),
+  /** Detector confidence for this tag, if the version had one. */
+  confidence: z.number().nullish(),
+});
+
+/** An old state of a sound event, replaced by an edit or ended by a delete. */
+const SoundEventVersionSchema = z.object({
+  id: z.number(),
+  /** The event's id; null for GUANO predictions whose event was already gone. */
+  version_of_id: z.number().nullish(),
+  annotation_task_id: z.number(),
+  geometry_type: z.string(),
+  geometry: GeometrySchema,
+  tags: z.array(SoundEventVersionTagSchema),
+  created_by_id: z.string().nullish(),
+  created_by_username: z.string().nullish(),
+  created_on: z.coerce.date(),
+  /** Edit session that produced this state; null for imports. */
+  edit_id: z.string().nullish(),
+  superseded_on: z.coerce.date(),
+  superseded_by_id: z.string().nullish(),
+  superseded_by_username: z.string().nullish(),
+  /** Edit session that replaced this state; null for GUANO versions. */
+  superseded_edit_id: z.string().nullish(),
+  version_reason: z.enum(["edited", "deleted", "guano"]),
+});
+
+/** When a live sound event got its current state. */
+const SoundEventLiveStateSchema = z.object({
+  id: z.number(),
+  edit_id: z.string().nullish(),
+  created_on: z.coerce.date(),
+  created_by_username: z.string().nullish(),
+});
+
+export const SoundEventTaskHistorySchema = z.object({
+  annotation_task_id: z.number(),
+  versions: z.array(SoundEventVersionSchema),
+  live: z.array(SoundEventLiveStateSchema),
+});
+
+export type SoundEventVersion = z.infer<typeof SoundEventVersionSchema>;
+export type SoundEventLiveState = z.infer<typeof SoundEventLiveStateSchema>;
+export type SoundEventTaskHistory = z.infer<typeof SoundEventTaskHistorySchema>;
+
 const DEFAULT_ENDPOINTS = {
   getMany: "/api/v1/annotation_tasks/",
   getIndex: "/api/v1/annotation_tasks/index",
@@ -348,6 +416,7 @@ const DEFAULT_ENDPOINTS = {
   bulkReplaceSoundEventTags: "/api/v1/annotation_tasks/bulk/sound_event_tags/replace/",
   bulkSoundEventTagSummary: "/api/v1/annotation_tasks/bulk/sound_event_tags/summary/",
   bulkDeleteSoundEventsByTag: "/api/v1/annotation_tasks/bulk/sound_events/delete/",
+  getHistory: "/api/v1/annotation_tasks/detail/history/",
 };
 
 export function registerAnnotationTasksAPI(
@@ -385,10 +454,12 @@ export function registerAnnotationTasksAPI(
 
   async function getIndex(
     query: GetAnnotationTasksQuery,
+    signal?: AbortSignal,
   ): Promise<AnnotationTaskIndexPage> {
     const params = GetAnnotationTasksQuerySchema.parse(query);
 
     const response = await instance.get(endpoints.getIndex, {
+      signal,
       params: {
         limit: params.limit,
         offset: params.offset,
@@ -401,10 +472,12 @@ export function registerAnnotationTasksAPI(
 
   async function getStats(
     filter: AnnotationTaskFilter,
+    signal?: AbortSignal,
   ): Promise<AnnotationTaskStats> {
     const params = AnnotationTaskFilterSchema.parse(filter);
 
     const response = await instance.get(endpoints.getStats, {
+      signal,
       params: buildAnnotationTaskFilterQueryParams(params),
     });
     return response.data as AnnotationTaskStats;
@@ -703,6 +776,14 @@ export function registerAnnotationTasksAPI(
     return AnnotationTaskBulkResultSchema.parse(response.data);
   }
 
+  /** Original state of the task's imported sound events and every user edit since. */
+  async function getHistory(annotationTaskId: number): Promise<SoundEventTaskHistory> {
+    const response = await instance.get(endpoints.getHistory, {
+      params: { annotation_task_id: annotationTaskId },
+    });
+    return SoundEventTaskHistorySchema.parse(response.data);
+  }
+
   return {
     getMany,
     getIndex,
@@ -722,5 +803,6 @@ export function registerAnnotationTasksAPI(
     bulkReplaceSoundEventTags,
     bulkSoundEventTagSummary,
     bulkDeleteSoundEventsByTag,
+    getHistory,
   } as const;
 }

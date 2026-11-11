@@ -76,6 +76,7 @@ class FixtureTask(BaseModel):
     start_time: float
     end_time: float
     tags: list[FixtureTag] = Field(default_factory=list)
+    # Read from older fixture files but ignored: the task duration is a column now.
     features: list[FixtureFeature] = Field(default_factory=list)
     sound_event_annotations: list[FixtureSoundEvent] = Field(default_factory=list)
 
@@ -197,19 +198,11 @@ async def export_template_fixture(
     ):
         task_tags.setdefault(r.annotation_task_id, []).append(FixtureTag(key=r.key, value=r.value))
 
-    task_features: dict[int, list[FixtureFeature]] = {}
-    for r in await session.execute(
-        select(models.AnnotationTaskFeature)
-        .where(models.AnnotationTaskFeature.annotation_task_id.in_(task_ids))
-        .order_by(models.AnnotationTaskFeature.name),
-    ):
-        f = r[0]
-        task_features.setdefault(f.annotation_task_id, []).append(FixtureFeature(name=f.name, value=f.value))
-
     events = (
         await session.execute(
             select(sea_t.c.id, sea_t.c.annotation_task_id, sea_t.c.geometry)
-            .where(sea_t.c.annotation_task_id.in_(task_ids))
+            # Live events only; old versions are not part of a fixture.
+            .where(sea_t.c.annotation_task_id.in_(task_ids), sea_t.c.superseded_on.is_(None))
             .order_by(sea_t.c.id),
         )
     ).all()
@@ -269,7 +262,6 @@ async def export_template_fixture(
                 start_time=r.start_time,
                 end_time=r.end_time,
                 tags=task_tags.get(r.id, []),
-                features=task_features.get(r.id, []),
                 sound_event_annotations=events_by_task.get(r.id, []),
             ),
         )
@@ -498,7 +490,6 @@ async def import_template_fixture(
     ).scalars().all()
 
     task_tag_rows = []
-    task_feature_rows = []
     event_rows = []
     event_specs: list[FixtureSoundEvent] = []
     for task, task_id in zip(fixture.tasks, new_task_ids, strict=True):
@@ -506,8 +497,6 @@ async def import_template_fixture(
             task_tag_rows.append(
                 {"annotation_task_id": task_id, "tag_id": tag_ids[t], "created_by_id": created_by_id, "created_on": now},
             )
-        for f in task.features:
-            task_feature_rows.append({"annotation_task_id": task_id, "name": f.name, "value": f.value, "created_on": now})
         for event in task.sound_event_annotations:
             event_rows.append(
                 {
@@ -523,8 +512,6 @@ async def import_template_fixture(
 
     if task_tag_rows:
         await session.execute(insert(models.AnnotationTaskTag.__table__), task_tag_rows)
-    if task_feature_rows:
-        await session.execute(insert(models.AnnotationTaskFeature.__table__), task_feature_rows)
 
     if event_rows:
         new_event_ids = (

@@ -66,7 +66,8 @@ export default function usePagedQuery<T, S extends Object>({
   enabled = true,
 }: {
   name: string;
-  queryFn: (query: GetManyQuery) => Promise<Paginated<T>>;
+  /** `signal` aborts the request when the query is cancelled (if the function passes it on) */
+  queryFn: (query: GetManyQuery, signal?: AbortSignal) => Promise<Paginated<T>>;
   pageSize: number;
   filter: S;
   enabled?: boolean;
@@ -77,7 +78,7 @@ export default function usePagedQuery<T, S extends Object>({
 
   const query = useQuery<Paginated<T>, Error>({
     queryKey,
-    queryFn: () => queryFn({ limit: size, offset: page * size, ...filter }),
+    queryFn: ({ signal }) => queryFn({ limit: size, offset: page * size, ...filter }, signal),
     enabled,
     refetchOnWindowFocus: false,
     placeholderData: keepPreviousData,

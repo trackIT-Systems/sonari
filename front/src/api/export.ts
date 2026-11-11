@@ -11,6 +11,7 @@ const DEFAULT_ENDPOINTS = {
   multibase: "/api/v1/export/multibase/",
   probat: "/api/v1/export/probat/",
   dump: "/api/v1/export/dump/",
+  corrections: "/api/v1/export/corrections/",
   passes: "/api/v1/export/passes/",
   stats: "/api/v1/export/stats/",
   time: "/api/v1/export/time/",
@@ -174,6 +175,22 @@ export function registerExportAPI(
     return { blob, filename };
   }
 
+  async function exportCorrections(
+    annotationProjects: AnnotationProject[],
+  ): Promise<{ blob: Blob; filename: string }> {
+    const params = buildCommonParams({ annotationProjects });
+
+    const response = await instance.get(`${endpoints.corrections}?${params.toString()}`, {
+      responseType: 'blob',
+      withCredentials: true,
+    });
+
+    const filename = extractFilenameFromResponse(response, 'corrections.csv');
+    const blob = createBlobFromResponse(response, 'text/csv');
+
+    return { blob, filename };
+  }
+
   async function exportPasses(
     annotationProjects: AnnotationProject[],
     tags: string[],
@@ -322,6 +339,7 @@ export function registerExportAPI(
     multibase: exportMultiBase,
     probat: exportProBat,
     dump: exportDump,
+    corrections: exportCorrections,
     passes: exportPasses,
     stat: exportStats,
     time: exportTime,

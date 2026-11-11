@@ -7,7 +7,7 @@ import useCanvas from "@/hooks/draw/useCanvas";
 import { clampSamplerate } from "@/hooks/spectrogram/useSpectrogram";
 import useSpectrogramPreviewImage from "@/hooks/spectrogram/useSpectrogramPreviewImage";
 import useStore from "@/store";
-import type { AnnotationTask, SpectrogramWindow } from "@/types";
+import type { AnnotationTask, SpectrogramParameters, SpectrogramWindow } from "@/types";
 import { PREVIEW_CHANNEL_SHORTCUT } from "@/utils/keyboard";
 
 const PREVIEW_HEIGHT = 160;
@@ -129,6 +129,61 @@ function ChannelSwitcher({
 }
 
 /**
+ * What a task's preview requests: the parameters it is drawn with, the image
+ * parameters (those that change the image, the cache key) and the segment the
+ * image covers. Also used to prefetch previews with the very same cache key.
+ */
+export function getPreviewImageRequest(
+  task: Pick<AnnotationTask, "recording" | "recording_id" | "start_time" | "end_time">,
+  savedParameters: SpectrogramParameters,
+  selectedChannel: PreviewChannel | null,
+) {
+  const recording = task.recording;
+  let parameters = savedParameters;
+  if (recording) {
+    const auto = applyAutoSTFT(savedParameters, recording.samplerate);
+    const channel = typeof selectedChannel === "number" ? selectedChannel : auto.channel;
+    const nyquist = clampSamplerate(auto, recording.samplerate) / 2;
+    // Auto STFT overlap is tuned for panning (hundreds of thousands of columns);
+    // for a preview only ~TARGET_COLUMNS are needed. Short tasks get the finest
+    // hop (99% overlap); for longer ones the backend widens the hop, even past
+    // the window size, so it never computes more than TARGET_COLUMNS frames.
+    parameters = {
+      ...auto,
+      // The chosen channel may not exist on this recording
+      channel: channel < recording.channels ? channel : 0,
+      mix_channels: selectedChannel == null ? auto.mix_channels : selectedChannel === "mix",
+      overlap_percent: 99,
+      max_columns: TARGET_COLUMNS,
+      // Rows for the full range, so the part shown (up to PREVIEW_MAX_FREQ) still
+      // gets ~TARGET_ROWS
+      max_rows: Math.round((TARGET_ROWS * nyquist) / Math.min(nyquist, PREVIEW_MAX_FREQ)),
+      lossy: true,
+    };
+  }
+
+  // Frequency lines and the time zoom do not change the image, so they stay out
+  // of the request: they would otherwise be part of the cache key and toggling
+  // a line would download an identical spectrogram again.
+  const imageParameters: SpectrogramParameters = {
+    ...parameters,
+    freqLines: [],
+    time_zoom_automatic: true,
+    time_zoom_duration_seconds: undefined,
+  };
+
+  const samplerate = clampSamplerate(parameters, recording?.samplerate ?? 0);
+  // The image covers up to the Nyquist frequency
+  const segment: SpectrogramWindow = {
+    time: { min: task.start_time, max: task.end_time },
+    freq: { min: 0, max: samplerate / 2 },
+  };
+
+  const previewable = recording != null && task.end_time - task.start_time <= MAX_PREVIEW_DURATION;
+  return { parameters, imageParameters, segment, previewable };
+}
+
+/**
  * Small, static spectrogram of a whole task (full time range, no axes,
  * no sound events), loaded as a single image. Only requested while mounted.
  * It is rendered with the user's saved spectrogram parameters, and their
@@ -161,53 +216,12 @@ export default function AnnotationTaskSpectrogramPreview({
 
   const savedParameters = useStore((state) => state.spectrogramSettings);
 
-  const parameters = useMemo(() => {
-    if (!recording) return savedParameters;
-    const auto = applyAutoSTFT(savedParameters, recording.samplerate);
-    const channel = typeof selectedChannel === "number" ? selectedChannel : auto.channel;
-    const nyquist = clampSamplerate(auto, recording.samplerate) / 2;
-    // Auto STFT overlap is tuned for panning (hundreds of thousands of columns);
-    // for a preview only ~TARGET_COLUMNS are needed. Short tasks get the finest
-    // hop (99% overlap); for longer ones the backend widens the hop, even past
-    // the window size, so it never computes more than TARGET_COLUMNS frames.
-    return {
-      ...auto,
-      // The chosen channel may not exist on this recording
-      channel: channel < recording.channels ? channel : 0,
-      mix_channels: selectedChannel == null ? auto.mix_channels : selectedChannel === "mix",
-      overlap_percent: 99,
-      max_columns: TARGET_COLUMNS,
-      // Rows for the full range, so the part shown (up to PREVIEW_MAX_FREQ) still
-      // gets ~TARGET_ROWS
-      max_rows: Math.round((TARGET_ROWS * nyquist) / Math.min(nyquist, PREVIEW_MAX_FREQ)),
-      lossy: true,
-    };
-  }, [recording, savedParameters, selectedChannel]);
-
-  // Frequency lines and the time zoom do not change the image, so they stay out
-  // of the request: they would otherwise be part of the cache key and toggling
-  // a line would download an identical spectrogram again.
-  const imageParameters = useMemo(
-    () => ({
-      ...parameters,
-      freqLines: [],
-      time_zoom_automatic: true,
-      time_zoom_duration_seconds: undefined,
-    }),
-    [parameters],
+  const { parameters, imageParameters, segment } = useMemo(
+    () => getPreviewImageRequest(task, savedParameters, selectedChannel),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- only these fields of the task matter
+    [task.recording, task.recording_id, task.start_time, task.end_time, savedParameters, selectedChannel],
   );
-
-  const samplerate = clampSamplerate(parameters, recording?.samplerate ?? 0);
-
-  // The image covers up to the Nyquist frequency; the preview shows up to maxFreq
-  const segment = useMemo<SpectrogramWindow>(
-    () => ({
-      time: { min: task.start_time, max: task.end_time },
-      freq: { min: 0, max: samplerate / 2 },
-    }),
-    [task.start_time, task.end_time, samplerate],
-  );
-  const maxFreq = Math.min(samplerate / 2, PREVIEW_MAX_FREQ);
+  const maxFreq = Math.min(segment.freq.max, PREVIEW_MAX_FREQ);
   const visible = useMemo<SpectrogramWindow>(
     () => ({ time: segment.time, freq: { min: 0, max: maxFreq } }),
     [segment.time, maxFreq],

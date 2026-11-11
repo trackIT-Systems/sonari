@@ -31,7 +31,8 @@ type AnnotationState = {
   /** Id of the linked task when it is not matched by the active filter */
   filterMismatchTaskId: number | null;
   _filter: Filter<AnnotationTaskFilter>;
-  handleCurrentSegmentsLoaded: () => void;
+  /** The tasks `nextTask` goes to, in order (the next one first) */
+  upcomingTasks: AnnotationTaskIndex[];
 };
 
 type AnnotationControls = {
@@ -55,6 +56,9 @@ type AnnotationControls = {
 };
 
 const empty = {};
+
+/** How many of the next tasks `upcomingTasks` lists (e.g. to preload them) */
+const UPCOMING_TASKS = 2;
 
 export default function useAnnotateTasks({
   filter: initialFilter = empty,
@@ -206,15 +210,21 @@ export default function useAnnotateTasks({
     return items.length > 0;
   }, [index, items.length, filteredOutIndex]);
 
+  // The task after a filtered-out one has moved up into its slot
+  const nextIndex = index !== -1 ? index + 1 : filteredOutIndex ?? 0;
+
+  const upcomingTasks = useMemo(
+    () => (hasNextTask ? items.slice(nextIndex, nextIndex + UPCOMING_TASKS) : []),
+    [hasNextTask, items, nextIndex],
+  );
+
   const nextTask = useCallback(() => {
     if (!hasNextTask) return;
-    // The task after a filtered-out one has moved up into its slot
-    const nextIndex = index !== -1 ? index + 1 : filteredOutIndex ?? 0;
     const nextTaskIndex = items[nextIndex];
     // Cast minimal index to AnnotationTask for navigation
     // Only id is actually used by onChangeTask
     goToTask(nextTaskIndex as unknown as AnnotationTask);
-  }, [index, items, hasNextTask, goToTask, filteredOutIndex]);
+  }, [items, hasNextTask, goToTask, nextIndex]);
 
   const hasPrevTask = useMemo(() => {
     if (index !== -1) {
@@ -239,18 +249,6 @@ export default function useAnnotateTasks({
     // Only id is actually used by onChangeTask
     goToTask(prevTaskIndex as unknown as AnnotationTask);
   }, [index, items, hasPrevTask, goToTask, filteredOutIndex]);
-
-  const loadedTasksRef = useRef<Set<number>>(new Set());
-  //const handleCurrentSegmentsLoaded = useCallback(() => {}, []);
-  const handleCurrentSegmentsLoaded = useCallback(async () => {
-    if (!items || index === -1 || index >= items.length - 1) return;
-    if (!hasNextTask) return;
-
-    const nextTask = items[index + 1];
-    if (loadedTasksRef.current.has(nextTask.id)) return;
-    loadedTasksRef.current.add(nextTask.id);
-
-  }, [items, index, hasNextTask]);
 
   const { set: setFilterKeyValue } = filter;
   const setFilter = useCallback(
@@ -365,7 +363,7 @@ export default function useAnnotateTasks({
     applyFilterForMismatch,
     keepOriginalTask,
     filterMismatchTaskId,
-    handleCurrentSegmentsLoaded,
+    upcomingTasks,
     _filter: filter,
   };
 }

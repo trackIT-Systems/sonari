@@ -2,14 +2,14 @@
 
 from typing import Annotated
 
-from fastapi import Depends, HTTPException
+from fastapi import BackgroundTasks, Depends, HTTPException, Query
 from soundevent.data import AnnotationState
 from sqlalchemy import func, select
 
 from sonari import api, models, schemas
 from sonari.filters.annotation_projects import AnnotationProjectFilter
 from sonari.filters.guided_tour import ExcludeGuidedToursFilter
-from sonari.routes.dependencies import Session
+from sonari.routes.dependencies import Session, SonariSettings
 from sonari.routes.dependencies.auth import CurrentUser, create_authenticated_router
 from sonari.routes.types import Limit, Offset
 from sonari.services.guided_tour import (
@@ -19,6 +19,8 @@ from sonari.services.guided_tour import (
     get_guided_tour_progress,
     get_user_guided_tours,
 )
+from sonari.services import call_level_jobs, prediction_history
+from sonari.services.prediction_corrections import get_prediction_corrections, summarize_corrections
 
 __all__ = [
     "annotation_projects_router",
@@ -282,3 +284,106 @@ async def get_annotation_project_species_counts(
         session,
         annotation_project_id,
     )
+
+
+@annotation_projects_router.get(
+    "/detail/prediction_corrections/",
+    response_model=schemas.PredictionCorrectionStats,
+)
+async def get_annotation_project_prediction_corrections(
+    session: Session,
+    settings: SonariSettings,
+    annotation_project_id: int,
+):
+    """Compare completed and verified tasks with the detector predictions in their GUANO files."""
+    annotation_project = await api.annotation_projects.get(session, annotation_project_id)
+    corrections = await get_prediction_corrections(session, annotation_project, settings.audio_dir)
+    return summarize_corrections(corrections)
+
+
+@annotation_projects_router.get(
+    "/detail/prediction_history/",
+    response_model=schemas.PredictionHistoryStats,
+)
+async def get_annotation_project_prediction_history(
+    session: Session,
+    annotation_project_id: int,
+):
+    """What reviewers did with the predictions in completed and verified tasks, from the edit history."""
+    await api.annotation_projects.get(session, annotation_project_id)
+    return await prediction_history.get_prediction_history_stats(session, annotation_project_id)
+
+
+@annotation_projects_router.post(
+    "/detail/prediction_history/backfill/",
+    response_model=schemas.PredictionBackfillStatus,
+)
+async def start_annotation_project_prediction_backfill(
+    session: Session,
+    settings: SonariSettings,
+    background_tasks: BackgroundTasks,
+    annotation_project_id: int,
+):
+    """Start creating originals from the GUANO files, for edits made before the history existed."""
+    await api.annotation_projects.get(session, annotation_project_id)
+    status = await prediction_history.start_guano_backfill(session, annotation_project_id)
+    background_tasks.add_task(prediction_history.run_guano_backfill, annotation_project_id, settings.audio_dir)
+    return status
+
+
+async def _project_with_call_boxes(session, annotation_project_id: int) -> schemas.AnnotationProject:
+    project = await api.annotation_projects.get(session, annotation_project_id)
+    if not project.has_call_boxes:
+        raise HTTPException(
+            status_code=400,
+            detail=f"The sound events of {project.detector} projects are not boxes around calls.",
+        )
+    return project
+
+
+async def _tag_id(session, tag_key: str, tag_value: str) -> int:
+    tag_id = await session.scalar(
+        select(models.Tag.id).where(models.Tag.key == tag_key, models.Tag.value == tag_value)
+    )
+    if tag_id is None:
+        raise HTTPException(status_code=404, detail=f"No tag {tag_key}={tag_value}")
+    return tag_id
+
+
+@annotation_projects_router.get(
+    "/detail/reference_calls/",
+    response_model=schemas.ReferenceCalls,
+)
+async def get_annotation_project_reference_calls(
+    session: Session,
+    annotation_project_id: int,
+    tag_key: str,
+    tag_value: str,
+    limit: Annotated[int, Query(ge=1, le=100)] = 20,
+):
+    """The clearest, loudest calls of a tag found so far, from as many recordings as possible."""
+    await _project_with_call_boxes(session, annotation_project_id)
+    tag_id = await _tag_id(session, tag_key, tag_value)
+    return await call_level_jobs.get_reference_calls(session, annotation_project_id, tag_id, limit)
+
+
+@annotation_projects_router.post(
+    "/detail/reference_calls/",
+    response_model=schemas.ReferenceCalls,
+)
+async def start_annotation_project_reference_calls(
+    session: Session,
+    settings: SonariSettings,
+    background_tasks: BackgroundTasks,
+    annotation_project_id: int,
+    tag_key: str,
+    tag_value: str,
+):
+    """Start searching for reference calls of the tag; a rerun searches further recordings."""
+    await _project_with_call_boxes(session, annotation_project_id)
+    tag_id = await _tag_id(session, tag_key, tag_value)
+    await call_level_jobs.start_reference_search(session, annotation_project_id, tag_id)
+    background_tasks.add_task(
+        call_level_jobs.run_reference_search, annotation_project_id, tag_id, settings.audio_dir
+    )
+    return await call_level_jobs.get_reference_calls(session, annotation_project_id, tag_id)

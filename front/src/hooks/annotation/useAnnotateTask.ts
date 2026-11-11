@@ -14,6 +14,7 @@ import useCreateWaveformMeasurement from "@/hooks/draw/useCreateWaveformMeasurem
 import { ABORT_SHORTCUT } from "@/utils/keyboard";
 import { clipGeometryToBounds } from "@/utils/geometry";
 import { getPassSiblingIds } from "@/utils/passes";
+import { endEditSession, startEditSession } from "@/utils/editSession";
 
 import type {
   Geometry,
@@ -754,6 +755,15 @@ function useAnnotateTaskState({
   const [mode, setMode] = useState<AnnotateMode>(initialMode);
   const [geometryType, setGeometryType] = useState<GeometryType>(initialGeometryType);
   const [selectedSoundEventAnnotation, setSelectedSoundEventAnnotation] = useState<SoundEventAnnotation | null>(initialSelectedSoundEventAnnotation);
+
+  // One history session per event in edit mode: its resizes and tag changes are merged
+  // into their net effect. Selecting another event or leaving edit mode ends it.
+  const editedSoundEventAnnotationId = mode === "edit" ? selectedSoundEventAnnotation?.id ?? null : null;
+  useEffect(() => {
+    if (editedSoundEventAnnotationId == null) return;
+    startEditSession();
+    return () => endEditSession();
+  }, [editedSoundEventAnnotationId]);
 
   const changeMode = useCallback(
     (mode: AnnotateMode) => {

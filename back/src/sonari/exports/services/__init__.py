@@ -1,5 +1,6 @@
 """Service layer for export functionality."""
 
+from .corrections_service import CorrectionsService
 from .dump_service import DumpService
 from .multibase_service import MultiBaseService
 from .probat_service import ProBatService
@@ -9,6 +10,7 @@ from .time_service import TimeService
 from .yearly_activity_service import YearlyActivityService
 
 __all__ = [
+    "CorrectionsService",
     "MultiBaseService",
     "ProBatService",
     "DumpService",

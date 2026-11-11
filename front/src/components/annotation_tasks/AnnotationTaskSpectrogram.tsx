@@ -5,7 +5,7 @@ import { useKeyPressEvent, useMeasure } from "react-use";
 import toast from "react-hot-toast";
 import classNames from "classnames";
 
-import { DEFAULT_SPECTROGRAM_PARAMETERS, applyAutoSTFT } from "@/api/spectrograms";
+import { DEFAULT_SPECTROGRAM_PARAMETERS } from "@/api/spectrograms";
 import AnnotationControls from "@/components/annotation_tasks/AnnotationControls";
 import FullscreenSelectedSoundEventOverlay from "@/components/annotation_tasks/FullscreenSelectedSoundEventOverlay";
 import MeasurementControls from "./MeasurementControls";
@@ -22,12 +22,14 @@ import TagVisibilityControls from "@/components/annotation_tasks/TagVisibilityCo
 import useAnnotateTask from "@/hooks/annotation/useAnnotateTask";
 import useAudio from "@/hooks/audio/useAudio";
 import useCanvas from "@/hooks/draw/useCanvas";
-import useSpectrogram, { clampSamplerate } from "@/hooks/spectrogram/useSpectrogram";
+import useTimelineDraw from "@/hooks/annotation/useTimelineDraw";
+import useSpectrogram from "@/hooks/spectrogram/useSpectrogram";
 import useSpectrogramTrackAudio from "@/hooks/spectrogram/useSpectrogramTrackAudio";
-import { getInitialViewingWindow } from "@/utils/windows";
+import { getAnnotateViewWindows } from "@/components/annotation_tasks/annotateViewImages";
 import useKeyFilter from "@/hooks/utils/useKeyFilter";
 import { RESET_ZOOM_SHORTCUT, SAVE_DEFAULT_ZOOM_SHORTCUT } from "@/utils/keyboard";
 import { getPassSiblingIds } from "@/utils/passes";
+import type { TimelinePreview } from "@/utils/soundEventTimeline";
 import type { TagVisibilityFilter } from "@/utils/passes";
 import type { AnnotateMode } from "@/hooks/annotation/useAnnotateTask";
 import type { MotionMode as SpectrogramMode } from "@/hooks/spectrogram/useSpectrogramMotions";
@@ -75,7 +77,7 @@ function audioChannelFor(
 export default function AnnotationTaskSpectrogram({
   annotationTask,
   parameters = DEFAULT_SPECTROGRAM_PARAMETERS,
-  disabled = false,
+  disabled: disabledProp = false,
   withBar = true,
   withPlayer = true,
   withControls = true,
@@ -110,6 +112,7 @@ export default function AnnotationTaskSpectrogram({
   onRemoveSoundEventAnnotation,
   onUpdateSoundEventAnnotation,
   soundEventAnnotationsOverride,
+  timelinePreview,
   selectedSoundEventAnnotationTask,
   onDeselectSoundEventAnnotation,
   mainSpectrogramWindow,
@@ -158,6 +161,8 @@ export default function AnnotationTaskSpectrogram({
   onRemoveSoundEventAnnotation?: (annotation: SoundEventAnnotation) => void;
   onUpdateSoundEventAnnotation?: (params: { soundEventAnnotation: SoundEventAnnotation; geometry: Geometry }) => void;
   soundEventAnnotationsOverride?: SoundEventAnnotation[];
+  /** A past edit history step to show instead of the current events; read-only. */
+  timelinePreview?: TimelinePreview | null;
   /** Task that owns the selected sound event (main vs source task) */
   selectedSoundEventAnnotationTask?: AnnotationTask | null;
   onDeselectSoundEventAnnotation?: () => void;
@@ -166,6 +171,8 @@ export default function AnnotationTaskSpectrogram({
   onTagVisibilityChange: (visibility: TagVisibilityFilter) => void;
 }) {
   
+  // A past edit history step is read-only.
+  const disabled = disabledProp || timelinePreview != null;
   const [isAnnotating, setIsAnnotating] = useState(false);
   const spectrogramCanvasRef = useRef<HTMLCanvasElement>(null);
   const waveformCanvasRef = useRef<HTMLCanvasElement>(null);
@@ -178,11 +185,17 @@ export default function AnnotationTaskSpectrogram({
   // recompute everything below and reset the zoom and unsaved parameters.
   const recordingSamplerate = recording?.samplerate;
 
-  // Apply auto STFT calculation to parameters if enabled
-  const effectiveParameters = useMemo(() => {
-    if (recordingSamplerate == null) return parameters;
-    return applyAutoSTFT(parameters, recordingSamplerate);
-  }, [parameters, recordingSamplerate]);
+  // Parameters (auto STFT applied), bounds and initial window, derived as the
+  // prefetch of upcoming tasks does (see annotateViewImages)
+  const view = useMemo(
+    () => getAnnotateViewWindows(
+      { start_time: taskStartTime, end_time: taskEndTime },
+      recordingSamplerate!,
+      parameters,
+    ),
+    [parameters, recordingSamplerate, taskStartTime, taskEndTime],
+  );
+  const effectiveParameters = recordingSamplerate == null ? parameters : view.effectiveParameters;
   
   const taskSoundEventAnnotations = useMemo(
     () => soundEventAnnotationsOverride ?? annotationTask?.sound_event_annotations ?? [],
@@ -194,14 +207,7 @@ export default function AnnotationTaskSpectrogram({
    * Constrains the spectrogram to the annotation task's time range and
    * the effective frequency range based on current parameters.
    */
-  const taskBounds = useMemo<SpectrogramWindow>(() => {
-    const samplerate = clampSamplerate(effectiveParameters, recordingSamplerate!)
-    
-    return {
-      time: { min: taskStartTime, max: taskEndTime },
-      freq: { min: 0, max: samplerate / 2 },
-    };
-  }, [taskStartTime, taskEndTime, effectiveParameters, recordingSamplerate]);
+  const taskBounds = view.bounds;
 
   /**
    * Initial window - Determines the starting view when component mounts, based
@@ -209,16 +215,7 @@ export default function AnnotationTaskSpectrogram({
    * shown: hiding it (h) used to reset the view to the full task, so showing it
    * again came back at a different zoom level.
    */
-  const initial = useMemo(
-    () =>
-      getInitialViewingWindow({
-        startTime: taskStartTime,
-        endTime: taskEndTime,
-        samplerate: clampSamplerate(effectiveParameters, recordingSamplerate!),
-        parameters: effectiveParameters,
-      }),
-    [recordingSamplerate, taskStartTime, taskEndTime, effectiveParameters],
-  );
+  const initial = view.initial;
 
   const getPlaybackBounds = useCallback(() => {
     if (!selectedSoundEventAnnotation) {
@@ -424,7 +421,7 @@ export default function AnnotationTaskSpectrogram({
     selectedTag,
     onModeChange: handleAnnotationModeChange,
     onDeselect: handleAnnotationDeselect,
-    active: isAnnotating && !audio.isPlaying,
+    active: isAnnotating && !audio.isPlaying && timelinePreview == null,
     onSelectSoundEventAnnotation,
     disabled,
     withSoundEvent,
@@ -474,6 +471,18 @@ export default function AnnotationTaskSpectrogram({
   // Draw progressively: chunks appear as they arrive. Skipping the draw while
   // any visible chunk is pending would freeze the view (and the playhead)
   // until the slowest request finished.
+  const drawTimeline = useTimelineDraw({ window: spectrogram.window, preview: timelinePreview });
+  const drawEvents = useCallback(
+    (ctx: CanvasRenderingContext2D) => {
+      if (timelinePreview != null) {
+        if (withSoundEvent) drawTimeline(ctx);
+      } else {
+        annotate?.drawSpectrogram(ctx);
+      }
+    },
+    [timelinePreview, withSoundEvent, drawTimeline, annotate],
+  );
+
   const drawSpectrogramCanvas = useMemo(() => {
     const cursor = spectrogramIsLoading ? "wait" : "default";
     if (trackingAudio) {
@@ -481,7 +490,7 @@ export default function AnnotationTaskSpectrogram({
         ctx.canvas.style.cursor = cursor;
         drawSpectrogram(ctx);
         drawTrackAudio(ctx);
-        annotate?.drawSpectrogram(ctx);
+        drawEvents(ctx);
       };
     }
     return (ctx: CanvasRenderingContext2D) => {
@@ -489,13 +498,13 @@ export default function AnnotationTaskSpectrogram({
       drawSpectrogram(ctx);
       // Draw the onset line even when not playing
       drawOnsetAt?.(ctx, audio.currentTime);
-      annotate?.drawSpectrogram(ctx);
+      drawEvents(ctx);
     };
   }, [
     drawSpectrogram,
     drawTrackAudio,
     drawOnsetAt,
-    annotate,
+    drawEvents,
     spectrogramIsLoading,
     trackingAudio,
     audio.currentTime,

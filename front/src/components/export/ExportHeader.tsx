@@ -46,6 +46,14 @@ export default function ExportHeader() {
                             },
                         },
                         {
+                            id: "corrections",
+                            title: "Corrections",
+                            isActive: selectedLayoutSegment === "corrections",
+                            onClick: () => {
+                                router.push(`/export/corrections/?${params.toString()}`);
+                            },
+                        },
+                        {
                             id: "yearly-activity",
                             title: "Activity",
                             isActive: selectedLayoutSegment === "yearly-activity",

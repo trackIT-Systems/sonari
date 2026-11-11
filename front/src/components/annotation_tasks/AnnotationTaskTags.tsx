@@ -280,6 +280,66 @@ function TagAddPanel({
 }
 
 
+/** Every tag of the sound events with how many carry it (hidden tags left out). */
+export function countSoundEventTags(
+  soundEventAnnotations: SoundEventAnnotation[],
+  tagVisibility?: TagVisibilityFilter,
+): TagCount[] {
+  const tagCounts = new Map<string, TagCount>();
+  for (const tag of soundEventAnnotations.flatMap((event) => event.tags || [])) {
+    if (tagVisibility && !isTagVisible(tag, tagVisibility)) continue;
+    const key = `${tag.key}-${tag.value}`;
+    const existing = tagCounts.get(key);
+    if (existing) existing.count++;
+    else tagCounts.set(key, { tag, count: 1 });
+  }
+  return Array.from(tagCounts.values());
+}
+
+/**
+ * The "Sound event tags" card of the annotate view in one line, for the full
+ * page view: every tag with its count, scrolling sideways when there are many.
+ * The x on a tag removes it, as on the card.
+ */
+export function SoundEventTagStrip({
+  soundEventAnnotations,
+  tagVisibility,
+  onRemoveTag,
+}: {
+  soundEventAnnotations: SoundEventAnnotation[];
+  tagVisibility?: TagVisibilityFilter;
+  onRemoveTag?: (tag: Tag) => void;
+}) {
+  const tagsWithCount = useMemo(
+    () => countSoundEventTags(soundEventAnnotations, tagVisibility),
+    [soundEventAnnotations, tagVisibility],
+  );
+  return (
+    <div
+      aria-label="Sound event tags"
+      className="flex min-w-0 shrink-0 items-center gap-2 rounded-md border border-stone-200 bg-stone-50 px-2 py-1 dark:border-stone-700 dark:bg-stone-800"
+    >
+      <TagsIcon className="h-4 w-4 shrink-0 text-stone-500" aria-hidden />
+      {tagsWithCount.length === 0 ? (
+        <span className="text-xs text-stone-500">No sound event tags</span>
+      ) : (
+        <div className="flex min-w-0 flex-1 flex-nowrap items-center gap-1 overflow-x-auto">
+          {tagsWithCount.map(({ tag, count }) => (
+            <TagComponent
+              key={getTagKey(tag)}
+              tag={tag}
+              count={count}
+              compact
+              className="shrink-0"
+              onClose={onRemoveTag ? () => onRemoveTag(tag) : undefined}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 /** Tag menu opened by a keyboard shortcut. */
 type TagOverlay = "replace" | "add" | "addToTagged" | "addUntagged";
 
@@ -293,6 +353,7 @@ export default function AnnotationTaskTags({
   selectedSoundEventAnnotations,
   tagVisibility,
   headless = false,
+  onDeleteSoundEventsByTag,
 }: {
   annotationTask: AnnotationTask;
   onReplaceTagInSoundEventAnnotations?: (oldTag: Tag | null, newTag: Tag | null, selectedSoundEventAnnotation?: SoundEventAnnotation | null) => void;
@@ -305,6 +366,8 @@ export default function AnnotationTaskTags({
   tagVisibility?: TagVisibilityFilter;
   /** Render no card, only the shortcut-driven popovers (full page view) */
   headless?: boolean;
+  /** Open the "delete sound events by tag" picker (Shift + d) */
+  onDeleteSoundEventsByTag?: () => void;
 }) {
 
   /**
@@ -364,27 +427,10 @@ export default function AnnotationTaskTags({
   }, [overlay]);
 
   // This always shows all tags in the task
-  const tagsWithCount = useMemo(() => {
-    if (!annotationTask.sound_event_annotations) return [];
-
-    const allTags = annotationTask.sound_event_annotations.flatMap(event => event.tags || []);
-    const tagCounts = new Map<string, TagCount>();
-
-    allTags.forEach(tag => {
-      if (tagVisibility && !isTagVisible(tag, tagVisibility)) {
-        return;
-      }
-      const key = `${tag.key}-${tag.value}`;
-      const existing = tagCounts.get(key);
-      if (existing) {
-        existing.count++;
-      } else {
-        tagCounts.set(key, { tag, count: 1 });
-      }
-    });
-
-    return Array.from(tagCounts.values());
-  }, [annotationTask, tagVisibility]);
+  const tagsWithCount = useMemo(
+    () => countSoundEventTags(annotationTask.sound_event_annotations ?? [], tagVisibility),
+    [annotationTask, tagVisibility],
+  );
 
   // This shows tags for the popover menus - either all tags or just selected annotation tags
   const popoverTagsWithCount = useMemo(() => {
@@ -669,6 +715,41 @@ export default function AnnotationTaskTags({
           );
         }}
       </Popover>
+      {onDeleteSoundEventsByTag && (
+        <div className="group relative">
+          <Button
+            mode="text"
+            variant="danger"
+            type="button"
+            autoFocus={false}
+            // Don't keep the focus: a focused button blocks the shortcuts
+            onMouseDown={(event) => event.preventDefault()}
+            onClick={onDeleteSoundEventsByTag}
+          >
+            Delete events
+          </Button>
+          <div
+            className="
+          opacity-0 scale-95 group-hover:opacity-100 group-hover:scale-100
+          transition duration-100 ease-out
+          pointer-events-none
+          absolute top-full right-0 mt-2
+          rounded p-2 shadow-lg
+          bg-stone-50 dark:bg-stone-700
+          text-stone-600 dark:text-stone-400
+          text-sm
+          z-50 whitespace-nowrap
+        "
+          >
+            <div className="inline-flex gap-2 items-center">
+              Delete sound events tagged only with a tag
+              <div className="text-xs">
+                <KeyboardKey code={`${getSpecialKeyLabel("Shift")} d`} />
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 

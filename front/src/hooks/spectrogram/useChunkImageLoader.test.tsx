@@ -31,6 +31,33 @@ function loadedFor(image: HTMLImageElement | null) {
 }
 
 describe("useChunkImageLoader", () => {
+  it("loads again at once, without counting a failure, when a joined load was cancelled by someone else", async () => {
+    const chunks = layout(1, 1);
+    let calls = 0;
+    const started = Date.now();
+    const { result } = renderHook(() =>
+      useChunkImageLoader({
+        allChunks: chunks,
+        visibleChunks: chunks,
+        chunksToLoad: chunks,
+        resetKey: "params",
+        enabled: true,
+        load: async (chunk) => {
+          calls += 1;
+          // E.g. a prefetch of the same image, dropped from its queue
+          if (calls === 1) throw new DOMException("Aborted while queued", "AbortError");
+          return imageFor(chunk);
+        },
+        maxConcurrent: 1,
+      }),
+    );
+    await waitFor(() => expect(result.current.chunks).toHaveLength(1));
+    expect(calls).toBe(2);
+    expect(result.current.isError).toBe(false);
+    // No retry backoff (the first is 500 ms)
+    expect(Date.now() - started).toBeLessThan(400);
+  });
+
   it("never shows an image at the position of another layout's chunk", async () => {
     const fine = layout(10, 10);
     const coarse = layout(10, 2);

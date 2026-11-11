@@ -6,10 +6,11 @@ from fastapi import APIRouter, Depends
 
 from sonari import api, schemas
 from sonari.filters.sound_event_annotations import SoundEventAnnotationFilter
-from sonari.routes.dependencies import Session
+from sonari.routes.dependencies import CurrentEdit, Session
 from sonari.routes.dependencies.auth import CurrentUser, create_authenticated_router
 from sonari.routes.dependencies.settings import SonariSettings
 from sonari.routes.types import Limit, Offset
+from sonari.services import sound_event_history as history
 
 __all__ = [
     "get_sound_event_annotations_router",
@@ -27,6 +28,7 @@ def get_sound_event_annotations_router(settings: SonariSettings) -> APIRouter:
     async def create_annotation(
         session: Session,
         user: CurrentUser,
+        edit: CurrentEdit,
         annotation_task_id: int,
         data: schemas.SoundEventAnnotationCreate,
     ):
@@ -43,6 +45,7 @@ def get_sound_event_annotations_router(settings: SonariSettings) -> APIRouter:
             geometry=data.geometry,
             created_by=user,
         )
+        await history.mark_produced(session, [sound_event_annotation.id], edit)
 
         # Add tags
         for tag_data in data.tags:
@@ -113,6 +116,7 @@ def get_sound_event_annotations_router(settings: SonariSettings) -> APIRouter:
     async def update_annotation(
         session: Session,
         user: CurrentUser,
+        edit: CurrentEdit,
         sound_event_annotation_id: int,
         data: schemas.SoundEventAnnotationUpdate,
     ):
@@ -123,6 +127,8 @@ def get_sound_event_annotations_router(settings: SonariSettings) -> APIRouter:
             include_tags=True,
             include_features=True,
         )
+        before = sound_event_annotation
+        pending = await history.capture(session, [sound_event_annotation.id], edit)
 
         # Update geometry
         sound_event_annotation = await api.sound_event_annotations.update_geometry(
@@ -137,6 +143,8 @@ def get_sound_event_annotations_router(settings: SonariSettings) -> APIRouter:
             sound_event_annotation,
             user,
         )
+        if history.geometry_bounds(before.geometry) != history.geometry_bounds(sound_event_annotation.geometry):
+            await history.save(session, pending, edit)
 
         await session.commit()
         return sound_event_annotation
@@ -147,6 +155,7 @@ def get_sound_event_annotations_router(settings: SonariSettings) -> APIRouter:
     )
     async def delete_annotation(
         session: Session,
+        edit: CurrentEdit,
         sound_event_annotation_id: int,
     ):
         """Delete a sound event annotation."""
@@ -157,6 +166,7 @@ def get_sound_event_annotations_router(settings: SonariSettings) -> APIRouter:
             include_features=True,
             include_tags=True,
         )
+        await history.record_deleted(session, [sound_event_annotation.id], edit)
         sound_event_annotation = await api.sound_event_annotations.delete(
             session,
             sound_event_annotation,
@@ -174,6 +184,7 @@ def get_sound_event_annotations_router(settings: SonariSettings) -> APIRouter:
         key: str,
         value: str,
         user: CurrentUser,
+        edit: CurrentEdit,
     ):
         """Add a tag to a sound event annotation."""
         sound_event_annotation = await api.sound_event_annotations.get(
@@ -183,12 +194,16 @@ def get_sound_event_annotations_router(settings: SonariSettings) -> APIRouter:
             include_features=True,
         )
         tag = await api.tags.get(session, (key, value))
+        had_tag = any((t.key, t.value) == (tag.key, tag.value) for t in sound_event_annotation.tags)
+        pending = await history.capture(session, [sound_event_annotation.id], edit)
         sound_event_annotation = await api.sound_event_annotations.add_tag(
             session,
             sound_event_annotation,
             tag,
             user,
         )
+        if not had_tag:
+            await history.save(session, pending, edit)
 
         # Mark as edited by user (remove confidence and update ownership)
         sound_event_annotation = await api.sound_event_annotations.mark_as_edited_by_user(
@@ -215,6 +230,7 @@ def get_sound_event_annotations_router(settings: SonariSettings) -> APIRouter:
         key: str,
         value: str,
         user: CurrentUser,
+        edit: CurrentEdit,
     ):
         """Remove a tag from a sound event annotation."""
         sound_event_annotation = await api.sound_event_annotations.get(
@@ -224,11 +240,15 @@ def get_sound_event_annotations_router(settings: SonariSettings) -> APIRouter:
             include_features=True,
         )
         tag = await api.tags.get(session, (key, value))
+        had_tag = any((t.key, t.value) == (tag.key, tag.value) for t in sound_event_annotation.tags)
+        pending = await history.capture(session, [sound_event_annotation.id], edit)
         sound_event_annotation = await api.sound_event_annotations.remove_tag(
             session,
             sound_event_annotation,
             tag,
         )
+        if had_tag:
+            await history.save(session, pending, edit)
 
         # Mark as edited by user (remove confidence and update ownership)
         sound_event_annotation = await api.sound_event_annotations.mark_as_edited_by_user(

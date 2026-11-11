@@ -18,6 +18,7 @@ import type {
 } from "@/hooks/annotation/annotationHistoryTypes";
 import { MAX_UNDO_STACK } from "@/hooks/annotation/annotationHistoryTypes";
 import type { Geometry, SoundEventAnnotation, Tag } from "@/types";
+import { withEditSession } from "@/utils/editSession";
 
 function createToken(): SoundEventToken {
   return crypto.randomUUID();
@@ -158,7 +159,8 @@ export default function useAnnotationHistory({
     async <T,>(label: string, fn: () => Promise<T>): Promise<T> => {
       batchRef.current = { label, patches: [] };
       try {
-        const result = await fn();
+        // A grouped action is one entry in the server-side history too.
+        const result = await withEditSession(fn);
         const batch = batchRef.current;
         if (batch && batch.patches.length > 0) {
           pushCommand({

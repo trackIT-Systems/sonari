@@ -1,9 +1,14 @@
+import { useCallback } from "react";
 import { type AxiosError } from "axios";
 
 import api from "@/app/api";
 import useObject from "@/hooks/utils/useObject";
 
 import type { AnnotationTask } from "@/types";
+import {
+  invalidateAnnotationTaskQueries,
+  scheduleAnnotationTaskQueriesInvalidation,
+} from "./invalidateAnnotationTaskQueries";
 import useSoundEventMutations from "./useSoundEventMutations";
 
 export default function useAnnotationTask({
@@ -68,57 +73,57 @@ export default function useAnnotationTask({
     mutationFn: api.annotationTasks.delete,
   });
 
+  // The badge endpoints return the task with its badges only (they load no
+  // sound events, so they stay cheap): take over just the badges. Badges are
+  // set in quick succession while annotating, so the task lists, index and
+  // stats are refetched once the badges pause, not after each one.
+  const onBadgesChanged = useCallback(
+    (updated: AnnotationTask) => {
+      client.setQueryData<AnnotationTask>(["annotation_task", updated.id], (current) =>
+        current == null ? current : { ...current, status_badges: updated.status_badges },
+      );
+      scheduleAnnotationTaskQueriesInvalidation(client, "status");
+    },
+    [client],
+  );
+
   const addBadge = useMutation({
     mutationFn: api.annotationTasks.addBadge,
-    onSuccess: () => {
-      client.invalidateQueries({ queryKey: ["annotation_tasks"] });
-      client.invalidateQueries({ queryKey: ["annotation_tasks_index"] });
-      client.invalidateQueries({ queryKey: ["annotation_tasks_stats"] });
-    },
+    withUpdate: false,
+    onSuccess: onBadgesChanged,
   });
 
   const removeBadge = useMutation({
     mutationFn: api.annotationTasks.removeBadge,
-    onSuccess: () => {
-      client.invalidateQueries({ queryKey: ["annotation_tasks"] });
-      client.invalidateQueries({ queryKey: ["annotation_tasks_index"] });
-      client.invalidateQueries({ queryKey: ["annotation_tasks_stats"] });
-    },
+    withUpdate: false,
+    onSuccess: onBadgesChanged,
   });
 
   const addNote = useMutation({
     mutationFn: api.annotationTasks.addNote,
     onSuccess: () => {
-      client.invalidateQueries({ queryKey: ["annotation_tasks"] });
-      client.invalidateQueries({ queryKey: ["annotation_tasks_index"] });
-      client.invalidateQueries({ queryKey: ["annotation_tasks_stats"] });
+      invalidateAnnotationTaskQueries(client, "note");
     },
   });
 
   const removeNote = useMutation({
     mutationFn: api.annotationTasks.removeNote,
     onSuccess: () => {
-      client.invalidateQueries({ queryKey: ["annotation_tasks"] });
-      client.invalidateQueries({ queryKey: ["annotation_tasks_index"] });
-      client.invalidateQueries({ queryKey: ["annotation_tasks_stats"] });
+      invalidateAnnotationTaskQueries(client, "note");
     },
   });
 
   const addTag = useMutation({
     mutationFn: api.annotationTasks.addTag,
     onSuccess: () => {
-      client.invalidateQueries({ queryKey: ["annotation_tasks"] });
-      client.invalidateQueries({ queryKey: ["annotation_tasks_index"] });
-      client.invalidateQueries({ queryKey: ["annotation_tasks_stats"] });
+      invalidateAnnotationTaskQueries(client, "task_tag");
     },
   });
 
   const removeTag = useMutation({
     mutationFn: api.annotationTasks.removeTag,
     onSuccess: () => {
-      client.invalidateQueries({ queryKey: ["annotation_tasks"] });
-      client.invalidateQueries({ queryKey: ["annotation_tasks_index"] });
-      client.invalidateQueries({ queryKey: ["annotation_tasks_stats"] });
+      invalidateAnnotationTaskQueries(client, "task_tag");
     },
   });
 

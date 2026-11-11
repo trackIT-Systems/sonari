@@ -1,17 +1,13 @@
 import { useCallback, useMemo } from "react";
-import api from "@/app/api";
 import { WAVEFORM_CANVAS_DIMENSIONS } from "@/constants";
-import { spectrogramCache } from "@/utils/spectrogram_cache";
+import { loadImage, type ImageRequest } from "@/utils/spectrogram_images";
 import {
   calculateWaveformChunks,
   getDetailLevel,
   getVisibleChunks,
   type Chunk,
 } from "@/utils/chunks";
-import useChunkImageLoader, {
-  blobToImage,
-  useDetailLevelFallback,
-} from "./useChunkImageLoader";
+import useChunkImageLoader, { useDetailLevelFallback } from "./useChunkImageLoader";
 
 import type {
   Recording,
@@ -21,6 +17,85 @@ import type {
 
 /** See MAX_CONCURRENT_SPECTROGRAM_REQUESTS in useSpectrogramImages. */
 const MAX_CONCURRENT_WAVEFORM_REQUESTS = 2;
+
+function waveformDetail(
+  viewportDuration: number,
+  samplerate: number,
+  parameters: SpectrogramParameters,
+  canvasWidth: number,
+) {
+  const level = getDetailLevel({
+    viewportDuration,
+    canvasWidth,
+    windowSize: parameters.window_size_samples,
+    overlap: parameters.overlap_percent / 100,
+    samplerate,
+  });
+  return { level, decimation: 2 ** level };
+}
+
+/** The image request for one waveform chunk (times are absolute: waveforms cover the recording) */
+export function getWaveformChunkRequest({
+  recording,
+  chunk,
+  parameters,
+  decimation,
+}: {
+  recording: Recording;
+  chunk: Chunk;
+  parameters: SpectrogramParameters;
+  decimation: number;
+}): ImageRequest {
+  const segment = { min: chunk.buffer.min, max: chunk.buffer.max };
+  // At coarser levels let the backend reduce the columns to what is drawn.
+  const columnDuration =
+    (1 - parameters.overlap_percent / 100)
+    * (parameters.window_size_samples / recording.samplerate)
+    * decimation;
+  const requestParameters =
+    decimation > 1
+      ? {
+          ...parameters,
+          max_columns: Math.max(1, Math.round((segment.max - segment.min) / columnDuration)),
+        }
+      : parameters;
+  return {
+    kind: "waveform",
+    recording,
+    segment: { time: segment, freq: { min: 0, max: 1 } }, // Dummy freq for cache key
+    parameters: requestParameters,
+  };
+}
+
+/** The waveform chunk requests of a viewport (only visible chunks are loaded) */
+export function getWaveformViewportRequests({
+  recording,
+  window,
+  parameters,
+  canvasWidth = WAVEFORM_CANVAS_DIMENSIONS.width,
+}: {
+  recording: Recording;
+  window: WaveformWindow;
+  parameters: SpectrogramParameters;
+  canvasWidth?: number;
+}): ImageRequest[] {
+  const { decimation } = waveformDetail(
+    window.time.max - window.time.min,
+    recording.samplerate,
+    parameters,
+    canvasWidth,
+  );
+  const allChunks = calculateWaveformChunks({
+    duration: recording.duration,
+    windowSize: parameters.window_size_samples,
+    overlap: parameters.overlap_percent / 100,
+    samplerate: recording.samplerate,
+    decimation,
+  });
+  return getVisibleChunks(allChunks, window.time.min, window.time.max).map((chunk) =>
+    getWaveformChunkRequest({ recording, chunk, parameters, decimation }),
+  );
+}
 
 /**
  * Hook to manage loading of multiple waveform chunks with viewport-aware lazy loading
@@ -47,14 +122,12 @@ export default function useWaveformImages({
   const overlap = parameters.overlap_percent / 100;
   const samplerate = recording.samplerate;
 
-  const level = getDetailLevel({
-    viewportDuration: window.time.max - window.time.min,
-    canvasWidth,
-    windowSize,
-    overlap,
+  const { level, decimation } = waveformDetail(
+    window.time.max - window.time.min,
     samplerate,
-  });
-  const decimation = 2 ** level;
+    parameters,
+    canvasWidth,
+  );
 
   // Calculate all chunks for this recording (using waveform-optimized chunking)
   const allChunks = useMemo(() => {
@@ -83,37 +156,9 @@ export default function useWaveformImages({
   const chunksToLoad = visibleChunks;
 
   const load = useCallback(
-    (chunk: Chunk, signal: AbortSignal) => {
-      const segment = { min: chunk.buffer.min, max: chunk.buffer.max };
-      // At coarser levels let the backend reduce the columns to what is drawn.
-      const columnDuration = (1 - overlap) * (windowSize / samplerate) * decimation;
-      const requestParameters =
-        decimation > 1
-          ? {
-              ...parameters,
-              max_columns: Math.max(
-                1,
-                Math.round((segment.max - segment.min) / columnDuration),
-              ),
-            }
-          : parameters;
-      return spectrogramCache.getOrLoad(
-        recording.id,
-        { time: segment, freq: { min: 0, max: 1 } }, // Dummy freq for cache key
-        requestParameters,
-        async () =>
-          blobToImage(
-            await api.waveforms.getBlob({
-              recording,
-              segment,
-              parameters: requestParameters,
-              signal,
-            }),
-          ),
-        signal,
-      );
-    },
-    [recording, parameters, windowSize, overlap, samplerate, decimation],
+    (chunk: Chunk, signal: AbortSignal) =>
+      loadImage(getWaveformChunkRequest({ recording, chunk, parameters, decimation }), { signal }),
+    [recording, parameters, decimation],
   );
 
   const loaded = useChunkImageLoader({
