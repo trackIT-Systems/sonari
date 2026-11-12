@@ -770,6 +770,14 @@ export default function AnnotateTasks({
 
         const promises = soundEventAnnotationsToUpdate.map(async soundEventAnnotation => {
           try {
+            // Replacing a specific tag leaves a sound event without it untouched.
+            if (
+              oldTag != null &&
+              !isReplaceAllTag(oldTag) &&
+              !soundEventAnnotation.tags?.some((t) => t.key === oldTag.key && t.value === oldTag.value)
+            ) {
+              return;
+            }
             const tagsToRemove = isReplaceAllTag(oldTag)
               ? soundEventAnnotation.tags ?? []
               : oldTag
