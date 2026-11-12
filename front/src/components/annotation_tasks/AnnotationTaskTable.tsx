@@ -1100,6 +1100,8 @@ export default function AnnotationTaskTable({
     || (nightMode
       ? nights.isFetching && nights.isPlaceholderData
       : annotationTasks.isFetching && annotationTasks.isPlaceholderData);
+  // Another page loads: its rows are left out until they arrive (not the previous page's)
+  const isPageLoading = nightMode ? nights.isPageLoading : annotationTasks.isPageLoading;
 
   return (
     <div className="flex flex-col gap-y-4" data-guided-tour="task-table">
@@ -1231,7 +1233,7 @@ export default function AnnotationTaskTable({
               <div className="bulk-action-progress-indeterminate h-full w-1/3 rounded-full bg-emerald-600 motion-reduce:animate-none dark:bg-emerald-400" />
             </div>
             <span className="shrink-0 text-xs text-stone-500 dark:text-stone-400">
-              Filtering…
+              {isPageLoading ? "Loading page…" : "Filtering…"}
             </span>
           </>
         )}

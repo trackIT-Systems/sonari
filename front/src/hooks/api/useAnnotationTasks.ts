@@ -57,7 +57,7 @@ export default function useAnnotationTasks({
     ...filter.filter,
   }), [filter.filter, listView]);
 
-  const { query, pagination, items, total, queryKey } = usePagedQuery({
+  const { query, pagination, items, total, queryKey, isPageLoading } = usePagedQuery({
     name: "annotation_tasks",
     queryFn: api.annotationTasks.getMany,
     pageSize,
@@ -72,5 +72,6 @@ export default function useAnnotationTasks({
     pagination,
     total,
     queryKey,
+    isPageLoading,
   };
 }

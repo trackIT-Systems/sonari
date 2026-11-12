@@ -154,7 +154,18 @@ export default function useAnnotationTaskNights({
     refetchOnWindowFocus: false,
   });
 
-  const nights = useMemo(() => nightsQuery.data?.items ?? [], [nightsQuery.data]);
+  // While another page of nights loads, the previous page stays as placeholder
+  // for its total; its nights must not pass for the new page.
+  const pageKey = `${page}:${pageSize}`;
+  const settledPageKeyRef = useRef(pageKey);
+  if (nightsQuery.data != null && !nightsQuery.isPlaceholderData) {
+    settledPageKeyRef.current = pageKey;
+  }
+  const isPageLoading = nightsQuery.isPlaceholderData && settledPageKeyRef.current !== pageKey;
+  const nights = useMemo(
+    () => (isPageLoading ? [] : nightsQuery.data?.items ?? []),
+    [nightsQuery.data, isPageLoading],
+  );
   const pageNightKeys = useMemo(() => nights.map((night) => nightKey(night.night)), [nights]);
 
   // The whole filter, counted for the nights on the page only. Status edits
@@ -337,6 +348,7 @@ export default function useAnnotationTaskNights({
     isLoading: nightsQuery.isLoading,
     isFetching: nightsQuery.isFetching,
     isPlaceholderData: nightsQuery.isPlaceholderData,
+    isPageLoading,
     data: nightsQuery.data,
   };
 }

@@ -3,7 +3,7 @@ import {
   keepPreviousData,
   useQuery,
 } from "@tanstack/react-query";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import { type GetManyQuery, type Paginated } from "@/api/common";
 
@@ -45,6 +45,8 @@ type PagedList<T> = {
   query: UseQueryResult<Paginated<T>, Error>;
   /** The key used for the query. */
   queryKey: any[];
+  /** Another page is loading: `items` stays empty until it arrives. */
+  isPageLoading: boolean;
 };
 
 /**
@@ -132,12 +134,23 @@ export default function usePagedQuery<T, S extends Object>({
     [page, numPages, size, query.data?.total],
   );
 
+  // The page (and size) the shown data was loaded for. While another page
+  // loads, the previous data stays as placeholder: its total keeps the
+  // pagination in place, but its rows belong to another page and must not
+  // pass for the new one. A new filter on the same page keeps its rows.
+  const pageKey = `${page}:${size}`;
+  const settledPageKeyRef = useRef(pageKey);
+  if (query.data != null && !query.isPlaceholderData) {
+    settledPageKeyRef.current = pageKey;
+  }
+  const isPageLoading = query.isPlaceholderData && settledPageKeyRef.current !== pageKey;
+
   const { items, total } = useMemo(() => {
     if (query.data == null || query.isLoading) {
       return { items: [], total: 0 };
     }
-    return { items: query.data.items, total: query.data.total };
-  }, [query.data, query.isLoading]);
+    return { items: isPageLoading ? [] : query.data.items, total: query.data.total };
+  }, [query.data, query.isLoading, isPageLoading]);
 
   return {
     items,
@@ -145,5 +158,6 @@ export default function usePagedQuery<T, S extends Object>({
     pagination,
     query,
     queryKey,
+    isPageLoading,
   };
 }
