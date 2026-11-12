@@ -30,6 +30,7 @@ import {
   GROUP_TAG_KEY,
   isReplaceAllTag,
   isSpeciesOfGroup,
+  replaceTagsOfSoundEventAnnotation,
   soundEventAnnotationsForTagReplace,
 } from "@/utils/soundEventTagReplace";
 import { SOUND_EVENT_CYCLE_FILTER_SHORTCUT, DELETE_TAG_SHORTCUT, DELETE_SOUND_EVENTS_BY_TAG_SHORTCUT, ABORT_SHORTCUT, FULLSCREEN_SHORTCUT } from "@/utils/keyboard";
@@ -769,26 +770,15 @@ export default function AnnotateTasks({
 
         const promises = soundEventAnnotationsToUpdate.map(async soundEventAnnotation => {
           try {
-            if (isReplaceAllTag(oldTag) && soundEventAnnotation.tags) {
-              for (const tag of soundEventAnnotation.tags) {
-                await activeRemoveTagFromSoundEventAnnotation({
-                  soundEventAnnotation: soundEventAnnotation,
-                  tag
-                });
-              }
-            } else if (oldTag) {
-              await activeRemoveTagFromSoundEventAnnotation({
-                soundEventAnnotation: soundEventAnnotation,
-                tag: oldTag
-              });
-            }
-
-            if (newTag) {
-              await activeAddTagToSoundEventAnnotation({
-                soundEventAnnotation: soundEventAnnotation,
-                tag: newTag
-              });
-            }
+            const tagsToRemove = isReplaceAllTag(oldTag)
+              ? soundEventAnnotation.tags ?? []
+              : oldTag
+                ? [oldTag]
+                : [];
+            await replaceTagsOfSoundEventAnnotation(soundEventAnnotation, tagsToRemove, newTag, {
+              addTag: activeAddTagToSoundEventAnnotation,
+              removeTag: activeRemoveTagFromSoundEventAnnotation,
+            });
           } catch (error) {
             console.error('Error replacing tag:', error);
           }
@@ -821,12 +811,10 @@ export default function AnnotateTasks({
             );
             if (members.length === 0) return;
             try {
-              for (const tag of members) {
-                await activeRemoveTagFromSoundEventAnnotation({ soundEventAnnotation, tag });
-              }
-              if (!soundEventAnnotation.tags?.some((t) => t.key === groupTag.key && t.value === groupTag.value)) {
-                await activeAddTagToSoundEventAnnotation({ soundEventAnnotation, tag: groupTag });
-              }
+              await replaceTagsOfSoundEventAnnotation(soundEventAnnotation, members, groupTag, {
+                addTag: activeAddTagToSoundEventAnnotation,
+                removeTag: activeRemoveTagFromSoundEventAnnotation,
+              });
             } catch (error) {
               console.error("Error replacing group:", error);
             }

@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   isReplaceAllTag,
   REPLACE_ALL_TAGS_SENTINEL,
+  replaceTagsOfSoundEventAnnotation,
   soundEventAnnotationsForTagReplace,
 } from "@/utils/soundEventTagReplace";
 import type { SoundEventAnnotation, Tag } from "@/types";
@@ -104,5 +105,56 @@ describe("soundEventAnnotationsForTagReplace with several selected events", () =
         scopeSoundEventAnnotations: [],
       }),
     ).toEqual([d]);
+  });
+});
+
+describe("replaceTagsOfSoundEventAnnotation", () => {
+  const A: Tag = { key: "species", value: "A" };
+  const B: Tag = { key: "species", value: "B" };
+  const same = (a: Tag, b: Tag) => a.key === b.key && a.value === b.value;
+
+  /** Server state plus mutations that, like the real ones, check the passed sound event first. */
+  function fakeServer(initial: SoundEventAnnotation[]) {
+    const server = new Map(initial.map((s) => [s.id, [...(s.tags ?? [])]]));
+    const result = (id: number) => sea(id, [...server.get(id)!]);
+    return {
+      tagsOf: (id: number) => server.get(id),
+      mutations: {
+        addTag: async ({ soundEventAnnotation, tag }: { soundEventAnnotation: SoundEventAnnotation; tag: Tag }) => {
+          if (soundEventAnnotation.tags?.some((t) => same(t, tag))) throw new Error("Tag already exists");
+          server.get(soundEventAnnotation.id)!.push(tag);
+          return result(soundEventAnnotation.id);
+        },
+        removeTag: async ({ soundEventAnnotation, tag }: { soundEventAnnotation: SoundEventAnnotation; tag: Tag }) => {
+          if (!soundEventAnnotation.tags?.some((t) => same(t, tag))) throw new Error("Tag does not exist");
+          const tags = server.get(soundEventAnnotation.id)!;
+          tags.splice(tags.findIndex((t) => same(t, tag)), 1);
+          return result(soundEventAnnotation.id);
+        },
+      },
+    };
+  }
+
+  it("replace all with a tag the sound event already has leaves it tagged", async () => {
+    const seas = [sea(1, [A]), sea(2, [A, B]), sea(3, [B])];
+    const { tagsOf, mutations } = fakeServer(seas);
+    for (const s of seas) {
+      await replaceTagsOfSoundEventAnnotation(s, s.tags ?? [], A, mutations);
+    }
+    expect(tagsOf(1)).toEqual([A]);
+    expect(tagsOf(2)).toEqual([A]);
+    expect(tagsOf(3)).toEqual([A]);
+  });
+
+  it("replacing a tag with itself changes nothing", async () => {
+    const { tagsOf, mutations } = fakeServer([sea(1, [A])]);
+    await replaceTagsOfSoundEventAnnotation(sea(1, [A]), [A], A, mutations);
+    expect(tagsOf(1)).toEqual([A]);
+  });
+
+  it("still adds the new tag when the old tag is missing", async () => {
+    const { tagsOf, mutations } = fakeServer([sea(1, [B])]);
+    await replaceTagsOfSoundEventAnnotation(sea(1, [B]), [A], { key: "species", value: "C" }, mutations);
+    expect(tagsOf(1)).toEqual([B, { key: "species", value: "C" }]);
   });
 });

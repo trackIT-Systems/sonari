@@ -56,6 +56,40 @@ export function soundEventAnnotationsForTagReplace(
   return soundEventAnnotations;
 }
 
+function sameTag(a: Tag, b: Tag): boolean {
+  return a.key === b.key && a.value === b.value;
+}
+
+type SoundEventTagMutation = (params: {
+  soundEventAnnotation: SoundEventAnnotation;
+  tag: Tag;
+}) => Promise<SoundEventAnnotation>;
+
+/**
+ * Remove `tagsToRemove` from one sound event, then add `newTag`. Each call
+ * gets the sound event the previous one returned: the mutations skip a tag
+ * the passed sound event already has (or lacks), so passing the state from
+ * before the removes would skip adding a tag that was just removed and leave
+ * the sound event untagged. The new tag itself is never removed.
+ */
+export async function replaceTagsOfSoundEventAnnotation(
+  soundEventAnnotation: SoundEventAnnotation,
+  tagsToRemove: Tag[],
+  newTag: Tag | null,
+  mutations: { addTag: SoundEventTagMutation; removeTag: SoundEventTagMutation },
+): Promise<SoundEventAnnotation> {
+  let current = soundEventAnnotation;
+  for (const tag of tagsToRemove) {
+    if (newTag != null && sameTag(tag, newTag)) continue;
+    if (!current.tags?.some((t) => sameTag(t, tag))) continue;
+    current = await mutations.removeTag({ soundEventAnnotation: current, tag });
+  }
+  if (newTag != null && !current.tags?.some((t) => sameTag(t, newTag))) {
+    current = await mutations.addTag({ soundEventAnnotation: current, tag: newTag });
+  }
+  return current;
+}
+
 export const SPECIES_TAG_KEY = "species";
 export const GROUP_TAG_KEY = "group";
 
