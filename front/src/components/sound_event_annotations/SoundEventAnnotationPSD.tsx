@@ -89,34 +89,12 @@ function getTimeRangeFromGeometry(annotation: SoundEventAnnotation, taskStartTim
     return timeRange;
 }
 
-function getFrequencyRangeFromGeometry(annotation: SoundEventAnnotation, samplerate: number) {
-    const { geometry, geometry_type } = annotation;
-
-    switch (geometry_type) {
-        case "BoundingBox":
-            const bb_coordinates = geometry.coordinates as [number, number, number, number];
-            return {
-                min: bb_coordinates[1],
-                max: bb_coordinates[3],
-            };
-
-        case "Point":
-            const point_coordinates = geometry.coordinates as [number, number];
-            // For a point, show a range around the frequency
-            const margin = 1000; // 1kHz margin
-            return {
-                min: Math.max(0, point_coordinates[1] - margin),
-                max: Math.min(samplerate / 2, point_coordinates[1] + margin),
-            };
-
-        default:
-            // Full frequency range
-            return {
-                min: 0,
-                max: samplerate / 2,
-            };
-    }
-}
+/**
+ * Fixed frequency axis of the PSD (Hz), the same for every sound event so
+ * spectra can be compared at a glance. Above the recording's Nyquist
+ * frequency the plot stays empty.
+ */
+const PSD_FREQUENCY_RANGE = { min: 10_000, max: 110_000 };
 
 function formatFrequency(freq: number): string {
     if (freq >= 1000) {
@@ -162,10 +140,7 @@ export default function SoundEventAnnotationPSD({
         [soundEventAnnotation, task.start_time, task.end_time, minDuration]
     );
 
-    const frequencyRange = useMemo(
-        () => getFrequencyRangeFromGeometry(soundEventAnnotation, samplerate),
-        [soundEventAnnotation, samplerate]
-    );
+    const frequencyRange = PSD_FREQUENCY_RANGE;
 
     // Formatter for frequency (X-axis)
     const formatFreqValue = useCallback((freq: number) => {
