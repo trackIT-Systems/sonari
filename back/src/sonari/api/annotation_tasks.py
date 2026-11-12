@@ -134,6 +134,155 @@ class AnnotationTaskAPI(
 
         return indices, count
 
+    @staticmethod
+    def _night_tasks(
+        filters: Sequence[Filter | _ColumnExpressionArgument] | None,
+        utc_offset: int,
+        *,
+        nights: Sequence[str | None] | None = None,
+    ):
+        """The matching tasks (``task_id``) with their night (``night``), as a subquery.
+
+        With ``nights``, only the tasks of those nights: a range on recorded_at
+        per run of consecutive nights, so the index on it narrows the tasks
+        before the other filters run.
+        """
+        from sqlalchemy import or_
+        from sqlalchemy.orm import aliased
+
+        from sonari.api.common.utils import apply_filters
+        from sonari.filters.annotation_tasks import night_bounds, night_of_recording
+
+        recording = aliased(models.Recording)
+        tasks = select(
+            models.AnnotationTask.id.label("task_id"),
+            night_of_recording(recording.recorded_at, utc_offset).label("night"),
+        ).join(recording, recording.id == models.AnnotationTask.recording_id)
+        if nights is not None:
+            conditions = []
+            for first, last in _consecutive_runs(sorted({n for n in nights if n is not None})):
+                start, _ = night_bounds(first, utc_offset)
+                _, end = night_bounds(last, utc_offset)
+                conditions.append(and_(recording.recorded_at >= start, recording.recorded_at < end))
+            if None in nights:
+                conditions.append(recording.recorded_at.is_(None))
+            tasks = tasks.where(or_(*conditions) if conditions else literal(False))
+        return apply_filters(tasks, filters).subquery()
+
+    async def get_nights(
+        self,
+        session: AsyncSession,
+        *,
+        filters: Sequence[Filter | _ColumnExpressionArgument] | None = None,
+        utc_offset: int = 0,
+        limit: int | None = None,
+        offset: int = 0,
+    ) -> tuple[list[schemas.AnnotationTaskNightTotal], int]:
+        """The nights (noon to noon local time) of the matching tasks, with their task counts.
+
+        Ordered by night; recordings without a date come last. Meant for cheap
+        filters (project, station, date range): the status counts under the full
+        filter come per night from `get_night_stats`, for the nights shown only.
+
+        Returns
+        -------
+        nights : list[schemas.AnnotationTaskNightTotal]
+            The page of nights.
+        count : int
+            Total number of nights.
+        """
+        filtered = self._night_tasks(filters, utc_offset)
+        query = (
+            select(filtered.c.night, func.count(), func.count().over())
+            .group_by(filtered.c.night)
+            .order_by(filtered.c.night.is_(None), filtered.c.night)
+        )
+        if limit is not None and limit >= 0:
+            query = query.limit(limit).offset(offset)
+
+        rows = (await session.execute(query)).all()
+        nights = [schemas.AnnotationTaskNightTotal(night=night, total=total) for night, total, _ in rows]
+        if rows:
+            count = rows[0][-1]
+        elif offset:
+            # Past the last page: count the nights without paging
+            count = len((await session.execute(select(filtered.c.night).distinct())).all())
+        else:
+            count = 0
+        return nights, count
+
+    async def get_night_stats(
+        self,
+        session: AsyncSession,
+        nights: Sequence[str | None],
+        *,
+        filters: Sequence[Filter | _ColumnExpressionArgument] | None = None,
+        utc_offset: int = 0,
+    ) -> list[schemas.AnnotationTaskNight]:
+        """Status counts of the matching tasks of each of ``nights`` (None: no recording date).
+
+        Only those nights' tasks are filtered and counted, so a page of nights
+        costs about as much as its tasks, however large the project. In the
+        order given; a night without matching tasks has all counts zero.
+        """
+        if not nights:
+            return []
+        filtered = self._night_tasks(filters, utc_offset, nights=nights)
+
+        def has_state(*states: data.AnnotationState):
+            return exists().where(
+                models.AnnotationStatusBadge.annotation_task_id == filtered.c.task_id,
+                models.AnnotationStatusBadge.state.in_(states),
+            )
+
+        def count_if(condition):
+            return func.coalesce(func.sum(case((condition, 1), else_=0)), 0)
+
+        done = has_state(
+            data.AnnotationState.verified,
+            data.AnnotationState.rejected,
+            data.AnnotationState.completed,
+        )
+        query = select(
+            filtered.c.night,
+            func.count(),
+            count_if(done),
+            count_if(has_state(data.AnnotationState.verified)),
+            count_if(has_state(data.AnnotationState.rejected)),
+            count_if(has_state(data.AnnotationState.completed)),
+            count_if(has_state(data.AnnotationState.assigned)),
+        ).group_by(filtered.c.night)
+
+        counted = {
+            night: schemas.AnnotationTaskNight(
+                night=night,
+                total=total,
+                done_count=done_count,
+                verified_count=verified,
+                rejected_count=rejected,
+                completed_count=completed,
+                pending_count=total - done_count,
+                assigned_count=assigned,
+            )
+            for night, total, done_count, verified, rejected, completed, assigned in (
+                await session.execute(query)
+            ).all()
+        }
+        return [
+            counted.get(night)
+            or schemas.AnnotationTaskNight(
+                night=night,
+                total=0,
+                done_count=0,
+                verified_count=0,
+                rejected_count=0,
+                completed_count=0,
+                pending_count=0,
+                assigned_count=0,
+            )
+            for night in nights
+        ]
+
     async def get_stats(
         self,
         session: AsyncSession,
@@ -1491,3 +1640,17 @@ class AnnotationTaskAPI(
 
 
 annotation_tasks = AnnotationTaskAPI()
+
+
+def _consecutive_runs(nights: Sequence[str]) -> list[tuple[str, str]]:
+    """Sorted night dates ("YYYY-MM-DD") as runs of consecutive days: [(first, last), ...]."""
+    runs: list[tuple[str, str]] = []
+    previous: datetime.date | None = None
+    for night in nights:
+        day = datetime.date.fromisoformat(night)
+        if previous is not None and day == previous + datetime.timedelta(days=1):
+            runs[-1] = (runs[-1][0], night)
+        else:
+            runs.append((night, night))
+        previous = day
+    return runs

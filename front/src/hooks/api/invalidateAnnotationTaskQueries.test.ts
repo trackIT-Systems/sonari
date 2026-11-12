@@ -154,8 +154,8 @@ describe("scheduleAnnotationTaskQueriesInvalidation", () => {
     vi.advanceTimersByTime(DEFERRED_INVALIDATION_MS);
     expect(invalidated(client, pendingIndex)).toBe(true);
     expect(invalidated(client, stats)).toBe(true);
-    // One round of invalidation (lists, index, stats), not five
-    expect(invalidate).toHaveBeenCalledTimes(3);
+    // One round of invalidation (lists, index, stats, nights), not five
+    expect(invalidate).toHaveBeenCalledTimes(4);
   });
 
   it("covers every kind of edit made before the pause", () => {

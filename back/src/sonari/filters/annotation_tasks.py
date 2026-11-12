@@ -3,8 +3,9 @@
 from datetime import datetime, timedelta, time
 from typing import Literal
 
+from pydantic import Field, field_validator
 from soundevent import data
-from sqlalchemy import Float, Select, and_, case, exists, false, func, literal, not_, or_, select
+from sqlalchemy import Float, Integer, Select, String, and_, case, exists, false, func, literal, not_, or_, select
 from sqlalchemy.ext.compiler import compiles
 from sqlalchemy.sql.expression import FunctionElement
 
@@ -60,6 +61,85 @@ def _json_array_element_default(element, compiler, **kw):
     # Get the literal value of the index
     idx_value = idx.value if hasattr(idx, "value") else idx
     return f"CAST(json_extract({compiler.process(col, **kw)}, '$.coordinates[{idx_value}]') AS REAL)"
+
+
+class night_of(FunctionElement):
+    """The night a recording time falls in, as the date of its evening ("YYYY-MM-DD").
+
+    A night runs from noon to noon local time: the time (UTC) is shifted by
+    ``shift_minutes`` (the UTC offset minus 12 hours) and its date taken.
+    NULL for recordings without a date.
+    """
+
+    type = String()
+    name = "night_of"
+    inherit_cache = True
+
+
+@compiles(night_of, "postgresql")
+def _night_of_postgresql(element, compiler, **kw):
+    recorded_at, shift = list(element.clauses)
+    return (
+        f"to_char({compiler.process(recorded_at, **kw)}"
+        f" + make_interval(mins => {compiler.process(shift, **kw)}), 'YYYY-MM-DD')"
+    )
+
+
+@compiles(night_of)
+def _night_of_default(element, compiler, **kw):
+    """SQLite: date() with a minutes modifier."""
+    recorded_at, shift = list(element.clauses)
+    return f"date({compiler.process(recorded_at, **kw)}, {compiler.process(shift, **kw)} || ' minutes')"
+
+
+def night_of_recording(recorded_at, utc_offset_minutes: int):
+    """`night_of` for a UTC offset in minutes (e.g. 120 for CEST)."""
+    return night_of(recorded_at, literal(int(utc_offset_minutes) - 12 * 60, Integer))
+
+
+NO_RECORDING_TIME = "none"
+
+
+class RecordingNightFilter(base.Filter):
+    """Tasks recorded in one night: noon to noon local time, named by its evening.
+
+    ``eq`` is the evening date ("YYYY-MM-DD"), or "none" for recordings
+    without a date. ``utc_offset`` is the local UTC offset in minutes.
+    """
+
+    eq: str | None = Field(default=None, pattern=r"^(\d{4}-\d{2}-\d{2}|none)$")
+    utc_offset: int = Field(default=0, ge=-14 * 60, le=14 * 60)
+
+    @field_validator("eq")
+    @classmethod
+    def _real_date(cls, value: str | None) -> str | None:
+        if value is not None and value != NO_RECORDING_TIME:
+            datetime.strptime(value, "%Y-%m-%d")  # e.g. 2026-02-30 fails here, as a 422
+        return value
+
+    def filter(self, query: Select) -> Select:
+        if self.eq is None:
+            return query
+        Recording = models.Recording.__table__.alias("night_recording")
+        query = query.join(Recording, Recording.c.id == models.AnnotationTask.recording_id)
+        if self.eq == NO_RECORDING_TIME:
+            return query.where(Recording.c.recorded_at.is_(None))
+        start, end = night_bounds(self.eq, self.utc_offset)
+        # A range on recorded_at itself, so the index on it serves the filter
+        return query.where(Recording.c.recorded_at >= start, Recording.c.recorded_at < end)
+
+
+def night_bounds(night: str, utc_offset_minutes: int) -> tuple[datetime, datetime]:
+    """UTC bounds [start, end) of a night: noon of its evening to noon the next day, local time.
+
+    Matches `night_of_recording`: a time is in the night exactly when it falls in these bounds.
+    """
+    try:
+        evening = datetime.strptime(night, "%Y-%m-%d")
+    except ValueError as error:
+        raise ValueError(f"Not a night date: {night!r}") from error
+    start = evening + timedelta(hours=12) - timedelta(minutes=utc_offset_minutes)
+    return start, start + timedelta(days=1)
 
 
 class PendingFilter(base.Filter):
@@ -1159,6 +1239,7 @@ _AnnotationTaskFilterCombined = base.combine(
     date=DateRangeFilter,
     night=NightFilter,
     day=DayFilter,
+    recording_night=RecordingNightFilter,
     sample=SampleFilter,
     confidence=ConfidenceFilter,
     median_confidence=MedianConfidenceFilter,

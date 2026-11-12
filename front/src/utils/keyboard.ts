@@ -452,6 +452,11 @@ export const TASK_TABLE_SHORTCUTS: KeyShortcut[] = [
         description: "Move to the previous / next task. The spectrogram preview follows the current row and the page scrolls with it, and the current row is ticked (only it), so 1–4 act on it. Hold Shift to tick the rows from where you started instead. ↓ from the top focuses the search; ↑ on the first row returns to it.",
     },
     {
+        label: "Nights",
+        shortcut: "→ / ←",
+        description: "Nights view: ↑ / ↓ also stop on the night headers. → or Enter expands the night (its tasks load then), ← collapses it, also from one of its tasks. Tap Shift on a header, or use its checkbox, to tick every task of the night.",
+    },
+    {
         label: "Open task",
         shortcut: ACCEPT_SHORTCUT,
         description: "Open the highlighted task for annotation in a new tab.",

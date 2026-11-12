@@ -5,17 +5,21 @@ from typing import Annotated, Dict, Sequence
 
 from astral import LocationInfo
 from astral.sun import sun
-from fastapi import Depends
+from fastapi import Depends, HTTPException, Query
+from pydantic import Field
 from soundevent.data import AnnotationState
 
 from sonari import api, schemas
 from sonari.services import sound_event_history
-from sonari.filters.annotation_tasks import AnnotationTaskFilter
+from sonari.filters.annotation_tasks import NO_RECORDING_TIME, AnnotationTaskFilter
 from sonari.filters.recordings import IDFilter as RecordingIDFilter
 from sonari.routes.dependencies import CurrentEdit, Session
 from sonari.routes.dependencies.auth import CurrentUser, create_authenticated_router
 from sonari.routes.dependencies.settings import SonariSettings
 from sonari.routes.types import Limit, Offset
+
+# Nights per request for status counts: a page of the task table at most
+MAX_NIGHT_STATS = 200
 
 __all__ = [
     "get_annotation_tasks_router",
@@ -204,6 +208,60 @@ def get_annotation_tasks_router(settings: SonariSettings):
             limit=limit or total,
             offset=offset,
         )
+
+    @annotation_tasks_router.get(
+        "/nights/",
+        response_model=schemas.Page[schemas.AnnotationTaskNightTotal],
+    )
+    async def get_task_nights(
+        session: Session,
+        filter: Annotated[AnnotationTaskFilter, Depends(AnnotationTaskFilter)],  # type: ignore
+        utc_offset: Annotated[int, Query(ge=-14 * 60, le=14 * 60)] = 0,
+        limit: Limit | None = None,
+        offset: Offset = 0,
+    ):
+        """The nights (noon to noon local time) of the matching tasks, with their task counts.
+
+        Meant for cheap filters (project, station, date range). ``utc_offset`` is
+        the local UTC offset in minutes. Status counts under the full filter
+        come from ``/nights/stats/``, the tasks of one night from the task list
+        with ``recording_night__eq`` and the same offset.
+        """
+        nights, total = await api.annotation_tasks.get_nights(
+            session,
+            filters=[filter],
+            utc_offset=utc_offset,
+            limit=limit,
+            offset=offset,
+        )
+        return schemas.Page(items=nights, total=total, limit=limit or total, offset=offset)
+
+    @annotation_tasks_router.get(
+        "/nights/stats/",
+        response_model=list[schemas.AnnotationTaskNight],
+    )
+    async def get_task_night_stats(
+        session: Session,
+        filter: Annotated[AnnotationTaskFilter, Depends(AnnotationTaskFilter)],  # type: ignore
+        night: Annotated[
+            list[Annotated[str, Field(pattern=r"^(\d{4}-\d{2}-\d{2}|none)$")]],
+            Query(min_length=1, max_length=MAX_NIGHT_STATS),
+        ],
+        utc_offset: Annotated[int, Query(ge=-14 * 60, le=14 * 60)] = 0,
+    ):
+        """Status counts of the matching tasks of each ``night`` ("YYYY-MM-DD", or "none").
+
+        Only the tasks of the nights asked for are filtered and counted, so the
+        full filter stays cheap on large projects. In the order asked.
+        """
+        nights = [None if n == NO_RECORDING_TIME else n for n in night]
+        try:
+            return await api.annotation_tasks.get_night_stats(
+                session, nights, filters=[filter], utc_offset=utc_offset
+            )
+        except ValueError as error:
+            # A well-formed but impossible date, e.g. 2026-02-30
+            raise HTTPException(status_code=422, detail=str(error)) from error
 
     @annotation_tasks_router.get(
         "/stats",

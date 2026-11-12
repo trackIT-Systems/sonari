@@ -52,6 +52,8 @@ export default function Table<S>({
   getRowClassName,
   onRowClick,
   renderExpandedRow,
+  renderBeforeRow,
+  renderTrailingRows,
   dragSelect = false,
   arrowKeys = true,
 }: {
@@ -76,6 +78,10 @@ export default function Table<S>({
   onRowClick?: (row: S, info: { index: number; event: React.MouseEvent }) => void;
   /** Content rendered in a full-width sub-row below the row, or null for none */
   renderExpandedRow?: (row: S) => ReactNode | null;
+  /** Full-width rows rendered before a row (e.g. group headers); `colSpan` spans the table */
+  renderBeforeRow?: (row: S, index: number, colSpan: number) => ReactNode;
+  /** Full-width rows rendered after the last row (e.g. headers of empty groups) */
+  renderTrailingRows?: (colSpan: number) => ReactNode;
   /** Click and drag over rows to select (or deselect) a range of rows */
   dragSelect?: boolean;
   /** Handle ArrowUp/ArrowDown row movement here. Turn off when the parent owns the cursor. */
@@ -222,6 +228,8 @@ export default function Table<S>({
   useKeyPressEvent(useKeyFilter({ key: SELECT_FRT_ELEMENT_SHORTCUT }), handleNumberKey);
 
 
+  const columnCount = table.getVisibleLeafColumns().length;
+
   return (
     <table
       className="relative w-full min-w-[52rem] rounded-lg border border-collapse table-fixed border-stone-300 text-stone-700 dark:border-stone-700 dark:text-stone-300"
@@ -264,6 +272,7 @@ export default function Table<S>({
           const cells = row.getVisibleCells();
           return (
             <Fragment key={row.id}>
+              {renderBeforeRow?.(row.original, index, columnCount)}
               <tr
                 data-row-id={row.id}
                 onMouseDown={(dragSelect || onRowClick) ? (event) => {
@@ -304,6 +313,7 @@ export default function Table<S>({
             </Fragment>
           );
         })}
+        {renderTrailingRows?.(columnCount)}
       </tbody>
     </table>
   );

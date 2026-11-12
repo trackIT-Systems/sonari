@@ -111,6 +111,19 @@ export type AnnotationTaskStats = {
   assigned_count: number;
 };
 
+/** One night (noon to noon local time) and how many tasks it holds. */
+export type AnnotationTaskNightTotal = {
+  /** Date of the night's evening ("YYYY-MM-DD"); null without a recording date */
+  night: string | null;
+  total: number;
+};
+
+/** The tasks of one night (noon to noon local time) with their status counts. */
+export type AnnotationTaskNight = AnnotationTaskStats & {
+  /** Date of the night's evening ("YYYY-MM-DD"); null without a recording date */
+  night: string | null;
+};
+
 export type AnnotationProject = z.infer<typeof AnnotationProjectSchema>;
 
 export type Position = {

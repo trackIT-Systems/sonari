@@ -1,4 +1,5 @@
-import { useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
+import classNames from "classnames";
+import { useCallback, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import AnnotationProjectContext from "@/app/(base)/annotation_projects/detail/context";
 import type { RowSelectionState, OnChangeFn } from "@tanstack/react-table";
 import { useKeyPressEvent } from "react-use";
@@ -8,6 +9,14 @@ import useKeyFilter from "@/hooks/utils/useKeyFilter";
 import type { AnnotationTaskFilter } from "@/api/annotation_tasks";
 import type { AnnotationTask } from "@/types";
 import useAnnotationTasks from "@/hooks/api/useAnnotationTasks";
+import useAnnotationTaskNights, {
+  currentUtcOffset,
+  nightKey,
+  nightOfRecording,
+  type NightGroup,
+} from "@/hooks/api/useAnnotationTaskNights";
+import useAnnotationTaskStats from "@/hooks/api/useAnnotationTaskStats";
+import NightHeaderRow, { NightDividerRow, NightMoreRow, type NightTickState } from "@/components/annotation_tasks/NightHeaderRow";
 import {
   annotationTaskFilterPersistKey,
   writeAnnotationTaskFilterPersist,
@@ -54,6 +63,16 @@ function scrollRowIntoView(taskId: number, topInset: number) {
   const row = document.querySelector<HTMLElement>(`[data-row-id="${taskId}"]`);
   if (!row) return;
   const preview = document.querySelector<HTMLElement>(`[data-expanded-row-for="${taskId}"]`);
+  scrollRangeIntoView(row, preview, topInset);
+}
+
+/** Like `scrollRowIntoView`, for the header row of a night */
+function scrollNightIntoView(night: string, topInset: number) {
+  const row = document.querySelector<HTMLElement>(`tr[data-night-key="${night}"]`);
+  if (row) scrollRangeIntoView(row, null, topInset);
+}
+
+function scrollRangeIntoView(row: HTMLElement, preview: HTMLElement | null, topInset: number) {
 
   const container = getScrollParent(row);
   const viewTop = container ? container.getBoundingClientRect().top : 0;
@@ -89,6 +108,39 @@ const PREFETCH_BEHIND = 1;
 /** Task tag of the guided tour's bulk-lesson material. */
 const TOUR_BULK_TAG = { key: "tour", value: "bulk" };
 
+const TASK_VIEW_KEY = "annotationTasks:view";
+
+/**
+ * How the table shows tasks; remembered in this browser.
+ * - "list": pages of tasks, with a header row where a new night starts (the default)
+ * - "nights": the nights, collapsed; a night's tasks load when it is expanded
+ */
+type TaskView = "list" | "nights";
+
+function useTaskView(): [TaskView, (value: TaskView) => void] {
+  const [value, setValue] = useState<TaskView>(() => {
+    try {
+      return window.localStorage.getItem(TASK_VIEW_KEY) === "nights" ? "nights" : "list";
+    } catch {
+      return "list";
+    }
+  });
+  const set = useCallback((next: TaskView) => {
+    setValue(next);
+    try {
+      window.localStorage.setItem(TASK_VIEW_KEY, next);
+    } catch {
+      // Not remembered, still applied
+    }
+  }, []);
+  return [value, set];
+}
+
+/** Sort orders by recording time, under which tasks of a night are consecutive */
+function sortsByRecordingTime(sortBy: string | undefined): boolean {
+  return sortBy == null || sortBy === "recording_datetime";
+}
+
 export default function AnnotationTaskTable({
   filter,
   fixed,
@@ -104,21 +156,49 @@ export default function AnnotationTaskTable({
   );
   const TASK_INDEX_MAX = 2000;
 
+  // Nights view: only the nights load at first, all collapsed, and a night's
+  // tasks load when it is expanded. Not in guided tours, whose lessons work on
+  // the plain list.
+  const isGuidedTour = useContext(AnnotationProjectContext)?.is_guided_tour ?? false;
+  const [taskView, setTaskView] = useTaskView();
+  const nightMode = taskView === "nights" && !isGuidedTour;
+
   const annotationTasks = useAnnotationTasks({
     filter,
     fixed,
     persistKey: filterPersistKey,
     listView: true,
+    enabled: !nightMode,
   });
+  const nights = useAnnotationTaskNights({ filter: annotationTasks.filter.filter, enabled: nightMode });
+  const { stats: nightModeStats } = useAnnotationTaskStats({
+    filter: annotationTasks.filter.filter,
+    enabled: nightMode,
+  });
+  // The table's rows: the page of tasks, or the tasks of the expanded nights
+  const items = nightMode ? nights.items : annotationTasks.items;
+  const total = nightMode ? nightModeStats?.total ?? 0 : annotationTasks.total;
+  const pagination = nightMode ? nights.pagination : annotationTasks.pagination;
   const searchInputRef = useRef<HTMLInputElement>(null);
   const [focusedElement, setFocusedElementState] = useState<'search' | 'filter' | number>(-1);
   // The cursor is mirrored in a ref so that key handlers always see the latest
   // value, even when key auto-repeat outpaces React re-rendering.
   const cursorRef = useRef<'search' | 'filter' | number>(-1);
+  /** The task the cursor is on, so it stays on it when nights above expand or collapse */
+  const cursorTaskIdRef = useRef<number | null>(null);
+  // Night mode: the cursor can also rest on a night's header row (then no task is current)
+  const [nightCursor, setNightCursorState] = useState<string | null>(null);
+  const nightCursorRef = useRef<string | null>(null);
+  const setNightCursor = useCallback((key: string | null) => {
+    nightCursorRef.current = key;
+    setNightCursorState(key);
+  }, []);
   const setFocusedElement = useCallback((next: 'search' | 'filter' | number) => {
     cursorRef.current = next;
     setFocusedElementState(next);
-  }, []);
+    cursorTaskIdRef.current = typeof next === "number" && next >= 0 ? itemsRef.current[next]?.id ?? null : null;
+    if (next !== -1) setNightCursor(null);
+  }, [setNightCursor]);
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
   const [targetMode, setTargetMode] = useState<"selected" | "filter_all">("selected");
   const [tagBulkPanelsOpen, setTagBulkPanelsOpen] = useState<Record<TagBulkPanel, boolean>>({
@@ -145,7 +225,6 @@ export default function AnnotationTaskTable({
   // Guided tour: bulk actions may only touch the bulk-lesson material, never a
   // lesson task (a badge there would skip the lesson). The server intersects
   // ticked ids with this filter, so it guards both selection modes.
-  const isGuidedTour = useContext(AnnotationProjectContext)?.is_guided_tour ?? false;
   const bulkFilter = useMemo(
     () => (isGuidedTour ? { ...activeFilter, annotation_task_tag: TOUR_BULK_TAG } : activeFilter),
     [isGuidedTour, activeFilter],
@@ -225,9 +304,9 @@ export default function AnnotationTaskTable({
   const handleSelectPageOnly = useCallback(() => {
     setTargetMode("selected");
     setRowSelection(
-      Object.fromEntries(annotationTasks.items.map((task) => [String(task.id), true])),
+      Object.fromEntries(items.map((task) => [String(task.id), true])),
     );
-  }, [annotationTasks.items]);
+  }, [items]);
 
   const handleClearBulkSelection = useCallback(() => {
     setTargetMode("selected");
@@ -275,7 +354,9 @@ export default function AnnotationTaskTable({
   );
 
   const shouldLoadTaskIndex =
-    !annotationTasks.isLoading
+    // Night mode never loads every task: that is the point of it
+    !nightMode
+    && !annotationTasks.isLoading
     && annotationTasks.data != null
     && annotationTasks.total > 0
     && annotationTasks.total <= TASK_INDEX_MAX;
@@ -307,16 +388,17 @@ export default function AnnotationTaskTable({
   const onOpenTask = useCallback((task: AnnotationTask) => openTaskRef.current(task), []);
 
   const table = useAnnotationTaskTable({
-    data: annotationTasks.items,
+    data: items,
     getAnnotationTaskLink: getAnnotationTaskLink,
     pathFormatter,
-    pagination: annotationTasks.pagination,
+    // Row numbers count tasks per page; nights page by night, so none there
+    pagination: nightMode ? undefined : annotationTasks.pagination,
     sortBy: annotationTasks.filter.get("sort_by") as string | undefined,
     onSortChange: handleSortChange,
     allTasks,
     rowSelection,
     onRowSelectionChange: handleRowSelectionChange,
-    filterTotal: annotationTasks.total,
+    filterTotal: total,
     onSelectAllMatchingFilter: handleSelectAllMatchingFilter,
     onClearSelection: handleClearBulkSelection,
     targetMode,
@@ -324,7 +406,7 @@ export default function AnnotationTaskTable({
   });
 
   useKeyPressEvent(useKeyFilter({ key: SEARCH_BAR_LEAVE_SHORTCUT }), (event) => {
-    if (focusedElement === -1) {
+    if (focusedElement === -1 && nightCursorRef.current == null) {
       event.preventDefault();
       setFocusedElement('search');
       searchInputRef.current?.focus();
@@ -350,7 +432,7 @@ export default function AnnotationTaskTable({
   const applySelectionFilter = useCallback(
     (preferredTaskId?: number): number | null => {
       if (targetMode === "filter_all") {
-        return preferredTaskId ?? annotationTasks.items[0]?.id ?? null;
+        return preferredTaskId ?? items[0]?.id ?? null;
       }
       if (selectedTaskIds.length === 0) return null;
       const projectId = activeFilter.annotation_project?.id;
@@ -363,10 +445,10 @@ export default function AnnotationTaskTable({
       annotationTasks.filter.set("annotation_task_ids", selectedTaskIds);
       if (preferredTaskId != null && selectedTaskIds.includes(preferredTaskId)) return preferredTaskId;
       const selected = new Set(selectedTaskIds);
-      const order = allTasks ?? annotationTasks.items;
+      const order = allTasks ?? items;
       return order.find((t) => selected.has(t.id))?.id ?? selectedTaskIds[0];
     },
-    [targetMode, selectedTaskIds, activeFilter, annotationTasks.filter, annotationTasks.items, allTasks],
+    [targetMode, selectedTaskIds, activeFilter, annotationTasks.filter, items, allTasks],
   );
 
   // The cursor's own tick does not count: opening the current task then
@@ -433,15 +515,15 @@ export default function AnnotationTaskTable({
   });
 
   const currentPageTaskIds = useMemo(
-    () => annotationTasks.items.map((task) => task.id),
-    [annotationTasks.items],
+    () => items.map((task) => task.id),
+    [items],
   );
 
   const relatedTaskIds = useMemo(
     () => highlightRelated
-      ? findTemporallyRelatedTasks(annotationTasks.items, relatedWindow)
+      ? findTemporallyRelatedTasks(items, relatedWindow)
       : new Set<number>(),
-    [highlightRelated, annotationTasks.items, relatedWindow],
+    [highlightRelated, items, relatedWindow],
   );
 
   const getRowClassName = useCallback(
@@ -485,8 +567,8 @@ export default function AnnotationTaskTable({
   // Preview model: the current row ("cursor") has the one active preview, which
   // follows it; pinned previews stay open on their rows. Everything the key
   // handler needs is mirrored in refs (see cursorRef).
-  const itemsRef = useRef(annotationTasks.items);
-  itemsRef.current = annotationTasks.items;
+  const itemsRef = useRef(items);
+  itemsRef.current = items;
   const [activeOpen, setActiveOpenState] = useState(false);
   const activeOpenRef = useRef(false);
   const setActiveOpen = useCallback((open: boolean) => {
@@ -523,7 +605,7 @@ export default function AnnotationTaskTable({
 
   const activeTaskId =
     activeOpen && typeof focusedElement === "number" && focusedElement >= 0
-      ? annotationTasks.items[focusedElement]?.id ?? null
+      ? items[focusedElement]?.id ?? null
       : null;
 
   // Don't request spectrograms for rows the cursor only passes through: while it
@@ -553,7 +635,6 @@ export default function AnnotationTaskTable({
   const directionRef = useRef<1 | -1>(1);
   useEffect(() => {
     if (activeTaskId == null || !activeSettled || typeof focusedElement !== "number") return;
-    const items = annotationTasks.items;
     const direction = directionRef.current;
     const offsets = [
       ...Array.from({ length: PREFETCH_AHEAD }, (_, i) => direction * (i + 1)),
@@ -573,7 +654,7 @@ export default function AnnotationTaskTable({
     const controller = new AbortController();
     prefetchImages(requests, controller.signal);
     return () => controller.abort();
-  }, [activeTaskId, activeSettled, focusedElement, annotationTasks.items, savedSettings, previewChannel]);
+  }, [activeTaskId, activeSettled, focusedElement, items, savedSettings, previewChannel]);
 
   // After the cursor moved and the previews re-rendered (previous one collapsed,
   // new one expanded), scroll the current row into view.
@@ -597,15 +678,147 @@ export default function AnnotationTaskTable({
     [setFocusedElement, setActiveOpen, selectCursorRow],
   );
 
+  // Where the cursor can go, top to bottom: tasks, and in night mode each
+  // night's header followed by its tasks if expanded. Read from refs, so the
+  // key handler always sees the latest rows.
+  const nightModeRef = useRef(nightMode);
+  nightModeRef.current = nightMode;
+  const groupsRef = useRef<NightGroup[]>(nights.groups);
+  groupsRef.current = nights.groups;
+  const nightOfTaskRef = useRef(new Map<number, string>());
+  for (const group of nights.groups) {
+    for (const task of group.tasks) nightOfTaskRef.current.set(task.id, group.key);
+  }
+
+  type CursorSlot = { night: string } | { index: number };
+  const cursorSlots = useCallback((): CursorSlot[] => {
+    if (!nightModeRef.current) return itemsRef.current.map((_, index) => ({ index }));
+    const slots: CursorSlot[] = [];
+    for (const group of groupsRef.current) {
+      slots.push({ night: group.key });
+      if (group.expanded) {
+        group.tasks.forEach((_, offset) => slots.push({ index: group.start + offset }));
+      }
+    }
+    return slots;
+  }, []);
+
+  const pendingScrollNightRef = useRef<string | null>(null);
+  const moveCursorToNight = useCallback(
+    (key: string) => {
+      setFocusedElement(-1);
+      setNightCursor(key);
+      pendingScrollNightRef.current = key;
+    },
+    [setFocusedElement, setNightCursor],
+  );
+
+  const moveToSlot = useCallback(
+    (slot: CursorSlot, extendSelection = false) => {
+      if ("index" in slot) moveCursorTo(slot.index, { extendSelection });
+      else moveCursorToNight(slot.night);
+    },
+    [moveCursorTo, moveCursorToNight],
+  );
+
   const handleSearchKeyDown = useCallback((e: React.KeyboardEvent) => {
     if (e.key === LIST_OVERVIEW_DOWN_SHORTCUT) {
       e.preventDefault();
-      if (annotationTasks.items.length > 0) {
-        moveCursorTo(0);
+      const first = cursorSlots()[0];
+      if (first) {
+        moveToSlot(first);
         searchInputRef.current?.blur();
       }
     }
-  }, [annotationTasks.items.length, moveCursorTo]);
+  }, [cursorSlots, moveToSlot]);
+
+  // Keep the cursor on its task when the rows change (a night above expanded
+  // or collapsed); if its night collapsed, it moves to that night's header.
+  useLayoutEffect(() => {
+    const id = cursorTaskIdRef.current;
+    if (id == null) return;
+    const index = items.findIndex((task) => task.id === id);
+    if (index >= 0) {
+      if (index !== cursorRef.current) setFocusedElement(index);
+    } else if (nightMode) {
+      const key = nightOfTaskRef.current.get(id);
+      setFocusedElement(-1);
+      if (key != null && nights.groups.some((group) => group.key === key)) setNightCursor(key);
+    }
+  }, [items, nightMode, nights.groups, setFocusedElement, setNightCursor]);
+
+  useEffect(() => {
+    const key = pendingScrollNightRef.current;
+    if (key == null || key !== nightCursor) return;
+    pendingScrollNightRef.current = null;
+    scrollNightIntoView(key, (bulkBarRef.current?.offsetHeight ?? 0) + 8);
+  }, [nightCursor]);
+
+  /** Tick state of a night: from its tasks if all are loaded, or the ids fetched when it was ticked */
+  const [nightTaskIds, setNightTaskIds] = useState<ReadonlyMap<string, number[]>>(() => new Map());
+  useEffect(() => setNightTaskIds(new Map()), [filterKey]);
+  const idsOfNight = useCallback(
+    (group: NightGroup): number[] | undefined =>
+      group.expanded && !group.isLoadingTasks && !group.hasMore
+        ? group.tasks.map((task) => task.id)
+        : nightTaskIds.get(group.key),
+    [nightTaskIds],
+  );
+  const nightTickState = useCallback(
+    (group: NightGroup): NightTickState => {
+      if (targetMode === "filter_all") return "all";
+      const ids = idsOfNight(group);
+      if (!ids || ids.length === 0) return "none";
+      const ticked = ids.filter((id) => rowSelection[String(id)]).length;
+      return ticked === 0 ? "none" : ticked === ids.length ? "all" : "some";
+    },
+    [targetMode, idsOfNight, rowSelection],
+  );
+  /** Tick every task of a night (loading its ids if it is collapsed), or untick them all */
+  const toggleNightTick = useCallback(
+    async (group: NightGroup) => {
+      if (group.empty) return;
+      const untick = nightTickState(group) === "all";
+      let ids = idsOfNight(group);
+      if (ids == null) {
+        ids = await nights.fetchNightTaskIds(group.key);
+        const loaded = ids;
+        setNightTaskIds((prev) => new Map(prev).set(group.key, loaded));
+      }
+      const nightIds = ids;
+      handleRowSelectionChange((prev) => {
+        const next = { ...prev };
+        for (const id of nightIds) {
+          if (untick) delete next[String(id)];
+          else next[String(id)] = true;
+        }
+        return next;
+      });
+    },
+    [nightTickState, idsOfNight, nights.fetchNightTaskIds, handleRowSelectionChange],
+  );
+  const toggleNightTickRef = useRef(toggleNightTick);
+  toggleNightTickRef.current = toggleNightTick;
+
+  const toggleNightExpanded = useCallback(
+    (group: NightGroup) => {
+      nights.setExpanded(group.key, !group.expanded);
+      moveCursorToNight(group.key);
+    },
+    [nights.setExpanded, moveCursorToNight],
+  );
+
+  // The cursor on the last loaded task of a night loads the night's next tasks
+  const loadMoreNight = nights.loadMore;
+  useEffect(() => {
+    if (!nightMode || typeof focusedElement !== "number" || focusedElement < 0) return;
+    const group = nights.groups.find(
+      (g) => g.expanded && focusedElement >= g.start && focusedElement < g.start + g.tasks.length,
+    );
+    if (group?.hasMore && focusedElement === group.start + group.tasks.length - 1) loadMoreNight(group.key);
+  }, [nightMode, focusedElement, nights.groups, loadMoreNight]);
+  const setNightExpandedRef = useRef(nights.setExpanded);
+  setNightExpandedRef.current = nights.setExpanded;
 
   const handleRowClick = useCallback(
     (task: AnnotationTask, { index, event }: { index: number; event: React.MouseEvent }) => {
@@ -652,7 +865,8 @@ export default function AnnotationTaskTable({
       }
       if (event.ctrlKey || event.metaKey || event.altKey) return;
       const cursor = cursorRef.current;
-      if (typeof cursor !== "number" || cursor < 0) return;
+      const onNight = nightCursorRef.current;
+      if (onNight == null && (typeof cursor !== "number" || cursor < 0)) return;
       const target = event.target;
       if (
         target instanceof HTMLInputElement
@@ -665,21 +879,48 @@ export default function AnnotationTaskTable({
 
       if (event.key === "ArrowDown" || event.key === "ArrowUp") {
         event.preventDefault();
-        const next = event.key === "ArrowDown"
-          ? Math.min(items.length - 1, cursor + 1)
-          : cursor - 1;
+        const slots = cursorSlots();
+        const at = onNight != null
+          ? slots.findIndex((slot) => "night" in slot && slot.night === onNight)
+          : slots.findIndex((slot) => "index" in slot && slot.index === cursor);
+        if (at < 0) return;
+        const next = event.key === "ArrowDown" ? Math.min(slots.length - 1, at + 1) : at - 1;
         if (next < 0) {
           setFocusedElement("search");
           searchInputRef.current?.focus();
-        } else if (next !== cursor) {
-          directionRef.current = next > cursor ? 1 : -1;
-          moveCursorTo(next, { extendSelection: event.shiftKey });
+        } else if (next !== at) {
+          directionRef.current = next > at ? 1 : -1;
+          moveToSlot(slots[next], event.shiftKey);
         }
         return;
       }
 
+      // Night headers: → or Enter expands, ← collapses
+      if (onNight != null) {
+        if (event.key === "ArrowRight" || event.key === "Enter") {
+          event.preventDefault();
+          setNightExpandedRef.current(onNight, true);
+        } else if (event.key === "ArrowLeft") {
+          event.preventDefault();
+          setNightExpandedRef.current(onNight, false);
+        }
+        return;
+      }
+      if (typeof cursor !== "number") return;
+
       const current = items[cursor];
       if (!current) return;
+
+      // ← on a task collapses its night; the cursor moves to the night's header
+      if (event.key === "ArrowLeft" && nightModeRef.current) {
+        const key = nightOfTaskRef.current.get(current.id);
+        if (key != null) {
+          event.preventDefault();
+          setNightExpandedRef.current(key, false);
+          moveCursorToNight(key);
+        }
+        return;
+      }
 
       if (event.key === PIN_PREVIEW_SHORTCUT && !event.shiftKey) {
         togglePin(current.id);
@@ -702,7 +943,8 @@ export default function AnnotationTaskTable({
       shiftTapRef.current = false;
       if (event.ctrlKey || event.metaKey || event.altKey) return;
       const cursor = cursorRef.current;
-      if (typeof cursor !== "number" || cursor < 0) return;
+      const onNight = nightCursorRef.current;
+      if (onNight == null && (typeof cursor !== "number" || cursor < 0)) return;
       const target = event.target;
       if (
         target instanceof HTMLInputElement
@@ -710,6 +952,13 @@ export default function AnnotationTaskTable({
       ) return;
       if (target instanceof HTMLTextAreaElement) return;
       if (document.querySelector('[role="dialog"]')) return;
+      // On a night header, a Shift tap ticks (or unticks) the whole night
+      if (onNight != null) {
+        const group = groupsRef.current.find((g) => g.key === onNight);
+        if (group) void toggleNightTickRef.current(group);
+        return;
+      }
+      if (typeof cursor !== "number") return;
       const current = itemsRef.current[cursor];
       if (!current) return;
       const previewOpen = activeOpenRef.current || pinnedRef.current.includes(current.id);
@@ -733,7 +982,94 @@ export default function AnnotationTaskTable({
       window.removeEventListener("keyup", onKeyUp);
       window.removeEventListener("mousedown", onPointerDown, true);
     };
-  }, [moveCursorTo, setFocusedElement, togglePin, handleRowSelectionChange, setPreviewChannel]);
+  }, [moveCursorTo, setFocusedElement, togglePin, handleRowSelectionChange, setPreviewChannel, cursorSlots, moveToSlot, moveCursorToNight]);
+
+  // Night rows around the tasks: before the first task of each expanded night
+  // come the "show more" row of the previous expanded night (if not all its
+  // tasks are loaded) and the headers of the nights since; the rest after the
+  // last task.
+  type NightRow = { kind: "header" | "more"; group: NightGroup };
+  const { nightRowsBeforeRow, trailingNightRows } = useMemo(() => {
+    const nightRowsBeforeRow = new Map<number, NightRow[]>();
+    let pending: NightRow[] = [];
+    let previous: NightGroup | null = null;
+    for (const group of nights.groups) {
+      pending.push({ kind: "header", group });
+      if (group.expanded && group.tasks.length > 0) {
+        if (previous?.hasMore) pending.unshift({ kind: "more", group: previous });
+        nightRowsBeforeRow.set(group.start, pending);
+        pending = [];
+        previous = group;
+      }
+    }
+    if (previous?.hasMore) {
+      // Right after the previous night's tasks, before the headers that follow
+      pending.unshift({ kind: "more", group: previous });
+    }
+    return { nightRowsBeforeRow, trailingNightRows: pending };
+  }, [nights.groups]);
+
+  const renderNightHeaders = useCallback(
+    (rows: NightRow[] | undefined, colSpan: number) =>
+      rows?.map(({ kind, group }) =>
+        kind === "more" ? (
+          <NightMoreRow
+            key={`night-more-${group.key}`}
+            group={group}
+            colSpan={colSpan}
+            onLoadMore={() => loadMoreNight(group.key)}
+          />
+        ) : (
+          <NightHeaderRow
+            key={`night-${group.key}`}
+            group={group}
+            colSpan={colSpan}
+            current={nightCursor === group.key}
+            narrowed={nights.narrowed}
+            tickState={nightTickState(group)}
+            onToggleExpanded={() => toggleNightExpanded(group)}
+            onToggleTick={() => void toggleNightTick(group)}
+          />
+        ),
+      ),
+    [nightCursor, nights.narrowed, nightTickState, toggleNightExpanded, toggleNightTick, loadMoreNight],
+  );
+  const renderBeforeRow = useCallback(
+    (_task: AnnotationTask, index: number, colSpan: number) => renderNightHeaders(nightRowsBeforeRow.get(index), colSpan),
+    [renderNightHeaders, nightRowsBeforeRow],
+  );
+  const renderTrailingRows = useCallback(
+    (colSpan: number) => renderNightHeaders(trailingNightRows, colSpan),
+    [renderNightHeaders, trailingNightRows],
+  );
+
+  // List view: a divider where a new night starts on the page, computed from
+  // the page's tasks alone. Only while sorted by recording time; under other
+  // orders a night's tasks are scattered and it would head many runs.
+  const [listUtcOffset] = useState(currentUtcOffset);
+  const showListNights =
+    !nightMode && sortsByRecordingTime(annotationTasks.filter.get("sort_by") as string | undefined);
+  const listNightStarts = useMemo(() => {
+    const starts = new Map<number, { night: string | null; count: number }>();
+    if (!showListNights) return starts;
+    let current: { night: string | null; count: number } | null = null;
+    annotationTasks.items.forEach((task, index) => {
+      const night = nightOfRecording(task.recording, listUtcOffset);
+      if (current == null || nightKey(current.night) !== nightKey(night)) {
+        current = { night, count: 0 };
+        starts.set(index, current);
+      }
+      current.count += 1;
+    });
+    return starts;
+  }, [showListNights, annotationTasks.items, listUtcOffset]);
+  const renderListNightDivider = useCallback(
+    (_task: AnnotationTask, index: number, colSpan: number) => {
+      const start = listNightStarts.get(index);
+      return start ? <NightDividerRow night={start.night} count={start.count} colSpan={colSpan} /> : null;
+    },
+    [listNightStarts],
+  );
 
   const renderExpandedRow = useCallback(
     (task: AnnotationTask) => {
@@ -753,7 +1089,7 @@ export default function AnnotationTaskTable({
     [pinnedIds, activeTaskId, activeSettled, togglePin, previewChannel, setPreviewChannel],
   );
 
-  if (annotationTasks.isLoading || annotationTasks.data == null) {
+  if (nightMode ? nights.isLoading || nights.data == null : annotationTasks.isLoading || annotationTasks.data == null) {
     return <Loading />;
   }
 
@@ -761,7 +1097,9 @@ export default function AnnotationTaskTable({
   // filter edit first waits for the debounce: say that results are coming.
   const isFiltering =
     (annotationTasks.filter.isPending ?? false)
-    || (annotationTasks.isFetching && annotationTasks.isPlaceholderData);
+    || (nightMode
+      ? nights.isFetching && nights.isPlaceholderData
+      : annotationTasks.isFetching && annotationTasks.isPlaceholderData);
 
   return (
     <div className="flex flex-col gap-y-4" data-guided-tour="task-table">
@@ -807,6 +1145,38 @@ export default function AnnotationTaskTable({
             <ShortcutHelper shortcuts={TASK_TABLE_SHORTCUTS} />
           </div>
         </div>
+        <div className="flex flex-row items-center gap-4">
+        {!isGuidedTour && (
+          <div
+            role="radiogroup"
+            aria-label="Task view"
+            className="flex flex-row overflow-hidden rounded-md border border-stone-300 text-sm dark:border-stone-600"
+          >
+            {([
+              ["list", "List", "Pages of tasks, with a header where a new night (noon to noon) starts"],
+              ["nights", "Nights", "The nights (noon to noon), collapsed; a night's tasks load when you expand it"],
+            ] as const).map(([value, label, title]) => (
+              <button
+                key={value}
+                type="button"
+                role="radio"
+                aria-checked={taskView === value}
+                title={title}
+                // Don't keep the focus: a focused button blocks the table's shortcuts
+                onMouseDown={(event) => event.preventDefault()}
+                onClick={() => setTaskView(value)}
+                className={classNames(
+                  "px-2 py-0.5",
+                  taskView === value
+                    ? "bg-emerald-600 text-white dark:bg-emerald-700"
+                    : "text-stone-600 hover:bg-stone-100 dark:text-stone-400 dark:hover:bg-stone-800",
+                )}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        )}
         <label
           className="flex flex-row items-center gap-2 text-sm text-stone-600 dark:text-stone-400"
           title="Highlight tasks that share a sound event tag and are within the time window of another task (gap between end of one and start of next)"
@@ -831,6 +1201,7 @@ export default function AnnotationTaskTable({
           />
           s
         </label>
+        </div>
       </div>
       {projectId != null && hasCallBoxes && (referencesOpen || pinnedSpecies != null) && (
         <ReferenceCallsPanel
@@ -846,7 +1217,7 @@ export default function AnnotationTaskTable({
       )}
       <FilterBar
         filter={annotationTasks.filter}
-        total={annotationTasks.total}
+        total={total}
         filterDef={tasksFilterDefs}
       />
       <div className="-my-3 flex h-2 flex-row items-center gap-3" aria-live="polite">
@@ -870,7 +1241,7 @@ export default function AnnotationTaskTable({
         <AnnotationTaskBulkActionBar
           targetMode={targetMode}
           selectedTaskIds={selectedTaskIds}
-          filterTotal={annotationTasks.total}
+          filterTotal={total}
           currentPageTaskIds={currentPageTaskIds}
           soundEventTagCounts={bulkTagSummaryQuery.data ?? []}
           isTagSummaryLoading={bulkTagSummaryQuery.isLoading}
@@ -904,6 +1275,8 @@ export default function AnnotationTaskTable({
             arrowKeys={false}
             onRowClick={handleRowClick}
             renderExpandedRow={renderExpandedRow}
+            renderBeforeRow={nightMode ? renderBeforeRow : showListNights ? renderListNightDivider : undefined}
+            renderTrailingRows={nightMode ? renderTrailingRows : undefined}
             handleNumberKeys={
               focusedElement !== 'search'
               && focusedElement !== 'filter'
@@ -913,7 +1286,7 @@ export default function AnnotationTaskTable({
           />
         </div>
       </div>
-      <Pagination {...annotationTasks.pagination} />
+      <Pagination {...pagination} />
     </div>
   );
 }

@@ -50,6 +50,7 @@ const STATIC_KEYS: readonly string[] = [
   "recording",
   "search_recordings",
   "annotation_task_ids",
+  "recording_night",
   "sort_by",
 ];
 
@@ -135,11 +136,14 @@ export function invalidateAnnotationTaskQueries(
     queryKey: ["annotation_tasks_index"],
     predicate: (query) => affected(query.queryKey),
   });
-  // Stats count tasks by status, so every status edit changes them
-  client.invalidateQueries({
-    queryKey: ["annotation_tasks_stats"],
-    predicate: (query) => change === "status" || affected(query.queryKey),
-  });
+  // Stats (and the night status counts of the task table) count tasks by status, so every
+  // status edit changes them
+  for (const queryKey of [["annotation_tasks_stats"], ["annotation_tasks_nights"]]) {
+    client.invalidateQueries({
+      queryKey,
+      predicate: (query) => change === "status" || affected(query.queryKey),
+    });
+  }
   // Only refetched while the history panel is open.
   if (change === "sound_event") {
     client.invalidateQueries({ queryKey: ["annotation_task_history"] });
@@ -176,9 +180,15 @@ export function scheduleAnnotationTaskQueriesInvalidation(
   // first load (no data yet): that one keeps going.
   const willRefetch = (query: { queryKey: QueryKey; state: { data: unknown } }) =>
     query.state.data !== undefined
-    && ((query.queryKey[0] === "annotation_tasks_stats" && change === "status")
+    && (((query.queryKey[0] === "annotation_tasks_stats" || query.queryKey[0] === "annotation_tasks_nights")
+      && change === "status")
       || filterAffectedByChange(filterFromQueryKey(query.queryKey), change));
-  for (const queryKey of [["annotation_tasks"], ["annotation_tasks_index"], ["annotation_tasks_stats"]]) {
+  for (const queryKey of [
+    ["annotation_tasks"],
+    ["annotation_tasks_index"],
+    ["annotation_tasks_stats"],
+    ["annotation_tasks_nights"],
+  ]) {
     void client.cancelQueries({ queryKey, predicate: willRefetch });
   }
 

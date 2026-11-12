@@ -141,6 +141,8 @@ function renderTable() {
 }
 
 beforeEach(() => {
+  // These tests cover the list view (the default); the nights view has its own tests
+  window.localStorage.removeItem("annotationTasks:view");
   // The failing prefetches warn
   vi.spyOn(console, "warn").mockImplementation(() => {});
   push.mockClear();

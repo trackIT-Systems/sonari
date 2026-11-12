@@ -17,7 +17,8 @@ const FULL_LIST_INCLUDES = {
   include_status_badge_users: true,
 } as const;
 
-const TABLE_LIST_INCLUDES = {
+/** What the task table loads per task (aggregated sound event tags only) */
+export const TABLE_LIST_INCLUDES = {
   include_recording: true,
   include_sound_event_annotations: false,
   include_sound_event_tags: true,

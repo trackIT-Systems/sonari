@@ -233,6 +233,23 @@ class AnnotationTaskStats(BaseModel):
     """Number of tasks with assigned status."""
 
 
+class AnnotationTaskNightTotal(BaseModel):
+    """One night (noon to noon local time) and how many tasks it holds."""
+
+    night: str | None
+    """Date of the night's evening ("YYYY-MM-DD"); None for recordings without a date."""
+
+    total: int
+    """Number of tasks in the night."""
+
+
+class AnnotationTaskNight(AnnotationTaskStats):
+    """The tasks of one night (noon to noon local time) with their status counts."""
+
+    night: str | None
+    """Date of the night's evening ("YYYY-MM-DD"); None for recordings without a date."""
+
+
 class AnnotationTaskBulkFailure(BaseModel):
     """A single task failure during a bulk operation."""
 

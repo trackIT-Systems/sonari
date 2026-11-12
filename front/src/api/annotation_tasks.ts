@@ -1,7 +1,7 @@
 import { AxiosInstance } from "axios";
 import { z } from "zod";
 
-import { GetManySchema, Page } from "@/api/common";
+import { GetManySchema, Page, type Paginated } from "@/api/common";
 import {
   AnnotationProjectSchema,
   AnnotationTaskSchema,
@@ -18,6 +18,8 @@ import type {
   AnnotationStatus,
   AnnotationTask,
   AnnotationTaskIndex,
+  AnnotationTaskNight,
+  AnnotationTaskNightTotal,
   AnnotationTaskStats,
   Note,
   Tag,
@@ -154,6 +156,11 @@ const AnnotationTaskFilterSchema = z.object({
     timezone: z.string(),
   }).optional(),
   sample: FloatEqFilterSchema.optional(),
+  /** The tasks of one night: noon to noon local time, named by its evening ("none": no recording date) */
+  recording_night: z.object({
+    night: z.string(),
+    utc_offset: z.number().int(),
+  }).optional(),
   recording: z.object({
     eq: z.number().optional(),
   }).optional(),
@@ -314,6 +321,8 @@ export function buildAnnotationTaskFilterQueryParams(
     day__tz: params.day?.timezone,
     sample__eq: params.sample?.eq,
     recording__eq: params.recording?.eq,
+    recording_night__eq: params.recording_night?.night,
+    recording_night__utc_offset: params.recording_night?.utc_offset,
   };
 }
 
@@ -401,6 +410,8 @@ const DEFAULT_ENDPOINTS = {
   getMany: "/api/v1/annotation_tasks/",
   getIndex: "/api/v1/annotation_tasks/index",
   getStats: "/api/v1/annotation_tasks/stats",
+  getNights: "/api/v1/annotation_tasks/nights/",
+  getNightStats: "/api/v1/annotation_tasks/nights/stats/",
   get: "/api/v1/annotation_tasks/detail/",
   delete: "/api/v1/annotation_tasks/detail/",
   addBadge: "/api/v1/annotation_tasks/detail/badges/",
@@ -481,6 +492,52 @@ export function registerAnnotationTasksAPI(
       params: buildAnnotationTaskFilterQueryParams(params),
     });
     return response.data as AnnotationTaskStats;
+  }
+
+  /**
+   * The nights (noon to noon local time) of the tasks matching `filter`, with
+   * their task counts. Meant for cheap filters (project, station, date range);
+   * status counts under the full filter come from `getNightStats`.
+   */
+  async function getNights(
+    filter: AnnotationTaskFilter,
+    { utcOffset, limit, offset }: { utcOffset: number; limit?: number; offset?: number },
+    signal?: AbortSignal,
+  ): Promise<Paginated<AnnotationTaskNightTotal>> {
+    const params = AnnotationTaskFilterSchema.parse(filter);
+    const response = await instance.get(endpoints.getNights, {
+      signal,
+      params: {
+        ...buildAnnotationTaskFilterQueryParams(params),
+        utc_offset: utcOffset,
+        limit,
+        offset,
+      },
+    });
+    return response.data as Paginated<AnnotationTaskNightTotal>;
+  }
+
+  /**
+   * Status counts of the tasks matching `filter` in each of `nights` (evening
+   * dates, or "none" for recordings without a date), in that order. Only those
+   * nights' tasks are filtered, so it stays cheap on large projects.
+   */
+  async function getNightStats(
+    filter: AnnotationTaskFilter,
+    { nights, utcOffset }: { nights: string[]; utcOffset: number },
+    signal?: AbortSignal,
+  ): Promise<AnnotationTaskNight[]> {
+    const params = new URLSearchParams();
+    for (const [key, value] of Object.entries(
+      buildAnnotationTaskFilterQueryParams(AnnotationTaskFilterSchema.parse(filter)),
+    )) {
+      if (value != null) params.append(key, String(value));
+    }
+    params.append("utc_offset", String(utcOffset));
+    // Repeated, which axios would send as night[]=
+    for (const night of nights) params.append("night", night);
+    const response = await instance.get(endpoints.getNightStats, { signal, params });
+    return response.data as AnnotationTaskNight[];
   }
 
   async function getAnnotationTask(
@@ -788,6 +845,8 @@ export function registerAnnotationTasksAPI(
     getMany,
     getIndex,
     getStats,
+    getNights,
+    getNightStats,
     get: getAnnotationTask,
     delete: deleteAnnotationTask,
     addBadge,
