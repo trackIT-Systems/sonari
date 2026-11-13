@@ -64,12 +64,7 @@ export default function SpeciesTab({
                   <td className="px-3 py-2">
                     <div className="flex flex-wrap items-center gap-2">
                       {item.tags.map((tag) => (
-                        <span key={tag.id} className="inline-flex items-center gap-1">
-                          <Tag tag={tag} count={null} disabled />
-                          <span className="text-xs tabular-nums text-stone-500">
-                            {tag.sound_event_count + tag.task_count}
-                          </span>
-                        </span>
+                        <Tag key={tag.id} tag={tag} count={null} disabled />
                       ))}
                     </div>
                   </td>

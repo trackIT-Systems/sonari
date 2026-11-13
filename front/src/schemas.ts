@@ -65,7 +65,7 @@ export const SpeciesInfoSchema = z.object({
   group_id: z.number().int().nullish(),
 });
 
-/** Tag with database id and usage counts, used for tag management. */
+/** Tag with database id and species, used for tag management. */
 export const TagDetailSchema = z.object({
   id: z.number().int(),
   key: z.string(),
@@ -73,8 +73,6 @@ export const TagDetailSchema = z.object({
   group_id: z.number().int().nullish(),
   species: SpeciesInfoSchema.nullish(),
   shortcut: z.string().nullish(),
-  sound_event_count: z.number().int().default(0),
-  task_count: z.number().int().default(0),
 });
 
 /** A taxon group of tags, e.g. Bat or Bird. */

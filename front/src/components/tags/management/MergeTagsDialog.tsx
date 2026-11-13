@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import toast from "react-hot-toast";
 
 import api from "@/app/api";
@@ -9,10 +9,6 @@ import { WarningIcon } from "@/components/icons";
 import { apiErrorMessage } from "@/hooks/api/useTagManagement";
 
 import type { TagDetail } from "@/types";
-
-function usage(tag: TagDetail) {
-  return tag.sound_event_count + tag.task_count;
-}
 
 /**
  * Merge several tags into one. The user picks which selected tag survives;
@@ -29,16 +25,11 @@ export default function MergeTagsDialog({
   onClose: () => void;
   onMerged: () => void;
 }) {
-  const mostUsed = useMemo(
-    () => [...tags].sort((a, b) => usage(b) - usage(a))[0]?.id ?? null,
-    [tags],
-  );
   const [targetId, setTargetId] = useState<number | null>(null);
   const [submitting, setSubmitting] = useState(false);
-  const target = targetId ?? mostUsed;
+  const target = targetId ?? tags[0]?.id ?? null;
 
   const sources = tags.filter((tag) => tag.id !== target);
-  const movedCount = sources.reduce((sum, tag) => sum + usage(tag), 0);
 
   const handleMerge = async () => {
     if (target == null || sources.length === 0) return;
@@ -48,9 +39,11 @@ export default function MergeTagsDialog({
         sources.map((tag) => tag.id),
         target,
       );
+      const moved = result.sound_event_tags_moved + result.task_tags_moved;
       toast.success(
         `Merged ${result.merged_tags} tag${result.merged_tags === 1 ? "" : "s"} into ` +
-          `${result.target.key}:${result.target.value}` +
+          `${result.target.key}:${result.target.value}, ` +
+          `${moved} assignment${moved === 1 ? "" : "s"} moved` +
           (result.duplicates_removed > 0
             ? ` (${result.duplicates_removed} duplicate assignments removed)`
             : ""),
@@ -86,11 +79,8 @@ export default function MergeTagsDialog({
                     onChange={() => setTargetId(tag.id)}
                   />
                   <Tag tag={tag} count={null} disabled />
-                  <span className="ml-auto text-xs tabular-nums text-stone-500">
-                    {usage(tag)} uses
-                  </span>
                   {tag.id === target && (
-                    <span className="text-xs font-semibold text-emerald-600 dark:text-emerald-400">
+                    <span className="ml-auto text-xs font-semibold text-emerald-600 dark:text-emerald-400">
                       keep
                     </span>
                   )}
@@ -102,7 +92,7 @@ export default function MergeTagsDialog({
             <WarningIcon className="h-5 w-5 shrink-0" />
             <span>
               {sources.length} tag{sources.length === 1 ? "" : "s"} will be
-              deleted and {movedCount} assignment{movedCount === 1 ? "" : "s"}{" "}
+              deleted and {sources.length === 1 ? "its" : "their"} assignments
               moved. This cannot be undone.
             </span>
           </div>

@@ -269,9 +269,6 @@ async def test_merge_tags_moves_annotations_and_removes_duplicates(
     assert response.status_code in [200, 201], response.text
 
     details = {t["value"]: t for t in await _tag_detail(auth_client, key)}
-    assert details[target["value"]]["sound_event_count"] == 1
-    assert details[typo["value"]]["sound_event_count"] == 2
-    assert details[other["value"]]["task_count"] == 1
 
     preset = (
         await auth_client.post(
@@ -293,8 +290,7 @@ async def test_merge_tags_moves_annotations_and_removes_duplicates(
     assert result["duplicates_removed"] == 1
     assert result["sound_event_tags_moved"] == 2
     assert result["task_tags_moved"] == 1
-    assert result["target"]["sound_event_count"] == 3
-    assert result["target"]["task_count"] == 1
+    assert result["target"]["id"] == details[target["value"]]["id"]
 
     remaining = await _tag_detail(auth_client, key)
     assert [t["value"] for t in remaining] == [target["value"]]
@@ -458,7 +454,8 @@ async def test_sync_links_existing_tags_but_keeps_manual_groups(
 
 
 @pytest.mark.asyncio
-async def test_preset_tags_skip_usage_counts(auth_client: AsyncClient, test_annotation_task):
+async def test_tag_details_have_no_usage_counts(auth_client: AsyncClient, test_annotation_task):
+    """Counting a tag's assignments is too slow on large databases: the list leaves it out."""
     key = _unique("species")
     tag = await _create_tag(auth_client, key, "Parus major")
     await auth_client.post(
@@ -467,13 +464,13 @@ async def test_preset_tags_skip_usage_counts(auth_client: AsyncClient, test_anno
         json=tag,
     )
     [detail] = await _tag_detail(auth_client, key)
-    assert detail["task_count"] == 1
+    assert "sound_event_count" not in detail
+    assert "task_count" not in detail
 
-    preset = (
-        await auth_client.post("/api/v1/tags/presets/", json={"name": _unique("p"), "tag_ids": [detail["id"]]})
-    ).json()
-    assert [t["value"] for t in preset["tags"]] == ["Parus major"]
-    assert preset["tags"][0]["task_count"] == 0
+    # A former usage sort falls back to the key order
+    response = await auth_client.get("/api/v1/tags/manage/", params={"search": key, "sort_by": "-usage"})
+    assert response.status_code == 200, response.text
+    assert [t["value"] for t in response.json()["items"]] == ["Parus major"]
 
 
 # ---------------------------------------------------------------------------

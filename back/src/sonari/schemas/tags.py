@@ -97,7 +97,7 @@ class SpeciesInfo(BaseModel):
 
 
 class TagDetail(BaseModel):
-    """Tag with database id and usage counts, for tag management."""
+    """Tag with database id and species, for tag management."""
 
     id: int
     key: str
@@ -107,10 +107,6 @@ class TagDetail(BaseModel):
     """The catalog species the tag names, if any."""
     shortcut: str | None = None
     """Keyboard key (0-9) that picks this tag in the tag search."""
-    sound_event_count: int = 0
-    """Number of sound event annotation tag assignments (0 inside presets)."""
-    task_count: int = 0
-    """Number of annotation task tag assignments (0 inside presets)."""
 
 
 class TagGroupCreate(BaseModel):

@@ -10,7 +10,7 @@ from __future__ import annotations
 import datetime
 from typing import Literal, Sequence
 
-from sqlalchemy import ColumnElement, delete, exists, func, insert, literal, or_, select, update
+from sqlalchemy import ColumnElement, delete, exists, func, insert, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import aliased
 
@@ -87,39 +87,20 @@ async def _invalidate_all_species_counts(session: AsyncSession) -> None:
         invalidate_cache(f"species_counts:{project_id}")
 
 
-def _usage_columns():
-    # Only live sound events: versions keep tag links for the edit history.
-    sea_count = (
-        select(func.count())
-        .select_from(SeaTag)
-        .join(models.SoundEventAnnotation, models.SoundEventAnnotation.id == SeaTag.sound_event_annotation_id)
-        .where(SeaTag.tag_id == Tag.id)
-        .correlate(Tag)
-        .scalar_subquery()
-    )
-    task_count = (
-        select(func.count()).where(TaskTag.tag_id == Tag.id).correlate(Tag).scalar_subquery()
-    )
-    return sea_count, task_count
+def _detail_select():
+    """Select tag columns and its species (see :func:`_to_detail`).
 
-
-def _detail_select(*, with_usage: bool = True):
-    """Select tag columns, its species and usage counts (see :func:`_to_detail`).
-
-    Counting assignments is a query per tag, so callers that do not show the
-    counts pass ``with_usage=False`` and get 0.
+    No usage counts: counting a tag's assignments scans all its sound event
+    tags, which takes long for common tags on large databases.
     """
-    sea_count, task_count = _usage_columns() if with_usage else (literal(0), literal(0))
     Species = models.Species
-    query = (
+    return (
         select(
             Tag.id,
             Tag.key,
             Tag.value,
             Tag.group_id,
             Tag.shortcut,
-            sea_count.label("sound_event_count"),
-            task_count.label("task_count"),
             Species.id.label("species_id"),
             Species.scientific_name,
             Species.name_de,
@@ -128,7 +109,6 @@ def _detail_select(*, with_usage: bool = True):
         .select_from(Tag)
         .outerjoin(Species, Species.id == Tag.species_id)
     )
-    return query, sea_count, task_count
 
 
 def _to_detail(row) -> schemas.TagDetail:
@@ -148,8 +128,6 @@ def _to_detail(row) -> schemas.TagDetail:
         value=row.value,
         group_id=row.group_id,
         shortcut=row.shortcut,
-        sound_event_count=row.sound_event_count,
-        task_count=row.task_count,
         species=species,
     )
 
@@ -157,12 +135,10 @@ def _to_detail(row) -> schemas.TagDetail:
 async def _tag_details(
     session: AsyncSession,
     tag_ids: Sequence[int],
-    *,
-    with_usage: bool = True,
 ) -> list[schemas.TagDetail]:
     if not tag_ids:
         return []
-    query, _, _ = _detail_select(with_usage=with_usage)
+    query = _detail_select()
     rows = await session.execute(query.where(Tag.id.in_(tag_ids)).order_by(Tag.key, Tag.value))
     return [_to_detail(r) for r in rows]
 
@@ -180,14 +156,14 @@ async def get_tag_details(
     offset: int = 0,
     sort_by: str = "key",
 ) -> tuple[list[schemas.TagDetail], int]:
-    """List tags with species and usage counts.
+    """List tags with their species.
 
     ``search`` also matches the catalog names of a tag's species, so
     searching "Amsel" finds species:Turdus merula. ``group`` is a group id,
     "none" for tags without a group, or None for all tags.
-    ``sort_by`` is one of key, value, usage, -usage.
+    ``sort_by`` is key or value.
     """
-    query, sea_count, task_count = _detail_select()
+    query = _detail_select()
     conditions: list[ColumnElement[bool]] = []
     if search:
         pattern = f"%{search}%"
@@ -207,8 +183,6 @@ async def get_tag_details(
     order = {
         "key": [Tag.key, Tag.value],
         "value": [Tag.value, Tag.key],
-        "usage": [(sea_count + task_count).asc(), Tag.key, Tag.value],
-        "-usage": [(sea_count + task_count).desc(), Tag.key, Tag.value],
     }.get(sort_by, [Tag.key, Tag.value])
 
     rows = await session.execute(query.where(*conditions).order_by(*order).limit(limit).offset(offset))
@@ -479,7 +453,7 @@ async def _preset_schema(session: AsyncSession, preset: models.TagPreset) -> sch
         description=preset.description,
         group_id=preset.group_id,
         created_by_id=preset.created_by_id,
-        tags=await _tag_details(session, tag_ids, with_usage=False),
+        tags=await _tag_details(session, tag_ids),
     )
 
 

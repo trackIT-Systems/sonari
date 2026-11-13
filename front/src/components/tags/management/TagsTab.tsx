@@ -305,8 +305,6 @@ export default function TagsTab({
         >
           <option value="key">Sort by key</option>
           <option value="value">Sort by value</option>
-          <option value="-usage">Most used first</option>
-          <option value="usage">Least used first</option>
         </select>
         <span className="text-sm text-stone-500">{total} tags</span>
       </div>
@@ -372,8 +370,6 @@ export default function TagsTab({
               <th className="px-3 py-2">Tag</th>
               <th className="px-3 py-2">Group</th>
               <th className="px-3 py-2">Key</th>
-              <th className="px-3 py-2 text-right">Sound events</th>
-              <th className="px-3 py-2 text-right">Tasks</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-stone-200 dark:divide-stone-700">
@@ -428,18 +424,12 @@ export default function TagsTab({
                     ))}
                   </select>
                 </td>
-                <td className="px-3 py-1.5 text-right tabular-nums">
-                  {tag.sound_event_count}
-                </td>
-                <td className="px-3 py-1.5 text-right tabular-nums">
-                  {tag.task_count}
-                </td>
               </tr>
             ))}
             {items.length === 0 && !query.isLoading && (
               <tr>
                 <td
-                  colSpan={6}
+                  colSpan={4}
                   className="px-3 py-6 text-center text-stone-500"
                 >
                   No tags found.

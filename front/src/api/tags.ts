@@ -76,6 +76,8 @@ export type TagPresetCreate = {
 const TagMergeResultSchema = z.object({
   target: TagDetailSchema,
   merged_tags: z.number().int(),
+  sound_event_tags_moved: z.number().int(),
+  task_tags_moved: z.number().int(),
   duplicates_removed: z.number().int(),
 });
 
