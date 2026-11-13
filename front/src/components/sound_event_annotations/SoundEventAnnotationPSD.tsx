@@ -10,6 +10,7 @@ function formatDb(value: number | null): string {
     return `${value.toFixed(0)} dB`;
 }
 
+/** Time span of a sound event; its coordinates are absolute recording times, like the task's. */
 function getTimeRangeFromGeometry(annotation: SoundEventAnnotation, taskStartTime: number, taskEndTime: number, minDuration: number = 0.01) {
     const { geometry, geometry_type } = annotation;
 
@@ -19,16 +20,16 @@ function getTimeRangeFromGeometry(annotation: SoundEventAnnotation, taskStartTim
         case "TimeInterval":
             const ti_coordinates = geometry.coordinates as [number, number];
             timeRange = {
-                min: taskStartTime + ti_coordinates[0],
-                max: taskStartTime + ti_coordinates[1],
+                min: ti_coordinates[0],
+                max: ti_coordinates[1],
             };
             break;
 
         case "BoundingBox":
             const bb_coordinates = geometry.coordinates as [number, number, number, number];
             timeRange = {
-                min: taskStartTime + bb_coordinates[0],
-                max: taskStartTime + bb_coordinates[2],
+                min: bb_coordinates[0],
+                max: bb_coordinates[2],
             };
             break;
 
@@ -37,8 +38,8 @@ function getTimeRangeFromGeometry(annotation: SoundEventAnnotation, taskStartTim
             // For a timestamp, use a small window around it
             const margin = 0.05; // 50ms
             timeRange = {
-                min: Math.max(taskStartTime, taskStartTime + time - margin),
-                max: Math.min(taskEndTime, taskStartTime + time + margin),
+                min: Math.max(taskStartTime, time - margin),
+                max: Math.min(taskEndTime, time + margin),
             };
             break;
 
@@ -47,8 +48,8 @@ function getTimeRangeFromGeometry(annotation: SoundEventAnnotation, taskStartTim
             // For a point, use a small window around the time
             const pointMargin = 0.05;
             timeRange = {
-                min: Math.max(taskStartTime, taskStartTime + point_coordinates[0] - pointMargin),
-                max: Math.min(taskEndTime, taskStartTime + point_coordinates[0] + pointMargin),
+                min: Math.max(taskStartTime, point_coordinates[0] - pointMargin),
+                max: Math.min(taskEndTime, point_coordinates[0] + pointMargin),
             };
             break;
 
@@ -95,6 +96,14 @@ function getTimeRangeFromGeometry(annotation: SoundEventAnnotation, taskStartTim
  * frequency the plot stays empty.
  */
 const PSD_FREQUENCY_RANGE = { min: 10_000, max: 110_000 };
+
+/** Reference frequency marked on the PSD (Hz) */
+const PSD_REFERENCE_FREQUENCY = 40_000;
+
+/** Horizontal position of a frequency on the PSD axis, in percent of its width */
+function frequencyPercent(freq: number): number {
+    return ((freq - PSD_FREQUENCY_RANGE.min) / (PSD_FREQUENCY_RANGE.max - PSD_FREQUENCY_RANGE.min)) * 100;
+}
 
 function formatFrequency(freq: number): string {
     if (freq >= 1000) {
@@ -234,10 +243,11 @@ export default function SoundEventAnnotationPSD({
     }, [imageSrc]);
 
     return (
-        <div className="flex flex-col">
-            <div className="flex">
+        // One grid for the plot and its axes: the frequency axis spans exactly the
+        // plot's width, however narrow the dB labels' column becomes
+        <div className="grid" style={{ gridTemplateColumns: `auto ${width}px` }}>
                 {/* Y-axis label */}
-                <div className="flex flex-col justify-between pr-2 text-right w-16">
+                <div className="flex flex-col justify-between pr-2 text-right">
                     <span className="text-xs text-stone-600">{formatDb(psdMax)}</span>
                     <span className="text-xs text-stone-600 text-center">
                         {psdMax !== null && psdMin !== null ? "∆: " + formatDb(psdMax - psdMin) : "–"}
@@ -261,6 +271,12 @@ export default function SoundEventAnnotationPSD({
                             {...positionPopoverProps}
                         />
                     )}
+                    {/* Reference line; lets hover events through to the image */}
+                    <div
+                        aria-hidden
+                        className="pointer-events-none absolute inset-y-0 border-l border-dashed border-sky-400/70"
+                        style={{ left: `${frequencyPercent(PSD_REFERENCE_FREQUENCY)}%` }}
+                    />
                     {isLoading && (
                         <div className="absolute inset-0 flex items-center justify-center bg-stone-100 dark:bg-stone-800 bg-opacity-50">
                             <span className="text-sm text-stone-500">Loading PSD...</span>
@@ -272,17 +288,17 @@ export default function SoundEventAnnotationPSD({
                         </div>
                     )}
                 </div>
-            </div>
 
-            {/* X-axis labels (Frequency) */}
-            <div className="flex justify-between pl-16 pr-2 pt-2">
-                <span className="text-xs text-stone-600">{formatFrequency(frequencyRange.min)}</span>
-                <span className="text-xs text-stone-600 text-center">
-                    {frequencyRange.max > frequencyRange.min 
-                        ? "∆: " + formatFrequency(frequencyRange.max - frequencyRange.min) 
-                        : ""}
+            {/* X-axis labels (Frequency), under the plot area */}
+            <div className="relative col-start-2 h-6 pt-2">
+                <span className="absolute left-0 text-xs text-stone-600">{formatFrequency(frequencyRange.min)}</span>
+                <span
+                    className="absolute -translate-x-1/2 text-xs text-sky-600 dark:text-sky-400"
+                    style={{ left: `${frequencyPercent(PSD_REFERENCE_FREQUENCY)}%` }}
+                >
+                    {formatFrequency(PSD_REFERENCE_FREQUENCY)}
                 </span>
-                <span className="text-xs text-stone-600">{formatFrequency(frequencyRange.max)}</span>
+                <span className="absolute right-0 text-xs text-stone-600">{formatFrequency(frequencyRange.max)}</span>
             </div>
         </div>
     );
