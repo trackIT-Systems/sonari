@@ -53,6 +53,7 @@ import type {
 } from "@/types";
 import AnnotationTaskNotes from "./AnnotationTaskNotes";
 import AnnotationTaskHistory from "./AnnotationTaskHistory";
+import AnnotationTaskMainFrequencies from "./AnnotationTaskMainFrequencies";
 
 import type { TimelinePreview } from "@/utils/soundEventTimeline";
 import AnnotationTaskTags, { SoundEventTagStrip } from "@/components/annotation_tasks/AnnotationTaskTags";
@@ -1159,6 +1160,13 @@ export default function AnnotateTasks({
                 currentUser={currentUser}
               />
             </div>
+            <AnnotationTaskMainFrequencies
+              annotationTask={annotationTask}
+              onSelectSoundEventAnnotation={(id) => {
+                const annotation = annotationTask.sound_event_annotations?.find((sea) => sea.id === id);
+                if (annotation != null) handleSelectSoundEventAnnotation(annotation);
+              }}
+            />
             <AnnotationTaskHistory
               annotationTask={annotationTask}
               onPreviewChange={setTimelinePreview}

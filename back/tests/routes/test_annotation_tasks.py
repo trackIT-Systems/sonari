@@ -203,3 +203,30 @@ async def test_filter_annotation_tasks_by_task_tag(
 
     after = await auth_client.get("/api/v1/annotation_tasks/", params=params)
     assert [t["id"] for t in after.json()["items"]] == [test_annotation_task.id]
+
+
+@pytest.mark.asyncio
+async def test_get_task_main_frequencies(
+    auth_client: AsyncClient,
+    test_annotation_task,
+    test_sound_event_annotation,
+):
+    """Every sound event of the task gets an entry, with a frequency or None."""
+    response = await auth_client.get(
+        "/api/v1/annotation_tasks/detail/main_frequencies/",
+        params={"annotation_task_id": test_annotation_task.id},
+    )
+    assert response.status_code == 200
+    entries = {entry["sound_event_annotation_id"]: entry for entry in response.json()}
+    assert test_sound_event_annotation.id in entries
+    frequency = entries[test_sound_event_annotation.id]["main_frequency"]
+    assert frequency is None or 100.0 <= frequency <= 500.0
+
+
+@pytest.mark.asyncio
+async def test_get_task_main_frequencies_not_found(auth_client: AsyncClient):
+    response = await auth_client.get(
+        "/api/v1/annotation_tasks/detail/main_frequencies/",
+        params={"annotation_task_id": 999999},
+    )
+    assert response.status_code == 404

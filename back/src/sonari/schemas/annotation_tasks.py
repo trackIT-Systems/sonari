@@ -17,6 +17,7 @@ if TYPE_CHECKING:
     from sonari.schemas.sound_event_annotations import SoundEventAnnotation
 
 __all__ = [
+    "SoundEventMainFrequency",
     "AnnotationStatusBadge",
     "AnnotationStatusBadgeUpdate",
     "AnnotationTask",
@@ -248,6 +249,13 @@ class AnnotationTaskNight(AnnotationTaskStats):
 
     night: str | None
     """Date of the night's evening ("YYYY-MM-DD"); None for recordings without a date."""
+
+
+class SoundEventMainFrequency(BaseModel):
+    """Main (peak) frequency of a sound event, None where it cannot be measured."""
+
+    sound_event_annotation_id: int
+    main_frequency: float | None
 
 
 class AnnotationTaskBulkFailure(BaseModel):

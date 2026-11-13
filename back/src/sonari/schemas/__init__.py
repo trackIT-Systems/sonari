@@ -28,6 +28,7 @@ from sonari.schemas.annotation_projects import (
     SpeciesTagCount,
 )
 from sonari.schemas.annotation_tasks import (
+    SoundEventMainFrequency,
     AnnotationStatusBadge,
     AnnotationStatusBadgeUpdate,
     AnnotationTask,
@@ -111,6 +112,7 @@ from sonari.schemas.tags import (
 from sonari.schemas.users import SimpleUser, UserCreate, UserUpdate
 
 __all__ = [
+    "SoundEventMainFrequency",
     "AmplitudeParameters",
     "AnnotationProject",
     "AnnotationProjectCreate",

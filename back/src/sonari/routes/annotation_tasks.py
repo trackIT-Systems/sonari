@@ -6,10 +6,12 @@ from typing import Annotated, Dict, Sequence
 from astral import LocationInfo
 from astral.sun import sun
 from fastapi import Depends, HTTPException, Query
+from fastapi.concurrency import run_in_threadpool
 from pydantic import Field
 from soundevent.data import AnnotationState
 
 from sonari import api, schemas
+from sonari.api.main_frequencies import compute_main_frequencies
 from sonari.services import sound_event_history
 from sonari.filters.annotation_tasks import NO_RECORDING_TIME, AnnotationTaskFilter
 from sonari.filters.recordings import IDFilter as RecordingIDFilter
@@ -310,6 +312,44 @@ def get_annotation_tasks_router(settings: SonariSettings):
         """Original state of the task's imported sound events and every user edit since."""
         await api.annotation_tasks.get(session, annotation_task_id)
         return await sound_event_history.get_task_history(session, annotation_task_id)
+
+    @annotation_tasks_router.get(
+        "/detail/main_frequencies/",
+        response_model=list[schemas.SoundEventMainFrequency],
+    )
+    async def get_task_main_frequencies(
+        session: Session,
+        annotation_task_id: int,
+        channel: int = 0,
+    ):
+        """Main (peak) frequency of each sound event of the task.
+
+        The frequency of maximum power within the sound event's bounding box
+        (10 to 110 kHz without a frequency range), averaged over its time span.
+        """
+        task = await api.annotation_tasks.get(
+            session,
+            annotation_task_id,
+            include_recording=True,
+            include_sound_event_annotations=True,
+        )
+        # Close the session before the audio is loaded and analysed
+        await session.close()
+        if task.recording is None:
+            raise HTTPException(status_code=404, detail="Recording of the task not found")
+        frequencies = await run_in_threadpool(
+            compute_main_frequencies,
+            task.recording,
+            task.start_time,
+            task.end_time,
+            task.sound_event_annotations or [],
+            settings.audio_dir,
+            channel,
+        )
+        return [
+            schemas.SoundEventMainFrequency(sound_event_annotation_id=sea_id, main_frequency=frequency)
+            for sea_id, frequency in frequencies.items()
+        ]
 
     @annotation_tasks_router.get(
         "/detail/",

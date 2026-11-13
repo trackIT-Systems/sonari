@@ -428,7 +428,15 @@ const DEFAULT_ENDPOINTS = {
   bulkSoundEventTagSummary: "/api/v1/annotation_tasks/bulk/sound_event_tags/summary/",
   bulkDeleteSoundEventsByTag: "/api/v1/annotation_tasks/bulk/sound_events/delete/",
   getHistory: "/api/v1/annotation_tasks/detail/history/",
+  getMainFrequencies: "/api/v1/annotation_tasks/detail/main_frequencies/",
 };
+
+const SoundEventMainFrequencySchema = z.object({
+  sound_event_annotation_id: z.number(),
+  main_frequency: z.number().nullable(),
+});
+
+export type SoundEventMainFrequency = z.infer<typeof SoundEventMainFrequencySchema>;
 
 export function registerAnnotationTasksAPI(
   instance: AxiosInstance,
@@ -841,6 +849,18 @@ export function registerAnnotationTasksAPI(
     return SoundEventTaskHistorySchema.parse(response.data);
   }
 
+  /** Main (peak) frequency of each sound event of the task, in Hz (null where none can be measured). */
+  async function getMainFrequencies(
+    annotationTaskId: number,
+    signal?: AbortSignal,
+  ): Promise<SoundEventMainFrequency[]> {
+    const response = await instance.get(endpoints.getMainFrequencies, {
+      params: { annotation_task_id: annotationTaskId },
+      signal,
+    });
+    return z.array(SoundEventMainFrequencySchema).parse(response.data);
+  }
+
   return {
     getMany,
     getIndex,
@@ -863,5 +883,6 @@ export function registerAnnotationTasksAPI(
     bulkSoundEventTagSummary,
     bulkDeleteSoundEventsByTag,
     getHistory,
+    getMainFrequencies,
   } as const;
 }
