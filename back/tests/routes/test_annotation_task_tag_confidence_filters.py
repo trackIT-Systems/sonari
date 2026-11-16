@@ -797,3 +797,70 @@ async def test_sound_event_count_with_single_include_tag(
     )
     assert two_pip_events_task.id in ids_total_two
     assert one_pip_one_nyct_task.id in ids_total_two
+
+
+@pytest.mark.asyncio
+async def test_distinct_tag_count_bounds_without_include_tag(
+    auth_client: AsyncClient,
+    db_session: AsyncSession,
+    test_recording_id: int,
+    test_user,
+):
+    """Count bounds alone: tagless tasks count 0 and old versions of events don't count."""
+    import datetime
+
+    from sqlalchemy import update
+
+    user = schemas.SimpleUser.model_validate(test_user)
+    project = await api.annotation_projects.create(
+        db_session,
+        name=f"tag_count_bounds_{uuid.uuid4().hex[:8]}",
+        description="filter test",
+    )
+    await db_session.commit()
+
+    tagless = await _create_task(db_session, project, test_recording_id, 200.0, 205.0)
+    one_tag = await _create_task(db_session, project, test_recording_id, 206.0, 210.0)
+    two_tags = await _create_task(db_session, project, test_recording_id, 211.0, 215.0)
+    pip_tag = await _create_species_tag(db_session, user, "pip")
+    nyct_tag = await _create_species_tag(db_session, user, "nyct")
+
+    await _create_sound_event(db_session, tagless, user, 200.5, 201.0)
+
+    pip_event = await _create_sound_event(db_session, one_tag, user, 206.5, 207.0)
+    await _add_tag(db_session, pip_event, pip_tag, user)
+    # An old version of a sound event: its tag must not count
+    old_event = await _create_sound_event(db_session, one_tag, user, 207.5, 208.0)
+    await _add_tag(db_session, old_event, nyct_tag, user)
+    await db_session.execute(
+        update(models.SoundEventAnnotation)
+        .where(models.SoundEventAnnotation.id == old_event.id)
+        .values(superseded_on=datetime.datetime.now())
+    )
+    await db_session.commit()
+
+    for start, tag in ((211.5, pip_tag), (212.5, nyct_tag)):
+        event = await _create_sound_event(db_session, two_tags, user, start, start + 0.5)
+        await _add_tag(db_session, event, tag, user)
+
+    async def ids(**bounds):
+        return await _fetch_task_ids(
+            auth_client,
+            project.id,
+            **{f"sound_event_annotation_tag_count__{k}": v for k, v in bounds.items()},
+        )
+
+    assert await ids(eq=0) == {tagless.id}
+    assert await ids(eq=1) == {one_tag.id}
+    assert await ids(lt=2) == {tagless.id, one_tag.id}
+    assert await ids(ge=1) == {one_tag.id, two_tags.id}
+    assert await ids(gt=0, le=1) == {one_tag.id}
+
+    # The tags on the task itself have their own count
+    task = await api.annotation_tasks.get(db_session, one_tag.id, include_tags=True)
+    await api.annotation_tasks.add_tag(db_session, task, pip_tag, user=user)
+    await db_session.commit()
+    task_ids = await _fetch_task_ids(auth_client, project.id, task_tag_count__eq=1)
+    assert task_ids == {one_tag.id}
+    task_ids = await _fetch_task_ids(auth_client, project.id, task_tag_count__eq=0)
+    assert task_ids == {tagless.id, two_tags.id}
