@@ -147,6 +147,21 @@ def get_database_url(
     return validate_database_url(url, is_async=is_async)
 
 
+def _postgres_time_limits() -> dict[str, str]:
+    """Time limits Postgres enforces on sonari's own connections (0 turns one off).
+
+    A query nobody waits for any more (the user changed the filter or closed the
+    page) otherwise runs to its end, and such queries pile up until the workers
+    and the database are saturated. Migrations and ecohub use engines of their own.
+    """
+    statement = int(os.environ.get("SONARI_DB_STATEMENT_TIMEOUT", "120"))
+    idle_in_transaction = int(os.environ.get("SONARI_DB_IDLE_IN_TRANSACTION_TIMEOUT", "300"))
+    return {
+        "statement_timeout": f"{statement}s",
+        "idle_in_transaction_session_timeout": f"{idle_in_transaction}s",
+    }
+
+
 def create_async_db_engine(database_url: str | URL) -> AsyncEngine:
     """Create the database engine.
 
@@ -194,6 +209,7 @@ def create_async_db_engine(database_url: str | URL) -> AsyncEngine:
             pool_timeout=5,
             pool_recycle=1800,
             pool_pre_ping=True,
+            connect_args={"server_settings": _postgres_time_limits()},
         )
 
     raise ValueError(f"Unsupported database backend: {backend}. Supported backends are: sqlite, postgresql")

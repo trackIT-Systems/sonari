@@ -15,6 +15,7 @@ from sonari import exceptions
 from sonari.shared_cache_global import set_shared_cache
 from sonari.system.boot import sonari_init
 from sonari.system.database import dispose_async_engine
+from sonari.system.disconnect import CancelOnDisconnectMiddleware
 from sonari.system.settings import Settings
 from sonari.system.shared_cache import SharedTTLCache
 
@@ -101,6 +102,9 @@ def create_app(settings: Settings) -> FastAPI:
 
     # Add middleware to normalize trailing slashes across different route conventions
     app.add_middleware(TrailingSlashNormalizationMiddleware)
+
+    # Added last, so it wraps all others and sees the client disconnect first.
+    app.add_middleware(CancelOnDisconnectMiddleware)
 
     # Add default routes.
     main_router = get_main_router(settings)
