@@ -47,11 +47,15 @@ def _json_array_element_sqlite(element, compiler, **kw):
 
 @compiles(json_array_element, "postgresql")
 def _json_array_element_postgresql(element, compiler, **kw):
-    """Use JSON operators for PostgreSQL."""
+    """Use JSON operators for PostgreSQL.
+
+    ``->>`` yields text, which casts to FLOAT; ``->`` yields json, which does not
+    ("cannot cast type json to double precision").
+    """
     col, idx = list(element.clauses)
     # Get the literal value of the index
     idx_value = idx.value if hasattr(idx, "value") else idx
-    return f"CAST(CAST({compiler.process(col, **kw)} AS json)->'coordinates'->{idx_value} AS FLOAT)"
+    return f"CAST(CAST({compiler.process(col, **kw)} AS json)->'coordinates'->>{idx_value} AS FLOAT)"
 
 
 @compiles(json_array_element)
