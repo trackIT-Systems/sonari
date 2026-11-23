@@ -5,7 +5,7 @@ from typing import Literal
 
 from pydantic import Field, field_validator
 from soundevent import data
-from sqlalchemy import Float, Integer, Select, String, and_, exists, false, func, literal, not_, or_, select
+from sqlalchemy import Float, Integer, Select, String, and_, exists, false, func, literal, not_, or_, select, true
 from sqlalchemy.ext.compiler import compiles
 from sqlalchemy.sql.expression import FunctionElement
 
@@ -435,6 +435,86 @@ def _task_tag_count(level: TagLevel):
     return links.scalar_subquery()
 
 
+def _task_has_tag_outside(level: TagLevel, known_pairs: list[tuple[str, str]]):
+    """The task carries a tag other than these (stops at its first such link)."""
+    links, tag_id = _task_tag_links(level, literal(1))
+    known_ids = [_tag_id_subquery(k, v) for k, v in known_pairs]
+    return exists(links.where(tag_id.not_in(known_ids)))
+
+
+def _task_has_any_tag(level: TagLevel):
+    """The task carries at least one tag (stops at its first link)."""
+    links, _ = _task_tag_links(level, literal(1))
+    return exists(links)
+
+
+def _task_has_two_tags(level: TagLevel):
+    """The task carries at least two distinct tags: one besides its first link's.
+
+    Stops at the first link with another tag; a task with a single tag reads
+    its links once, without the sort or hash of a distinct count.
+    """
+    first_links, first_tag_id = _task_tag_links(level, literal(1))
+    first_tag = first_links.with_only_columns(first_tag_id).limit(1).scalar_subquery()
+    links, tag_id = _task_tag_links(level, literal(1))
+    return exists(links.where(tag_id != first_tag))
+
+
+def _known_task_tags(
+    include_pairs: list[tuple[str, str]] | None,
+    include_match: Literal["and", "or"] | None,
+) -> list[tuple[str, str]]:
+    """Distinct tags every matching task carries: all included tags when all are required."""
+    if not include_pairs:
+        return []
+    if len(include_pairs) == 1 or _resolved_include_match(include_match) == "and":
+        return list(dict.fromkeys(include_pairs))
+    return []
+
+
+def _tag_count_conditions(
+    level: TagLevel,
+    count_filter: "SoundEventAnnotationTagCountFilter",
+    known_pairs: list[tuple[str, str]],
+):
+    """Bounds on the task's distinct tag count, stopping early where possible.
+
+    Every bound is "at least m distinct tags" or its negation. With the k tags
+    the task is known to carry (``known_pairs``, required by the include filter
+    in the same query), at least m <= k always holds, and at least k + 1 means
+    "a tag other than those": an EXISTS that stops at the first such link
+    instead of counting all of the task's tags. Without known tags, at least 1
+    and 2 are EXISTS checks too. Other bounds count the tags.
+    """
+    known = len(known_pairs)
+    needed: list[tuple[int, bool]] = []  # (m, whether at least m must hold)
+    if count_filter.eq is not None:
+        needed += [(count_filter.eq, True), (count_filter.eq + 1, False)]
+    if count_filter.gt is not None:
+        needed.append((count_filter.gt + 1, True))
+    if count_filter.ge is not None:
+        needed.append((count_filter.ge, True))
+    if count_filter.lt is not None:
+        needed.append((count_filter.lt, False))
+    if count_filter.le is not None:
+        needed.append((count_filter.le + 1, False))
+
+    def checked_by_exists(m: int) -> bool:
+        return m <= known + 1 or (known == 0 and m == 2)
+
+    if not all(checked_by_exists(m) for m, _ in needed):
+        return _count_bound_conditions(_task_tag_count(level), count_filter)
+
+    def at_least(m: int):
+        if m <= known:
+            return true()
+        if m == known + 1:
+            return _task_has_tag_outside(level, known_pairs) if known else _task_has_any_tag(level)
+        return _task_has_two_tags(level)
+
+    return [at_least(m) if holds else not_(at_least(m)) for m, holds in needed]
+
+
 def _count_bound_conditions(count_expr, count_filter: "SoundEventAnnotationTagCountFilter"):
     conditions = []
     if count_filter.eq is not None:
@@ -477,7 +557,11 @@ def _tag_condition(
     if exclude_pairs:
         conditions.extend(not_(_task_has_tag(level, k, v)) for k, v in exclude_pairs)
     if count_filter is not None and _tag_count_filter_active(count_filter):
-        conditions.extend(_count_bound_conditions(_task_tag_count(level), count_filter))
+        conditions.extend(
+            _tag_count_conditions(
+                level, count_filter, _known_task_tags(include_pairs, include_match)
+            )
+        )
     return and_(*conditions) if conditions else None
 
 

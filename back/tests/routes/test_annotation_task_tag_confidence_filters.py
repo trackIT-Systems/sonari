@@ -864,3 +864,116 @@ async def test_distinct_tag_count_bounds_without_include_tag(
     assert task_ids == {one_tag.id}
     task_ids = await _fetch_task_ids(auth_client, project.id, task_tag_count__eq=0)
     assert task_ids == {tagless.id, two_tags.id}
+
+
+@pytest.mark.asyncio
+async def test_tag_count_bounds_match_a_full_count(
+    auth_client: AsyncClient,
+    db_session: AsyncSession,
+    test_recording_id: int,
+    test_user,
+):
+    """Every count bound, with and without included tags, matches counting the tags.
+
+    The count stops early where it can (EXISTS checks); the result must be the
+    same as counting all distinct tags of each task.
+    """
+    import datetime
+    import itertools
+
+    from sqlalchemy import update
+
+    user = schemas.SimpleUser.model_validate(test_user)
+    project = await api.annotation_projects.create(
+        db_session,
+        name=f"tag_count_exists_{uuid.uuid4().hex[:8]}",
+        description="filter test",
+    )
+    await db_session.commit()
+    a, b, c = [await _create_species_tag(db_session, user, name) for name in "abc"]
+
+    # Tag sets per task; "A x3" puts A on three events (one distinct tag)
+    layouts = {
+        "nothing": [],
+        "untagged event": [[]],
+        "A x3": [[a], [a], [a]],
+        "A B": [[a], [b], [a, b]],
+        "A B C": [[a, b], [c]],
+        "B": [[b]],
+        "A, old version B": [[a]],
+    }
+    expected_tags = {
+        "nothing": set(),
+        "untagged event": set(),
+        "A x3": {a.id},
+        "A B": {a.id, b.id},
+        "A B C": {a.id, b.id, c.id},
+        "B": {b.id},
+        "A, old version B": {a.id},
+    }
+    tasks = {}
+    for i, (name, events) in enumerate(layouts.items()):
+        start = 300.0 + 10 * i
+        task = await _create_task(db_session, project, test_recording_id, start, start + 8)
+        tasks[name] = task
+        for j, tags in enumerate(events):
+            event = await _create_sound_event(db_session, task, user, start + j, start + j + 0.5)
+            for tag in tags:
+                await _add_tag(db_session, event, tag, user)
+        # The same tags on the task itself, for the task tag count
+        task_with_tags = await api.annotation_tasks.get(db_session, task.id, include_tags=True)
+        for tag in {t.id: t for tags in events for t in tags}.values():
+            task_with_tags = await api.annotation_tasks.add_tag(
+                db_session, task_with_tags, tag, user=user
+            )
+        await db_session.commit()
+    old = await _create_sound_event(
+        db_session, tasks["A, old version B"], user, 362.0, 362.5
+    )
+    await _add_tag(db_session, old, b, user)
+    await db_session.execute(
+        update(models.SoundEventAnnotation)
+        .where(models.SoundEventAnnotation.id == old.id)
+        .values(superseded_on=datetime.datetime.now())
+    )
+    await db_session.commit()
+
+    includes = {
+        "none": ([], "or"),
+        "A": ([a], "or"),
+        "A and B": ([a, b], "and"),
+        "A or B": ([a, b], "or"),
+    }
+    compare = {
+        "eq": lambda n, m: n == m,
+        "lt": lambda n, m: n < m,
+        "le": lambda n, m: n <= m,
+        "gt": lambda n, m: n > m,
+        "ge": lambda n, m: n >= m,
+    }
+    bound_sets = [{op: m} for op, m in itertools.product(compare, range(5))]
+    bound_sets += [{"gt": 0, "le": 1}, {"ge": 2, "lt": 4}, {"eq": 2, "le": 3}]
+
+    for level, prefix in (
+        ("sound_event", "sound_event_annotation_tag"),
+        ("task", "task_tag"),
+    ):
+        for (include_name, (include, match)), bounds in itertools.product(
+            includes.items(), bound_sets
+        ):
+            params = {f"{prefix}_count__{op}": m for op, m in bounds.items()}
+            if include:
+                params[f"{prefix}__keys"] = ",".join(t.key for t in include)
+                params[f"{prefix}__values"] = ",".join(t.value for t in include)
+                params[f"{prefix}__include_match"] = match
+            wanted = {
+                tasks[name].id
+                for name, tags in expected_tags.items()
+                if (
+                    not include
+                    or (all if match == "and" else any)(t.id in tags for t in include)
+                )
+                and all(compare[op](len(tags), m) for op, m in bounds.items())
+            }
+            found = await _fetch_task_ids(auth_client, project.id, **params)
+            assert found == wanted, (level, include_name, bounds)
