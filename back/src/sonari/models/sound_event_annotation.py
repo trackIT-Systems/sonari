@@ -86,6 +86,12 @@ class SoundEventAnnotation(Base):
     __table_args__ = (
         # Serves lookups by task and ecohub's re-import delete by task and creator.
         Index("ix_sound_event_annotation_task_id_created_by_id", "annotation_task_id", "created_by_id"),
+        # Carries the id so tag filters find a task's event ids without reading the table.
+        Index(
+            "ix_sound_event_annotation_task_id_id",
+            "annotation_task_id",
+            postgresql_include=["id"],
+        ),
         Index("ix_sound_event_annotation_version_of_id", "version_of_id"),
         # Event ids are never reused (versions refer to them); SQLite needs this for it.
         {"sqlite_autoincrement": True},
