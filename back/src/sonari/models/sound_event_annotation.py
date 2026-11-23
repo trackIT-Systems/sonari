@@ -12,6 +12,7 @@ import datetime
 from typing import TYPE_CHECKING, Optional
 from uuid import UUID
 
+import sqlalchemy
 import sqlalchemy.orm as orm
 from soundevent import Geometry
 from sqlalchemy import DateTime, ForeignKey, Index, UniqueConstraint
@@ -86,11 +87,14 @@ class SoundEventAnnotation(Base):
     __table_args__ = (
         # Serves lookups by task and ecohub's re-import delete by task and creator.
         Index("ix_sound_event_annotation_task_id_created_by_id", "annotation_task_id", "created_by_id"),
-        # Carries the id so tag filters find a task's event ids without reading the table.
+        # Carries the id and holds only live events, so tag filters find a task's
+        # event ids without reading the table.
         Index(
             "ix_sound_event_annotation_task_id_id",
             "annotation_task_id",
             postgresql_include=["id"],
+            postgresql_where=sqlalchemy.text("superseded_on IS NULL"),
+            sqlite_where=sqlalchemy.text("superseded_on IS NULL"),
         ),
         Index("ix_sound_event_annotation_version_of_id", "version_of_id"),
         # Event ids are never reused (versions refer to them); SQLite needs this for it.

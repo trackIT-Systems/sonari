@@ -1,5 +1,6 @@
 """Function to initialize the database."""
 
+import asyncio
 import datetime
 import logging
 import os
@@ -12,9 +13,10 @@ from alembic import script
 from alembic.command import upgrade
 from alembic.config import Config
 from alembic.runtime import migration
-from sqlalchemy import Connection, Engine, create_engine
+from sqlalchemy import Connection, Engine, create_engine, text
 from sqlalchemy.engine import URL, make_url
 from sqlalchemy.ext.asyncio import (
+    AsyncConnection,
     AsyncEngine,
     AsyncSession,
     async_sessionmaker,
@@ -342,14 +344,56 @@ async def get_async_session(
             yield session
 
 
+#: Postgres advisory lock held by the one worker that migrates (any constant works).
+MIGRATION_LOCK_ID = 7_310_524
+
+
+async def _acquire_migration_lock(conn: AsyncConnection) -> None:
+    """Wait until this connection holds the migration lock, ending each transaction.
+
+    Polls with short statements instead of blocking in pg_advisory_lock: a
+    CREATE INDEX CONCURRENTLY run by the migrating worker waits for every
+    older statement, so a blocked one would never let it finish.
+    """
+    lock = text("select pg_try_advisory_lock(:id)")
+    while True:
+        acquired = (await conn.execute(lock, {"id": MIGRATION_LOCK_ID})).scalar()
+        await conn.commit()
+        if acquired:
+            return
+        await asyncio.sleep(1)
+
+
 async def init_database(settings: Settings) -> None:
-    """Create the database and tables on startup."""
+    """Create the database and tables on startup.
+
+    Each worker runs this; on Postgres an advisory lock lets one migrate while
+    the others wait, then they find the database up to date. No transaction
+    stays open while migrating: CREATE INDEX CONCURRENTLY waits for every open
+    transaction, including one held by the worker that runs it.
+    """
     db_url = get_database_url(settings)
     engine = create_async_db_engine(db_url)
+    cfg = create_alembic_config(db_url, is_async=False)
 
     try:
-        async with engine.begin() as conn:
-            cfg = create_alembic_config(db_url, is_async=False)
-            await conn.run_sync(create_or_update_db, cfg)
+        async with engine.connect() as conn:
+            locked = conn.dialect.name == "postgresql"
+            if locked:
+                await _acquire_migration_lock(conn)
+            try:
+                state = await conn.run_sync(get_db_state, cfg)
+                await conn.commit()
+                if state == DatabaseState.UNKNOWN:
+                    raise RuntimeError("Unknown database state.")
+                if state != DatabaseState.OK:
+                    # Alembic connects on its own; this connection is idle meanwhile.
+                    await asyncio.to_thread(run_migrations, cfg)
+            finally:
+                if locked:
+                    await conn.execute(
+                        text("select pg_advisory_unlock(:id)"), {"id": MIGRATION_LOCK_ID}
+                    )
+                    await conn.commit()
     finally:
         await engine.dispose()
