@@ -1,5 +1,8 @@
 import type { QueryClient, QueryKey } from "@tanstack/react-query";
 
+import type { Paginated } from "@/api/common";
+import type { AnnotationStatusBadge, AnnotationTaskIndex, AnnotationTaskStats } from "@/types";
+
 /** What an edit of a single annotation task changed */
 export type AnnotationTaskChange = "status" | "task_tag" | "note" | "sound_event";
 
@@ -124,6 +127,12 @@ export function filterAffectedByChange(
 export function invalidateAnnotationTaskQueries(
   client: QueryClient,
   change: AnnotationTaskChange,
+  {
+    updatedStats = new Set<string>(),
+  }: {
+    /** Hashes of stats queries already updated in place for this status change */
+    updatedStats?: ReadonlySet<string>;
+  } = {},
 ) {
   const affected = (queryKey: QueryKey) =>
     filterAffectedByChange(filterFromQueryKey(queryKey), change);
@@ -141,7 +150,8 @@ export function invalidateAnnotationTaskQueries(
   for (const queryKey of [["annotation_tasks_stats"], ["annotation_tasks_nights"]]) {
     client.invalidateQueries({
       queryKey,
-      predicate: (query) => change === "status" || affected(query.queryKey),
+      predicate: (query) =>
+        (change === "status" && !updatedStats.has(query.queryHash)) || affected(query.queryKey),
     });
   }
   // Only refetched while the history panel is open.
@@ -150,10 +160,92 @@ export function invalidateAnnotationTaskQueries(
   }
 }
 
+/** The badges of one task before and after an edit */
+export type BadgeChange = {
+  taskId: number;
+  before: readonly AnnotationStatusBadge[];
+  after: readonly AnnotationStatusBadge[];
+};
+
+function statusFlags(badges: readonly AnnotationStatusBadge[]) {
+  const states = new Set(badges.map((badge) => badge.state));
+  const verified = states.has("verified");
+  const rejected = states.has("rejected");
+  const completed = states.has("completed");
+  return {
+    done: verified || rejected || completed,
+    verified,
+    rejected,
+    completed,
+    assigned: states.has("assigned"),
+  };
+}
+
+/**
+ * Apply a badge change to the cached stats it can't move the task into or
+ * out of, instead of counting the whole filter again on the server (minutes
+ * for an expensive filter on a large project). That is a stats query whose
+ * filter has no status condition, and whose unpaged task index (same filter,
+ * as the annotate view loads it) holds the task. Counted like the server: a
+ * task is done when any user verified, rejected or completed it.
+ *
+ * Stats being fetched are left alone: their result would replace the update.
+ * Returns the hashes of the stats queries updated.
+ */
+export function applyBadgeChangeToStats(client: QueryClient, change: BadgeChange): Set<string> {
+  const updated = new Set<string>();
+  const before = statusFlags(change.before);
+  const after = statusFlags(change.after);
+  const delta = (flag: keyof typeof before) => Number(after[flag]) - Number(before[flag]);
+  const cache = client.getQueryCache();
+
+  for (const query of cache.findAll({ queryKey: ["annotation_tasks_stats"] })) {
+    const stats = query.state.data as AnnotationTaskStats | undefined;
+    const filterJson = query.queryKey[1];
+    if (
+      stats == null
+      || query.state.fetchStatus !== "idle"
+      || typeof filterJson !== "string"
+      || filterAffectedByChange(filterFromQueryKey(query.queryKey), "status")
+    ) {
+      continue;
+    }
+    const taskInIndex = cache
+      .findAll({ queryKey: ["annotation_tasks_index"] })
+      .some((index) => {
+        const [, , size, indexFilterJson] = index.queryKey;
+        const items = (index.state.data as Paginated<AnnotationTaskIndex> | undefined)?.items;
+        return size === -1
+          && indexFilterJson === filterJson
+          && items?.some((item) => item.id === change.taskId) === true;
+      });
+    if (!taskInIndex) {
+      continue;
+    }
+    const doneCount = stats.done_count + delta("done");
+    client.setQueryData<AnnotationTaskStats>(query.queryKey, {
+      ...stats,
+      done_count: doneCount,
+      verified_count: stats.verified_count + delta("verified"),
+      rejected_count: stats.rejected_count + delta("rejected"),
+      completed_count: stats.completed_count + delta("completed"),
+      assigned_count: stats.assigned_count + delta("assigned"),
+      pending_count: stats.total - doneCount,
+    });
+    updated.add(query.queryHash);
+  }
+  return updated;
+}
+
 /** Quiet time after the last edit before the lists, index and stats are refetched */
 export const DEFERRED_INVALIDATION_MS = 2000;
 
-type PendingInvalidation = { timer: ReturnType<typeof setTimeout>; changes: Set<AnnotationTaskChange> };
+type PendingInvalidation = {
+  timer: ReturnType<typeof setTimeout>;
+  changes: Set<AnnotationTaskChange>;
+  /** Stats updated in place by every status edit of this pause (unset: none yet) */
+  updatedStats?: Set<string>;
+};
 const pendingInvalidations = new WeakMap<QueryClient, PendingInvalidation>();
 
 /**
@@ -170,11 +262,22 @@ const pendingInvalidations = new WeakMap<QueryClient, PendingInvalidation>();
 export function scheduleAnnotationTaskQueriesInvalidation(
   client: QueryClient,
   change: AnnotationTaskChange,
+  /** For a status edit: the badges before and after, to update stats in place */
+  badgeChange?: BadgeChange,
 ) {
   const pending = pendingInvalidations.get(client);
   if (pending) clearTimeout(pending.timer);
   const changes = pending?.changes ?? new Set<AnnotationTaskChange>();
   changes.add(change);
+
+  let updatedStats = pending?.updatedStats;
+  if (change === "status") {
+    const updatedNow = badgeChange ? applyBadgeChangeToStats(client, badgeChange) : new Set<string>();
+    // A stats query skips the refetch only if every status edit of the pause updated it
+    updatedStats = updatedStats == null
+      ? updatedNow
+      : new Set(Array.from(updatedStats).filter((hash) => updatedNow.has(hash)));
+  }
 
   // Cancel the running refetches this edit will repeat after the pause. Not a
   // first load (no data yet): that one keeps going.
@@ -194,9 +297,12 @@ export function scheduleAnnotationTaskQueriesInvalidation(
 
   pendingInvalidations.set(client, {
     changes,
+    updatedStats,
     timer: setTimeout(() => {
       pendingInvalidations.delete(client);
-      changes.forEach((pendingChange) => invalidateAnnotationTaskQueries(client, pendingChange));
+      changes.forEach((pendingChange) =>
+        invalidateAnnotationTaskQueries(client, pendingChange, { updatedStats }),
+      );
     }, DEFERRED_INVALIDATION_MS),
   });
 }

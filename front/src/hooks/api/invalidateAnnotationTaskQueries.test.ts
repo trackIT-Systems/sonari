@@ -1,8 +1,11 @@
 import { QueryClient, type QueryKey } from "@tanstack/react-query";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import type { AnnotationStatusBadge, AnnotationTaskStats } from "@/types";
+
 import {
   type AnnotationTaskChange,
+  applyBadgeChangeToStats,
   filterAffectedByChange,
   filterFromQueryKey,
   invalidateAnnotationTaskQueries,
@@ -188,5 +191,127 @@ describe("scheduleAnnotationTaskQueriesInvalidation", () => {
     // A status edit cannot change this list: its refetch keeps going
     expect(signals.get(JSON.stringify(otherIndex))?.aborted).toBe(false);
     void client.cancelQueries();
+  });
+});
+
+describe("applyBadgeChangeToStats", () => {
+  const badge = (state: AnnotationStatusBadge["state"]): AnnotationStatusBadge => ({
+    state,
+    created_on: new Date(0),
+  });
+  const counts: AnnotationTaskStats = {
+    total: 10,
+    done_count: 4,
+    verified_count: 1,
+    rejected_count: 1,
+    completed_count: 2,
+    pending_count: 6,
+    assigned_count: 3,
+  };
+  const species = { ...project, sound_event_annotation_tag: [{ key: "species", value: "Pip" }] };
+
+  /** Stats and unpaged index (as the annotate view loads them) of a filter, holding task 7 */
+  function clientWith(filter: object, indexIds: number[] = [7]) {
+    const client = new QueryClient();
+    client.setQueryData(statsKey(filter), counts);
+    client.setQueryData(pagedIndexKey(filter), { items: indexIds.map((id) => ({ id })), total: indexIds.length });
+    return client;
+  }
+
+  it("counts a task as done when it gets a done badge", () => {
+    const client = clientWith(species);
+    const updated = applyBadgeChangeToStats(client, {
+      taskId: 7,
+      before: [badge("assigned")],
+      after: [badge("assigned"), badge("completed")],
+    });
+    expect(updated.size).toBe(1);
+    expect(client.getQueryData(statsKey(species))).toEqual({
+      ...counts,
+      done_count: 5,
+      completed_count: 3,
+      pending_count: 5,
+    });
+  });
+
+  it("keeps a task done while another done badge remains", () => {
+    const client = clientWith(species);
+    applyBadgeChangeToStats(client, {
+      taskId: 7,
+      before: [badge("verified"), badge("completed")],
+      after: [badge("verified")],
+    });
+    expect(client.getQueryData(statsKey(species))).toEqual({ ...counts, completed_count: 1 });
+  });
+
+  it("leaves stats alone whose filter depends on the status", () => {
+    const pending = { ...species, pending: true };
+    const client = clientWith(pending);
+    const updated = applyBadgeChangeToStats(client, { taskId: 7, before: [], after: [badge("completed")] });
+    expect(updated.size).toBe(0);
+    expect(client.getQueryData(statsKey(pending))).toEqual(counts);
+  });
+
+  it("leaves stats alone when the task is not in that filter's index", () => {
+    const client = clientWith(species, [8, 9]);
+    const updated = applyBadgeChangeToStats(client, { taskId: 7, before: [], after: [badge("completed")] });
+    expect(updated.size).toBe(0);
+    expect(client.getQueryData(statsKey(species))).toEqual(counts);
+  });
+
+  it("skips the refetch of stats it updated, but not of others", () => {
+    vi.useFakeTimers();
+    try {
+      const client = clientWith(species);
+      const otherStats = statsKey({ ...project, pending: true });
+      client.setQueryData(otherStats, counts);
+
+      scheduleAnnotationTaskQueriesInvalidation(client, "status", {
+        taskId: 7,
+        before: [],
+        after: [badge("completed")],
+      });
+      vi.advanceTimersByTime(DEFERRED_INVALIDATION_MS);
+
+      expect(client.getQueryState(statsKey(species))?.isInvalidated).toBe(false);
+      expect(client.getQueryState(otherStats)?.isInvalidated).toBe(true);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("refetches the stats when a status edit of the pause could not update them", () => {
+    vi.useFakeTimers();
+    try {
+      const client = clientWith(species);
+      scheduleAnnotationTaskQueriesInvalidation(client, "status", {
+        taskId: 7,
+        before: [],
+        after: [badge("completed")],
+      });
+      // A badge without the badges before: the stats can't be updated in place
+      scheduleAnnotationTaskQueriesInvalidation(client, "status");
+      vi.advanceTimersByTime(DEFERRED_INVALIDATION_MS);
+      expect(client.getQueryState(statsKey(species))?.isInvalidated).toBe(true);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("still refetches the stats after a sound event edit their filter depends on", () => {
+    vi.useFakeTimers();
+    try {
+      const client = clientWith(species);
+      scheduleAnnotationTaskQueriesInvalidation(client, "status", {
+        taskId: 7,
+        before: [],
+        after: [badge("completed")],
+      });
+      scheduleAnnotationTaskQueriesInvalidation(client, "sound_event");
+      vi.advanceTimersByTime(DEFERRED_INVALIDATION_MS);
+      expect(client.getQueryState(statsKey(species))?.isInvalidated).toBe(true);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });

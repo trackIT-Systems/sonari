@@ -124,17 +124,15 @@ export default function useAnnotateTasks({
     persistKey: filterPersistKey,
   });
 
-  // Fetch aggregate statistics using the current filter state
-  const {
-    stats,
-    isLoading: isLoadingStats,
-    isError: isErrorStats,
-  } = useAnnotationTaskStats({
+  // Aggregate statistics of the current filter: only the progress bar's
+  // remaining count uses them. On large projects with expensive filters they
+  // take long or time out, so the view never waits for them or fails on them.
+  const { stats } = useAnnotationTaskStats({
     filter: filter.filter,
   });
 
-  const isLoading = isLoadingIndex || isLoadingStats;
-  const isError = isErrorIndex || isErrorStats;
+  const isLoading = isLoadingIndex;
+  const isError = isErrorIndex;
   const items = indexItems;
 
   // Keep local selection aligned with the URL when it points at a filtered task

@@ -149,7 +149,8 @@ export default function AnnotationProgress({
           </span>
           <span className="shrink-0 text-sm inline-flex gap-1 items-center whitespace-nowrap text-stone-500">
             <span>Remaining tasks:</span>
-            <span className="font-medium text-blue-500">{stats?.pending_count ?? 0}</span>
+            {/* The stats load separately (slow for expensive filters): not 0 meanwhile */}
+            <span className="font-medium text-blue-500">{stats?.pending_count ?? "…"}</span>
           </span>
           <span className="shrink-0 text-sm inline-flex gap-1 items-center whitespace-nowrap text-stone-500">
             <span>Total tasks:</span>

@@ -79,12 +79,23 @@ export default function useAnnotationTask({
   // stats are refetched once the badges pause, not after each one.
   const onBadgesChanged = useCallback(
     (updated: AnnotationTask) => {
+      // Without include_status_badges the cached list is empty, not the real badges
+      const before = include_status_badges
+        ? client.getQueryData<AnnotationTask>(["annotation_task", updated.id])?.status_badges
+        : undefined;
       client.setQueryData<AnnotationTask>(["annotation_task", updated.id], (current) =>
         current == null ? current : { ...current, status_badges: updated.status_badges },
       );
-      scheduleAnnotationTaskQueriesInvalidation(client, "status");
+      // With the badges before, the stats can be updated here instead of counted again
+      scheduleAnnotationTaskQueriesInvalidation(
+        client,
+        "status",
+        before == null
+          ? undefined
+          : { taskId: updated.id, before, after: updated.status_badges ?? [] },
+      );
     },
-    [client],
+    [client, include_status_badges],
   );
 
   const addBadge = useMutation({
