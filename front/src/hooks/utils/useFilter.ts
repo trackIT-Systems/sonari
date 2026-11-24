@@ -28,6 +28,12 @@ export type Filter<T extends Object> = {
   clear: <K extends keyof T>(key: K, force?: boolean) => void;
   /** Resets the filter state to its default and fixed values. */
   reset: () => void;
+  /**
+   * Sets several keys at once (undefined clears a key) and applies them right
+   * away, without the debounce: one query for edits confirmed together.
+   * Fixed keys are left alone.
+   */
+  apply: (changes: Partial<T>) => void;
   /** Submits the current filter state.
    * This is particularly useful when the filter state is debounced.
    */
@@ -144,6 +150,25 @@ export default function useFilter<T extends Object>({
     [isFixed],
   );
   const reset = useCallback(() => setState(defaults), [defaults]);
+  const apply = useCallback(
+    (changes: Partial<T>) => {
+      setState((prev) => {
+        const next = { ...prev };
+        for (const key of Object.keys(changes) as (keyof T)[]) {
+          if (isFixed(key)) continue;
+          if (changes[key] === undefined) {
+            delete next[key];
+          } else {
+            next[key] = changes[key] as T[keyof T];
+          }
+        }
+        // Confirmed edits: no debounce
+        setDebouncedState(next);
+        return next;
+      });
+    },
+    [isFixed],
+  );
 
   useDebounce(
     () => {
@@ -195,6 +220,7 @@ export default function useFilter<T extends Object>({
     get,
     clear,
     reset,
+    apply,
     submit,
     size,
     isFixed,

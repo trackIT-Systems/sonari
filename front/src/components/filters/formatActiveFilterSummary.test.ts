@@ -36,6 +36,7 @@ function mockFilter(filterState: TestFilter): Filter<TestFilter> {
     clear: () => {},
     reset: () => {},
     submit: () => {},
+    apply: () => {},
     isFixed: (key) => key === "annotation_project",
     size: 0,
   };

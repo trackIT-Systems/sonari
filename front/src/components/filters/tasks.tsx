@@ -73,6 +73,45 @@ const TASK_TAG_FIELDS: TagFilterFields = {
   tagCount: "task_tag_count",
 };
 
+/** A tag filter's settings being edited, until Apply takes them over. */
+type TagFilterDraft = {
+  tags: TaskFilterTag[];
+  includeMatch: AnnotationTaskFilter["sound_event_annotation_tag_include_match"];
+  tagCount: IntegerCountFilter | undefined;
+  soundEventCount: IntegerCountFilter | undefined;
+};
+
+function readTagFilterDraft(
+  filter: Filter<AnnotationTaskFilter>,
+  fields: TagFilterFields,
+  soundEvents: boolean,
+): TagFilterDraft {
+  const tags = filter.get(fields.tags);
+  return {
+    tags: tags === undefined ? [] : Array.isArray(tags) ? tags : [tags],
+    includeMatch: filter.get(fields.includeMatch),
+    tagCount: filter.get(fields.tagCount),
+    soundEventCount: soundEvents ? filter.get("sound_event_annotation_count") : undefined,
+  };
+}
+
+/** The filter fields a draft sets (undefined clears one). */
+function tagFilterChanges(
+  fields: TagFilterFields,
+  soundEvents: boolean,
+  draft: TagFilterDraft,
+): Partial<AnnotationTaskFilter> {
+  const changes: Partial<AnnotationTaskFilter> = {
+    [fields.tags]: draft.tags.length > 0 ? draft.tags : undefined,
+    [fields.includeMatch]: draft.includeMatch,
+    [fields.tagCount]: draft.tagCount,
+  };
+  if (soundEvents) {
+    changes.sound_event_annotation_count = draft.soundEventCount;
+  }
+  return changes;
+}
+
 function TagFilterSelector({
   filter,
   close,
@@ -88,22 +127,27 @@ function TagFilterSelector({
   const [includeMode, setIncludeMode] = useState(true);
   // Remount the search bar after each pick so the input is cleared and refocused.
   const [searchKey, setSearchKey] = useState(0);
-  const includeMatch = filter.get(fields.includeMatch) ?? "or";
+  // Edits stay in this draft until Apply: each applied change starts a query
+  // (expensive on large projects), so they are applied together, once.
+  const [draft, setDraft] = useState<TagFilterDraft>(() => readTagFilterDraft(filter, fields, soundEvents));
   const confidence = filter.get("confidence");
   const hasConfidence =
     soundEvents && (confidence?.gt !== undefined || confidence?.lt !== undefined);
 
-  const currentValue = filter.get(fields.tags);
-  const selectedTags: TaskFilterTag[] =
-    currentValue === undefined
-      ? []
-      : Array.isArray(currentValue)
-        ? currentValue
-        : [currentValue];
-  const tagCount = formatIntegerCount(filter.get(fields.tagCount));
-  const soundEventCount = formatIntegerCount(
-    filter.get("sound_event_annotation_count"),
-  );
+  const includeMatch = draft.includeMatch ?? "or";
+  const selectedTags = draft.tags;
+  const tagCount = formatIntegerCount(draft.tagCount);
+  const soundEventCount = formatIntegerCount(draft.soundEventCount);
+
+  const done = () => {
+    const changes = tagFilterChanges(fields, soundEvents, draft);
+    const current = tagFilterChanges(fields, soundEvents, readTagFilterDraft(filter, fields, soundEvents));
+    // Unchanged: no new query
+    if (JSON.stringify(changes) !== JSON.stringify(current)) {
+      filter.apply(changes);
+    }
+    close();
+  };
 
   const isSameEntry = (a: TaskFilterTag, b: TaskFilterTag) =>
     a.key === b.key && a.value === b.value && !!a.exclude === !!b.exclude;
@@ -117,16 +161,11 @@ function TagFilterSelector({
     if (selectedTags.some((t) => isSameEntry(t, entry))) {
       return;
     }
-    filter.set(fields.tags, [...selectedTags, entry]);
+    setDraft((prev) => ({ ...prev, tags: [...prev.tags, entry] }));
   };
 
   const removeTag = (tag: TaskFilterTag) => {
-    const newValue = selectedTags.filter((t) => !isSameEntry(t, tag));
-    if (newValue.length === 0) {
-      filter.clear(fields.tags);
-    } else {
-      filter.set(fields.tags, newValue);
-    }
+    setDraft((prev) => ({ ...prev, tags: prev.tags.filter((t) => !isSameEntry(t, tag)) }));
   };
 
   return (
@@ -142,7 +181,7 @@ function TagFilterSelector({
           </span>
           <IncludeTagMatchFilter
             value={includeMatch}
-            onChange={(match) => filter.set(fields.includeMatch, match)}
+            onChange={(match) => setDraft((prev) => ({ ...prev, includeMatch: match }))}
           />
         </div>
       ) : null}
@@ -183,16 +222,14 @@ function TagFilterSelector({
         </span>
         <IntegerFilter
           name="Amount"
-          onChange={(val) => {
-            filter.set(fields.tagCount, val);
-          }}
+          onChange={(val) => setDraft((prev) => ({ ...prev, tagCount: val }))}
         />
         {tagCount != null ? (
           <div>
             <FilterBadge
               field="Distinct tags"
               value={tagCount}
-              onRemove={() => filter.clear(fields.tagCount)}
+              onRemove={() => setDraft((prev) => ({ ...prev, tagCount: undefined }))}
             />
           </div>
         ) : null}
@@ -208,16 +245,14 @@ function TagFilterSelector({
         </span>
         <IntegerFilter
           name="Amount"
-          onChange={(val) => {
-            filter.set("sound_event_annotation_count", val);
-          }}
+          onChange={(val) => setDraft((prev) => ({ ...prev, soundEventCount: val }))}
         />
         {soundEventCount != null ? (
           <div>
             <FilterBadge
               field="Sound events"
               value={soundEventCount}
-              onRemove={() => filter.clear("sound_event_annotation_count")}
+              onRemove={() => setDraft((prev) => ({ ...prev, soundEventCount: undefined }))}
             />
           </div>
         ) : null}
@@ -227,8 +262,8 @@ function TagFilterSelector({
         </p>
       </div>}
       <div className="flex justify-end">
-        <Button mode="filled" variant="primary" onClick={close}>
-          Done
+        <Button mode="filled" variant="primary" onClick={done}>
+          Apply
         </Button>
       </div>
     </div>
