@@ -3,6 +3,7 @@ import {
   useSearchParams,
   useSelectedLayoutSegment,
 } from "next/navigation";
+import { useQueryClient } from "@tanstack/react-query";
 import { useState, useCallback } from "react";
 import toast from "react-hot-toast";
 
@@ -11,10 +12,29 @@ import { H1 } from "@/components/Headings";
 import { DatasetIcon, EditIcon, TasksIcon } from "@/components/icons";
 import Tabs from "@/components/Tabs";
 import api from "@/app/api";
-import { clearAnnotationTaskFilterPersist } from "@/hooks/utils/annotationTaskFilterPersistKey";
+import { type AnnotationTaskFilter, type AnnotationTaskIndexPage } from "@/api/annotation_tasks";
+import { annotationTaskIndexQueryKey } from "@/hooks/api/useAnnotationTaskIndex";
+import {
+  annotationTaskFilterPersistKey,
+  clearAnnotationTaskFilterPersist,
+} from "@/hooks/utils/annotationTaskFilterPersistKey";
 import { blurActiveElement } from "@/utils/focus";
 
 import type { AnnotationProject } from "@/types";
+
+/** The task filter the Tasks tab saved for the project, which the annotate view opens with */
+function readPersistedTaskFilter(annotationProject: AnnotationProject): AnnotationTaskFilter {
+  const fallback: AnnotationTaskFilter = { annotation_project: annotationProject };
+  const key = annotationTaskFilterPersistKey(annotationProject.id);
+  if (!key || typeof window === "undefined") return fallback;
+  try {
+    const raw = window.localStorage.getItem(key);
+    if (!raw) return fallback;
+    return { ...(JSON.parse(raw) as AnnotationTaskFilter), annotation_project: annotationProject };
+  } catch {
+    return fallback;
+  }
+}
 
 export default function AnnotationProjectHeader({
   annotationProject,
@@ -22,6 +42,7 @@ export default function AnnotationProjectHeader({
   annotationProject: AnnotationProject;
 }) {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const params = useSearchParams();
   const selectedLayoutSegment = useSelectedLayoutSegment();
   const [isLoadingFirstTask, setIsLoadingFirstTask] = useState(false);
@@ -46,17 +67,27 @@ export default function AnnotationProjectHeader({
             ?.resume_annotation_task_id ?? null;
       }
       if (taskId == null) {
-        const response = await api.annotationTasks.getMany({
-          annotation_project: annotationProject,
-          limit: 1,
-          offset: 0,
-        });
+        // Open the first task of the filter the annotate view will use (the
+        // Tasks tab's, cleared above when coming from the overview), so the
+        // view opens on it instead of asking to apply the filter. The table
+        // usually holds that filter's full index already: no request then.
+        const filter = readPersistedTaskFilter(annotationProject);
+        const cached = queryClient.getQueryData<AnnotationTaskIndexPage>(
+          annotationTaskIndexQueryKey(filter),
+        );
+        const first =
+          cached?.items[0]
+          ?? (await api.annotationTasks.getIndex({ ...filter, limit: 1, offset: 0 })).items[0];
 
-        if (response.items.length === 0) {
-          toast.error("No annotation tasks found in this project.");
+        if (first == null) {
+          toast.error(
+            enteringFromOverview
+              ? "No annotation tasks found in this project."
+              : "No annotation tasks match the filter.",
+          );
           return;
         }
-        taskId = response.items[0].id;
+        taskId = first.id;
       }
 
       blurActiveElement();
@@ -69,7 +100,7 @@ export default function AnnotationProjectHeader({
     } finally {
       setIsLoadingFirstTask(false);
     }
-  }, [annotationProject, enteringFromOverview, params, router]);
+  }, [annotationProject, enteringFromOverview, params, queryClient, router]);
 
   return (
     <Header>
