@@ -1,4 +1,6 @@
 import {
+  FolderIcon,
+  FolderOpenIcon,
   QuestionMarkCircleIcon,
   TrophyIcon,
   AcademicCapIcon,
@@ -346,4 +348,6 @@ export {
   WrenchScrewdriverIcon as ToolsIcon,
   TrophyIcon,
   QuestionMarkCircleIcon as HelpIcon,
+  FolderIcon,
+  FolderOpenIcon,
 };

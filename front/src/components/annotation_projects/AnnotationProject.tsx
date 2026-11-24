@@ -1,5 +1,6 @@
+import classNames from "classnames";
 import Link from "next/link";
-import { type ReactNode } from "react";
+import { type DragEvent, type ReactNode } from "react";
 
 import useAnnotationProjectProgress from "@/hooks/api/useAnnotationProjectProgress";
 
@@ -18,8 +19,16 @@ function Atom({ label, value }: { label: ReactNode; value: string }) {
 
 export default function AnnotationProject({
   annotationProject,
+  selected,
+  onSelectChange,
+  onDragStart,
 }: {
   annotationProject: AnnotationProjectType;
+  /** Shows a checkbox when set */
+  selected?: boolean;
+  onSelectChange?: (selected: boolean) => void;
+  /** Makes the row draggable onto folders */
+  onDragStart?: (event: DragEvent) => void;
 }) {
   const { progress: rawProgress, isLoading } = useAnnotationProjectProgress({
     annotationProjectId: annotationProject.id,
@@ -55,7 +64,24 @@ export default function AnnotationProject({
       };
 
   return (
-    <div className="w-full">
+    <div
+      className={classNames(
+        "w-full flex flex-row items-start gap-3",
+        onDragStart && "cursor-grab active:cursor-grabbing",
+      )}
+      draggable={onDragStart != null}
+      onDragStart={onDragStart}
+    >
+    {onSelectChange && (
+      <input
+        type="checkbox"
+        aria-label={`Select ${annotationProject.name}`}
+        className="mt-1.5 rounded text-emerald-500 focus:ring-emerald-500"
+        checked={selected ?? false}
+        onChange={(event) => onSelectChange(event.target.checked)}
+      />
+    )}
+    <div className="flex-grow min-w-0">
       <div className="px-4 sm:px-0">
         <h3 className="text-base font-semibold leading-7 text-stone-900 dark:text-stone-100">
           <Link
@@ -78,6 +104,7 @@ export default function AnnotationProject({
           value={annotationProject.created_on.toDateString()}
         />
       </div>
+    </div>
     </div>
   );
 }
