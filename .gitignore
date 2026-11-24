@@ -155,3 +155,5 @@ back/.build_venv
 back/settings.json
 back/tests/pytest_config.toml
 back/.python-version
+
+dev_scripts/
