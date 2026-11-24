@@ -9,6 +9,7 @@ import useKeyFilter from "@/hooks/utils/useKeyFilter";
 import type { AnnotationTaskFilter } from "@/api/annotation_tasks";
 import type { AnnotationTask } from "@/types";
 import useAnnotationTasks from "@/hooks/api/useAnnotationTasks";
+import { annotationTaskIndexQueryKey, TASK_INDEX_STALE_MS } from "@/hooks/api/useAnnotationTaskIndex";
 import useAnnotationTaskNights, {
   currentUtcOffset,
   nightKey,
@@ -361,15 +362,17 @@ export default function AnnotationTaskTable({
     && annotationTasks.total > 0
     && annotationTasks.total <= TASK_INDEX_MAX;
 
+  // Same key as the annotate view's index, so opening a task reuses this result
   const { data: indexPage } = useQuery({
-    queryKey: ["annotation_tasks_index", annotationTasks.filter.filter],
-    queryFn: () => api.annotationTasks.getIndex({
+    queryKey: annotationTaskIndexQueryKey(annotationTasks.filter.filter),
+    queryFn: ({ signal }) => api.annotationTasks.getIndex({
       limit: -1,
       offset: 0,
       ...annotationTasks.filter.filter,
-    }),
+    }, signal),
     enabled: shouldLoadTaskIndex,
     refetchOnWindowFocus: false,
+    staleTime: TASK_INDEX_STALE_MS,
   });
 
   const allTasks = indexPage?.items;

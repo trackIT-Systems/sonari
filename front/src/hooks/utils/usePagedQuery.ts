@@ -66,6 +66,7 @@ export default function usePagedQuery<T, S extends Object>({
   pageSize,
   filter,
   enabled = true,
+  staleTime,
 }: {
   name: string;
   /** `signal` aborts the request when the query is cancelled (if the function passes it on) */
@@ -73,6 +74,8 @@ export default function usePagedQuery<T, S extends Object>({
   pageSize: number;
   filter: S;
   enabled?: boolean;
+  /** How long fetched data counts as fresh (default: the client's) */
+  staleTime?: number;
 }): PagedList<T> {
   const [page, setPage] = useState(0);
   const [size, setPageSize] = useState(pageSize);
@@ -84,6 +87,7 @@ export default function usePagedQuery<T, S extends Object>({
     enabled,
     refetchOnWindowFocus: false,
     placeholderData: keepPreviousData,
+    ...(staleTime !== undefined && { staleTime }),
   });
 
   const numPages = Math.ceil((query.data?.total ?? 0) / size);
