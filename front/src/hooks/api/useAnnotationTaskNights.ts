@@ -12,11 +12,11 @@ import type { AnnotationTask, AnnotationTaskNightTotal, AnnotationTaskStats } fr
 export const NO_RECORDING_NIGHT = "none";
 
 /**
- * Filter keys that only narrow the recordings (project, station, date range):
+ * Filter keys that only narrow the recordings (project, date range):
  * cheap, so the nights are listed under them alone. The rest of the filter is
  * applied per night, to the nights on the page only (see `getNightStats`).
  */
-const SCOPE_KEYS = ["annotation_project", "dataset", "date_range"] as const;
+const SCOPE_KEYS = ["annotation_project", "date_range"] as const;
 
 /** The part of a filter the nights are listed by */
 export function scopeOfFilter(filter: AnnotationTaskFilter): AnnotationTaskFilter {
@@ -109,8 +109,8 @@ export type NightGroup = AnnotationTaskNightTotal & {
 /**
  * The task table grouped by night (noon to noon local time), all collapsed at
  * first. Lazy on large projects:
- * - the nights are listed under the filter's scope only (project, station,
- *   date range), which needs no costly filter;
+ * - the nights are listed under the filter's scope only (project, date
+ *   range), which needs no costly filter;
  * - the whole filter runs per night: status counts for the nights on the page
  *   in one request, a night's tasks when it is expanded.
  * `items` holds the tasks of the expanded nights in order, as the table's

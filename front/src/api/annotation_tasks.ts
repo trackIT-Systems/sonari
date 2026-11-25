@@ -5,7 +5,6 @@ import { GetManySchema, Page, type Paginated } from "@/api/common";
 import {
   AnnotationProjectSchema,
   AnnotationTaskSchema,
-  DatasetSchema,
   GeometrySchema,
   TagSchema,
   UserSchema,
@@ -69,10 +68,6 @@ const SoundEventAnnotationTaskFilterTagSchema = TagSchema.extend({
 });
 
 const AnnotationTaskFilterSchema = z.object({
-  dataset: z.union([
-    DatasetSchema,
-    z.array(DatasetSchema)
-  ]).optional(),
   annotation_project: AnnotationProjectSchema.optional(),
   annotation_task_tag: TagSchema.optional(),
   sound_event_annotation_tag: z.union([
@@ -234,11 +229,6 @@ export function buildAnnotationTaskFilterQueryParams(
   const taskTags = tagFilterEntriesForApi(params.task_tag);
 
   return {
-    dataset__lst: params.dataset
-      ? (Array.isArray(params.dataset)
-        ? params.dataset.map((d) => d.id).join(",")
-        : params.dataset.id)
-      : undefined,
     annotation_project__eq: params.annotation_project?.id,
     annotation_task_tag__key: params.annotation_task_tag?.key,
     annotation_task_tag__value: params.annotation_task_tag?.value,
@@ -504,7 +494,7 @@ export function registerAnnotationTasksAPI(
 
   /**
    * The nights (noon to noon local time) of the tasks matching `filter`, with
-   * their task counts. Meant for cheap filters (project, station, date range);
+   * their task counts. Meant for cheap filters (project, date range);
    * status counts under the full filter come from `getNightStats`.
    */
   async function getNights(

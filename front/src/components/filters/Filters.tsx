@@ -1,13 +1,12 @@
 import { useCallback, useState } from "react";
 
 import Button from "@/components/Button";
-import DatasetSearch from "@/components/datasets/DatasetSearch";
 import { CheckIcon, CloseIcon } from "@/components/icons";
 import Checkbox from "@/components/tables/TableCheckbox";
 import TagSearchBar from "@/components/tags/TagSearchBar";
 import { ACCEPT_SHORTCUT } from "@/utils/keyboard";
 
-import type { Dataset, FloatEqFilter, NumberFilter, Tag } from "@/types";
+import type { FloatEqFilter, NumberFilter, Tag } from "@/types";
 
 export type SetFilter<T extends Object> = <K extends keyof T>(
   key: K,
@@ -441,18 +440,6 @@ export function TagFilter({ onChange }: { onChange: (tag: Tag) => void }) {
   return (
     <div className="flex flex-col gap-2 w-full">
       <TagSearchBar onSelect={(tag) => onChange(tag)} />
-    </div>
-  );
-}
-
-export function DatasetFilter({
-  onChange,
-}: {
-  onChange: (dataset: Dataset) => void;
-}) {
-  return (
-    <div className="flex flex-col gap-2 w-full">
-      <DatasetSearch onSelect={(dataset) => onChange(dataset)} />
     </div>
   );
 }

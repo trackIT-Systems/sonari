@@ -45,7 +45,6 @@ const STATIC_KEYS: readonly string[] = [
   "include_annotation_project",
   "include_features",
   "annotation_project",
-  "dataset",
   "date_range",
   "night",
   "day",
