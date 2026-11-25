@@ -39,16 +39,8 @@
       }
     ]
   },
-  "2026.11.6": {
+  "2026.11.8": {
     "highlights": [
-      {
-        "title": "Faster filters on large projects",
-        "description": "Tag, tag amount, sound event amount, confidence and median confidence filters now finish within seconds, also on projects with more than 100 000 tasks. Tag filters are applied when you press Apply, and the task list shows “Filtering…” while new results load."
-      },
-      {
-        "title": "Sound event tags and task tags filtered separately",
-        "description": "The “Sound event tags” filter looks only at the tags of sound events. A new “Task tags” filter covers tags on the task itself, with include/exclude, AND/OR and the number of distinct tags."
-      },
       {
         "title": "Tasks grouped by night",
         "description": "Switch the task table between List and Nights. Nights shows every night (noon to noon) collapsed with its status counts; expand a night to load its tasks. In List, a header row marks where a new night starts."
@@ -87,7 +79,7 @@
       },
       {
         "title": "Fixes",
-        "description": "Replacing tags with a tag the sound event already has no longer leaves it untagged. While the next page of tasks loads, the previous page's tasks are no longer shown in its place. The Tags page loads quickly on large databases."
+        "description": "Replacing tags with a tag the sound event already has no longer leaves it untagged. While the next page of tasks loads, the previous page's tasks are no longer shown in its place. The Tags page loads quickly on large databases. The measure tool on the selected sound event's spectrogram places its markers under the cursor again on high resolution screens. The Annotate button opens a large project right away again."
       }
     ]
   }
