@@ -6,7 +6,8 @@ on:
     tags: [ '*' ]
 
 env:
-  REGISTRY: registry.trackit.systems
+  GHCR: ghcr.io/trackit-systems
+  ZOT_REGISTRY: registry.trackit.systems
 
 jobs:
   build-and-push:
@@ -14,6 +15,9 @@ jobs:
     permissions:
       contents: read
       packages: write
+    outputs:
+      digest: ${{ steps.build.outputs.digest }}
+      tags: ${{ steps.tag.outputs.tags }}
 
     steps:
     - name: Checkout repository
@@ -22,30 +26,39 @@ jobs:
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@v3
 
-    - name: Log in to ZOT Registry
+    - name: Log in to ghcr.io
       uses: docker/login-action@v3
       with:
-        registry: ${{ env.REGISTRY }}
-        username: ${{ secrets.ZOT_ROBOT_USER }}
-        password: ${{ secrets.ZOT_ROBOT_TOKEN }}
+        registry: ghcr.io
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
 
     - name: Get tag name
       id: tag
       # Docker tags allow only [A-Za-z0-9_.-] (max 128 chars), so branch names
       # like "feature/foo" are sanitized to "feature-foo".
+      # Only release tags move "latest": tag pushes whose name has no "-"
+      # (so test/pre-release tags like 0.0.0-registry-test don't).
       run: |
         tag=$(echo "$GITHUB_REF_NAME" | sed 's/[^A-Za-z0-9_.-]/-/g' | cut -c1-128)
-        echo "tag=$tag" >> $GITHUB_OUTPUT
+        tags="$tag"
+        if [ "$GITHUB_REF_TYPE" = "tag" ] && [[ "$GITHUB_REF_NAME" != *-* ]]; then
+          tags="$tags latest"
+        fi
+        echo "tag=$tag" >> "$GITHUB_OUTPUT"
+        echo "tags=$tags" >> "$GITHUB_OUTPUT"
 
     - name: Set image tags
       id: image
+      env:
+        IMAGE: ${{ env.GHCR }}/${{ github.event.repository.name }}
+        TAGS: ${{ steps.tag.outputs.tags }}
       run: |
-        image="${{ env.REGISTRY }}/backend/${{ github.event.repository.name }}"
-        echo "tag_name=$image:${{ steps.tag.outputs.tag }}" >> $GITHUB_OUTPUT
-        # Only release tags move "latest"; branch builds get their branch tag only.
-        if [ "${{ github.ref_type }}" = "tag" ]; then
-          echo "latest_name=$image:latest" >> $GITHUB_OUTPUT
-        fi
+        {
+          echo "refs<<EOF"
+          for t in $TAGS; do echo "$IMAGE:$t"; done
+          echo "EOF"
+        } >> "$GITHUB_OUTPUT"
 
     - name: Build and push Docker image
       id: build
@@ -54,9 +67,7 @@ jobs:
         context: .
         platforms: linux/amd64
         push: true
-        tags: |
-          ${{ steps.image.outputs.tag_name }}
-          ${{ steps.image.outputs.latest_name }}
+        tags: ${{ steps.image.outputs.refs }}
         labels: |
           org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
           org.opencontainers.image.revision=${{ github.sha }}
@@ -71,9 +82,60 @@ jobs:
         sbom: false
 
     - name: Output image details
+      env:
+        REFS: ${{ steps.image.outputs.refs }}
+        DIGEST: ${{ steps.build.outputs.digest }}
       run: |
         echo "Images pushed to:"
-        echo "  - ${{ steps.image.outputs.tag_name }}"
-        if [ -n "${{ steps.image.outputs.latest_name }}" ]; then echo "  - ${{ steps.image.outputs.latest_name }}"; fi
-        echo "Image digest: ${{ steps.build.outputs.digest }}"
-        echo "Git tag used: ${{ steps.tag.outputs.tag }}"
+        for r in $REFS; do echo "  - $r"; done
+        echo "Image digest: $DIGEST"
+
+  # Copies the ghcr image to zot by digest. Nothing depends on this job: when
+  # zot is slow or down it fails visibly, and repair-zot.yml fixes it later.
+  zot-copy:
+    needs: build-and-push
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      packages: read
+
+    steps:
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+
+    - name: Log in to ghcr.io
+      uses: docker/login-action@v3
+      with:
+        registry: ghcr.io
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Log in to ZOT Registry
+      uses: docker/login-action@v3
+      with:
+        registry: ${{ env.ZOT_REGISTRY }}
+        username: ${{ secrets.ZOT_ROBOT_USER }}
+        password: ${{ secrets.ZOT_ROBOT_TOKEN }}
+
+    - name: Copy to zot and check digests
+      env:
+        IMG: ${{ github.event.repository.name }}
+        DIGEST: ${{ needs.build-and-push.outputs.digest }}
+        TAGS: ${{ needs.build-and-push.outputs.tags }}
+      run: |
+        set -euo pipefail
+        src="ghcr.io/trackit-systems/${IMG}@${DIGEST}"
+        for t in $TAGS; do
+          for delay in 30 120 300 end; do
+            docker buildx imagetools create --prefer-index=false -t "registry.trackit.systems/backend/${IMG}:${t}" "$src" && break
+            [ "$delay" = end ] && { echo "::error::copy to zot failed for ${t}"; exit 1; }
+            echo "retry in ${delay}s"; sleep "$delay"
+          done
+        done
+        for t in $TAGS; do
+          for ref in "ghcr.io/trackit-systems/${IMG}:${t}" "registry.trackit.systems/backend/${IMG}:${t}"; do
+            got=$(docker buildx imagetools inspect "$ref" --format '{{.Manifest.Digest}}')
+            [ "$got" = "$DIGEST" ] || { echo "::error::$ref is $got, expected $DIGEST"; exit 1; }
+          done
+        done
