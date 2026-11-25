@@ -38,6 +38,58 @@
         "description": "Multiple sound event selection and restructured Annotate View, Tag page and Tag Keyboard shortcuts."
       }
     ]
+  },
+  "2026.11.6": {
+    "highlights": [
+      {
+        "title": "Faster filters on large projects",
+        "description": "Tag, tag amount, sound event amount, confidence and median confidence filters now finish within seconds, also on projects with more than 100 000 tasks. Tag filters are applied when you press Apply, and the task list shows “Filtering…” while new results load."
+      },
+      {
+        "title": "Sound event tags and task tags filtered separately",
+        "description": "The “Sound event tags” filter looks only at the tags of sound events. A new “Task tags” filter covers tags on the task itself, with include/exclude, AND/OR and the number of distinct tags."
+      },
+      {
+        "title": "Tasks grouped by night",
+        "description": "Switch the task table between List and Nights. Nights shows every night (noon to noon) collapsed with its status counts; expand a night to load its tasks. In List, a header row marks where a new night starts."
+      },
+      {
+        "title": "Reference calls",
+        "description": "The tasks page can show up to 20 of the clearest, loudest calls of a species side by side, with their signal-to-noise ratio and peak level. Click a call to open its task, or pin the panel to keep it on the project's tasks page."
+      },
+      {
+        "title": "Main frequencies and PSD",
+        "description": "A new panel in the Annotate view lists the median, min and max peak frequency of a task's calls per species and call type; click a call to select its sound event. The PSD of a sound event now uses a fixed 10–110 kHz axis with a 40 kHz mark, and is measured at the right time in tasks that do not start at 0 s."
+      },
+      {
+        "title": "Edit history and prediction corrections",
+        "description": "The Annotate view shows the edit history of the sound events, including their original detector tags and confidence. The project overview shows how reviewers corrected the detector's predictions: confirmed, relabeled, tag removed or event deleted."
+      },
+      {
+        "title": "Bulk actions without a task limit",
+        "description": "Bulk actions in the task table work on any number of tasks, with a progress bar and a Stop button. A new “Remove status” menu (Shift + 1–4) removes a status from the selected tasks."
+      },
+      {
+        "title": "Task table and Annotate view",
+        "description": "Clicking a row or moving with the arrow keys selects that task, so the status keys 1–4 act on it; Shift + click or Shift + arrows select a range. In the Annotate view, Shift + d deletes the sound events whose only tag is the one you pick. Shift + U saves the current zoom as the default."
+      },
+      {
+        "title": "Annotate view opens faster",
+        "description": "The Annotate view no longer waits for the task counts of the filter, and the Annotate tab opens the first task of the task table's filter right away."
+      },
+      {
+        "title": "Projects in folders",
+        "description": "Filter the project list by detector and year, and file projects in folders: tick them or drag them onto a folder. Folders are kept in your browser."
+      },
+      {
+        "title": "Species overview",
+        "description": "The species overview shows in how many tasks and recordings each species occurs."
+      },
+      {
+        "title": "Fixes",
+        "description": "Replacing tags with a tag the sound event already has no longer leaves it untagged. While the next page of tasks loads, the previous page's tasks are no longer shown in its place. The Tags page loads quickly on large databases."
+      }
+    ]
   }
 }
  
