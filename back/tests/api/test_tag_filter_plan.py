@@ -193,3 +193,25 @@ async def test_task_list_filters_before_sorting(method):
     assert "JOIN matching ON matching.id = annotation_task.id" in sql
     main_query = sql.split(")\n SELECT", 1)[1]
     assert "sound_event_annotation_tag" not in main_query
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("method", ["get_index", "get_many"])
+@pytest.mark.parametrize("sort_by", ["recording_datetime", "recording", "-recording", "duration", "-created_on"])
+@pytest.mark.parametrize("limit", [1, 100, -1])
+async def test_task_list_sorts_by_the_cte_only(method, sort_by, limit):
+    """The outer query sorts by the CTE's columns, never by an indexed table column.
+
+    With the sort key outside the CTE (the recording time), a project-only
+    filter with LIMIT 1 walked every recording of the database by time and
+    timed out: PostgreSQL ignored that ``count(*) OVER ()`` needs all rows.
+    """
+    filters = [AnnotationTaskFilter(annotation_project__eq=1)]
+    sql = await _list_statement(method, limit=limit, offset=0, filters=filters, sort_by=sort_by)
+
+    main_query = sql.split(")\n SELECT", 1)[1]
+    order_by = main_query.split("ORDER BY", 1)[1].split("LIMIT", 1)[0]
+    assert "JOIN recording" not in main_query
+    assert [key.strip().split(" ")[0] for key in order_by.split(",")] == [
+        f"matching.sort_{i}" for i in range(len(order_by.split(",")))
+    ]

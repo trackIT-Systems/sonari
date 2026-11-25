@@ -9,7 +9,7 @@ from sqlalchemy import Select, func, insert, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.inspection import inspect
-from sqlalchemy.orm import InstrumentedAttribute, noload, selectinload
+from sqlalchemy.orm import InstrumentedAttribute, aliased, noload, selectinload
 from sqlalchemy.sql._typing import _ColumnExpressionArgument
 from sqlalchemy.sql.expression import ColumnElement
 
@@ -248,6 +248,65 @@ def apply_filters(
 _TOTAL_COUNT_LABEL = "_total_count"
 
 
+def _sort_keys(model: type[A], sort_by: str | None, recording) -> list[tuple[Any, bool]]:
+    """``(expression, descending)`` pairs to sort by, like the sort options of ``get_objects_from_query``.
+
+    ``recording`` is the Recording entity to take recording columns from.
+    """
+    if sort_by is None:
+        return []
+    if sort_by == "recording_datetime":
+        return [(recording.recorded_at, False), (inspect(model).primary_key[0], False)]
+    descending = sort_by.startswith("-")
+    name = sort_by[1:] if descending else sort_by
+    if name == "duration":
+        return [(model.duration, descending)]  # type: ignore[attr-defined]
+    if name == "recording":
+        return [(recording.path, descending)]
+    col = getattr(model, name, None)
+    if col is None:
+        raise ValueError(f"The model {model.__name__} does not have a column named {name}")
+    return [(col, descending)]
+
+
+def _filter_first(
+    model: type[A],
+    query: Select,
+    filters: Sequence[Filter | _ColumnExpressionArgument],
+    sort_by: str | None,
+) -> Select:
+    """Restrict ``query`` to the rows matching ``filters``, sorted, through a materialized CTE.
+
+    PostgreSQL cannot estimate how many rows costly filters (correlated
+    subqueries) keep, and with a LIMIT it assumes the first rows of a sorted
+    walk are enough. With the sort key on another table (e.g. the recording
+    time) it then walks that table's index, every recording of the database,
+    checking each against the filtered tasks until the page is full, even
+    though ``count(*) OVER ()`` needs every row anyway. That took minutes on a
+    large database, even for a project-only filter with ``LIMIT 1``.
+
+    The CTE holds the matching ids together with their sort keys, so the
+    outer query can only read the CTE in full and sort it: no index to walk.
+    """
+    pk = inspect(model).primary_key[0]
+    sort_recording = aliased(models.Recording, name="sort_recording")
+    keys = _sort_keys(model, sort_by, sort_recording)
+
+    inner = select(pk.label("id"), *(expr.label(f"sort_{i}") for i, (expr, _) in enumerate(keys)))
+    if sort_by in ("recording_datetime", "recording", "-recording"):
+        inner = inner.select_from(model).join(sort_recording, sort_recording.id == model.recording_id)  # type: ignore[attr-defined]
+    matching = (
+        apply_filters(inner, filters)
+        .cte("matching")
+        .prefix_with("MATERIALIZED", dialect="postgresql")
+    )
+    order = [
+        matching.c[f"sort_{i}"].desc() if descending else matching.c[f"sort_{i}"].asc()
+        for i, (_, descending) in enumerate(keys)
+    ]
+    return query.join(matching, matching.c.id == pk).order_by(*order)
+
+
 async def get_objects_from_query(
     session: AsyncSession,
     model: type[A],
@@ -267,33 +326,26 @@ async def get_objects_from_query(
     Without a limit every matching row is returned, so the total is the
     number of rows and the window count is skipped.
 
-    With ``filter_first`` the ids matching the filters are computed first, in
-    a materialized CTE, and only those rows are sorted and paged. PostgreSQL
-    cannot estimate how many rows costly filters (correlated subqueries) keep
-    and guesses very few. With a sort and a limit it then walks the sort
-    index (e.g. every recording of the database by time) and checks the
-    filters row by row until the page is full, which can take minutes on a
-    large database. The CTE is an optimization fence: the filters run once
-    per row of the filtered scope, and the sort only sees the matching rows.
+    With ``filter_first`` the matching ids and their sort keys are computed
+    first, in a materialized CTE, and only those rows are sorted and paged;
+    see ``_filter_first``.
     """
     for nl in noloads or []:
         query = query.options(noload(nl))
 
-    if filter_first and filters:
-        pk = inspect(model).primary_key[0]
-        matching = (
-            apply_filters(select(pk.label("id")), filters)
-            .cte("matching")
-            .prefix_with("MATERIALIZED", dialect="postgresql")
-        )
-        query = query.join(matching, matching.c.id == pk)
+    paginated = limit is not None and limit >= 0
+
+    if filter_first and filters and (sort_by is None or isinstance(sort_by, str)):
+        query = _filter_first(model, query, filters, sort_by)
+        filtered_query = query
+        if paginated:
+            query = query.add_columns(func.count().over().label(_TOTAL_COUNT_LABEL))
+        sort_by = None  # sorted by the CTE's keys
     else:
         query = apply_filters(query, filters)
-    filtered_query = query
-
-    paginated = limit is not None and limit >= 0
-    if paginated:
-        query = query.add_columns(func.count().over().label(_TOTAL_COUNT_LABEL))
+        filtered_query = query
+        if paginated:
+            query = query.add_columns(func.count().over().label(_TOTAL_COUNT_LABEL))
 
     if sort_by is not None:
         if isinstance(sort_by, str):
