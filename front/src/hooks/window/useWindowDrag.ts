@@ -45,22 +45,11 @@ export default function useWindowDrag({
       let normalizedDeltaY = deltaY;
       
       if (elementRef?.current) {
-        const element = elementRef.current;
-        const rect = element.getBoundingClientRect();
-        
-        // Check if it's a canvas element
-        if (element instanceof HTMLCanvasElement) {
-          const scaleX = element.width / rect.width;
-          const scaleY = element.height / rect.height;
-          normalizedDeltaX = deltaX * scaleX;
-          normalizedDeltaY = deltaY * scaleY;
-        } else {
-          // For other elements (like divs), normalize to the canvas dimensions
-          const scaleX = dimensions.width / rect.width;
-          const scaleY = dimensions.height / rect.height;
-          normalizedDeltaX = deltaX * scaleX;
-          normalizedDeltaY = deltaY * scaleY;
-        }
+        // To `dimensions`, not to a canvas' backing store, which is larger
+        // on high resolution screens (see useWindowMotions).
+        const rect = elementRef.current.getBoundingClientRect();
+        if (rect.width > 0) normalizedDeltaX = deltaX * (dimensions.width / rect.width);
+        if (rect.height > 0) normalizedDeltaY = deltaY * (dimensions.height / rect.height);
       }
       
       setPosition(({ x, y }) => ({ x: x + normalizedDeltaX, y: y + normalizedDeltaY }));

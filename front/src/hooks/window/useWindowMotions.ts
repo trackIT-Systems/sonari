@@ -68,22 +68,16 @@ export default function useWindowMotions({
     const handleClick = (e: MouseEvent) => {
       if (!enabled) return;
       
-      // Normalize mouse coordinates from screen space to canvas space
+      // Normalize mouse coordinates from screen space to `dimensions`, the
+      // space the window is mapped to. Not to the canvas' own width and
+      // height: a canvas drawn at screen resolution has a backing store of
+      // `dimensions` times the device pixel ratio.
       const element = e.currentTarget as unknown as HTMLElement;
       pressedElementRef.current = element;
       const rect = element.getBoundingClientRect();
-      let scaleX = 1;
-      let scaleY = 1;
-      
-      if (element instanceof HTMLCanvasElement) {
-        scaleX = element.width / rect.width;
-        scaleY = element.height / rect.height;
-      } else {
-        // For other elements, normalize to the canvas dimensions
-        scaleX = dimensions.width / rect.width;
-        scaleY = dimensions.height / rect.height;
-      }
-      
+      const scaleX = rect.width > 0 ? dimensions.width / rect.width : 1;
+      const scaleY = rect.height > 0 ? dimensions.height / rect.height : 1;
+
       const point = {
         x: e.nativeEvent.offsetX * scaleX,
         y: e.nativeEvent.offsetY * scaleY,

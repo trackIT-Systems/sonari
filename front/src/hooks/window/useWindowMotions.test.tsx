@@ -9,9 +9,21 @@ const WINDOW: SpectrogramWindow = {
   freq: { min: 0, max: 1000 },
 };
 
-function Harness({ onMove }: { onMove: (props: { shift: Position }) => void }) {
-  const { props } = useWindowMotions({ window: WINDOW, onMove });
-  return <canvas data-testid="canvas" width={1000} height={384} {...props} />;
+function Harness({
+  onMove,
+  onClick,
+  pixelRatio = 1,
+}: {
+  onMove?: (props: { shift: Position }) => void;
+  onClick?: (props: { position: Position }) => void;
+  pixelRatio?: number;
+}) {
+  const { props } = useWindowMotions({ window: WINDOW, onMove, onClick });
+  // A canvas drawn at screen resolution: its backing store is the 1000x384
+  // window dimensions times the device pixel ratio.
+  return (
+    <canvas data-testid="canvas" width={1000 * pixelRatio} height={384 * pixelRatio} {...props} />
+  );
 }
 
 /** Display the 1000x384 canvas at `scale` times its size. */
@@ -62,5 +74,38 @@ describe("useWindowMotions drag", () => {
 
     expect(onMove).toHaveBeenCalled();
     expect(onMove.mock.calls.at(-1)![0].shift.time).toBeCloseTo(seconds, 6);
+  });
+});
+
+describe("useWindowMotions on a high resolution canvas", () => {
+  afterEach(cleanup);
+
+  it.each([1, 1.5, 2])("maps a click at pixel ratio %s to the point under the cursor", (pixelRatio) => {
+    const onClick = vi.fn();
+    const { getByTestId } = render(<Harness onClick={onClick} pixelRatio={pixelRatio} />);
+    const canvas = getByTestId("canvas");
+    displayAt(canvas, 1);
+
+    const event = new MouseEvent("mousedown", { bubbles: true, cancelable: true, button: 0 });
+    Object.defineProperty(event, "offsetX", { value: 250 });
+    Object.defineProperty(event, "offsetY", { value: 96 });
+    act(() => {
+      canvas.dispatchEvent(event);
+    });
+
+    const { position } = onClick.mock.calls.at(-1)![0];
+    expect(position.time).toBeCloseTo(2.5, 6);
+    expect(position.freq).toBeCloseTo(750, 6);
+  });
+
+  it.each([1, 2])("converts a 50px drag at pixel ratio %s into 0.5s", (pixelRatio) => {
+    const onMove = vi.fn();
+    const { getByTestId } = render(<Harness onMove={onMove} pixelRatio={pixelRatio} />);
+    const canvas = getByTestId("canvas");
+    displayAt(canvas, 1);
+
+    drag(canvas, 50);
+
+    expect(onMove.mock.calls.at(-1)![0].shift.time).toBeCloseTo(0.5, 6);
   });
 });
