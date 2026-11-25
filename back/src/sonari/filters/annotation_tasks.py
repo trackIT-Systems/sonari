@@ -5,7 +5,7 @@ from typing import Literal
 
 from pydantic import Field, field_validator
 from soundevent import data
-from sqlalchemy import Float, Integer, Select, String, and_, exists, false, func, literal, not_, or_, select, true
+from sqlalchemy import Boolean, Float, Integer, Select, String, and_, exists, false, func, literal, not_, or_, select, true
 from sqlalchemy.ext.compiler import compiles
 from sqlalchemy.sql.expression import FunctionElement
 
@@ -16,7 +16,6 @@ __all__ = [
     "AnnotationProjectFilter",
     "AnnotationTaskIdsFilter",
     "AnnotationTaskTagFilter",
-    "StationFilter",
     "AnnotationTaskFilter",
     "SearchRecordingsFilter",
     "TaskTagCountFilter",
@@ -99,6 +98,26 @@ def _night_of_default(element, compiler, **kw):
 def night_of_recording(recorded_at, utc_offset_minutes: int):
     """`night_of` for a UTC offset in minutes (e.g. 120 for CEST)."""
     return night_of(recorded_at, literal(int(utc_offset_minutes) - 12 * 60, Integer))
+
+
+class per_dialect_condition(FunctionElement):
+    """A condition written twice: ``(postgresql, other)``, compiled as the one for the database."""
+
+    type = Boolean()
+    name = "per_dialect_condition"
+    inherit_cache = True
+
+
+@compiles(per_dialect_condition, "postgresql")
+def _per_dialect_condition_postgresql(element, compiler, **kw):
+    postgresql, _ = list(element.clauses)
+    return compiler.process(postgresql, **kw)
+
+
+@compiles(per_dialect_condition)
+def _per_dialect_condition_default(element, compiler, **kw):
+    _, other = list(element.clauses)
+    return compiler.process(other, **kw)
 
 
 NO_RECORDING_TIME = "none"
@@ -331,36 +350,6 @@ class AnnotationTaskIdsFilter(base.Filter):
         return query.where(models.AnnotationTask.id.in_(ids))
 
 
-class StationFilter(base.Filter):
-    """Filter for tasks by stations, which is the external name for datasets."""
-
-    lst: str | None = None
-
-    def filter(self, query: Select) -> Select:
-        if not self.lst:
-            return query
-
-        ids: list[str] = self.lst.split(",")
-
-        Recording = models.Recording.__table__.alias("dataset_recording")
-
-        return (
-            query.join(
-                Recording,
-                Recording.c.id == models.AnnotationTask.recording_id,
-            )
-            .join(
-                models.DatasetRecording,
-                models.DatasetRecording.recording_id == Recording.c.id,
-            )
-            .join(
-                models.Dataset,
-                models.Dataset.id == models.DatasetRecording.dataset_id,
-            )
-            .where(models.Dataset.id.in_(ids))
-        )
-
-
 class SearchRecordingsFilter(base.Filter):
     """Filter recordings by the dataset they are in."""
 
@@ -418,10 +407,25 @@ def _task_tag_links(level: TagLevel, *columns):
     ), models.AnnotationTaskTag.tag_id
 
 
+def _per_task_exists(links: Select):
+    """The task has a row in ``links``: checked per task, stopping at the first row.
+
+    Not ``EXISTS``: PostgreSQL turns an ``EXISTS`` in the WHERE clause into a
+    semi join, and with a common tag it then plans it as a join of every link
+    to that tag in the database (millions, across all projects), grouped by
+    task. Its row estimates for ``sound_event_annotation.annotation_task_id``
+    make the per-task lookups look far more expensive than they are, so it
+    picks that join even for one project. A scalar subquery with ``LIMIT 1``
+    cannot be turned into a join: it runs per task through the index on the
+    task id, so its cost grows with the project's tasks, not with the database.
+    """
+    return links.limit(1).scalar_subquery().is_not(None)
+
+
 def _task_has_tag(level: TagLevel, key: str, value: str):
     """The task carries this tag (stops at its first link to it)."""
     links, tag_id = _task_tag_links(level, literal(1))
-    return exists(links.where(tag_id == _tag_id_subquery(key, value)))
+    return _per_task_exists(links.where(tag_id == _tag_id_subquery(key, value)))
 
 
 def _task_tag_count(level: TagLevel):
@@ -439,13 +443,13 @@ def _task_has_tag_outside(level: TagLevel, known_pairs: list[tuple[str, str]]):
     """The task carries a tag other than these (stops at its first such link)."""
     links, tag_id = _task_tag_links(level, literal(1))
     known_ids = [_tag_id_subquery(k, v) for k, v in known_pairs]
-    return exists(links.where(tag_id.not_in(known_ids)))
+    return _per_task_exists(links.where(tag_id.not_in(known_ids)))
 
 
 def _task_has_any_tag(level: TagLevel):
     """The task carries at least one tag (stops at its first link)."""
     links, _ = _task_tag_links(level, literal(1))
-    return exists(links)
+    return _per_task_exists(links)
 
 
 def _task_has_two_tags(level: TagLevel):
@@ -457,7 +461,7 @@ def _task_has_two_tags(level: TagLevel):
     first_links, first_tag_id = _task_tag_links(level, literal(1))
     first_tag = first_links.with_only_columns(first_tag_id).limit(1).scalar_subquery()
     links, tag_id = _task_tag_links(level, literal(1))
-    return exists(links.where(tag_id != first_tag))
+    return _per_task_exists(links.where(tag_id != first_tag))
 
 
 def _known_task_tags(
@@ -482,9 +486,9 @@ def _tag_count_conditions(
     Every bound is "at least m distinct tags" or its negation. With the k tags
     the task is known to carry (``known_pairs``, required by the include filter
     in the same query), at least m <= k always holds, and at least k + 1 means
-    "a tag other than those": an EXISTS that stops at the first such link
+    "a tag other than those": a per-task check that stops at the first such link
     instead of counting all of the task's tags. Without known tags, at least 1
-    and 2 are EXISTS checks too. Other bounds count the tags.
+    and 2 are such checks too. Other bounds count the tags.
     """
     known = len(known_pairs)
     needed: list[tuple[int, bool]] = []  # (m, whether at least m must hold)
@@ -541,8 +545,8 @@ def _tag_condition(
     """Included/excluded tags and the distinct tag count, as per-task conditions.
 
     ``level`` picks the tags looked at: those on the task's sound events or those on
-    the task itself. Each tag is one EXISTS and the count one correlated subquery,
-    both through the indexes on the task id. They are only evaluated for the tasks
+    the task itself. Each tag is one per-task check (see ``_per_task_exists``) and
+    the count one correlated subquery, both through the indexes on the task id. They are only evaluated for the tasks
     that pass the cheaper conditions, instead of first collecting every tag link of
     every candidate task (millions of rows in a large project). Returns None when
     no tag condition is active.
@@ -960,13 +964,17 @@ def confidence_feature_name_clause_for_tag_creator(tag_creator_username):
     )
 
 
-def _sound_event_confidence_exists(
+def _task_has_confident_sound_event(
     gt: float | None,
     lt: float | None,
     tag_key: str | None = None,
     tag_value: str | None = None,
 ):
-    """EXISTS: a sound event on this task with confidence in range (optional tag)."""
+    """A sound event on this task has a confidence in range (optionally on one tag).
+
+    Checked per task (see ``_per_task_exists``): as an ``EXISTS``, PostgreSQL
+    ran it as a scan of every confidence value in the database.
+    """
     tag_creator_user = models.User.__table__.alias("tag_creator_user")
 
     subquery = (
@@ -989,6 +997,7 @@ def _sound_event_confidence_exists(
             models.SoundEventAnnotation.annotation_task_id == models.AnnotationTask.id,
             confidence_feature_name_clause_for_tag_creator(tag_creator_user.c.username),
         )
+        .correlate(models.AnnotationTask)
     )
 
     if tag_key is not None and tag_value is not None:
@@ -1002,7 +1011,7 @@ def _sound_event_confidence_exists(
     if lt is not None:
         subquery = subquery.where(models.SoundEventAnnotationFeature.value < lt)
 
-    return exists(subquery)
+    return _per_task_exists(subquery)
 
 
 class ConfidenceFilter(base.Filter):
@@ -1020,7 +1029,7 @@ class ConfidenceFilter(base.Filter):
         if self.gt is None and self.lt is None:
             return query
 
-        return query.where(_sound_event_confidence_exists(self.gt, self.lt))
+        return query.where(_task_has_confident_sound_event(self.gt, self.lt))
 
 
 def _apply_tag_and_confidence_filters(
@@ -1037,7 +1046,7 @@ def _apply_tag_and_confidence_filters(
     match = _resolved_include_match(tag_filter.include_match)
     if match == "or":
         conditions = [
-            _sound_event_confidence_exists(
+            _task_has_confident_sound_event(
                 confidence_filter.gt,
                 confidence_filter.lt,
                 tag_key=key,
@@ -1049,7 +1058,7 @@ def _apply_tag_and_confidence_filters(
 
     for key, value in pairs:
         query = query.where(
-            _sound_event_confidence_exists(
+            _task_has_confident_sound_event(
                 confidence_filter.gt,
                 confidence_filter.lt,
                 tag_key=key,
@@ -1073,7 +1082,7 @@ def _apply_tag_exclude_and_confidence_filters(
     for key, value in zip(keys, values, strict=True):
         query = query.where(
             not_(
-                _sound_event_confidence_exists(
+                _task_has_confident_sound_event(
                     confidence_filter.gt,
                     confidence_filter.lt,
                     tag_key=key,
@@ -1085,33 +1094,14 @@ def _apply_tag_exclude_and_confidence_filters(
     return query
 
 
-def _task_median_confidence_in_range(
-    gt: float | None,
-    lt: float | None,
-    tag_key: str | None = None,
-    tag_value: str | None = None,
-    candidate_tasks: Select | None = None,
-):
-    """Condition: the task's median confidence is in range (optionally for one tag).
+def _median_confidence_values(*columns, tag_key: str | None = None, tag_value: str | None = None):
+    """Select from the confidence values of tagged sound events (optionally of one tag).
 
-    ``candidate_tasks`` is a select of task ids that already pass the other
-    filters. Restricting the ranking to them avoids ranking every sound event
-    in the database.
-
-    The median is taken over the confidence of the task's tagged sound events,
-    using the same feature selection as ``_sound_event_confidence_exists``. It is
-    computed portably with window functions (no percentile function needed):
-    with ``cnt`` values ranked ``1..cnt``, the median is the average of the
-    values whose rank ``rn`` satisfies ``2 * rn in (cnt, cnt + 1, cnt + 2)``.
+    Same feature selection as ``_task_has_confident_sound_event``.
     """
     tag_creator_user = models.User.__table__.alias("median_tag_creator")
-    task_id = models.SoundEventAnnotation.annotation_task_id
-
     values = (
-        select(
-            task_id.label("task_id"),
-            models.SoundEventAnnotationFeature.value.label("value"),
-        )
+        select(*columns)
         .select_from(models.SoundEventAnnotation)
         .join(
             models.SoundEventAnnotationFeature,
@@ -1127,6 +1117,59 @@ def _task_median_confidence_in_range(
     )
     if tag_key is not None and tag_value is not None:
         values = values.where(models.Tag.key == tag_key, models.Tag.value == tag_value)
+    return values
+
+
+def _task_median_confidence_in_range_per_task(
+    gt: float | None,
+    lt: float | None,
+    tag_key: str | None = None,
+    tag_value: str | None = None,
+):
+    """PostgreSQL: the task's median confidence, computed per task with ``percentile_cont``.
+
+    A correlated subquery that reads only this task's sound events, through
+    the index on the task id. Its cost grows with the project, not with the
+    database. ``percentile_cont(0.5)`` is the middle value, or the average of
+    the two middle values, like the window version below. The subquery yields
+    a row only when the median is in range (HAVING), so the median is
+    computed once even with both bounds.
+    """
+    median = func.percentile_cont(0.5).within_group(models.SoundEventAnnotationFeature.value)
+    medians = (
+        _median_confidence_values(literal(1), tag_key=tag_key, tag_value=tag_value)
+        .where(models.SoundEventAnnotation.annotation_task_id == models.AnnotationTask.id)
+        .correlate(models.AnnotationTask)
+    )
+    if gt is not None:
+        medians = medians.having(median > gt)
+    if lt is not None:
+        medians = medians.having(median < lt)
+    return medians.scalar_subquery().is_not(None)
+
+
+def _task_median_confidence_in_range_ranked(
+    gt: float | None,
+    lt: float | None,
+    tag_key: str | None = None,
+    tag_value: str | None = None,
+    candidate_tasks: Select | None = None,
+):
+    """Other databases (SQLite has no percentile function): the median from window functions.
+
+    ``candidate_tasks`` is a select of task ids that already pass the other
+    filters. Restricting the ranking to them avoids ranking every sound event
+    in the database. With ``cnt`` values ranked ``1..cnt``, the median is the
+    average of the values whose rank ``rn`` satisfies
+    ``2 * rn in (cnt, cnt + 1, cnt + 2)``.
+    """
+    task_id = models.SoundEventAnnotation.annotation_task_id
+    values = _median_confidence_values(
+        task_id.label("task_id"),
+        models.SoundEventAnnotationFeature.value.label("value"),
+        tag_key=tag_key,
+        tag_value=tag_value,
+    )
     if candidate_tasks is not None:
         values = values.where(task_id.in_(candidate_tasks))
     values = values.subquery("median_values")
@@ -1151,6 +1194,27 @@ def _task_median_confidence_in_range(
         medians = medians.having(func.avg(ranked.c.value) < lt)
 
     return models.AnnotationTask.id.in_(medians)
+
+
+def _task_median_confidence_in_range(
+    gt: float | None,
+    lt: float | None,
+    tag_key: str | None = None,
+    tag_value: str | None = None,
+    candidate_tasks: Select | None = None,
+):
+    """Condition: the task's median confidence is in range (optionally for one tag).
+
+    The median is taken over the confidence of the task's tagged sound
+    events. PostgreSQL computes it per task; ranking all candidate sound
+    events with window functions there took close to a minute on a large
+    server, against seconds per task. ``candidate_tasks`` is used by the
+    window version only.
+    """
+    return per_dialect_condition(
+        _task_median_confidence_in_range_per_task(gt, lt, tag_key, tag_value),
+        _task_median_confidence_in_range_ranked(gt, lt, tag_key, tag_value, candidate_tasks),
+    )
 
 
 class MedianConfidenceFilter(base.Filter):
@@ -1300,7 +1364,6 @@ _AnnotationTaskFilterCombined = base.combine(
     recording=RecordingFilter,
     id=AnnotationTaskIdsFilter,
     annotation_task_tag=AnnotationTaskTagFilter,
-    dataset=StationFilter,
     sound_event_annotation_tag=SoundEventAnnotationTagFilter,
     task_tag=TaskTagFilter,
     task_tag_count=TaskTagCountFilter,

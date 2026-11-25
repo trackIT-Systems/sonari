@@ -258,6 +258,7 @@ async def get_objects_from_query(
     filters: Sequence[Filter | _ColumnExpressionArgument] | None = None,
     sort_by: _ColumnExpressionArgument | str | None = None,
     noloads: list[Any] | None = None,
+    filter_first: bool = False,
 ) -> tuple[list[tuple[Any, ...]], int]:
     """Get a page of rows from a query and the total number of matching rows.
 
@@ -265,11 +266,29 @@ async def get_objects_from_query(
     the filters are evaluated only once. Returned rows exclude that column.
     Without a limit every matching row is returned, so the total is the
     number of rows and the window count is skipped.
+
+    With ``filter_first`` the ids matching the filters are computed first, in
+    a materialized CTE, and only those rows are sorted and paged. PostgreSQL
+    cannot estimate how many rows costly filters (correlated subqueries) keep
+    and guesses very few. With a sort and a limit it then walks the sort
+    index (e.g. every recording of the database by time) and checks the
+    filters row by row until the page is full, which can take minutes on a
+    large database. The CTE is an optimization fence: the filters run once
+    per row of the filtered scope, and the sort only sees the matching rows.
     """
     for nl in noloads or []:
         query = query.options(noload(nl))
 
-    query = apply_filters(query, filters)
+    if filter_first and filters:
+        pk = inspect(model).primary_key[0]
+        matching = (
+            apply_filters(select(pk.label("id")), filters)
+            .cte("matching")
+            .prefix_with("MATERIALIZED", dialect="postgresql")
+        )
+        query = query.join(matching, matching.c.id == pk)
+    else:
+        query = apply_filters(query, filters)
     filtered_query = query
 
     paginated = limit is not None and limit >= 0

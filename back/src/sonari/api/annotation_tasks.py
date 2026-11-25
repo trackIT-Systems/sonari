@@ -120,6 +120,7 @@ class AnnotationTaskAPI(
             offset=offset,
             filters=filters,
             sort_by=sort_by,
+            filter_first=True,
         )
 
         # Convert rows to schema objects
@@ -459,6 +460,7 @@ class AnnotationTaskAPI(
             offset=offset,
             filters=filters,
             sort_by=sort_by,
+            filter_first=True,
         )
         # Don't deduplicate - just return the objects directly
         objs = [row[0] for row in rows]
