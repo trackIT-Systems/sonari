@@ -51,7 +51,7 @@ function formatIntegerCount(value: IntegerCountFilter | undefined) {
   const parts = ops
     .filter(([op]) => value[op] !== undefined)
     .map(([op, label]) => `${label} ${value[op]}`);
-  return parts.length > 0 ? parts.join(", ") : null;
+  return parts.length > 0 ? parts.join(" and ") : null;
 }
 
 /** Filter fields of a tag filter: tags on the task's sound events, or on the task itself. */
@@ -217,11 +217,9 @@ function TagFilterSelector({
         </p>
       )}
       <div className="flex flex-col gap-1">
-        <span className="text-xs text-stone-500 dark:text-stone-400 text-center">
-          {soundEvents ? "Distinct tags on sound events (optional)" : "Distinct tags on task (optional)"}
-        </span>
         <IntegerFilter
-          name="Amount"
+          name="Amount of distinct tags (optional)"
+          value={draft.tagCount}
           onChange={(val) => setDraft((prev) => ({ ...prev, tagCount: val }))}
         />
         {tagCount != null ? (
@@ -240,11 +238,9 @@ function TagFilterSelector({
         </p>
       </div>
       {soundEvents && <div className="flex flex-col gap-1">
-        <span className="text-xs text-stone-500 dark:text-stone-400 text-center">
-          Sound events on task (optional)
-        </span>
         <IntegerFilter
-          name="Amount"
+          name="Amount of sound events (optional)"
+          value={draft.soundEventCount}
           onChange={(val) => setDraft((prev) => ({ ...prev, soundEventCount: val }))}
         />
         {soundEventCount != null ? (
