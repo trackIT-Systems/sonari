@@ -37,6 +37,9 @@ const MEASURE_STYLE = {
   fillAlpha: 0.2,
 };
 
+/** Space around a bounding box when the view opens, as a share of its size on each side */
+const BOUNDING_BOX_MARGIN = 0.2;
+
 function getWindowFromGeometry(annotation: SoundEventAnnotation, taskStartTime: number, taskEndTime: number, samplerate: number) {
     const { geometry, geometry_type } = annotation;
     const duration = taskEndTime - taskStartTime;
@@ -64,8 +67,8 @@ function getWindowFromGeometry(annotation: SoundEventAnnotation, taskStartTime: 
             // Coordinates are in absolute recording time, convert to relative
             const bb_start_rel = bb_coordinates[0] - taskStartTime;
             const bb_end_rel = bb_coordinates[2] - taskStartTime;
-            var bandwidth_margin = (bb_coordinates[3] - bb_coordinates[1]) * 0.1;
-            var bb_duration_margin = (bb_end_rel - bb_start_rel) * 0.1;
+            var bandwidth_margin = (bb_coordinates[3] - bb_coordinates[1]) * BOUNDING_BOX_MARGIN;
+            var bb_duration_margin = (bb_end_rel - bb_start_rel) * BOUNDING_BOX_MARGIN;
             return {
                 time: {
                     min: Math.max(0, bb_start_rel - bb_duration_margin),
