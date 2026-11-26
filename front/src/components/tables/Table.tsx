@@ -1,6 +1,6 @@
 import { Fragment, useCallback, useEffect, useRef, type CSSProperties, type ReactNode } from "react";
 import { flexRender } from "@tanstack/react-table";
-import { useKeyPressEvent } from "react-use";
+import { useKey, useKeyPressEvent } from "react-use";
 import useKeyFilter from "@/hooks/utils/useKeyFilter";
 import {
   LIST_ELEMENT_UP_SHORTCUT,
@@ -200,14 +200,18 @@ export default function Table<S>({
     }
   });
 
-  useKeyPressEvent(useKeyFilter({ key: SELECT_LIST_ELEMENT_SHORTCUT }), () => {
+  // Opening a row may open a new tab, which then gets the key's release.
+  // useKeyPressEvent would wait for that release and miss the next press, so
+  // these keys act on every press (not on auto-repeat, which would open many).
+  useKey(useKeyFilter({ key: SELECT_LIST_ELEMENT_SHORTCUT }), (event) => {
+    if (event.repeat) return;
     if (selectedIndex >= 0 && selectedIndex < table.getRowModel().rows.length && onSelect) {
       onSelect(table.getRowModel().rows[selectedIndex].original);
     }
-  });
+  }, { event: "keydown" }, [selectedIndex, table, onSelect]);
 
   const handleNumberKey = useCallback((event: KeyboardEvent) => {
-    if (!handleNumberKeys || event.metaKey || event.shiftKey) {
+    if (!handleNumberKeys || event.metaKey || event.shiftKey || event.repeat) {
       return;
     }
 
@@ -222,10 +226,10 @@ export default function Table<S>({
     }
   }, [table, onSelect, onFocusChange, handleNumberKeys]);
 
-  useKeyPressEvent(useKeyFilter({ key: SELECT_FST_ELEMENT_SHORTCUT }), handleNumberKey);
-  useKeyPressEvent(useKeyFilter({ key: SELECT_SND_ELEMENT_SHORTCUT }), handleNumberKey);
-  useKeyPressEvent(useKeyFilter({ key: SELECT_TRD_ELEMENT_SHORTCUT }), handleNumberKey);
-  useKeyPressEvent(useKeyFilter({ key: SELECT_FRT_ELEMENT_SHORTCUT }), handleNumberKey);
+  useKey(useKeyFilter({ key: SELECT_FST_ELEMENT_SHORTCUT }), handleNumberKey, { event: "keydown" }, [handleNumberKey]);
+  useKey(useKeyFilter({ key: SELECT_SND_ELEMENT_SHORTCUT }), handleNumberKey, { event: "keydown" }, [handleNumberKey]);
+  useKey(useKeyFilter({ key: SELECT_TRD_ELEMENT_SHORTCUT }), handleNumberKey, { event: "keydown" }, [handleNumberKey]);
+  useKey(useKeyFilter({ key: SELECT_FRT_ELEMENT_SHORTCUT }), handleNumberKey, { event: "keydown" }, [handleNumberKey]);
 
 
   const columnCount = table.getVisibleLeafColumns().length;
