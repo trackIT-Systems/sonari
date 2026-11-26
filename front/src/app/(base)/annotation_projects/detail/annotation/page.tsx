@@ -37,6 +37,10 @@ export default function Page() {
 
   const annotationTaskID = search.get("annotation_task_id");
   const sourceAnnotationTaskID = search.get("source_annotation_task_id");
+  // Set while a task outside the filter is open from the time strip: the
+  // filtered task the trip started from
+  const timeFromParam = search.get("time_from");
+  const timeAnchorTaskId = timeFromParam ? parseInt(timeFromParam, 10) : NaN;
 
 
   // All hooks must be called before any conditional returns
@@ -334,6 +338,19 @@ export default function Page() {
       const params = new URLSearchParams(search);
       params.set("annotation_task_id", task.id.toString());
       params.delete("source_annotation_task_id");
+      params.delete("time_from");
+      router.push(`${url.toString()}?${params.toString()}`);
+    },
+    [router, pathname, search],
+  );
+
+  const onVisitTask = useCallback(
+    (task: AnnotationTask, anchorTaskId: number) => {
+      const url = new URL(pathname, window.location.origin);
+      const params = new URLSearchParams(search);
+      params.set("annotation_task_id", task.id.toString());
+      params.delete("source_annotation_task_id");
+      params.set("time_from", anchorTaskId.toString());
       router.push(`${url.toString()}?${params.toString()}`);
     },
     [router, pathname, search],
@@ -423,6 +440,9 @@ export default function Page() {
         isLoadingTask={isLoadingTask}
         parameters={parameters}
         onChangeTask={onChangeTask}
+        timeAnchorTaskId={Number.isNaN(timeAnchorTaskId) ? null : timeAnchorTaskId}
+        // Tour projects keep to the lessons' order
+        onVisitTask={project.is_guided_tour ? undefined : onVisitTask}
         currentUser={user}
         onParameterSave={onParameterSave}
         onCompleteTask={handleCompleteTask}

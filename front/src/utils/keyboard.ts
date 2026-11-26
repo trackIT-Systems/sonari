@@ -97,6 +97,9 @@ export const SOUND_EVENT_CYCLE_FILTER_SHORTCUT = "m";
 
 export const NEXT_TASK_SHORTCUT = "ArrowRight";
 export const PREV_TASK_SHORTCUT = "ArrowLeft";
+/** Previous / next task in time, ignoring the filter */
+export const TIME_PREV_TASK_SHORTCUT = ",";
+export const TIME_NEXT_TASK_SHORTCUT = ".";
 
 export const LOCK_ASPECT_RATIO_SHORTCUT = "l";
 export const ZOOM_SHORTCUT = "z";
@@ -231,6 +234,16 @@ export const TASK_STATE_SHORTCUTS: KeyShortcut[] = [
         label: "Previous",
         shortcut: `${getSpecialKeyLabel("Shift")} ${getSpecialKeyLabel(PREV_TASK_SHORTCUT)}`,
         description: "Go to previous task",
+    },
+    {
+        label: "Earlier in time",
+        shortcut: TIME_PREV_TASK_SHORTCUT,
+        description: "Open the task just before this one in time, ignoring the filter",
+    },
+    {
+        label: "Later in time",
+        shortcut: TIME_NEXT_TASK_SHORTCUT,
+        description: "Open the task just after this one in time, ignoring the filter",
     },
 ]
 

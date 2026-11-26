@@ -12,7 +12,7 @@ function soundEventTagIds(task: AnnotationTask): Set<string> {
 }
 
 /** Absolute start of a task in seconds, or null if the recording has no date/time. */
-function absoluteStart(task: AnnotationTask): number | null {
+export function absoluteStart(task: AnnotationTask): number | null {
   const date = task.recording?.date;
   const time = task.recording?.time;
   if (date == null || time == null) return null;

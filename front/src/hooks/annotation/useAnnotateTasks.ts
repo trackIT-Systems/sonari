@@ -33,6 +33,11 @@ type AnnotationState = {
   _filter: Filter<AnnotationTaskFilter>;
   /** The tasks `nextTask` goes to, in order (the next one first) */
   upcomingTasks: AnnotationTaskIndex[];
+  /**
+   * While a task outside the filter is open from the time strip: the filtered
+   * task the trip started from. Next/previous continue from there.
+   */
+  tripAnchorTaskId: number | null;
 };
 
 type AnnotationControls = {
@@ -53,6 +58,10 @@ type AnnotationControls = {
   applyFilterForMismatch: () => void;
   /** Resolve the filter mismatch by staying on the task from the link */
   keepOriginalTask: () => void;
+  /** Open a task whether or not the filter matches it, remembering where in the filter we were */
+  visitTask: (task: AnnotationTask) => void;
+  /** Go back to the filtered task a trip outside the filter started from */
+  backToTripAnchor: () => void;
 };
 
 const empty = {};
@@ -66,7 +75,13 @@ export default function useAnnotateTasks({
   onChangeTask,
   onDeselectSoundEventAnnotation,
   persistFilter = true,
+  timeAnchorTaskId: urlAnchorTaskId = null,
+  onVisitTask,
 }: {
+  /** The filtered task a trip outside the filter started from (kept in the URL) */
+  timeAnchorTaskId?: number | null;
+  /** Callback when a task is opened with `visitTask`, with the trip's anchor */
+  onVisitTask?: (task: AnnotationTask, anchorTaskId: number) => void;
   /** Initial filter to select which annotation tasks to show */
   filter?: AnnotationTaskFilter;
   /**
@@ -93,6 +108,10 @@ export default function useAnnotateTasks({
   const [currentTask, setCurrentTask] = useState<AnnotationTask | null>(
     initialTask ?? null,
   );
+  // The anchor of a trip outside the filter, from the moment it starts: the
+  // URL carries it only once the navigation has gone through.
+  const [startedAnchorTaskId, setStartedAnchorTaskId] = useState<number | null>(null);
+  const timeAnchorTaskId = urlAnchorTaskId ?? startedAnchorTaskId;
   /** Target id from a reconcile navigation until the URL task catches up */
   const pendingReconcileTaskIdRef = useRef<number | null>(null);
 
@@ -147,11 +166,11 @@ export default function useAnnotateTasks({
     if (initialTask.id === currentTask?.id) {
       return;
     }
-    if (!items.some((item) => item.id === initialTask.id)) {
+    if (timeAnchorTaskId == null && !items.some((item) => item.id === initialTask.id)) {
       return;
     }
     setCurrentTask(initialTask);
-  }, [initialTask, currentTask?.id, items]);
+  }, [initialTask, currentTask?.id, items, timeAnchorTaskId]);
 
   const index = useMemo(() => {
     if (currentTask === null) return -1;
@@ -189,8 +208,19 @@ export default function useAnnotateTasks({
       ? lastPosition.index
       : null;
 
+  /** Position of the trip's anchor while a task outside the filter is open from the time strip */
+  const anchorIndex = useMemo(
+    () =>
+      index === -1 && timeAnchorTaskId != null
+        ? items.findIndex((item) => item.id === timeAnchorTaskId)
+        : -1,
+    [index, timeAnchorTaskId, items],
+  );
+  const onTrip = anchorIndex !== -1;
+
   const goToTask = useCallback(
     (task: AnnotationTask) => {
+      setStartedAnchorTaskId(null);
       setCurrentTask(task);
       onChangeTask?.(task);
       onDeselectSoundEventAnnotation();
@@ -202,14 +232,18 @@ export default function useAnnotateTasks({
     if (index !== -1) {
       return index < items.length - 1;
     }
+    if (onTrip) {
+      return anchorIndex < items.length - 1;
+    }
     if (filteredOutIndex != null) {
       return filteredOutIndex < items.length;
     }
     return items.length > 0;
-  }, [index, items.length, filteredOutIndex]);
+  }, [index, items.length, filteredOutIndex, onTrip, anchorIndex]);
 
   // The task after a filtered-out one has moved up into its slot
-  const nextIndex = index !== -1 ? index + 1 : filteredOutIndex ?? 0;
+  const nextIndex =
+    index !== -1 ? index + 1 : onTrip ? anchorIndex + 1 : filteredOutIndex ?? 0;
 
   const upcomingTasks = useMemo(
     () => (hasNextTask ? items.slice(nextIndex, nextIndex + UPCOMING_TASKS) : []),
@@ -228,25 +262,52 @@ export default function useAnnotateTasks({
     if (index !== -1) {
       return index > 0;
     }
+    if (onTrip) {
+      return anchorIndex > 0;
+    }
     if (filteredOutIndex != null) {
       return filteredOutIndex > 0 && items.length > 0;
     }
     return items.length > 0;
-  }, [index, items.length, filteredOutIndex]);
+  }, [index, items.length, filteredOutIndex, onTrip, anchorIndex]);
 
   const prevTask = useCallback(() => {
     if (!hasPrevTask) return;
     const prevIndex =
       index !== -1
         ? index - 1
-        : filteredOutIndex != null
+        : onTrip
+          ? anchorIndex - 1
+          : filteredOutIndex != null
           ? Math.min(filteredOutIndex, items.length) - 1
           : 0;
     const prevTaskIndex = items[prevIndex];
     // Cast minimal index to AnnotationTask for navigation
     // Only id is actually used by onChangeTask
     goToTask(prevTaskIndex as unknown as AnnotationTask);
-  }, [index, items, hasPrevTask, goToTask, filteredOutIndex]);
+  }, [index, items, hasPrevTask, goToTask, filteredOutIndex, onTrip, anchorIndex]);
+
+  const visitTask = useCallback(
+    (task: AnnotationTask) => {
+      const anchor = index !== -1 ? currentTask?.id ?? null : timeAnchorTaskId ?? currentTask?.id ?? null;
+      if (anchor == null || onVisitTask == null || items.some((item) => item.id === task.id)) {
+        goToTask(task);
+        return;
+      }
+      setStartedAnchorTaskId(anchor);
+      setCurrentTask(task);
+      onVisitTask(task, anchor);
+      onDeselectSoundEventAnnotation();
+    },
+    [index, currentTask?.id, timeAnchorTaskId, onVisitTask, items, goToTask, onDeselectSoundEventAnnotation],
+  );
+
+  const tripAnchorTaskId = index === -1 ? timeAnchorTaskId : null;
+
+  const backToTripAnchor = useCallback(() => {
+    if (tripAnchorTaskId == null) return;
+    goToTask({ id: tripAnchorTaskId } as AnnotationTask);
+  }, [tripAnchorTaskId, goToTask]);
 
   const { set: setFilterKeyValue } = filter;
   const setFilter = useCallback(
@@ -281,6 +342,11 @@ export default function useAnnotateTasks({
     if (mismatchCheckedRef.current || isLoading || isFetchingIndex || initialTask == null) {
       return;
     }
+    // Opened from the time strip: outside the filter on purpose
+    if (timeAnchorTaskId != null) {
+      mismatchCheckedRef.current = true;
+      return;
+    }
     if (items.length === 0) {
       return;
     }
@@ -302,7 +368,7 @@ export default function useAnnotateTasks({
     mismatchCheckedRef.current = true;
     heldTaskIdRef.current = initialTask.id;
     setFilterMismatchTaskId(initialTask.id);
-  }, [isLoading, isFetchingIndex, initialTask, items, indexUpdatedAt, refetchIndex]);
+  }, [isLoading, isFetchingIndex, initialTask, items, indexUpdatedAt, refetchIndex, timeAnchorTaskId]);
 
   const applyFilterForMismatch = useCallback(() => {
     heldTaskIdRef.current = null;
@@ -324,7 +390,8 @@ export default function useAnnotateTasks({
       currentTaskId: currentTask?.id ?? null,
       itemIds: items.map((item) => item.id),
       isLoading,
-      wasListed: filteredOutIndex != null,
+      // A trip outside the filter stays where it is
+      wasListed: filteredOutIndex != null || timeAnchorTaskId != null,
     });
     if (action !== "go_to_first") {
       return;
@@ -341,7 +408,7 @@ export default function useAnnotateTasks({
     }
     pendingReconcileTaskIdRef.current = first.id;
     goToTask(first as unknown as AnnotationTask);
-  }, [currentTask, items, isLoading, goToTask, filterMismatchTaskId, filteredOutIndex]);
+  }, [currentTask, items, isLoading, goToTask, filterMismatchTaskId, filteredOutIndex, timeAnchorTaskId]);
 
   return {
     current: index,
@@ -362,6 +429,9 @@ export default function useAnnotateTasks({
     keepOriginalTask,
     filterMismatchTaskId,
     upcomingTasks,
+    tripAnchorTaskId,
+    visitTask,
+    backToTripAnchor,
     _filter: filter,
   };
 }

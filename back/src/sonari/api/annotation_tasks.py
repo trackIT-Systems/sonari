@@ -284,6 +284,77 @@ class AnnotationTaskAPI(
             for night in nights
         ]
 
+    async def get_time_neighbours(
+        self,
+        session: AsyncSession,
+        annotation_task_id: int,
+        *,
+        before: int = 3,
+        after: int = 3,
+    ) -> tuple[list[schemas.AnnotationTask], list[schemas.AnnotationTask]]:
+        """The tasks of the same project just before and after a task in time, unfiltered.
+
+        Ordered by the recording's date and time, then the task's start in the
+        recording. Tasks of undated recordings have no place in time: an undated
+        task has no neighbours, and undated tasks are never neighbours.
+
+        Returns the tasks before (nearest first) and after (nearest first).
+        """
+        task = models.AnnotationTask
+        recording = models.Recording
+        current = (
+            await session.execute(
+                select(task.annotation_project_id, recording.recorded_at, task.start_time, task.id)
+                .join(recording, recording.id == task.recording_id)
+                .where(task.id == annotation_task_id)
+            )
+        ).one_or_none()
+        if current is None:
+            raise exceptions.NotFoundError(f"AnnotationTask with id {annotation_task_id} not found")
+        project_id, recorded_at, start_time, task_id = current
+        if recorded_at is None:
+            return [], []
+
+        position = tuple_(recording.recorded_at, task.start_time, task.id)
+        here = tuple_(literal(recorded_at), literal(start_time), literal(task_id))
+        base = (
+            select(task.id)
+            .join(recording, recording.id == task.recording_id)
+            .where(task.annotation_project_id == project_id, recording.recorded_at.is_not(None))
+        )
+        before_ids = (
+            await session.scalars(
+                base.where(position < here)
+                .order_by(recording.recorded_at.desc(), task.start_time.desc(), task.id.desc())
+                .limit(before)
+            )
+        ).all() if before > 0 else []
+        after_ids = (
+            await session.scalars(
+                base.where(position > here)
+                .order_by(recording.recorded_at.asc(), task.start_time.asc(), task.id.asc())
+                .limit(after)
+            )
+        ).all() if after > 0 else []
+
+        ids = [*before_ids, *after_ids]
+        if not ids:
+            return [], []
+        tasks, _ = await self.get_many(
+            session,
+            limit=None,
+            filters=[task.id.in_(ids)],
+            sort_by=None,
+            include_recording=True,
+            include_sound_event_tags=True,
+            include_status_badges=True,
+        )
+        by_id = {t.id: t for t in tasks}
+        return (
+            [by_id[i] for i in before_ids if i in by_id],
+            [by_id[i] for i in after_ids if i in by_id],
+        )
+
     async def get_stats(
         self,
         session: AsyncSession,

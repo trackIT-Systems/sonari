@@ -60,6 +60,7 @@ import AnnotationTaskTags, { SoundEventTagStrip } from "@/components/annotation_
 import { SPECTROGRAM_CONTAINER_WIDTH } from "@/constants";
 import { DEFAULT_TAG_VISIBILITY } from "@/utils/passes";
 import usePreloadUpcomingTasks from "@/hooks/annotation/usePreloadUpcomingTasks";
+import TaskTimeStrip from "@/components/annotation_tasks/TaskTimeStrip";
 import type { TagVisibilityFilter } from "@/utils/passes";
 
 const NO_IDS = new Set<number>();
@@ -111,7 +112,13 @@ export default function AnnotateTasks({
   onSourceRemoveTagFromSoundEventAnnotation,
   annotationHistory,
   sourceAnnotationHistory,
+  timeAnchorTaskId = null,
+  onVisitTask,
 }: {
+  /** The filtered task a trip outside the filter started from */
+  timeAnchorTaskId?: number | null;
+  /** Opens a task from the time strip; without it the strip is hidden */
+  onVisitTask?: (task: AnnotationTask, anchorTaskId: number) => void;
   /** Filter to select which tasks are to be annotated */
   taskFilter?: AnnotationTaskFilter;
   /** Parameters to use for spectrogram rendering */
@@ -286,7 +293,11 @@ export default function AnnotateTasks({
     onRejectTask,
     onVerifyTask,
     onDeselectSoundEventAnnotation,
+    timeAnchorTaskId,
+    onVisitTask,
   });
+
+  const inFilterIds = useMemo(() => new Set(tasks.tasks.map((task) => task.id)), [tasks.tasks]);
 
   // Once this task's spectrogram shows, load the next tasks' images
   const upcomingTaskIds = useMemo(() => tasks.upcomingTasks.map((task) => task.id), [tasks.upcomingTasks]);
@@ -1021,6 +1032,15 @@ export default function AnnotateTasks({
                   // Tour projects of other users must not be browsable from here.
                   onSourceTaskChange={isGuidedTour ? undefined : onSourceTaskChange}
                 />
+                {onVisitTask != null && (
+                  <TaskTimeStrip
+                    task={annotationTask}
+                    inFilterIds={inFilterIds}
+                    tripAnchorTaskId={tasks.tripAnchorTaskId}
+                    onVisit={tasks.visitTask}
+                    onBack={tasks.backToTripAnchor}
+                  />
+                )}
                 <div className={fullscreen ? "flex min-h-0 min-w-0 flex-1 flex-col" : "min-w-0 grow-0"}>
                   <AnnotationTaskSpectrogram
                     key={annotationTask.id}

@@ -418,8 +418,16 @@ const DEFAULT_ENDPOINTS = {
   bulkSoundEventTagSummary: "/api/v1/annotation_tasks/bulk/sound_event_tags/summary/",
   bulkDeleteSoundEventsByTag: "/api/v1/annotation_tasks/bulk/sound_events/delete/",
   getHistory: "/api/v1/annotation_tasks/detail/history/",
+  getTimeNeighbours: "/api/v1/annotation_tasks/detail/time_neighbours/",
   getMainFrequencies: "/api/v1/annotation_tasks/detail/main_frequencies/",
 };
+
+const AnnotationTaskTimeNeighboursSchema = z.object({
+  before: z.array(AnnotationTaskSchema),
+  after: z.array(AnnotationTaskSchema),
+});
+
+export type AnnotationTaskTimeNeighbours = z.infer<typeof AnnotationTaskTimeNeighboursSchema>;
 
 const SoundEventMainFrequencySchema = z.object({
   sound_event_annotation_id: z.number(),
@@ -839,6 +847,19 @@ export function registerAnnotationTasksAPI(
     return SoundEventTaskHistorySchema.parse(response.data);
   }
 
+  /** The project's tasks just before and after a task in time, ignoring any filter (nearest first). */
+  async function getTimeNeighbours(
+    annotationTaskId: number,
+    { before = 3, after = 3 }: { before?: number; after?: number } = {},
+    signal?: AbortSignal,
+  ): Promise<AnnotationTaskTimeNeighbours> {
+    const response = await instance.get(endpoints.getTimeNeighbours, {
+      params: { annotation_task_id: annotationTaskId, before, after },
+      signal,
+    });
+    return AnnotationTaskTimeNeighboursSchema.parse(response.data);
+  }
+
   /** Main (peak) frequency of each sound event of the task, in Hz (null where none can be measured). */
   async function getMainFrequencies(
     annotationTaskId: number,
@@ -873,6 +894,7 @@ export function registerAnnotationTasksAPI(
     bulkSoundEventTagSummary,
     bulkDeleteSoundEventsByTag,
     getHistory,
+    getTimeNeighbours,
     getMainFrequencies,
   } as const;
 }

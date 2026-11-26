@@ -17,6 +17,7 @@ if TYPE_CHECKING:
     from sonari.schemas.sound_event_annotations import SoundEventAnnotation
 
 __all__ = [
+    "AnnotationTaskTimeNeighbours",
     "SoundEventMainFrequency",
     "AnnotationStatusBadge",
     "AnnotationStatusBadgeUpdate",
@@ -207,6 +208,16 @@ class AnnotationTaskIndex(BaseModel):
 
     start_time: float
     """The start time of the audio segment in seconds."""
+
+
+class AnnotationTaskTimeNeighbours(BaseModel):
+    """The tasks of a project just before and after a task in time, unfiltered."""
+
+    before: list[AnnotationTask]
+    """Tasks before the task, nearest first."""
+
+    after: list[AnnotationTask]
+    """Tasks after the task, nearest first."""
 
 
 class AnnotationTaskStats(BaseModel):

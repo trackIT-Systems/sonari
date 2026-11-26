@@ -302,6 +302,26 @@ def get_annotation_tasks_router(settings: SonariSettings):
         return annotation_task
 
     @annotation_tasks_router.get(
+        "/detail/time_neighbours/",
+        response_model=schemas.AnnotationTaskTimeNeighbours,
+    )
+    async def get_task_time_neighbours(
+        session: Session,
+        annotation_task_id: int,
+        before: Annotated[int, Query(ge=0, le=20)] = 3,
+        after: Annotated[int, Query(ge=0, le=20)] = 3,
+    ):
+        """The tasks of the task's project just before and after it in time, ignoring any filter.
+
+        Lets reviewers check the calls around a task, e.g. whether the same
+        animal was labelled as another species a moment earlier.
+        """
+        before_tasks, after_tasks = await api.annotation_tasks.get_time_neighbours(
+            session, annotation_task_id, before=before, after=after
+        )
+        return schemas.AnnotationTaskTimeNeighbours(before=before_tasks, after=after_tasks)
+
+    @annotation_tasks_router.get(
         "/detail/history/",
         response_model=schemas.SoundEventTaskHistory,
     )
